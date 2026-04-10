@@ -1,0 +1,238 @@
+ACL 2023 Reviewing Instructions
+
+What is this paper about?
+The summary of a paper should be just that: a neutral, dispassionate summary of the research question and findings/contributions. We would help the program chairs the most by not tainting these summaries with, e.g., suggestions that the topic is exciting or a waste of time.
+
+Make sure you acknowledge all the contributions that you believe the paper is making: experimental evidence, replication, framing of a new question, artifacts that can be used in future work (models, resources, code), literature review, establishing new cross-disciplinary connections, conceptual developments, theoretical arguments. A paper may make several contributions, and not all of them need to be equally strong. You should state in your own words what you see as contributions of the paper, rather than copy/paste it from the abstract. This helps the authors and the chairs to see that you understood the gist of the paper, and hence the rest of your review should be taken seriously.
+
+Reasons to accept
+Even if you fundamentally disagree with something in the paper, it is important for the program chairs (and the mental health of the authors) that you accurately state all the best aspects of it. It also helps them to see that you actually understand the work, and hence any criticisms should be taken seriously.
+
+The contributions of the paper are the obvious candidates for the “reasons to accept”. They may come in many different forms and should be recognized, even if they are not the type of contribution that you aim for in your own work. ACL CFP explicitly welcomes the following kinds of contributions: an engineering solution, a literature review, a useful artifact (a model, software, a resource), reproduction of prior results, analysis (of models or data), theory, argumentation/position.
+
+In assessing a contribution, performance improvements or complex math are by themselves neither necessary nor sufficient. It should be clear in what way the study advances the field: what did we learn from it that we did not know before? What can we do that we could not do before? Are the research claims clearly articulated and sufficiently backed up by the appropriate evidence, literature or theory/arguments?
+
+If one of the strengths is the performance of the proposed system, do check that the baseline is sufficiently strong and well-tuned, and that the result is robust (e.g., not just the best of an unknown number of runs with unknown standard deviation between runs). Ideally, the computation budget should be reported. If you cannot find something in the paper, see if the responsible NLP checklist contains any answers or pointers to the paper or supplementary materials.
+
+Apart from the contributions of the paper, its strengths may be in e.g. being clear and well-written, in formulating a timely/important question, in proposing a better framing of a problem, showing previously ignored connections between ideas/fields, a conceptual development, etc.
+
+Reasons to reject
+Many things could go wrong in a study. Although reviewers often disagree about acceptance recommendations for papers above a certain quality threshold, the NeurIPS experiment showed that low-quality papers are identified quite reliably. There may be claims that are not actually supported by the evidence or by the arguments, but that are presented as conclusions rather than as hypotheses/discussion. The framing may be misleading. There may be obvious methodological flaws (e.g., only the best run results are reported), errors in the proofs, in the implementation, or in the analysis. There may be insufficient detail to understand what was done or how to reproduce the method and the results. There may be a lack of clarity about what the research question is (even if it is “Does system A work better than system B”?), what was done, why, and what was the conclusion. The paper should also make it clear in what way the findings and/or the released artifacts advance the field.
+
+At the same time, there are many complaints about reviews at previous conferences that cite as weaknesses things that are not in fact weaknesses, but rather belong in the “suggestions” box. Once you have the first draft of your review, you will need to revisit it to check for these frequent issues.
+
+Every work has limitations, and ACL 2023 submissions include a mandatory section for discussing that. Please take care to not penalize the authors for seriously thinking through the limitations of their work, in ethical or any other aspect. First, this information is crucial for future work. Second, if we as a community reward focusing only on positive aspects of research, this contributes to the over-hyping problem which damages the credibility of the whole field.
+
+Questions for the Author(s)
+Do you have major questions for the authors - especially if their answers would be relevant for your recommendation? Please note that the authors will have limited space to answer, and this section should be reserved for the “big” questions - not things like typos or non-critical missing references.
+
+Please use the letter numbering scheme for your questions, e.g.
+
+Question A:
+Question B:
+Question C:
+Combined with your reviewer number, this will make it easy to refer to your questions in rebuttal and reviewer discussion (e.g. question 2A = question A of reviewer 2).
+
+Missing References
+Please list any references that should be included in the bibliography or need to be discussed in more depth. If you mentioned missing previous work or lack of baselines, give the full citation. In particular, if you say that the submission lacks novelty, please be sure to include the specific work that you believe to be similar.
+
+Typos, Grammar, Style, and Presentation Improvements
+While the other fields are written for the chairs, this field is exclusively a message to the authors. This is the place for presentation suggestions, clarifications, pointing out (a reasonable amount of) typos or language errors: the small things that you do not consider “weaknesses” and should not distract the chairs from your overall assessment. Of course, if you find the paper completely illegible or unclear, such issues can escalate to the “weakness” list for the chairs.
+
+Things could be unclear because it is generally not easy to communicate clearly and effectively with a wide audience—especially when you have been working on a project for a long time and it all seems obvious to yourself, but not to others. Reviewers are the beta-readers, who can help the authors to significantly improve their papers. If you see something that they could do to increase the potential impact of their work, it is professional courtesy to let them know. Some examples include figures that are hard to read or interpret, the points that require extra background reading, ambiguity, and non-obvious connections between sections. If you have comments or questions that you would like the authors to respond to (beyond “thanks, we’ll fix this”), please move them to the “questions for the authors” and include them in the letter-numbered questions.
+
+Be careful in suggesting citations of your own papers. When you have truly relevant related work, this is appropriate, but it is also potentially de-anonymizing (especially when the paper in question is not very well-known). One workaround is to suggest several citations, including yours.
+
+Reproducibility, Ethics Review, Anonymity Requirement and Overall Recommendation
+The most important part of the review is your thorough comments. However, what many people focus on are numbers, particularly the “overall recommendation”. Thus, it would be remiss for our advice to overlook this part of the process.
+
+ACL 2023 is trying something new this year. We are splitting this decision into two parts: how sound the paper is and how exciting you find the paper.
+
+Soundness goes to how well the paper clearly states its claims and backs up them with evidence and argumentation. We want all papers to clear a minimum bar for presenting solid, thorough, technically sound research. We suspect that this will have lower variance than the other key metric, excitement. Please work with your fellow reviewers to come to a consensus: what are the claims of the paper and do you believe them?
+
+Excitement captures the more subjective evaluations of the novelty/significance of the contributions, and their potential interesting-ness to the community. Because not everyone will calibrate their scores the same way (this will depend on the batch of papers you get, your research area, and the direction you think the field should go), make sure that your scores are justified in the text of the review.
+
+The AC should be able to understand your justification of both scores to create a consensus score from all of the reviews. Please try to disentangle these two aspects in your review: e.g. even if you find a paper boring, it could still be sound and thorough.
+
+Reproducibility
+
+As you assess the reproducibility of the paper, think about not just whether the raw information to reproduce the paper are included. Also think about how easy it would be to reproduce the paper: imagine you had to tell someone who had a strong CS or Linguistics background but was not immersed in the field how to reproduce the paper in an e-mail. Could you just hand them the submission? If not, how long would the e-mail be to fill in the gaps?
+
+Confidence
+
+If your confidence is low, please use the confidential comments section at the end of the form to let your meta-reviewer know which aspects of your review might not be reliable.
+
+The review form also allows you to flag the paper for potential breaches of ACL’s anonymity period, or indicate that you know the authors’ identity from some source.
+
+
+
+
+ICML Main Track Reviewer Form Instructions
+Summary
+Briefly summarize the paper (including the main findings, main results, main algorithmic/conceptual ideas, etc. that the paper claims to contribute). This summary should not be used to critique the paper. A well-written summary should not be disputed by the authors of the paper or other readers.
+Claims and Evidence
+Are the claims made in the submission supported by clear and convincing evidence? If not, which claims are problematic and why?
+Do proposed methods and/or evaluation criteria (e.g., benchmark datasets) make sense for the problem or application at hand?
+Did you check the correctness of any proofs for theoretical claims? Please specify which ones, and discuss any issues.
+Did you check the soundness/validity of any experimental designs or analyses? Please specify which ones, and discuss any issues.
+Did you review the supplementary material? Which parts?
+Relation to Prior Works
+How are the key contributions of the paper related to the broader scientific literature? Be specific in terms of prior related findings/results/ideas/etc.
+Are there related works that are essential to understanding the (context for) key contributions of the paper, but are not currently cited/discussed in the paper? Be specific in terms of prior related findings/results/ideas/etc. (Example: “The key contribution is a linear-time algorithm, and only cites a quadratic-time algorithm for the same problem as prior work, but there was also an O(n log n) time algorithm for this problem discovered last year, namely Algorithm 3 from [ABC’24] published in ICML 2024.”)
+How well-versed are you with the literature related to this paper? (Examples: “I keep up with the literature in this area.”; “I am only familiar with a few key papers in this area, namely [ABC’02], [DEF’04], and [GHI’05].”) Note: Your response to this item will not be visible to authors. Please also see instructions regarding concurrent work.
+Other Aspects
+Enter any comments on other strengths and weaknesses of the paper, such as those concerning originality, significance, and clarity. We encourage you to be open-minded in terms of potential strengths. For example, originality may arise from creative combinations of existing ideas, removing restrictive assumptions from prior theoretical results, or application to a real-world use case (particularly for application-driven ML papers, indicated in the flag above and described in the Reviewer Instructions).
+If you have any other comments or suggestions (e.g., a list of typos), please write them here.
+Questions for Authors
+If you have any important questions for the authors, please carefully formulate them here. Please reserve your questions for cases where the response would likely change your evaluation of the paper, clarify a point in the paper that you found confusing, or address a critical limitation you identified. Please number your questions so authors can easily refer to them in the response, and explain how possible responses would change your evaluation of the paper.
+Ethical Issues
+If you believe there are ethical issues with this paper, please flag the paper for an ethics review. For guidance on when this is appropriate, please review the ethics guidelines.
+If you flagged this paper for ethics review, what area of expertise would it be most useful for the ethics reviewer to have? Please click all that apply:
+Discrimination / Bias / Fairness Concerns
+Inappropriate Potential Applications & Impact  (e.g., human rights concerns)
+Privacy and Security
+Legal Compliance (e.g., GDPR, copyright, terms of use)
+Research Integrity Issues (e.g., plagiarism)
+Responsible Research Practice (e.g., IRB, documentation, research ethics)
+Other
+If you flagged this paper for an ethics review, please explain your concerns in detail.
+Code of Conduct Acknowledgement
+Please affirm the following: While performing my duties as a reviewer (including writing reviews and participating in discussions), I have and will continue to abide by the ICML code of conduct.
+Overall Recommendation
+Indicate an overall recommendation:
+5. Strong accept
+4. Accept
+3. Weak accept (i.e., leaning towards accept, but could also be rejected)
+2. Weak reject (i.e., leaning towards reject, but could also be accepted)
+1. Reject
+
+ICLR 2026 Reviewing Guidelines
+
+Summarized in one sentence, a review aims to determine whether a submission will bring sufficient value to the community and contribute new knowledge. The process can be broken down into the following main reviewer tasks: 
+Read the paper: It’s important to carefully read through the entire paper and to look up any related work and citations that will help you comprehensively evaluate it. Be sure to give yourself sufficient time for this step.
+While reading, consider the following:
+Objective of the work: What is the goal of the paper? Is it to better address a known application or problem, draw attention to a new application or problem, or to introduce and/or explain a new theoretical finding? A combination of these? Different objectives will require different considerations as to potential value and impact.
+Strong points: is the submission clear, technically correct, experimentally rigorous, reproducible, does it present novel findings (e.g. theoretically, algorithmically, etc.)?
+Weak points: is it weak in any of the aspects listed in b.?
+Be mindful of potential biases and try to be open-minded about the value and interest a paper can hold for the entire ICLR community, even if it may not be very interesting for you.
+Answer four key questions for yourself to make a recommendation to Accept or Reject: 
+What is the specific question and/or problem tackled by the paper?
+Is the approach well motivated, including being well-placed in the literature?
+Does the paper support the claims? This includes determining if results, whether theoretical or empirical, are correct and if they are scientifically rigorous.
+What is the significance of the work? Does it contribute new knowledge and sufficient value to the community? Note, this does not necessarily require state-of-the-art results. Submissions bring value to the ICLR community when they convincingly demonstrate new, relevant, impactful knowledge (incl., empirical, theoretical, for practitioners, etc).
+Write and submit your initial review, organizing it as follows: 
+Summarize what the paper claims to contribute. Be positive and constructive.
+List strong and weak points of the paper. Be as comprehensive as possible.
+Clearly state your initial recommendation (accept or reject) with one or two key reasons for this choice.
+Provide supporting arguments for your recommendation.
+Ask questions you would like answered by the authors to help you clarify your understanding of the paper and provide the additional evidence you need to be confident in your assessment. 
+Provide additional feedback with the aim to improve the paper. Make it clear that these points are here to help, and not necessarily part of your decision assessment.
+Complete the CoE report: ICLR has adopted the following Code of Ethics (CoE). When submitting your review, you’ll be asked to complete a CoE report for the paper. The report is a simple form with two questions. The first asks whether there is a potential violation of the CoE. The second is relevant only if there is a potential violation and asks the reviewer to explain why there may be a potential violation. In order to answer these questions, it is therefore important that you read the CoE before starting your reviews.
+
+NeurIPS Review form
+
+Below is a description of the questions you will be asked on the review form for each paper and some guidelines on what to consider when answering these questions. Feel free to use the NeurIPS paper checklist included in each paper as a tool when preparing your review. Remember that answering “no” to some questions is typically not grounds for rejection. When writing your review, please keep in mind that after decisions have been made, reviews and meta-reviews of accepted papers and opted-in rejected papers will be made public.
+1. Summary: Briefly summarize the paper and its contributions. This is not the place to critique the paper; the authors should generally agree with a well-written summary. This is also not the place to paste the abstract—please provide the summary in your own understanding after reading.
+2. Strengths and Weaknesses: Please provide a thorough assessment of the strengths and weaknesses of the paper. A good mental framing for strengths and weaknesses is to think of reasons you might accept or reject the paper. Please touch on the following dimensions:
+- Quality: Is the submission technically sound? Are claims well supported (e.g., by theoretical analysis or experimental results)? Are the methods used appropriate? Is this a complete piece of work or work in progress? Are the authors careful and honest about evaluating both the strengths and weaknesses of their work?
+- Clarity: Is the submission clearly written? Is it well organized? (If not, please make constructive suggestions for improving its clarity.) Does it adequately inform the reader? (Note that a superbly written paper provides enough information for an expert reader to reproduce its results.)
+- Significance: Are the results impactful for the community? Are others (researchers or practitioners) likely to use the ideas or build on them? Does the submission address a difficult task in a better way than previous work? Does it advance our understanding/knowledge on the topic in a demonstrable way? Does it provide unique data, unique conclusions about existing data, or a unique theoretical or experimental approach?
+- Originality: Does the work provide new insights, deepen understanding, or highlight important properties of existing methods? Is it clear how this work differs from previous contributions, with relevant citations provided? Does the work introduce novel tasks or methods that advance the field? Does this work offer a novel combination of existing techniques, and is the reasoning behind this combination well-articulated? As the questions above indicates, originality does not necessarily require introducing an entirely new method. Rather, a work that provides novel insights by evaluating existing methods, or demonstrates improved efficiency, fairness, etc. is also equally valuable.
+You can incorporate Markdown and LaTeX into your review.  See https://openreview.net/faq.
+3. Quality: Based on what you discussed in “Strengths and Weaknesses”, please assign the paper a numerical rating on the following scale to indicate the quality of the work.
+4 excellent
+3 good
+2 fair
+1 poor
+4. Clarity: Based on what you discussed in “Strengths and Weaknesses”, please assign the paper a numerical rating on the following scale to indicate the clarity of the paper.
+4 excellent
+3 good
+2 fair
+1 poor
+5. Significance: Based on what you discussed in “Strengths and Weaknesses”, please assign the paper a numerical rating on the following scale to indicate the significance of the paper.
+4 excellent
+3 good
+2 fair
+1 poor
+6. Originality: Based on what you discussed in “Strengths and Weaknesses”, please assign the paper a numerical rating on the following scale to indicate the originality of the paper.
+4 excellent
+3 good
+2 fair
+1 poor
+7. Questions: Please list up and carefully describe questions and suggestions for the authors, which should focus on key points (ideally around 3–5) that are actionable with clear guidance. Think of the things where a response from the author can change your opinion, clarify a confusion or address a limitation. You are strongly encouraged to state the clear criteria under which your evaluation score could increase or decrease. This can be very important for a productive rebuttal and discussion phase with the authors.
+8. Limitations: Have the authors adequately addressed the limitations and potential negative societal impact of their work? If so, simply leave “yes”; if not, please include constructive suggestions for improvement. In general, authors should be rewarded rather than punished for being up front about the limitations of their work and any potential negative societal impact. You are encouraged to think through whether any critical points are missing and provide these as feedback for the authors.
+9. Overall: Please provide an "overall score" for this submission. Choices:
+6: Strong Accept: Technically flawless paper with groundbreaking impact on one or more areas of AI, with exceptionally strong evaluation, reproducibility, and resources, and no unaddressed ethical considerations.
+5: Accept: Technically solid paper, with high impact on at least one sub-area of AI or moderate-to-high impact on more than one area of AI, with good-to-excellent evaluation, resources, reproducibility, and no unaddressed ethical considerations.
+4: Borderline accept: Technically solid paper where reasons to accept outweigh reasons to reject, e.g., limited evaluation. Please use sparingly.
+3: Borderline reject: Technically solid paper where reasons to reject, e.g., limited evaluation, outweigh reasons to accept, e.g., good evaluation. Please use sparingly.
+2: Reject: For instance, a paper with technical flaws, weak evaluation, inadequate reproducibility and incompletely addressed ethical considerations.
+1: Strong Reject: For instance, a paper with well-known results or unaddressed ethical considerations
+10. Confidence:  Please provide a "confidence score" for your assessment of this submission to indicate how confident you are in your evaluation.  Choices
+5: You are absolutely certain about your assessment. You are very familiar with the related work and checked the math/other details carefully.
+4: You are confident in your assessment, but not absolutely certain. It is unlikely, but not impossible, that you did not understand some parts of the submission or that you are unfamiliar with some pieces of related work.
+3: You are fairly confident in your assessment. It is possible that you did not understand some parts of the submission or that you are unfamiliar with some pieces of related work. Math/other details were not carefully checked.
+2: You are willing to defend your assessment, but it is quite likely that you did not understand the central parts of the submission or that you are unfamiliar with some pieces of related work. Math/other details were not carefully checked.
+1: Your assessment is an educated guess. The submission is not in your area or the submission was difficult to understand. Math/other details were not carefully checked.
+11. Ethical concerns: If there are ethical issues with this paper, please flag the paper for an ethics review. For guidance on when this is appropriate, please review the NeurIPS ethics guidelines.
+12. Code of conduct acknowledgement. While performing my duties as a reviewer (including writing reviews and participating in discussions), I have and will continue to abide by the NeurIPS code of conduct (NeurIPS Code Of Conduct). 
+13. Responsible reviewing acknowledgement: I acknowledge I have read the information about the "responsible reviewing initiatives" and will abide by that. https://blog.neurips.cc/2025/05/02/responsible-reviewing-initiative-for-neurips-2025/
+
+
+AAAI
+Guidelines On Writing Helpful Reviews
+
+To write a professional, respectful, and effective review:
+- In general, please do not use “I”, “you”, “the authors”, etc., in your reviews. Reviews should be depersonalized as much as possible. Use terms like “the paper”, “the work”, “the project”. The review should focus on the work and not the individuals (reviewers or authors). Avoid referring to yourself. If you must refer to yourself, it should be in the third person (e.g., “this reviewer”) and done sparingly.
+- Phrase your comments as would be appropriate if you were speaking respectfully to the authors face-to-face.
+- Instead of “What is wrong with this paper?”, ask yourself “How could this paper be better?”
+- When suggesting revisions in the review, think about whether the revisions are reasonable in terms of time and resources — which of the recommendations are essential, and which are nice-to-have but optional?
+
+Is the story of the paper clear?
+- What is the problem that the paper aims to address?
+- What are the limitations in the state of the art that the paper addresses? Are the limitations clearly articulated, and reflective of the state of the art?
+- Do the empirical results really support the claims of the paper?
+- What is the key novel technical contribution in the paper?
+
+Presentation of the proposed contribution:
+- Is the technical approach sound and clearly described?
+- Are there any errors, unstated assumptions, or missing details?
+- Is it expressed in sufficient detail to permit reproduction of the work?
+- Does the paper clearly describe the limitations (in scope and generalizability) of its conclusions?  (All work has limits, and it is vital to understand them.)
+
+Related work:
+- Is the proposed contribution placed in the appropriate context of previous and related work, so as to allow a reader to draw connections between this work and others?
+
+Evaluations:
+- Does the empirical evaluation include appropriate baselines and comparisons to validate the proposed approach compared to the state of the art?
+- Does the empirical evaluation report well-established and reasonable metrics?
+- Are the evaluation benchmarks and datasets appropriately chosen? Are there any better benchmarks or datasets that should have been used?
+- Does the paper include an analysis of errors made by the proposed approach?
+- Do the empirical results really support the claims of the paper?
+- Are the evaluations fully replicable?
+
+Suggestions for improvement:
+- How could the research or the presentation of the paper be improved in light of the above?
+
+COLM Review Guidelines
+Thank you for being part of the COLM program committee! We aim for a technically deep, exciting, forward-looking, insightful, and impactful program. We ask that you thoughtfully consider each paper assigned to you during the review process, and avoid simply applying mechanistic measures of quality. Papers can excel along several dimensions. Of course, few papers if any excel along all dimensions, and our job as the program committee is to carefully weigh contributions along the different dimensions to identify the best work to include at COLM.
+
+A non-exhaustive list of such dimensions includes:
+- *Empiricism, Data, and Evaluation*: A strong empirical foundation is often core to a strong paper, increasing the likelihood the approach generalizes beyond the experiments in the paper. Work that is strong along this dimension uses data that is as natural as possible, strong experimental design, and evaluation metrics that are known or shown to measure what they claim to.
+
+- *Technological Impact*: Our field, both researchers and practitioners, has benefited enormously from work that demonstrated impact through the use of the technology, software, data, or other artifacts it presented. Work that excels along this dimension provides high quality, thoughtfully designed, and well packaged resources and artifacts that will enable future high quality and impactful work.
+
+- *Ambition, Vision, Forward-outlook*: Progress is driven both by gradual development of techniques and big ambitious leaps forward. There are many challenges and risks in work that goes beyond the boundary of current research, but such work is critical for progress. Work that stands out along this dimension looks forward beyond problems currently studied, or extends currently studied problems in significant ways.
+
+- *Understanding Depth, Principled Approach*: Our goal as researchers is not only to develop methods and build artifacts but also to understand both the methods we use and natural language, the phenomena we study. Papers that excel along this dimension will deepen our understanding, for example by taking a principled approach to modeling and learning, or through careful and deep analysis.
+
+- *Clarity, Honesty, and Trust*: The paper you review is one of the main artifacts of the work. Abiding to the highest standards of scientific reporting is a key to quality. Especially nowadays, work in our field is read broadly, and has a dramatic impact on the perception of nascent technologies. Work that shines along this dimension will be written clearly, provide a measured and balanced presentation, and, as much as possible, release research materials.
+
+Excellence in each of the above aspects already makes a significant contribution. However, weakness in some aspects cannot be an immediate reason to reject a paper. For example, it is sometimes extremely challenging to design robust empirical studies when studying extremely ambitious scenarios and problems, especially when they dramatically depart from current research practices and empirical evaluation requires significant innovation on its own. Accepting such papers, especially when authors are clear and honest about such limitations, is a risk, but one that can pay off greatly for the field when the paper shines along other dimensions. Another example is papers that may have a strong empirical foundation and a principled approachbut seem weaker on impact in the immediate future. This, to some degree, is how next-word prediction language modeling was viewed in the community for a long time. However, the principled approach proved itself in the long run, even if it looked risky along the way.
+That said, inversely, even significant strength along a certain dimension is not a panacea for all. For example, work can present a forward-looking vision, beyond the wildest dreams of current research, but if it is very weak in other aspects, it may provide little to advance research beyond a compelling story.
+Finally, we ask that you take into account that most researchers do not have access to large-scale compute. While some questions in our field require significant computational resources to study at the upper limits of scale, few publishing authors have these resources. Limiting this type of research to only these labs will stifle innovation and understanding. Naturally, this runs the risk that some small-scale results will not hold when studied later on at a large scale. But some results will, and they will not make it unless we, the program committee, make a bet on them.
+
+
+
+
+
