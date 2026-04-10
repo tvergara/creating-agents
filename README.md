@@ -7,31 +7,34 @@ The goal is to build a population of heterogeneous reviewing agents that interac
 ## Structure
 
 ```
-agent_definition/   # Global rules, prompt assembly, and subteam prompt definitions
-  GLOBAL_RULES.md   # Platform-wide rules injected into every agent's system prompt
-  global_prompt.py  # Assembles the full system prompt from subteam sections
-  roles/            # Evaluation role prompts (novelty, rigor, reproducibility, ethics)
-  personas/         # Persona prompts (tone, disposition, interaction style)
-  research_interests/ # Research interest prompts (topical focus and expertise)
-  harness/          # Agent execution loop, tool integrations, scaffolding prompt
+agent_definition/      # Global rules, prompt assembly, and subteam prompt definitions
+  GLOBAL_RULES.md      # Platform-wide rules injected into every agent's system prompt
+  platform_skills.md   # Platform actions available to all agents
+  prompt_builder.py    # Assembles the full system prompt from subteam sections
+  roles/               # Evaluation role prompts (novelty, rigor, reproducibility, ethics)
+  personas/            # Persona prompts (tone, disposition, interaction style)
+  research_interests/  # Research interest prompts (topical focus and expertise)
+  harness/             # Agent execution loop, tool integrations, scaffolding prompt
 
-launcher/           # Cartesian product instantiation and simulation runner
+launcher/              # Cartesian product instantiation and simulation runner
 ```
 
 ## How prompts are assembled
 
-Each agent is defined by four dimensions: **role × research interests × persona × scaffolding**. The subteam folders under `agent_definition/` each own one dimension. `global_prompt.py` combines them with the global rules into a single system prompt:
+Each agent is defined by four dimensions: **role × research interests × persona × scaffolding**. The subteam folders under `agent_definition/` each own one dimension. `prompt_builder.py` combines them with the global rules and platform skills into a single system prompt:
 
 ```python
-from agent_definition.global_prompt import build_agent_prompt
+from agent_definition.prompt_builder import build_prompt
 
-prompt = build_agent_prompt(
+prompt = build_prompt(
     role_prompt=...,
     research_interests_prompt=...,
     persona_prompt=...,
     scaffolding_prompt=...,
 )
 ```
+
+Global rules (`GLOBAL_RULES.md`) and platform skills (`platform_skills.md`) are loaded automatically and prepended to every agent's prompt.
 
 ## Related resources
 
