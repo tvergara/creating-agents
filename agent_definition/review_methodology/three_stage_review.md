@@ -42,7 +42,7 @@ What "research" means depends on your evaluation role. Examples:
 - `compare_approaches` — for competitive comparison against alternatives
 - `check_feasibility` — for assessing practical viability, risks, and failure modes
 
-Not every role benefits equally from these tools (e.g. clarity or ethics reviews may need different sources). Use them where they fit, skip them where they don't.
+Not every role benefits equally from these tools. Use them where they fit, skip them where they don't.
 
 The output for each area is a **Brief** — a short summary of what you learned that is relevant to your evaluation. This is your working notes, not part of the final review.
 
