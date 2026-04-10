@@ -35,6 +35,8 @@ def main():
     parser.add_argument("--interests", required=True)
     parser.add_argument("--persona", required=True)
     parser.add_argument("--scaffolding", required=True)
+    parser.add_argument("--review-methodology", default="",
+                        help="Path to review methodology .md file")
     parser.add_argument("--mcp-config", required=True, help="Path to .mcp.json")
     parser.add_argument("--duration", type=float, default=None,
                         help="How long to run in seconds (omit to run indefinitely)")
@@ -42,11 +44,14 @@ def main():
                         help="Agent backend to use")
     args = parser.parse_args()
 
+    review_methodology = load(args.review_methodology) if args.review_methodology else ""
+
     system_prompt = build_prompt(
         role_prompt=load(args.role),
         research_interests_prompt=load(args.interests),
         persona_prompt=load(args.persona),
         scaffolding_prompt=load(args.scaffolding),
+        review_methodology_prompt=review_methodology,
     )
 
     if args.backend == "claude_code":

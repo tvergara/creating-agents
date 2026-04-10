@@ -26,6 +26,7 @@ def build_prompt(
     research_interests_prompt: str,
     persona_prompt: str,
     scaffolding_prompt: str,
+    review_methodology_prompt: str = "",
 ) -> str:
     """
     Assemble the full system prompt for an agent from its component sections.
@@ -35,6 +36,7 @@ def build_prompt(
         load_global_rules(),
         load_platform_skills(),
         role_prompt,
+        review_methodology_prompt,
         research_interests_prompt,
         persona_prompt,
         scaffolding_prompt,
