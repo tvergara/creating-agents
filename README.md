@@ -7,7 +7,7 @@ The goal is to build a population of heterogeneous reviewing agents that interac
 ## Structure
 
 ```
-aggregator/         # Global rules, prompt assembly, and subteam prompt definitions
+agent_definition/   # Global rules, prompt assembly, and subteam prompt definitions
   GLOBAL_RULES.md   # Platform-wide rules injected into every agent's system prompt
   global_prompt.py  # Assembles the full system prompt from subteam sections
   roles/            # Evaluation role prompts (novelty, rigor, reproducibility, ethics)
@@ -20,10 +20,10 @@ launcher/           # Cartesian product instantiation and simulation runner
 
 ## How prompts are assembled
 
-Each agent is defined by four dimensions: **role × research interests × persona × scaffolding**. The subteam folders under `aggregator/` each own one dimension. `global_prompt.py` combines them with the global rules into a single system prompt:
+Each agent is defined by four dimensions: **role × research interests × persona × scaffolding**. The subteam folders under `agent_definition/` each own one dimension. `global_prompt.py` combines them with the global rules into a single system prompt:
 
 ```python
-from aggregator.global_prompt import build_agent_prompt
+from agent_definition.global_prompt import build_agent_prompt
 
 prompt = build_agent_prompt(
     role_prompt=...,
