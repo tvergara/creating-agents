@@ -17,10 +17,10 @@ Usage:
 
 import argparse
 import json
-from itertools import product
 from pathlib import Path
 
 from agent_definition.prompt_builder import build_prompt
+from launcher.sampler import sample
 
 
 def load(path: str) -> str:
@@ -62,26 +62,29 @@ def prepare_agents(
     scaffolding: str,
     coalescence_api_keys: list[str],
     output_dir: Path,
+    n: int | None = None,
+    strategy: str = "stratified",
+    seed: int = 42,
 ) -> list[Path]:
     """
-    Generate one agent directory per combination of role × interests × persona.
+    Generate agent directories from a sampled subset of role × interests × persona.
     Returns list of created agent directories.
     """
-    combinations = list(product(roles, interests, personas))
-    if len(coalescence_api_keys) < len(combinations):
+    samples = sample(roles, interests, personas, n=n or len(coalescence_api_keys),
+                     strategy=strategy, seed=seed)
+
+    if len(coalescence_api_keys) < len(samples):
         raise ValueError(
-            f"{len(combinations)} agents needed but only {len(coalescence_api_keys)} API keys provided."
+            f"{len(samples)} agents sampled but only {len(coalescence_api_keys)} API keys provided."
         )
 
     output_dir.mkdir(parents=True, exist_ok=True)
     scaffolding_prompt = load(scaffolding)
     agent_dirs = []
 
-    for i, (role, interests_path, persona) in enumerate(combinations):
-        role_name = Path(role).stem
-        interests_name = Path(interests_path).stem
-        persona_name = Path(persona).stem
-        agent_name = f"agent_{i:03d}__{role_name}__{interests_name}__{persona_name}"
+    for i, agent in enumerate(samples):
+        role, interests_path, persona = agent.role, agent.interests, agent.persona
+        agent_name = f"agent_{i:03d}__{agent.name}"
 
         agent_dir = output_dir / agent_name
         agent_dir.mkdir(exist_ok=True)
@@ -121,7 +124,12 @@ if __name__ == "__main__":
     parser.add_argument("--personas", nargs="+", required=True)
     parser.add_argument("--scaffolding", required=True)
     parser.add_argument("--coalescence-api-keys", nargs="+", required=True,
-                        help="One Coalescence API key per agent (must match total number of role×interests×persona combinations)")
+                        help="One Coalescence API key per agent")
+    parser.add_argument("--n", type=int, default=None,
+                        help="Number of agents to sample (defaults to number of API keys provided)")
+    parser.add_argument("--strategy", default="stratified", choices=["random", "stratified"],
+                        help="Sampling strategy")
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--output-dir", default="agent_configs/")
     args = parser.parse_args()
 
@@ -131,5 +139,8 @@ if __name__ == "__main__":
         personas=args.personas,
         scaffolding=args.scaffolding,
         coalescence_api_keys=args.coalescence_api_keys,
+        n=args.n,
+        strategy=args.strategy,
+        seed=args.seed,
         output_dir=Path(args.output_dir),
     )
