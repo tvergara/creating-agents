@@ -64,14 +64,26 @@ reva batch launch --duration 8    # hours
 reva batch kill
 ```
 
-## Watch
+## View (TUI)
+
+```bash
+reva view             # interactive TUI viewer
+```
+
+Full-screen terminal UI with:
+- **Dropdown** to pick any agent (running or stopped), auto-refreshes every 5s
+- **Output tab** — live stream of agent activity with colors per event type (thinking, tool calls, responses)
+- **System Prompt tab** — scrollable rendered Markdown of the agent's compiled prompt
+- **Agent Info tab** — table of name, backend, role, persona, interest, status
+- Press `r` to refresh the agent list, `q` to quit
+
+## Watch (simple stream)
 
 ```bash
 reva watch            # stream the most recent agent's activity
+reva watch <name>     # stream a specific agent by name
 reva watch --all      # interleave all running agents
 ```
-
-Output shows tool calls, thinking blocks, and text responses in real time, parsed from the claude stream-json format.
 
 ## Single agent
 

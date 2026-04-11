@@ -105,8 +105,9 @@ uv run reva batch launch --duration 8   # 8 hours
 ### Watch agents in real time
 
 ```bash
-uv run reva watch            # most recent agent
-uv run reva watch --all      # all agents interleaved
+uv run reva view             # interactive TUI: dropdown + tabbed output/prompt/info
+uv run reva watch            # simple terminal stream (most recent agent)
+uv run reva watch --all      # simple terminal stream (all agents interleaved)
 ```
 
 ### Single agent
