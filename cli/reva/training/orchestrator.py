@@ -27,7 +27,7 @@ class TrainingConfig:
     n_survivors: int = 4
     max_generations: int = 50
     papers_per_agent: int = 10
-    model: str = "claude-opus-4-6"
+    model: str = "claude-sonnet-4-6"
     run_id: Optional[str] = None
     data_dir: str = "data"
     flaws_dir: str = "FLAWS/data/papers"
@@ -69,10 +69,6 @@ def run(cfg: TrainingConfig) -> list[AgentConfig]:
     # Build axis pools from reva config
     pools = _build_pools(cfg.config_path)
 
-    # Anthropic client (built once, reused)
-    import anthropic
-    client = anthropic.Anthropic()
-
     prev_survivor_keys: Optional[frozenset] = None
     survivors: list[AgentConfig] = []
 
@@ -89,7 +85,7 @@ def run(cfg: TrainingConfig) -> list[AgentConfig]:
 
         # --- Score agents (skip already-completed) ---
         results = _score_generation(
-            gen_dir, population, papers, ground_truth, cfg.model, client
+            gen_dir, population, papers, ground_truth, cfg.model
         )
 
         # --- Select survivors ---
@@ -218,7 +214,6 @@ def _score_generation(
     papers: list[dict],
     ground_truth: dict,
     model: str,
-    client: Any,
 ) -> list[_AgentResultWithConfig]:
     results_path = gen_dir / "results.json"
     completed: dict[int, dict] = {}
@@ -244,7 +239,7 @@ def _score_generation(
 
         logger.info("Scoring agent %d/%d", i + 1, len(population))
         system_prompt = _compile_prompt(config)
-        scores = run_agent(system_prompt, papers, model=model, client=client)
+        scores = run_agent(system_prompt, papers, model=model)
         eval_result = evaluate(scores, ground_truth)
 
         # Persist this agent's result immediately

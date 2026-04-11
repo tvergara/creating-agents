@@ -1,17 +1,21 @@
-"""Run a reviewer agent against the paper set via direct Anthropic API call."""
+"""Run a reviewer agent against the paper set via Claude Code CLI."""
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # Default model for training runs
-DEFAULT_MODEL = "claude-opus-4-6"
+DEFAULT_MODEL = "claude-sonnet-4-6"
 
 # Max chars of full_text included per paper to avoid exceeding context limits
 MAX_TEXT_CHARS = 8_000
@@ -59,22 +63,20 @@ def run_agent(
 ) -> list[ScoreEntry]:
     """Run one agent against all papers, returning exactly 10 scored entries.
 
+    Uses the Claude Code CLI (``claude -p``) which handles authentication
+    automatically. The system prompt is written to a temporary CLAUDE.md file.
+
     Args:
         system_prompt: The compiled agent system prompt.
         papers: List of agent-visible paper dicts (id, title, abstract,
                 domains, pdf_url, full_text).
-        model: Anthropic model identifier.
+        model: Model identifier passed to ``claude --model``.
         max_retries: Number of parse/validation retries before giving up.
-        client: Optional pre-constructed anthropic.Anthropic client (for
-                testing). If None, one is constructed from env.
+        client: Unused (kept for test-mock compatibility).
 
     Returns:
         List of exactly 10 ScoreEntry objects, or empty list on failure.
     """
-    if client is None:
-        import anthropic
-        client = anthropic.Anthropic()
-
     papers_block = _format_papers_block(papers)
     user_message = _SCORE_INSTRUCTION.format(
         n_papers=len(papers),
@@ -85,22 +87,62 @@ def run_agent(
 
     for attempt in range(1, max_retries + 1):
         try:
-            response = client.messages.create(
-                model=model,
-                max_tokens=4096,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_message}],
-            )
-            text = response.content[0].text.strip()
+            text = _call_claude(system_prompt, user_message, model)
             entries = _parse_and_validate(text, valid_ids)
             if entries is not None:
                 return entries
             logger.warning("Attempt %d/%d: invalid response, retrying", attempt, max_retries)
         except Exception as exc:
-            logger.warning("Attempt %d/%d: API error: %s", attempt, max_retries, exc)
+            logger.warning("Attempt %d/%d: claude error: %s", attempt, max_retries, exc)
 
     logger.error("All %d attempts failed — returning empty result", max_retries)
     return []
+
+
+# ---------------------------------------------------------------------------
+# Claude Code CLI invocation
+# ---------------------------------------------------------------------------
+
+
+def _call_claude(system_prompt: str, user_message: str, model: str) -> str:
+    """Invoke ``claude -p`` in a temp directory with CLAUDE.md as system prompt."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Write system prompt as CLAUDE.md (Claude Code reads it automatically)
+        claude_md = Path(tmpdir) / "CLAUDE.md"
+        claude_md.write_text(system_prompt, encoding="utf-8")
+
+        # Write user message to a file (avoids shell ARG_MAX limits)
+        msg_file = Path(tmpdir) / "user_message.txt"
+        msg_file.write_text(user_message, encoding="utf-8")
+
+        cmd = [
+            "claude",
+            "-p", f"$(cat {msg_file})",
+            "--model", model,
+            "--output-format", "text",
+        ]
+
+        # Use shell=True so $(cat ...) is expanded
+        shell_cmd = " ".join([
+            "claude",
+            "-p", f'"$(cat {msg_file})"',
+            "--model", model,
+            "--output-format", "text",
+        ])
+
+        result = subprocess.run(
+            shell_cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=tmpdir,
+            timeout=300,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"claude exited {result.returncode}: {result.stderr[:500]}")
+
+        return result.stdout.strip()
 
 
 # ---------------------------------------------------------------------------
