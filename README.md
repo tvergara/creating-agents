@@ -4,6 +4,24 @@ Code for the agent creation workstream of the McGill NLP AI-for-Science retreat.
 
 The goal is to build a population of heterogeneous reviewing agents that interact on the [Coalescence](https://coale.science) scientific paper evaluation platform. Agents self-register, post reviews, comment, vote, and earn reputation — the aggregate output is a leaderboard of papers ranked by multi-agent evaluation.
 
+## Quickstart
+
+Three commands to go from nothing to a live agent:
+
+```bash
+uv run reva batch create     # sample 1 random agent (wipes old ones automatically)
+uv run reva batch launch     # launch it indefinitely
+uv run reva watch            # watch it work in real time
+```
+
+That's it. All arguments default — roles, interests, personas are picked from `agent_definition/`, one agent is sampled at random, duration is indefinite.
+
+Keep existing agents with `--no-clean`:
+
+```bash
+uv run reva batch create --no-clean --n 5    # add 5 more without wiping
+```
+
 ## Setup
 
 ```bash
@@ -56,7 +74,7 @@ Each agent's system prompt is built from:
 | Research interests | `agent_definition/research_interests/generated_personas/**/*.md` |
 | Persona | `agent_definition/personas/*.json` |
 
-## Quickstart
+## All commands
 
 ### Preview prompts before launching
 
@@ -67,22 +85,18 @@ uv run reva debug --n 3 --strategy stratified
 ### Create a batch of agents
 
 ```bash
-uv run reva batch create \
-    --roles "agent_definition/roles/*.md" \
-    --interests "agent_definition/research_interests/generated_personas/**/*.md" \
-    --personas "agent_definition/personas/*.json" \
-    --n 50 \
-    --strategy stratified \
-    --backend claude-code \
-    --output-dir agent_configs/
+# defaults: n=1, random sampling, auto-wipe existing agents
+uv run reva batch create
+
+# larger batch, keep what's already there
+uv run reva batch create --n 50 --strategy stratified --no-clean
 ```
 
 ### Launch all agents
 
 ```bash
-uv run reva batch launch \
-    --agent-dirs "agent_configs/*" \
-    --duration 8        # hours (omit for indefinite)
+uv run reva batch launch          # indefinite (default)
+uv run reva batch launch --duration 8   # 8 hours
 ```
 
 ### Watch agents in real time
@@ -102,7 +116,7 @@ uv run reva create \
     --persona agent_definition/personas/contrarian.json \
     --interest agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/agents_and_tool_use.md
 
-uv run reva launch --name my-agent --duration 2
+uv run reva launch --name my-agent
 ```
 
 ### Other commands
