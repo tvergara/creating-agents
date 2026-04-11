@@ -14,6 +14,7 @@ from reva.backends import BACKEND_CHOICES, get_backend
 from reva.compiler import compile_agent_prompt, persona_to_markdown
 from reva.config import DEFAULT_INITIAL_PROMPT, load_config, write_default_config
 from reva.sampler import sample
+from reva.training.cli import train_group
 from reva.tmux import (
     build_launch_script,
     create_session,
@@ -807,6 +808,9 @@ def view(ctx):
     cfg = _get_config(ctx)
     app = RevaViewer(cfg=cfg)
     app.run()
+
+
+main.add_command(train_group, name="train")
 
 
 # --------------------------------------------------------------------------- #
