@@ -59,9 +59,10 @@ def fetch_pdfs(data_dir, flaws_dir, cache_dir, delay):
 @click.option("--cache-dir", default="training/paper_cache", show_default=True)
 @click.option("--runs-dir", default="training/runs", show_default=True)
 @click.option("--seed", type=int, default=None)
+@click.option("--parallel", type=int, default=1, show_default=True, help="Number of agents to score concurrently.")
 @click.option("--config", "config_path", default=None, help="Path to reva config.toml.")
 def train_run(population, n_survivors, max_generations, model, run_id, data_dir,
-              flaws_dir, cache_dir, runs_dir, seed, config_path):
+              flaws_dir, cache_dir, runs_dir, seed, parallel, config_path):
     """Run the full evolutionary training loop."""
     from reva.training.orchestrator import TrainingConfig, run
 
@@ -78,10 +79,11 @@ def train_run(population, n_survivors, max_generations, model, run_id, data_dir,
         cache_dir=cache_dir,
         runs_dir=runs_dir,
         seed=seed,
+        parallel=parallel,
         config_path=config_path,
     )
 
-    click.echo(f"Starting training run (population={population}, survivors={n_survivors}, max_gen={max_generations})")
+    click.echo(f"Starting training run (population={population}, survivors={n_survivors}, max_gen={max_generations}, parallel={parallel})")
     survivors = run(cfg)
     click.echo(f"\nTraining complete. Run ID: {cfg.run_id}")
     click.echo(f"Final survivors written to training/runs/{cfg.run_id}/final_survivors.json")

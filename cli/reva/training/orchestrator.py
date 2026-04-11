@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -35,6 +37,7 @@ class TrainingConfig:
     runs_dir: str = "training/runs"
     config_path: Optional[str] = None  # reva config.toml path
     seed: Optional[int] = None
+    parallel: int = 1  # number of concurrent agent evaluations per generation
 
 
 def run(cfg: TrainingConfig) -> list[AgentConfig]:
@@ -85,7 +88,7 @@ def run(cfg: TrainingConfig) -> list[AgentConfig]:
 
         # --- Score agents (skip already-completed) ---
         results = _score_generation(
-            gen_dir, population, papers, ground_truth, cfg.model
+            gen_dir, population, papers, ground_truth, cfg.model, cfg.parallel
         )
 
         # --- Select survivors ---
@@ -214,6 +217,7 @@ def _score_generation(
     papers: list[dict],
     ground_truth: dict,
     model: str,
+    parallel: int = 1,
 ) -> list[_AgentResultWithConfig]:
     results_path = gen_dir / "results.json"
     completed: dict[int, dict] = {}
@@ -222,7 +226,9 @@ def _score_generation(
         for entry in json.loads(results_path.read_text()):
             completed[entry["agent_idx"]] = entry
 
-    results: list[_AgentResultWithConfig] = []
+    # Build results list: pre-fill from cache
+    results_by_idx: dict[int, _AgentResultWithConfig] = {}
+    pending: list[tuple[int, AgentConfig]] = []
 
     for i, config in enumerate(population):
         if i in completed:
@@ -231,36 +237,52 @@ def _score_generation(
                 citation_corr=entry["citation_corr"],
                 acceptance_corr=entry["acceptance_corr"],
             )
-            results.append(_AgentResultWithConfig(
+            results_by_idx[i] = _AgentResultWithConfig(
                 config=config.as_dict(), eval=eval_result, config_obj=config
-            ))
+            )
             logger.debug("Agent %d: resume from cache (citation=%.3f)", i, eval_result.citation_corr)
-            continue
+        else:
+            pending.append((i, config))
 
-        logger.info("Scoring agent %d/%d", i + 1, len(population))
+    if not pending:
+        return [results_by_idx[i] for i in range(len(population))]
+
+    lock = threading.Lock()
+
+    def _score_one(idx: int, config: AgentConfig) -> _AgentResultWithConfig:
+        logger.info("Scoring agent %d/%d", idx + 1, len(population))
         system_prompt = _compile_prompt(config)
         scores = run_agent(system_prompt, papers, model=model)
         eval_result = evaluate(scores, ground_truth)
 
-        # Persist this agent's result immediately
-        completed[i] = {
-            "agent_idx": i,
+        entry = {
+            "agent_idx": idx,
             "config": config.as_dict(),
             "scores": [{"paper_id": s.paper_id, "score": s.score, "reasoning": s.reasoning} for s in scores],
             "citation_corr": eval_result.citation_corr,
             "acceptance_corr": eval_result.acceptance_corr,
         }
-        _atomic_write(results_path, list(completed.values()))
 
-        results.append(_AgentResultWithConfig(
-            config=config.as_dict(), eval=eval_result, config_obj=config
-        ))
+        with lock:
+            completed[idx] = entry
+            _atomic_write(results_path, list(completed.values()))
+
         logger.info(
             "Agent %d: citation_corr=%.3f, acceptance_corr=%.3f",
-            i, eval_result.citation_corr, eval_result.acceptance_corr,
+            idx, eval_result.citation_corr, eval_result.acceptance_corr,
+        )
+        return _AgentResultWithConfig(
+            config=config.as_dict(), eval=eval_result, config_obj=config
         )
 
-    return results
+    workers = max(1, min(parallel, len(pending)))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_score_one, idx, cfg): idx for idx, cfg in pending}
+        for future in as_completed(futures):
+            idx = futures[future]
+            results_by_idx[idx] = future.result()
+
+    return [results_by_idx[i] for i in range(len(population))]
 
 
 def _compile_prompt(config: AgentConfig) -> str:
