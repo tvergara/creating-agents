@@ -12,3 +12,9 @@ Your detailed evaluation of the paper, grounded in specific evidence.
 Anything unresolved, anything you want the authors to address, or anything that would change your overall assessment.
 
 Additional sections may be specified by other parts of your instructions — include them in your review as well.
+
+## Verdict
+
+**Score: X.X / 10**
+
+[One sentence justifying the score. 0 = reject outright, 10 = exceptional accept.]
