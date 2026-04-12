@@ -45,6 +45,28 @@ You must choose exactly {picks}.
 
 {papers_block}"""
 
+_REVIEW_ALL_INSTRUCTION = """\
+You are participating in a paper-review exercise.
+
+Below are {n_papers} papers. You must review ALL of them — no selection.
+
+For each paper, provide:
+- paper_id: the UUID shown in brackets before the paper
+- score: a float from 0.0 to 10.0 (0 = reject outright, 10 = exceptional accept)
+- review: a full review of 2-3 paragraphs justifying your score
+
+Respond with a JSON array and nothing else — no prose, no markdown fences. Example:
+[
+  {{"paper_id": "fc8548a0-dce6-4076-b50d-edffe28d20e9", "score": 7.5, "review": "This paper presents a novel approach..."}},
+  {{"paper_id": "a1b2c3d4-...", "score": 4.0, "review": "The contribution is incremental..."}}
+]
+
+You must include an entry for every one of the {n_papers} papers.
+
+--- PAPERS ---
+
+{papers_block}"""
+
 MAX_TEXT_CHARS = 8_000
 
 
@@ -153,6 +175,67 @@ def collect_reviews(
     return collected
 
 
+def review_all_papers(
+    system_prompt: str,
+    papers: list[dict],
+    *,
+    backend: str = "claude-code",
+    model: str = "claude-sonnet-4-6",
+    batch_size: int = 10,
+    parallel: int = 4,
+    max_retries: int = 3,
+) -> list[DeployReview]:
+    """Review every paper in the list — no selection.
+
+    Papers are split into sub-batches of `batch_size` and scored in parallel.
+    Each sub-batch call must review all papers it receives.
+    """
+    batches = [papers[i:i + batch_size] for i in range(0, len(papers), batch_size)]
+    logger.info("Reviewing all %d papers in %d batches (parallel=%d)...", len(papers), len(batches), parallel)
+
+    def _score_batch(idx: int, batch: list[dict]) -> tuple[int, list[DeployReview]]:
+        valid_ids = {p["id"] for p in batch}
+        papers_block = _format_papers_block(batch)
+        user_message = _REVIEW_ALL_INSTRUCTION.format(
+            n_papers=len(batch),
+            papers_block=papers_block,
+        )
+        for attempt in range(1, max_retries + 1):
+            try:
+                if backend == "gemini-cli":
+                    text = _call_gemini(system_prompt, user_message)
+                else:
+                    text = _call_claude(system_prompt, user_message, model)
+                result = _parse_reviews_any_count(text, valid_ids, expected=len(batch))
+                if result is not None:
+                    logger.info("Batch %d/%d done: %d reviews", idx + 1, len(batches), len(result))
+                    return idx, result
+                logger.warning("Batch %d/%d attempt %d/%d: invalid response", idx + 1, len(batches), attempt, max_retries)
+            except Exception as exc:
+                logger.warning("Batch %d/%d attempt %d/%d: %s", idx + 1, len(batches), attempt, max_retries, exc)
+        logger.error("Batch %d/%d: all %d attempts failed", idx + 1, len(batches), max_retries)
+        return idx, []
+
+    results_by_idx: dict[int, list[DeployReview]] = {}
+    with ThreadPoolExecutor(max_workers=min(parallel, len(batches))) as executor:
+        futures = {executor.submit(_score_batch, i, b): i for i, b in enumerate(batches)}
+        for future in as_completed(futures):
+            idx, reviews = future.result()
+            results_by_idx[idx] = reviews
+
+    # Merge in original order
+    collected: list[DeployReview] = []
+    seen_ids: set[str] = set()
+    for i in range(len(batches)):
+        for r in results_by_idx.get(i, []):
+            if r.paper_id not in seen_ids:
+                collected.append(r)
+                seen_ids.add(r.paper_id)
+
+    logger.info("Total reviews collected: %d / %d", len(collected), len(papers))
+    return collected
+
+
 # ---------------------------------------------------------------------------
 # Platform posting
 # ---------------------------------------------------------------------------
@@ -185,8 +268,11 @@ class CoalescencePoster:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
 
-    def post_comment(self, paper_id: str, text: str) -> dict:
-        return self._post("/comments/", {"paper_id": paper_id, "content_markdown": text})
+    def post_comment(self, paper_id: str, text: str, github_file_url: str = "") -> dict:
+        body: dict = {"paper_id": paper_id, "content_markdown": text}
+        if github_file_url:
+            body["github_file_url"] = github_file_url
+        return self._post("/comments/", body)
 
     def get_comments(self, paper_id: str) -> list:
         return self._get(f"/comments/paper/{paper_id}")
@@ -198,12 +284,15 @@ class CoalescencePoster:
             "vote_value": vote_value,
         })
 
-    def post_verdict(self, paper_id: str, content_markdown: str, score: float) -> dict:
-        return self._post("/verdicts/", {
+    def post_verdict(self, paper_id: str, content_markdown: str, score: float, github_file_url: str = "") -> dict:
+        body: dict = {
             "paper_id": paper_id,
             "content_markdown": content_markdown,
             "score": score,
-        })
+        }
+        if github_file_url:
+            body["github_file_url"] = github_file_url
+        return self._post("/verdicts/", body)
 
 
 def post_all_verdicts(
@@ -211,9 +300,20 @@ def post_all_verdicts(
     api_key: str,
     *,
     delay: float = 1.0,
+    github_file_url: str = "",
+    actor_id: str = "",
 ) -> list[dict]:
     """Post comment + vote (if possible) + verdict for each review. Returns results."""
     client = CoalescencePoster(api_key)
+
+    # Resolve own actor_id to avoid voting on own comments
+    if not actor_id:
+        try:
+            me = client._get("/users/me")
+            actor_id = me.get("id", "")
+        except Exception:
+            pass
+
     results = []
 
     for i, review in enumerate(reviews):
@@ -223,15 +323,18 @@ def post_all_verdicts(
         try:
             # 1. Post a comment (required before verdict)
             comment_text = f"**Review notes**\n\n{review.review}"
-            client.post_comment(review.paper_id, comment_text)
+            client.post_comment(review.paper_id, comment_text, github_file_url=github_file_url)
 
-            # 2. Vote on an existing comment if any
+            # 2. Vote on an existing comment from another actor
             comments = client.get_comments(review.paper_id)
-            if comments:
-                client.cast_vote(comments[0]["id"], "COMMENT", 1)
+            other_comments = [c for c in comments if c.get("author_id") != actor_id]
+            if other_comments:
+                client.cast_vote(other_comments[0]["id"], "COMMENT", 1)
+            else:
+                logger.warning("  no other actors' comments to vote on — skipping vote")
 
             # 3. Post verdict
-            client.post_verdict(review.paper_id, review.review, review.score)
+            client.post_verdict(review.paper_id, review.review, review.score, github_file_url=github_file_url)
             entry["status"] = "ok"
             logger.info("  posted verdict (score=%.1f)", review.score)
 
@@ -312,6 +415,43 @@ def _parse_reviews(text: str, valid_ids: set[str]) -> list[DeployReview] | None:
 
     if not isinstance(data, list) or len(data) != PICKS_PER_BATCH:
         logger.debug("Expected list of %d, got %s", PICKS_PER_BATCH, type(data))
+        return None
+
+    reviews: list[DeployReview] = []
+    seen: set[str] = set()
+
+    for item in data:
+        try:
+            paper_id = str(item["paper_id"])
+            score = max(0.0, min(10.0, float(item["score"])))
+            review = str(item.get("review", "")).strip()
+        except (KeyError, ValueError, TypeError) as exc:
+            logger.debug("Entry parse error: %s", exc)
+            return None
+
+        if paper_id not in valid_ids or paper_id in seen or not review:
+            logger.debug("Invalid entry: paper_id=%s", paper_id)
+            return None
+
+        seen.add(paper_id)
+        reviews.append(DeployReview(paper_id=paper_id, score=score, review=review))
+
+    return reviews
+
+
+def _parse_reviews_any_count(text: str, valid_ids: set[str], expected: int) -> list[DeployReview] | None:
+    """Like _parse_reviews but accepts exactly `expected` entries (not PICKS_PER_BATCH)."""
+    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE).strip()
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        logger.debug("JSON parse error: %s", exc)
+        return None
+
+    if not isinstance(data, list) or len(data) != expected:
+        logger.debug("Expected list of %d, got %d", expected, len(data) if isinstance(data, list) else -1)
         return None
 
     reviews: list[DeployReview] = []

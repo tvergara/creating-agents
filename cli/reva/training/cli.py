@@ -352,16 +352,17 @@ def build_eval_csv(db_path, output):
 @train_group.command("deploy")
 @click.option("--agent-name", required=True, help="Name of the exported agent directory.")
 @click.option("--db-path", default="training/paper_db.json", show_default=True)
-@click.option("--n-reviews", type=int, default=70, show_default=True, help="Target number of reviews to collect.")
+@click.option("--n-reviews", type=int, default=70, show_default=True, help="Target number of reviews to collect (ignored with --review-all).")
 @click.option("--backend", default=None, help="Override backend (default: from agent config).")
 @click.option("--model", default="claude-sonnet-4-6", show_default=True, help="Model for claude-code backend.")
 @click.option("--seed", type=int, default=None)
 @click.option("--parallel", type=int, default=4, show_default=True, help="Concurrent batch calls.")
 @click.option("--output", default=None, help="Path to save reviews JSON (default: <agent_dir>/deploy_reviews.json).")
+@click.option("--review-all", is_flag=True, default=False, help="Review every paper in the DB (no selection, single call).")
 @click.option("--config", "config_path", default=None)
-def train_deploy(agent_name, db_path, n_reviews, backend, model, seed, parallel, output, config_path):
+def train_deploy(agent_name, db_path, n_reviews, backend, model, seed, parallel, output, review_all, config_path):
     """Score papers in training-style batches of 40 and save reviews for later posting."""
-    from reva.training.deployer import collect_reviews
+    from reva.training.deployer import collect_reviews, review_all_papers
     from reva.training.paper_db import load_paper_db
 
     cfg = load_config(config_path)
@@ -374,22 +375,27 @@ def train_deploy(agent_name, db_path, n_reviews, backend, model, seed, parallel,
         raise click.ClickException(f"Paper DB not found: {db_path}\nRun `reva train build-paper-db` first.")
 
     db = load_paper_db(db_file)
-    eligible = [p for p in db if p.get("comment_count", 0) >= 1]
-    click.echo(f"Papers in DB: {len(db)} total, {len(eligible)} with ≥1 comment")
-
-    if len(eligible) < 40:
-        raise click.ClickException(f"Need at least 40 eligible papers, only have {len(eligible)}.")
 
     agent_config = json.loads((agent_dir / "config.json").read_text())
-    resolved_backend = backend or agent_config["backend"]
+    resolved_backend = backend or agent_config.get("backend", "claude-code")
     system_prompt = (agent_dir / "prompt.md").read_text(encoding="utf-8")
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    click.echo(f"Collecting {n_reviews} reviews via {resolved_backend} (batches of 40, pick 10 each)...")
-    reviews = collect_reviews(
-        system_prompt, eligible,
-        n_target=n_reviews, backend=resolved_backend, model=model, seed=seed, parallel=parallel,
-    )
+
+    if review_all:
+        click.echo(f"Reviewing all {len(db)} papers via {resolved_backend} (parallel={parallel}, no selection)...")
+        reviews = review_all_papers(system_prompt, db, backend=resolved_backend, model=model, parallel=parallel)
+    else:
+        eligible = [p for p in db if p.get("comment_count", 0) >= 1]
+        click.echo(f"Papers in DB: {len(db)} total, {len(eligible)} with ≥1 comment")
+        if len(eligible) < 40:
+            raise click.ClickException(f"Need at least 40 eligible papers, only have {len(eligible)}.")
+        click.echo(f"Collecting {n_reviews} reviews via {resolved_backend} (batches of 40, pick 10 each)...")
+        reviews = collect_reviews(
+            system_prompt, eligible,
+            n_target=n_reviews, backend=resolved_backend, model=model, seed=seed, parallel=parallel,
+        )
+
     click.echo(f"Collected {len(reviews)} reviews")
 
     out_path = Path(output) if output else agent_dir / "deploy_reviews.json"
@@ -411,8 +417,9 @@ def train_deploy(agent_name, db_path, n_reviews, backend, model, seed, parallel,
 @click.option("--api-key", default=None, help="Coalescence API key (default: read from <agent_dir>/.api_key).")
 @click.option("--reviews-path", default=None, help="Path to reviews JSON (default: <agent_dir>/deploy_reviews.json).")
 @click.option("--delay", type=float, default=1.0, show_default=True, help="Seconds between verdict posts.")
+@click.option("--github-file-url", default=None, help="URL to the agent's prompt file on GitHub (for comment transparency).")
 @click.option("--config", "config_path", default=None)
-def post_verdicts(agent_name, api_key, reviews_path, delay, config_path):
+def post_verdicts(agent_name, api_key, reviews_path, delay, github_file_url, config_path):
     """Post collected reviews as verdicts to the Coalescence platform."""
     from reva.training.deployer import DeployReview, post_all_verdicts
 
@@ -430,6 +437,17 @@ def post_verdicts(agent_name, api_key, reviews_path, delay, config_path):
             )
         api_key = key_file.read_text(encoding="utf-8").strip()
 
+    # Resolve github_file_url from agent config if not provided
+    if not github_file_url:
+        try:
+            agent_config = json.loads((agent_dir / "config.json").read_text())
+            repo = agent_config.get("github_repo", "")
+            agent_name_slug = agent_dir.name
+            if repo:
+                github_file_url = f"{repo}/blob/main/agents/{agent_name_slug}/prompt.md"
+        except Exception:
+            pass
+
     # Load reviews
     rp = Path(reviews_path) if reviews_path else agent_dir / "deploy_reviews.json"
     if not rp.exists():
@@ -437,10 +455,10 @@ def post_verdicts(agent_name, api_key, reviews_path, delay, config_path):
 
     raw = json.loads(rp.read_text())
     reviews = [DeployReview(paper_id=r["paper_id"], score=r["score"], review=r["review"]) for r in raw]
-    click.echo(f"Posting {len(reviews)} verdicts...")
+    click.echo(f"Posting {len(reviews)} verdicts (github_file_url={github_file_url or 'none'})...")
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    results = post_all_verdicts(reviews, api_key, delay=delay)
+    results = post_all_verdicts(reviews, api_key, delay=delay, github_file_url=github_file_url or "")
 
     ok = sum(1 for r in results if r["status"] == "ok")
     errors = sum(1 for r in results if r["status"] == "error")
