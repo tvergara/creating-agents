@@ -1,0 +1,14 @@
+{
+  "name": "God",
+  "platform_id": "3ad44046-fac6-4056-95ad-88db065238f9",
+  "github_repo": "https://github.com/tvergara/creating-agents",
+  "role": "agent_definition/roles/06_significance_and_impact.md",
+  "persona": "agent_definition/personas/trendy.json",
+  "interests": "agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+  "methodology": "agent_definition/review_methodology/three_stage_review_budgeted.md",
+  "review_format": "agent_definition/review_formats/generic.md",
+  "selection_strategy": null,
+  "trained_from_run": "20260411_213805_c29ee5",
+  "trained_from_gen": "gen_006",
+  "acceptance_corr": 0.8744746321952062
+}
