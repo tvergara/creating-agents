@@ -1,0 +1,1856 @@
+PublishedasaconferencepaperatICLR2025
+REGENT: A RETRIEVAL-AUGMENTED GENERALIST
+AGENT THAT CAN ACT IN-CONTEXT IN NEW ENVI-
+RONMENTS
+KaustubhSridhar1,SouradeepDutta1,2,DineshJayaraman1,InsupLee1
+1UniversityofPennsylvania,2UniversityofBritishColumbia
+ksridhar@seas.upenn.edu
+ABSTRACT
+Building generalist agents that can rapidly adapt to new environments is a key
+challengefordeployingAIinthedigitalandrealworlds. Isscalingcurrentagent
+architectures the most effective way to build generalist agents? We propose a
+novelapproachtopre-trainrelativelysmallpoliciesonrelativelysmalldatasets
+andadaptthemtounseenenvironmentsviain-contextlearning,withoutanyfine-
+tuning. Our key idea is that retrieval offers a powerful bias for fast adaptation.
+Indeed,wedemonstratethatevenasimpleretrieval-based1-nearestneighboragent
+offersasurprisinglystrongbaselinefortoday’sstate-of-the-artgeneralistagents.
+From this starting point, we construct a semi-parametric agent, REGENT, that
+trains a transformer-based policy on sequences of queries and retrieved neigh-
+bors. REGENTcangeneralizetounseenroboticsandgame-playingenvironments
+viaretrievalaugmentationandin-contextlearning,achievingthiswithupto3x
+fewerparametersanduptoanorder-of-magnitudefewerpre-trainingdatapoints,
+significantly outperforming today’s state-of-the-art generalist agents. Website:
+https://kaustubhsridhar.github.io/regent-research
+1 INTRODUCTION
+AIagents,bothinthedigital[38,19,37,28,53]andrealworld[5,7,63,33,48,24],constantlyface
+changingenvironmentsthatrequirerapidoreveninstantaneousadaptation. Truegeneralistagents
+mustnotonlybecapableofperformingwellonlargenumbersoftrainingenvironments,butarguably
+moreimportantly,theymustbecapableofadaptingrapidlytonewenvironments. Whilethisgoal
+hasbeenofconsiderableinteresttothereinforcementlearningresearchcommunity,ithasproven
+elusive. Themostpromisingresultssofarhaveallbeenattributedtolargepolicies[38,19,37,28,5],
+pre-trained on large datasets across many environments, and even these models still struggle to
+generalizetounseenenvironmentswithoutmanynewenvironment-specificdemonstrations.
+In this work, we take a different approach to the problem of constructing such generalist agents.
+Westartbyasking: Isscalingcurrentagentarchitecturesthemosteffectivewaytobuildgeneralist
+agents? Observingthatretrievaloffersapowerfulbiasforfastadaptation,wefirstevaluateasimple
+1-nearestneighbormethod: “RetrieveandPlay(R&P)”.Todeterminetheactionatthecurrentstate,
+R&Psimplyretrievesthecloseststatefromafewdemonstrationsinthetargetenvironmentandplays
+itscorrespondingaction. Testedonawiderangeofenvironments,bothroboticsandgame-playing,
+R&P performs on-par or better than the state-of-the-art generalist agents. Note that these results
+involvenopre-trainingenvironments,andnotevenaneuralnetworkpolicy: itisclearthatlarger
+modelandpre-trainingdatasetsizesarenottheonlyroadblocktodevelopinggeneralistagents.
+Havingthusestablishedtheutilityofretrievalforfastadaptationofsequentialdecisionmakingagents,
+weproceedtoincorporateitintothedesignofa“Retrieval-AugmentedAgent”(REGENT).REGENT
+isasemi-parametricarchitecture: itpre-trainsatransformerpolicywhoseinputsarenotonlythe
+currentstateandpreviousreward,butalsoretrievedtuplesof(state,previousreward,action)from
+a set of demonstrations for each pre-training task, drawing inspiration from the recent successes
+ofretrievalaugmentationinlanguagemodeling[20]. Ateach“query”state,REGENTistrainedto
+prescribeanactionthroughaggregatingtheactionpredictionsofR&Pandthetransformerpolicy. By
+exploitingretrieval-augmentationaswellasin-contextlearning,REGENTpermitsdirectdeployment
+1
+PublishedasaconferencepaperatICLR2025
+Figure1:ProblemsettinginJAT/Gatoenvironments.
+inentirelyunseenenvironmentsandtaskswithonlyafewdemonstrations. REGENTisonlyoneof
+twomodelsdevelopedsofarthatcanadapttonewenvironmentsviain-contextlearning: theother
+modelisthemulti-trajectorytransformer(MTT)[37].
+WetrainandevaluateREGENTontwoproblemsettingsinthispaper,showninFigures1and2. The
+firstsettingisbasedontheenvironmentsusedinGato[38](anditsopensourcereproductionJAT
+[19])andthesecondsettingisbasedontheProcGenenvironmentsusedinMTT[37].
+Inbothsettings,REGENTdemonstratessignificantgeneralizationtounseenenvironmentswithout
+anyfinetuning. IntheJAT/Gatosetting,REGENToutperformsJAT/Gatoevenwhenthebaseline
+is finetuned on demonstrations from the unseen environments. In the ProcGen setting, REGENT
+significantlysurpassesMTT.Moreover,inbothsettings,REGENTtrainsasmallermodelwith1.4xto
+3xfewerparametersandwithanorder-of-magnitudefewerpre-trainingdatapoints. Finally,while
+REGENT’sdesignchoicesareaimedatgeneralization,itsgainsarenotlimitedtounseenenvironments:
+itevenperformsbetterthanbaselineswhendeployedwithinthepre-trainingenvironments.
+2 RELATED WORK
+Recentworkinthereinforcementlearningcommunityhasbeenaimedatbuildingfoundationmodels
+andmulti-taskgeneralistagents[38,19,5,28,7,63,33,48,24,10,22,3,17,54,40,41,55,60].
+Manyexistinggeneralistagentsstruggletoadapttonewenvironments. Gato[38],apopular
+generalist agent trained on a variety of gameplay and robotic environments, struggles to achieve
+transfer to an unseen Atari game even after fine-tuning, irrespective of the pretraining data. The
+authorsattributethisdifficultytothe"pronounceddifferencesinthevisuals,controls,andstrategy"
+amongAtarigames. TheyalsoattributeGato’slackofin-contextadaptationtothelimitedcontext
+lengthofthetransformernotallowingforadequatedatatobeaddedinthecontext. Ourmethod
+sidestepsthisissuebyretrievingonlylimitedbutrelevantpartsofdemonstrationtrajectoriestoinclude
+inthecontext.JAT[19],anopen-sourceversionofGato,facessimilarproblems.Wecomparewith
+andsignificantlyoutperformJAT/Gatousingfewerparametersandanorder-of-magnitude
+fewerpre-trainingdatapoints. WhileREGENTisa138.6Mparametermodel,JATuses192.7M
+parameters. Theclosed-sourceGato, withsimilarperformanceastheopen-sourceJAT,reports
+using1.2Bparameters. JATisalsopre-trainedonupto5-10xtheamountofdatausedbyourmethod
+andyetcannotgeneralizetounseenenvironments. Evenafterfinetuningonafewdemonstrations
+fromanunseenenvironment,JATfailstomeaningfullyimprove.
+Manyrecentgeneralistagentscannotleveragein-contextlearning. In-contextlearningcapabil-
+itiesenableeasierandfasteradaptationcomparedtofinetuning. Robocat[5],whichbuildsonthe
+Gatomodel,undergoesmanycyclesoffine-tuning,datacollection,andpre-trainingfromscratch
+toadapttonewmanipulationtasks. Themulti-gamedecisiontransformer[28],anagenttrainedon
+over50millionAtarigameplaytransitions,requiresanother1milliontransitionsforfine-tuningona
+2
+PublishedasaconferencepaperatICLR2025
+Figure2:ProblemsettinginProcGenenvironmentsadaptedfrom[37].
+held-outgamewhichisnotpracticalinrealrobotsettings. We,ontheotherhand,showthatREGENT
+(andevenR&P)canadapttonewAtarigameswithaslittleas10ktransitionsandnofinetuningon
+saidtransitions. Finally,theRTseriesofroboticsmodels[7,63,33],recentVision-Language-Action
+modelslikeOcto,OpenVLA,MobilityVLA[48,24,10],andothergeneralistagentslikeBAKU,
+RoboAgent[22,3]donotevaluateoraredemonstratedtonotpossessin-contextlearningcapabilities.
+REGENTontheotherhandcanadaptsimplywithin-contextlearningtounseenenvironments.
+Agentsthatcanadapttonewtasksviain-contextlearning,onlydosowithinthesameenvi-
+ronment. AlgorithmDistillation[26],DecisionPretrainedTransformer[27],andPromptDecision
+Transformer [52] are three in-context reinforcement learning methods proposed to generalize to
+new goals and tasks within the same environment. None of these can handle changes in visual
+observations,availablecontrols,andgamedynamics.
+WealsocomparewithandoutperformMTT[37],theonlyothermodelthatcanadaptin-context
+intheProcGensetting,withimproveddataefficiencyandasmallermodelsize. MTTtrainsa
+transformeronsequencesoftrajectoriesfromaparticularlevelandenvironmentandadaptstounseen
+environmentsbythrowingthedemonstrationsintoitscontext. TheProcGenvariantofREGENTuse
+anorder-of-magnitudefewertransitionsinpre-trainingandisaboutone-thirdthesizeofMTT.
+Retrieval-augmentedgenerationfortraininganddeploymentisacorepartofourpolicy. Various
+languagemodelstrainedwithretrieval-augmentationsuchastheoriginalRAGmodel[29],RETRO
+[4],andREALM[21]havedemonstratedperformanceonparwithvanillalanguagemodelswith
+significantlyfewerparameters. Moreover,retrieval-augmentedgeneration[20]withlargelanguage
+modelshasenabledthemtoquicklyadapttoneworup-to-datedata. Wehopethatourworkcan
+enablesimilarcapabilitiesfordecision-makingagents.
+3 PROBLEM FORMULATION
+Weaimtopre-trainageneralistagentondatasetsobtainedfromdifferentenvironments,withthegoal
+ofgeneralizingtonewunseenenvironments. Theagenthasaccesstoafewexpertdemonstrationsin
+thesenewenvironments. Inthiswork,theagentachievesthisthroughin-contextlearningwithoutany
+additionalfinetuning. Weassumethatthestateandactionspacesofunseenenvironmentsareknown.
+We model each environment i as a Markov Decision Process (MDP). The i-th Markov Decision
+Process(MDP)M isatuple(S ,A ,P ,R ,γ ,I ),whereS isthesetofstates,A isthesetof
+i i i i i i i i i
+actions,P (s′|s,a)istheprobabilityoftransitioningfromstatestos′whentakingactiona,R (s,a)
+i i
+istherewardobtainedinstatesupontakingactiona,γ ∈[0,1)isthediscountfactor,andI isthe
+i i
+initialstatedistribution. WeassumethattheMDP’soperateovertrajectorieswithfinitelengthH ,in
+i
+anepisodicfashion. Givenapolicyπ actingonM ,theexpectedcumulativerewardaccruedover
+i i
+thedurationofanepisode(i.e.,expectedreturn)isgivenbyJ(π )=E [ (cid:80)Hi R (s ,a )].
+i πi t=1 i t t
+3
+PublishedasaconferencepaperatICLR2025
+We denote the expert demonstration dataset corresponding to the i-th (training or un-
+seen) environment consisting of tuples of (state, previous-reward, action) as D =
+i
+{(s ,0,a ),(s ,r ,a ),...,(s ,r ,a )}. Let us assume that we have access to K such
+0 0 1 0 1 Ni Ni−1 Ni
+trainingenvironmentsforifrom1throughK,andunseenenvironmentsindexedfromK+1through
+M. WeassumethatthedatasetsD ’saregeneratedbyactingaccordingtoanexpertpolicyπ∗which
+i i
+maximizesJ(π ). Thetrainingenvironments(i≤K)haveasizeabledatasetofexpertdemonstra-
+i
+tions,whiletheunseenenvironmentshaveonlyahandfulofthem,i.e|D |>>|D |,wherej >K.
+i j
+4 REGENT: A RETRIEVAL-AUGMENTED GENERALIST AGENT
+Simplenearestneighborretrievalapproacheshavealonghistoryinfew-shotlearning[50,2,49,43,9].
+Theseworkshavefoundthat,atsmalltrainingdatasetsizes,whileparametricmodelsmightstruggle
+to extract any signal without extensive architecture or hyperparameter tuning, nearest neighbor
+approachesperformaboutaswellasthedatacansupport. Motivatedbythesepriorresultsinother
+domains,wefirstconstructsuchanapproachforanagentthatcanlearndirectlyinanunseenenv-
+ironmentwithlimitedexpertdemonstrationsinSection4.1. Then,weconsiderhowtoimprovethis
+agentthroughaccesstoexperienceinpre-trainingenvironments,sothatitcantransfersomeknowled-
+getonovelenvironmentsthatallowsittoadaptevenmoreeffectivelywithlimiteddatainSection4.2.
+4.1 RETRIEVEANDPLAY(R&P)
+Thisisarguablyoneofthesimplestdecisionagentsthatleveragestheretrievaltoolsetforadaptation.
+Givenastates fromanenvironmentj,letusassumethatitispossibletoretrievethen-neareststates
+t
+(andtheircorrespondingpreviousrewards,actions)fromD . Werefertothisasthecontextc ∈C .
+j t j
+ThesetC isthesetofallsuchcontextsinenvironmentj. Wealsocallthestates thequerystate
+j t
+followingterminologyfromretrieval-augmentedgenerationforlanguagemodeling[20].
+TheR&Pagenttakesthestates andcontextc asinput,picksthenearestretrievedstates′inc ,and
+t t t
+playsthecorrespondingactiona′. Thatis,π (s ,c ) = a′. Wedescribetheretrievalprocessin
+R&P t t
+detaillaterinSection4.2. Clearly,R&Pisdevoidofanylearningcomponentswhichcantransfer
+capabilitiesfrompre-trainingtounseenenvironments.
+4.2 RETRIEVAL-AUGMENTEDGENERALISTAGENT(REGENT)
+To go beyond R&P, we posit that if an agent learns to meaningfully combine relevant context to
+actinasetoftrainingenvironments,thenthisskillshouldbetransferabletonovelenvironmentsas
+well. WeproposeexactlysuchanagentinREGENT.WeprovideanoverviewofREGENTinFigure
+3wherewedepictthereinforcementlearningloopwiththeretrievalmechanismandtheREGENT
+transformer. Inthefigure,wealsoincludetheretrievedcontextandqueryinputstothetransformer
+anditsoutputinterpolationwiththeR&Paction. WedescribeREGENTindetailbelow.
+REGENTconsistsofadeepneuralnetworkpolicyπ , whichtakesasinputthestates , previous
+θ t
+rewardr ,contextc ,andoutputstheactiondirectlyforcontinuousenvironmentsandthelogits
+t−1 t
+overtheactionsindiscreteenvironments. Inthecontextc ,theretrievedtuplesof(state,previous
+t
+reward,action)areplacedinorderoftheirclosesnesstothequerystates withtheclosestretrieved
+t
+states′placedfirst. Letd(s ,s′)bethedistancebetweens ands′. Weperformadistanceweighted
+t t
+interpolationbetweentheoutputsoftheneuralnetworkpolicyandR&Pasfollows,
+π
+R
+θ
+EGENT
+(s
+t
+,r
+t−1
+,c
+t
+)=e−λd(st,s′)π
+R&P
+(s
+t
+,c
+t
+)+(1−e−λd(st,s′))σ(π
+θ
+(s
+t
+,r
+t−1
+,c
+t
+)) (1)
+(cid:26)
+Softmax(x), ifactionspaceisdiscrete
+σ(x)= (2)
+L×MixedReLU(x), ifactionspaceiscontinuous
+where MixedReLU : R → [−1,1] is a tanh-like activation function from [46] and is detailed in
+AppendixA.Further,L ∈ Risahyperparameterforscalingtheoutputoftheneuralnetworkfor
+continuous action spaces after the MixedReLU. We simply set both L and λ to 10 everywhere
+followingasimilarchoicein[46].Thefunctionπ isacausaltransformer,whichisadeptatmodeling
+θ
+relativelylongsequencesofcontextualinformationandpredictingtheoptimalaction[29,4,8,28].
+All distances are normalized and clipped to [0,1] as detailed in Appendix A. For discrete action
+spaces,wherethetransformeroutputsadistributionoveractions,weuseasoftenedversionofπ
+R&P
+4
+PublishedasaconferencepaperatICLR2025
+Figure3:TheREGENTarchitectureandoverview. (1)Aquerystate(fromtheunseenenvironmentduringdeploymentorfromtraining
+environments’datasetsduringpre-training)isprocessedforretrieval. (2)Thenneareststatesfromafewdemonstrationsinanunseen
+environmentorfromadesignatedretrievalsubsetofpre-trainingenvironments’datasetsareretrieved.Thesestates,andtheircorresponding
+previousrewardsandactions,areaddedtothecontextinorderoftheirclosenesstothequerystate,followedbythequerystateandprevious
+reward.(3)ThepredictionsfromtheREGENTtransformerarecombinedwiththefirstretrievedaction.(4)Atdeployment,onlythepredicted
+queryactionisused.Duringpre-training,thelossfrompredictingallactionsisusedtotrainthetransformer.
+asdescribedinAppendixA.AsshowninFigure3,forpredictingeachaction,eitherforaretrieved
+stateinthecontextorforthequerystate, wesetd(s,s′)inEquations(1)and(3)tothedistance
+betweenthatstatesandthefirst(closest)retrievedstateinthecontexts′.
+Further,theexponentialweightsinEquation(1)allowsustosmoothlytransitionbetweenR&Pand
+theparametricpolicyπ . Whenthestates iscloseenoughtofirstretrievedstateinthecontextc ,
+θ t t
+π simplyplaystheretrievedaction. However,asitmovesfurtheraway,policyπ becomes
+REGENT R&P
+auniformdistributionandtheparametricpolicyπ takesmoreprecedence. Wealsohypothesize
+θ
+thatthisinterpolationallowsthetransformertomorereadilygeneralizetounseenenvironments,
+sinceitisgiventheeasiertaskofpredictingtheresidualtotheR&Pactionratherthanpredictingthe
+completeaction.
+Pre-trainingREGENTandLossFunction: WetrainREGENTbyminimizingthetotalcross-entropy
+loss on discrete actions and total mean-squared error on continuous actions for all n+1 action
+predictions (n in the context and 1 query). We also follow the JAT recipe in ensuring that each
+trainingbatchconsistsonlyofdatafromasingleenvironment’sdataset. Weprovidedetailsaboutthe
+traininghyperparametersinAppendixA.
+REGENTTrainingDataandEnvironmentSuites: IntheJAT/Gatosetting,wepre-trainon100k
+transitions in each of the 45 Metaworld training environments, 9 Mujoco training environments,
+52Ataritrainingenvironments,and39BabyAItrainingenvironments. Thisaddsuptoatotalof
+14.5Mtransitionsusedtopre-trainREGENT.Weobtainthesetransitionsbytakingasubsetofthe
+open-source JAT dataset [19]. The complete JAT dataset consists of 5-10x the amount of data
+we use in each environment. The Atari environments have discrete actions and four consecutive
+grayscaleimagesasstates. However,weembedeachcombinedfour-stackedimageintoavectorof
+512dimensionsandusethisimageembeddingeverywhere(forR&PandREGENT).Thedetailsof
+embeddingimagesarediscussedlaterinthisSection. TheMetaworldandMujocoenvironmentshave
+proprioceptivevectorobservationsandcontinuousactionspaces. TheBabyAIenvironmentshave
+discreteobservations,textspecifyingagoalinnaturallanguage,anddiscreteactions. Weemphasize
+thatthesamegeneralistpolicyhandlescompletelydifferentobservationandactionmodalitiesand
+dimensionsacrossenvironments. Thedimensionsofobservations&actionsaregiveninAppendixA.
+IntheProcGensettingthatborrowsfromMTT[37],wegenerate20rolloutswithPPOpolicieson
+eachofthe12trainingenvironmentsforvariouslevelsdependingontheenvironment. Wedosoto
+ensurethatthetotalnumberoftransitionsineachenvironmentis1M.Thetotalsizeofthepre-training
+5
+PublishedasaconferencepaperatICLR2025
+datasetis12M.Allenvironmentshaveanimage-basedstatespaceanddiscreteactions. Thenumber
+oflevelsvariesfrom63atthesmallestinbigfishto1565atthelargestinmaze. Thisvariationarises
+fromthedifferenceinrollouthorizonineachenvironment. Wenotethat,eventhelargestvalueof
+1565isanorder-of-magnitudefewerthanthe10klevelsineachgameusedbyMTTforpre-training.
+REGENTArchitecture:REGENTadaptstheJATarchitectureintheJAT/Gatosetting.Itconsistsof
+acausaltransformertrunk. Ithasasharedlinearencoderforimageembeddings,vectorobservations,
+andcontinuousactions. Thisencodertakesamaximuminputvectoroflength513,accommodating
+thelargestinputvectors—imageembeddingsofsize512—plusasinglerewardvalue. Whenthe
+lengthofaninputvectorislessthanthat,itiscyclicallyrepeatedandpaddedtothemaximumlength.
+IthasalargesharedlookuptablewiththeGPT2[35]vocabularysizeforencodingdiscreteactions,
+discreteobservations,andtextobservations. Anotherlinearlayerisusedtocombinemultiplediscrete
+valuesandtexttokenspresentinasingleobservationvector. Ithasasharedlinearheadforpredicting
+continuousactions. Asharedlinearheadisusedforpredictingdistributionsoverdiscreteactions. All
+oftheabovecomponentsaresharedacrossenvironmentswithbutonlyasubsetofinputencodersand
+outputheadsmaybetriggeredduringaforwardandbackwardpassdependingontheinputmodalities
+inanenvironmentandoutputactionspace. Wenotethatstatesandrewardsareconcatenatedtogether
+beforeencodingfollowingtheJATrecipe[19]. REGENThasatotalof138.6Mparameters,including
+thefrozenResNet18imageencoder,comparedtoJAT’s192.7Mparameters.
+WesimplifyREGENTfortheProcGensettingkeepingthetransformertrunkwithonlyaconvolution
+encoderfordirectimageinputs;alookuptableforencodingdiscreteactions;andalinearheadfor
+predictingdistributionsoverdiscreteactions. Here,followingtheMTTrecipe,wedonotuseany
+rewards. Weonlyusethestatesandactions.Here,REGENThasatotalof116Mparameterscompared
+toMTT’s310Mparameters. Wedetailallarchitecturalhyperparametersandthedifferencesbetween
+JAT,MTT,andREGENTinAppendixA.
+Processing Raw Observations, Distance Metrics, Retrieval Mechanism, and Preprocessing
+TrainingData: Recallthatweareevaluatingintwosettings,depictedinFigures1and2. Inthe
+JAT/Gatosetting,iftherawobservationsconsistofimages,weembedtheimagewithanoff-the-
+shelfResNet18encoder[13]trainedonlyonImageNetdata. Ifinstead, therawobservationsare
+proprioceptivevectors,weusethemdirectlywithoutmodification. IntheProcGensetting,theraw
+observationsconsistofimagesthatweusedirectlywithoutmodification.
+In the JAT/Gato setting, we use the ℓ distance metric to compute distances between pairs of
+2
+observations, regardless of whether they are image embeddings or proprioceptive vectors. To
+significantlyspeedupthesearchforneareststatestoaquerystate,weleveragesimilaritysearch
+indices[15]. IntheProcGensetting,weutilizetheSSIMdistancemetric[51]toobtaindistances
+betweentwoimages. Weperformanaivesearchforthenearestimagestoaqueryimage,howeverall
+SSIMdistancecalculationsareparallelizedonGPUstospeeduptheretrievalprocess.
+R&Psimplyperformstheretrievalprocessdescribedaboveatevaluationtime,obtainstheclosest
+statetoaquerystate,andplaysthecorrespondingaction. REGENTontheotherhandhastosetupits
+pre-trainingdatasetasfollows.Itfirstdesignatesacertainnumberofrandomlychosendemonstrations
+perenvironmentastheretrievalsetinthatenvironment. ThisisdescribedinAppendixA.Then,
+foreachstateineachenvironment’strainingdataset,weretrievethen=19closeststatesfromthe
+designatedretrievalsubsetforthatdataset. Weensurethatnoneoftheretrievedstatesarefromthe
+samedemonstrationasthequerystate. Inthisprocess, weconvertourdatasetoftransitionstoa
+datasetof(context,querystate,queryreward)datapointswherethecontextconsistsof19retrieved
+(state,reward,action)tuples. Now,wecanbeginpre-trainingREGENTonthisdataset.
+EvaluatingREGENT:Afterpre-training,ineachofthetwosettings,wehaveonemodelthatcanbe
+deployeddirectly,withoutfinetuning,onunseenenvironments.Duringdeploymentinanenvironment,
+ateachstep,weretrievethen=19closeststatestothecurrentquerystate(andtheircorresponding
+actionsandrewards). Wepassthiscontextwiththequerystate,andpreviousrewardintoEquation
+(1)throughthearchitecturedescribedabovetopredictthequeryactiontotakeintheenvironment.
+IntheJAT/Gatosetting,fortheunseenenvironments,wehold-out5Metaworld,5Atari,andtwo
+Mujocoenvironments(seeFigure1). IntheProcGensetting,followingMTT[37],wehold-out5
+environments. UnlikeMTT,wealsoevaluateonunseenlevelsintrainingenvironments(seeFigure
+2). WeexplainthesechoicesinAppendixA.Inthiswork,wefocusonunseenenvironmentsinthe
+samesuiteastrainingenvironmentsandleavefurthergeneralizationtofuturework. Finally,wealso
+6
+PublishedasaconferencepaperatICLR2025
+notethatinallgame-playingenvironments,weaddasmallstickyprobability[31]of0.05inunseen
+Atarienvironmentsand0.2inunseenProcGenenvironmentsfollowing[37]. Thisisnotpresentin
+anydataordemonstration,whichinducesfurtherstochasticityandteststheabilityofbothR&Pand
+REGENTtotrulygeneralizeundernovelandstochasticdynamics.
+5 SUB-OPTIMALITY BOUND FOR REGENT POLICIES
+Inthissection,weaimtoboundthesub-optimalityoftheREGENTpolicy. Thisismeasuredwith
+respect to the expert policy π∗, that generated the retrieval demonstrations D . We focus on the
+j j
+discreteactioncasehereandleavethecontinuousactioncaseforfuturework. Thesub-optimalitygap
+in(trainingorunseen)environmentj isgivenby(J(π∗)−J(πθ )). Inspiredbythetheoretical
+j REGENT
+analysisofSridharetal.[46],wedefinethe"mostisolatedstate"andusethisdefinitiontoboundthe
+totalvariationintheREGENTpolicyclassandhencethesub-optimalitygap.
+That is, first, given D , we wish to obtain the maximum value of the distance term d(s ,s′) in
+j t
+Equations(1)and(3). Todoso,wedefinethemostisolatedstateasfollows.
+Definition5.1(MostIsolatedState). ForagivensetofretrievaldemonstrationsD inenvironmentj,
+j
+wedefinethemostisolatedstatesI :=argmax (cid:0) min d(s,s′) (cid:1) ,andconsequentlythedistanceto
+Dj
+s∈Sj s′∈Dj
+themostisolatedstateasdI = min d(sI ,s′).
+Dj
+s′∈Dj
+Dj
+Alldistancesbetweenastateinthisenvironmentanditsclosestretrievedstatearelessthantheabove
+value,whichalsomeasuresstatespacecoveragebythedemonstrationsavailableforretrieval. Using
+theabovedefinition,wehavethefollowing.
+Theorem 5.2. The sub-optimality gap in environment j is
+J(π
+j
+∗)−J(π
+R
+θ
+EGENT
+)≤min{H,H2(1−e
+−λdI
+Dj)}
+Proof: WeprovidetheproofinAppendixB.
+Themainconsequenceofthistheorem,alsoobservedinourresults,isthatthesub-optimalitygap
+reduceswithmoredemonstrationsinD becauseofthereduceddistancetothemostisolatedstate.
+j
+6 EXPERIMENTAL EVALUATION
+Inourexperiments,weaimtoanswerthefollowingkeyquestionsinthetwosettingsdepictedin
+Figures1and2. (1)HowwellcanR&PandREGENTgeneralizetounseenenvironments? (2)How
+doesfinetuninginthenewenvironmentsimproveREGENT?(3)HowwellcanREGENTgeneralizeto
+variationsofthetrainingenvironmentsandperforminaggregateontrainingenvironments? (4)How
+doesREGENTqualitativelycomparewithR&Pinusingtheretrievedcontext?
+▶Metrics: Weplotthenormalizedreturncomputedusingthereturnofarandomandexpertagent
+ineachenvironmentas (totalreturn−randomreturn) . TheexpertandrandomreturnsforallJAT/Gato
+(expertreturn−randomreturn)
+environmentsaremadeavailableintheoriginalwork[19]. Theexpertandrandomreturnsforthe
+ProcGenenvironmentscanbefoundintheoriginalProcGenpaper[11].
+▶Baselines: Weconsideradifferentsetofbaselinesforeachofthetwosettings. IntheJAT/Gato
+setting,wecompareR&PandREGENTwithtwovariantsofJAT.ThefirstisaJATmodeltrainedon
+thesamedatasetasREGENT.ThesecondisaJATmodeltrainedonallavailableJATdatawhich
+consistsofanorderofmagnitudemoredatapoints(inparticular,5xmoredatainAtarienvironments
+and10xmoredatainallotherenvironments). Welabeltheformerapples-to-applescomparisonas
+JAT/GatoandthelatterasJAT/Gato(All Data).WealsocomparewithJAT/GatowithRAG
+atinferencetime. WeusethesameretrievalmechanismasREGENTforthisbaseline. Additional
+detailsandallhyperparametersforthebaselinesareinAppendixA.
+IntheProcGensetting,wecomparewithMTT[37].MTTonlyreportsresultsonunseenenvironments
+andnotonunseenlevelsintrainingenvironments. WesimplytakethebestMTTresultoneachofthe
+fourunseenenvironmentsin[37],obtainedwhen4demonstrationsareincludedintheMTTcontext.
+▶FinetuningandTrain-from-scratchBaselines:Wefullyfinetuneandparameter-efficientfinetune
+(PEFTwithIA3[30])bothJAT/GatoandJAT/Gato(All Data)onvariousnumberofdemo-
+nstrationsineachunseenenvironmentintheJAT/GatosettingandcomparewithREGENT.Wealso
+7
+PublishedasaconferencepaperatICLR2025
+Figure4:NormalizedreturnsintheunseenMetaworldandAtarienvironmentsagainstthenumberofdemonstrationtrajectoriestheagentcan
+retrievefromorfinetuneon.Eachagentisevaluatedacross100rolloutsofdifferentseedsinMetaworldand15rolloutsofdifferentseeds(with
+psticky=0.05)inAtari.WecomputetheoverallmeanandstandarddeviationoverthreetrainingseedsforREGENT,REGENTFinetuned,the
+PEFTwithIA3baselines,andDRIL.SeeTable1fordetailedresults.
+comparewithatrain-from-scratchbehaviorcloningbaselineandanotherimitationlearningbaseline
+(DRIL [6]). For completeness, we also finetune REGENT on various number of demonstrations
+ineachunseenenvironmentintheJAT/Gatosetting. Weusethesamehyperparametersineach
+finetuningmethodacrossJAT/GatovariantsandREGENT.AdditionaldetailsareinAppendixA.
+GeneralizationtoUnseenEnvironments: Weplotthenormalizedreturnobtainedbyallmethods
+in unseen Metaworld and Atari environments from the JAT/Gato setting for various number of
+demonstrations(25,50,75,100)inFigure4. ForafaircomparisonacrossAtarienvironmentswith
+markeddifferencesinepisodehorizons,weplotnormalizedreturnagainstvariousnumberofstatesin
+thedemonstrations(atleast10k,15k,20k,25k)ratherthanthenumberofdemonstrationsitself. These
+demonstrationscanbeusedbythedifferentmethodsforretrievalorfine-tuning. Wealsoplotthe
+normalizedreturnobtainedbyallmethodsinunseenProcGenenvironmentsagainstvariousnumber
+ofdemonstrations(2,4,8,12,16,20)toretrievefrominFigure5. AsmentionedbeforeinSection
+4.2,unseenAtarienvironmentshaveastickyprobabilityof0.05andunseenProcGenenvironments
+haveastickyprobabilityof0.2.
+InbothFigures4and5,weobservethatR&PandREGENTcangeneralizewelltounseenAtariand
+ProcGenenvironmentswithimageobservationsanddiscreteactionsaswellastounseenMetaworld
+environmentswithvectorobservationsandcontinuousactions. R&Pisasurprisinglystrongbaseline,
+butREGENTimprovesonR&Pconsistently. Ingeneral,bothmethodsappeartosteadilyimprove
+withmoredemonstrations(withonlyafewexceptions).
+InFigure4,weobservethatJAT/Gatocannotgeneralizetomostunseenenvironments. REGENT
+(andevenR&P)outperformeventheAll DatavariantsofJAT/Gatowhichwerepre-trainedon
+5-10xthesizeoftheREGENTdataset. ThestickyprobabilityinunseenAtarienvironmentsadds
+furtherstochasticityandstressteststruegeneralizationagainstsimplyreplayingdemonstrations. The
+JAT/Gato+RAGbaselinesactuallyimproveoverzero-shotJAT/Gatobutarestillsignificantly
+outperformedbyREGENT.ThisdemonstratestheadvantageofREGENT’sarchitectureandretrieval
+augmentedpretrainingoverjustperformingRAGatinferencetime.
+InFigure5,REGENT(andevenR&P)outperformMTTwhichwastrainedonanorderofmagnitude
+moretraininglevelsanddatathanREGENTwhilealsohavingapproximately3xtheparameters.
+We also note that without the interpolation between R&P and the output of the transformer, RE-
+GENTdoesnotgeneralizetounseenenvironments(i.e.,itperformslikearandomagentonunseen
+environments). ThisinterpolationiskeytoREGENT.
+8
+PublishedasaconferencepaperatICLR2025
+Figure5:NormalizedreturnsinunseenProcGenenvironmentsagainstthenumberofdemonstrationtrajectoriestheagentcanretrievefrom.
+REGENTandR&Pagentsareevaluatedacross10levelswith5rolloutsandpsticky=0.2.Wecomputetheoverallmeanandstandarddeviation
+overthreetrainingseedsforREGENT.ThevaluesforMTTarethebestscoresreportedin[37].SeeTable7fordetailedresults.
+Figure6:Normalizedreturnsinunseenlevelsin4(of12)ProcGentrainingenvironmentsagainstthenumberofdemonstrationtrajectoriesthe
+agentcanretrievefrom.Eachvalueisanaverageacross10levelswith5rolloutseachwithpsticky=0.1.Theother8plotsaresimilartothe
+aboveandcanbefoundinFigure19(inAppendixD).SeeTable8fordetailedresults.
+EffectofFinetuning: FromFigure4,weseethatJAT/Gato,alongwithitsAll Datavariant,
+struggles to perform in all unseen environments even after full finetuning. JAT/Gato performs
+slightlybetterafterPEFTwithIA3intheunseenmetaworldenvironments. Trainingfromscratchon
+thefewdemonstrationsineachunseenenvironmentalsodoesnotobtainanymeaningfulperformance
+inmostenvironments. REGENT(andevenR&P),withoutanyfinetuning,outperformsallfinetuned
+variantsofJAT/Gato. Moreover,wecanseethatREGENTfurtherimprovesafterfinetuning,even
+withonlyafewdemonstrations.
+TohighlightREGENT’sabilitytoadaptfromverylittledata,wenotethatinFigure4,weonlyvary
+thenumberofstatesinAtaridemonstrationsuntil25k.Whereas,theclosestgeneralistpolicythatfine-
+tunestonewAtarienvironments,themulti-gamedecisiontransformer[28],requires1Mtransitions.
+Finally, we note that all methods face a hurdle in generalizing to the very long-horizon atari-
+spaceinvadersandatari-stargunnerenvironments,whichhavehorizonsabout10xthatofatari-pong
+and hence have not been shown in Figure 4. Generalization to the new embodiments in the two
+unseenMujocoenvironmentsprovesequallychallenging,wediscussthisindetailinAppendixC.
+GeneralizationtoVariationsoftheTrainingEnvironments: IntheProcGensettinginFigure
+2,theunseenlevelsofthe12trainingenvironmentsprovideanavenuetotestamiddlegroundof
+generalizationbetweentrainingandunseenenvironments. Weplotthenormalizedreturnsonunseen
+levelsof4(of12)trainingenvironments(withastickyprobabilityof0.1)inFigure6. Theremaining
+canbefoundinFigure19(AppendixD)andaresimilartotheabove4. InFigure6,weagainobserve
+thatREGENTperformsthebestinunseenlevelswhileR&Premainsastrongbaseline. Wealsodepict
+theperformanceofREGENTonseenlevelsofthesetrainingenvironmentswithadottedlineinthis
+Figure. ThisrepresentsanupperboundforREGENT’sperformanceinunseenlevels. Weobservethat
+withalargenumberofdemonstrations,REGENTappearstoreachclosetothisupperboundsimply
+viaretrieval-augmentationandin-contextlearninginsomeenvironments.
+AggregatePerformanceonTrainingEnvironments: Weplottheaggregatenormalizedreturn,both
+IQM[1]andmean,ontrainingenvironmentsforeachofthe4suites(intheJAT/Gatosetting)in
+Figure7.WenoticethatREGENTsignificantlyexceedsJAT/GatoonMetaworld,exceedsitonAtari,
+matchesitonMujoco,andisclosetomatchingitonBabyAI.Thisdemonstratesthedualadvantage
+ofREGENTwhichgainsthecapabilitytogeneralizetounseenenvironmentswhilepreservingoverall
+multi-taskperformanceintrainingenvironments.
+9
+PublishedasaconferencepaperatICLR2025
+Figure7: Aggregatenormalizedreturnsinthe45trainingMetaworldenvironments,9trainingMujocoenvironments,52trainingAtari
+environments,and39trainingBabyAIenvironments.SeeFigures15,16,17,18(inAppendixC)forperformanceoneachtrainingenvironment
+ofeachsuite.
+Figure8:QualitativeexamplesofafewinputsandoutputsofREGENTfortwostatesinarenderedrolloutintheunseen,discreteactionspace,
+atari-pongenvironment.REGENTleveragesitsin-contextlearningcapabilitiesandinterpolationwithR&Ptoeithermakeasimpledecisionand
+predictthesameactionasR&P(seeblueboxontheright)orpredictbetteractionsatkeystates(seeblackboxontheleft)thatleadstobetter
+overallperformanceasseeninFigure4.
+QualitativeExamples: WeplotexamplesoftheinputsandoutputsofREGENTatvariousstates
+duringarenderedrolloutintheatari-pongenvironmentinFigure8tohighlightREGENT’slearned
+in-contextlearningcapabilitiesandinterpolationwithR&P.Wealsoprovideaqualitativeexamplein
+acontinuousmetaworldenvironmentinAppendixC.
+AblationsandDiscussions: WeperformedablationsonREGENT’scontextlength,contextorder,
+anddistancemetricinFigures9,10,and12inAppendixC.Wefoundthatalargercontextlength
+improvesperformance(butsaturatesquickly),theorderofstatesinthecontextiskeyespeciallywhen
+unseenenvironmentssignificantlydifferfrompretrainingenvironments(suchasinAtari),andthatℓ
+2
+outperformscosinedistance. WealsodiscussinferenceruntimesinFigure11inAppendixC.
+7 CONCLUSIONS AND FUTURE WORK
+In this work, we demonstrated that retrieval offers generalist agents a powerful bias for rapid
+adaptation to new environments, even without large models and vast datasets. We showed that
+a simple retrieval-based 1-nearest neighbor agent, Retrieve and Play (R&P), is a strong baseline
+that matches or exceeds the performance of today’s state-of-the-art generalist agents in unseen
+environments. Building on this, we proposed a semi-parametric generalist agent, REGENT, that
+pre-trains a transformer-based policy on sequences of query state, reward, and retrieved context.
+REGENTexploitsretrieval-augmentationandin-contextlearningfordirectdeploymentinunseen
+environmentswithonlyafewdemonstrations. Evenafterpre-trainingonanorderofmagnitudefewer
+datapointsthanothergeneralistagentsandwithfewerparameters,REGENToutperformsthemacross
+unseenenvironmentsandsurpassesthemevenaftertheyhavebeenfinetunedondemonstrationsfrom
+thoseunseenenvironments. REGENT,itself,furtherimproveswithfinetuningonevenasmallnumber
+ofdemonstrations. WenotethatREGENTfacesacoupleoflimitations:adaptingtonewembodiments
+andlong-horizonenvironments. Infuturework, webelievealargerdiversityofembodimentsin
+thetrainingdatasetandimprovedretrievalfromlongerdemonstrationscanhelpREGENTovercome
+thesechallenges. WeconcludewiththeconvictionthatretrievalingeneralandREGENTinparticular
+redefinesthepossibilitiesfordevelopinghighlyadaptiveandefficientgeneralistagents,evenwith
+limitedresources.
+10
+PublishedasaconferencepaperatICLR2025
+Acknowledgements: ThisworkwassupportedinpartbyAROMURIW911NF-20-1-0080,NSF
+2143274,NSFCAREER2239301,NSF2331783,andDARPATIAMATHR00112490421. Any
+opinions,findings,conclusionsorrecommendationsexpressedinthismaterialarethoseoftheauthors
+anddonotnecessarilyreflecttheviewstheArmyResearchOffice(ARO),theDepartmentofDefense,
+ortheUnitedStatesGovernment.
+Reproducibilitystatement: Toensurereproducibility,wehavereleasedallcodeathttps://
+kaustubhsridhar.github.io/regent-research. Wehavealsodescribedalldatasets,
+environmentsuites,baselines,andREGENTitselfindetailinSection4,Section6,andAppendixA.
+REFERENCES
+[1] RishabhAgarwal,MaxSchwarzer,PabloSamuelCastro,AaronCCourville,andMarcBelle-
+mare. Deepreinforcementlearningattheedgeofthestatisticalprecipice. Advancesinneural
+informationprocessingsystems,34:29304–29320,2021. (Citedon9)
+[2] M Saiful Bari, Batool Haider, and Saab Mansour. Nearest neighbour few-shot learning for
+cross-lingualclassification. arXivpreprintarXiv:2109.02221,2021. (Citedon4)
+[3] Homanga Bharadhwaj, Jay Vakil, Mohit Sharma, Abhinav Gupta, Shubham Tulsiani, and
+VikashKumar. Roboagent: Generalizationandefficiencyinrobotmanipulationviasemantic
+augmentationsandactionchunking. In2024IEEEInternationalConferenceonRoboticsand
+Automation(ICRA),pp.4788–4795.IEEE,2024. (Citedon2,3)
+[4] SebastianBorgeaud,ArthurMensch,JordanHoffmann,TrevorCai,ElizaRutherford,Katie
+Millican,GeorgeBmVanDenDriessche,Jean-BaptisteLespiau,BogdanDamoc,AidanClark,
+et al. Improving language models by retrieving from trillions of tokens. In International
+conferenceonmachinelearning,pp.2206–2240.PMLR,2022. (Citedon3,4)
+[5] Konstantinos Bousmalis, Giulia Vezzani, Dushyant Rao, Coline Devin, Alex X Lee, Maria
+Bauza, Todor Davchev, Yuxiang Zhou, Agrim Gupta, Akhil Raju, et al. Robocat: A self-
+improvingfoundationagentforroboticmanipulation. arXivpreprintarXiv:2306.11706,2023.
+(Citedon1,2)
+[6] KianteBrantley,WenSun,andMikaelHenaff. Disagreement-regularizedimitationlearning. In
+InternationalConferenceonLearningRepresentations,2019. (Citedon8,18)
+[7] AnthonyBrohan,NoahBrown,JusticeCarbajal,YevgenChebotar,JosephDabis,ChelseaFinn,
+KeerthanaGopalakrishnan,KarolHausman,AlexHerzog,JasmineHsu,etal. Rt-1: Robotics
+transformerforreal-worldcontrolatscale. arXivpreprintarXiv:2212.06817,2022. (Citedon1,
+2,3)
+[8] LiliChen,KevinLu,AravindRajeswaran,KiminLee,AdityaGrover,MishaLaskin,Pieter
+Abbeel,AravindSrinivas,andIgorMordatch. Decisiontransformer: Reinforcementlearning
+viasequencemodeling. Advancesinneuralinformationprocessingsystems,34:15084–15097,
+2021. (Citedon4)
+[9] Wei-YuChen,Yen-ChengLiu,ZsoltKira,Yu-ChiangFrankWang,andJia-BinHuang. Acloser
+lookatfew-shotclassification. arXivpreprintarXiv:1904.04232,2019. (Citedon4)
+[10] Hao-TienLewisChiang,ZhuoXu,ZipengFu,MithunGeorgeJacob,TingnanZhang,Tsang-
+WeiEdwardLee,WenhaoYu,ConnorSchenck,DavidRendleman,DhruvShah,etal. Mobility
+vla: Multimodalinstructionnavigationwithlong-contextvlmsandtopologicalgraphs. arXiv
+preprintarXiv:2407.07775,2024. (Citedon2,3)
+[11] KarlCobbe,ChrisHesse,JacobHilton,andJohnSchulman. Leveragingproceduralgeneration
+tobenchmarkreinforcementlearning. InInternationalconferenceonmachinelearning,pp.
+2048–2056.PMLR,2020. (Citedon7)
+[12] ErwinCoumansandYunfeiBai. Pybullet,apythonmoduleforphysicssimulationforgames,
+roboticsandmachinelearning. http://pybullet.org,2016–2019. (Citedon17)
+11
+PublishedasaconferencepaperatICLR2025
+[13] SudeepDasari,MohanKumarSrirama,UnnatJain,andAbhinavGupta. Anunbiasedlook
+atdatasetsforvisuo-motorpre-training. InConferenceonRobotLearning, pp.1183–1198.
+PMLR,2023. (Citedon6,16,17)
+[14] AlexeyDosovitskiy,GermanRos,FelipeCodevilla,AntonioLopez,andVladlenKoltun. Carla:
+Anopenurbandrivingsimulator. InConferenceonrobotlearning,pp.1–16.PMLR,2017.
+(Citedon17)
+[15] Matthijs Douze, Alexandr Guzhva, Chengqi Deng, Jeff Johnson, Gergely Szilvasy, Pierre-
+EmmanuelMazaré,MariaLomeli,LucasHosseini,andHervéJégou. Thefaisslibrary. arXiv
+preprintarXiv:2401.08281,2024. (Citedon6)
+[16] SouradeepDutta,KaustubhSridhar,OsbertBastani,EdgarDobriban,JamesWeimer,InsupLee,
+andJuliaParish-Morris. Exploringwithstickymittens: Reinforcementlearningwithexpert
+interventionsviaoptiontemplates. InConferenceonRobotLearning,pp.1499–1509.PMLR,
+2023. (Citedon17)
+[17] Kiana Ehsani, Tanmay Gupta, Rose Hendrix, Jordi Salvador, Luca Weihs, Kuo-Hao Zeng,
+KunalPratapSingh,YejinKim,WinsonHan,AlvaroHerrasti,etal. Imitatingshortestpaths
+insimulationenableseffectivenavigationandmanipulationintherealworld. arXivpreprint
+arXiv:2312.02976,2023. (Citedon2)
+[18] LasseEspeholt,HubertSoyer,RemiMunos,KarenSimonyan,VladMnih,TomWard,Yotam
+Doron, Vlad Firoiu, Tim Harley, Iain Dunning, et al. Impala: Scalable distributed deep-rl
+withimportanceweightedactor-learnerarchitectures. InInternationalconferenceonmachine
+learning,pp.1407–1416.PMLR,2018. (Citedon18)
+[19] QuentinGallouédec,EdwardBeeching,ClémentRomac,andEmmanuelDellandréa. Jackof
+alltrades,masterofsome,amulti-purposetransformeragent. arXivpreprintarXiv:2402.09844,
+2024. (Citedon1,2,5,6,7,17)
+[20] YunfanGao,YunXiong,XinyuGao,KangxiangJia,JinliuPan,YuxiBi,YiDai,JiaweiSun,
+andHaofenWang. Retrieval-augmentedgenerationforlargelanguagemodels: Asurvey. arXiv
+preprintarXiv:2312.10997,2023. (Citedon1,3,4)
+[21] Kelvin Guu, Kenton Lee, Zora Tung, Panupong Pasupat, and Mingwei Chang. Retrieval
+augmentedlanguagemodelpre-training. InInternationalconferenceonmachinelearning,pp.
+3929–3938.PMLR,2020. (Citedon3)
+[22] SiddhantHaldar,ZhuoranPeng,andLerrelPinto. Baku: Anefficienttransformerformulti-task
+policylearning. arXivpreprintarXiv:2406.07539,2024. (Citedon2,3)
+[23] TomoyukiKagaya,ThongJingYuan,YuxuanLou,JayashreeKarlekar,SugiriPranata,Akira
+Kinose, Koki Oguri, Felix Wick, and Yang You. Rap: Retrieval-augmented planning with
+contextualmemoryformultimodalllmagents. arXivpreprintarXiv:2402.03610,2024. (Cited
+on30)
+[24] MooJinKim,KarlPertsch,SiddharthKaramcheti,TedXiao,AshwinBalakrishna,SurajNair,
+RafaelRafailov,EthanFoster,GraceLam,PannagSanketi,etal. Openvla: Anopen-source
+vision-language-actionmodel. arXivpreprintarXiv:2406.09246,2024. (Citedon1,2,3)
+[25] LouisKirsch,JamesHarrison,DanielFreeman,JaschaSohl-Dickstein,andJürgenSchmidhuber.
+Towardsgeneral-purposein-contextlearningagents. WorkshoponDistributionShifts,37th
+ConferenceonNeuralInformation...,2023. (Citedon30)
+[26] MichaelLaskin,LuyuWang,JunhyukOh,EmilioParisotto,StephenSpencer,RichieSteiger-
+wald,DJStrouse,StevenHansen,AngelosFilos,EthanBrooks,etal. In-contextreinforcement
+learningwithalgorithmdistillation. arXivpreprintarXiv:2210.14215,2022. (Citedon3)
+[27] JonathanLee,AnnieXie,AldoPacchiano,YashChandak,ChelseaFinn,OfirNachum,and
+EmmaBrunskill. Supervisedpretrainingcanlearnin-contextreinforcementlearning. Advances
+inNeuralInformationProcessingSystems,36,2024. (Citedon3)
+12
+PublishedasaconferencepaperatICLR2025
+[28] Kuang-Huei Lee, Ofir Nachum, Mengjiao Sherry Yang, Lisa Lee, Daniel Freeman, Sergio
+Guadarrama, Ian Fischer, Winnie Xu, Eric Jang, Henryk Michalewski, et al. Multi-game
+decisiontransformers. AdvancesinNeuralInformationProcessingSystems,35:27921–27936,
+2022. (Citedon1,2,4,9,17)
+[29] PatrickLewis,EthanPerez,AleksandraPiktus,FabioPetroni,VladimirKarpukhin,Naman
+Goyal,HeinrichKüttler,MikeLewis,Wen-tauYih,TimRocktäschel,etal.Retrieval-augmented
+generation for knowledge-intensive nlp tasks. Advances in Neural Information Processing
+Systems,33:9459–9474,2020. (Citedon3,4)
+[30] HaokunLiu,DerekTam,MohammedMuqeeth,JayMohta,TenghaoHuang,MohitBansal,and
+ColinARaffel. Few-shotparameter-efficientfine-tuningisbetterandcheaperthanin-context
+learning. AdvancesinNeuralInformationProcessingSystems,35:1950–1965,2022. (Citedon
+7,17)
+[31] MarlosCMachado,MarcGBellemare,ErikTalvitie,JoelVeness,MatthewHausknecht,and
+MichaelBowling. Revisitingthearcadelearningenvironment: Evaluationprotocolsandopen
+problemsforgeneralagents. JournalofArtificialIntelligenceResearch,61:523–562,2018.
+(Citedon7)
+[32] ChiaraDallaMan,FrancescoMicheletto,DayuLv,MarcBreton,BorisKovatchev,andClaudio
+Cobelli. Theuva/padovatype1diabetessimulator: newfeatures. Journalofdiabetesscience
+andtechnology,8(1):26–34,2014. (Citedon17)
+[33] Abhishek Padalkar, Acorn Pooley, Ajinkya Jain, Alex Bewley, Alex Herzog, Alex Irpan,
+AlexanderKhazatsky,AnantRai,AnikaitSingh,AnthonyBrohan,etal. Openx-embodiment:
+Roboticlearningdatasetsandrt-xmodels. arXivpreprintarXiv:2310.08864,2023. (Citedon1,
+2,3)
+[34] Jean Park, Sydney Pugh, Kaustubh Sridhar, Mengyu Liu, Navish Yarna, Ramneet Kaur,
+Souradeep Dutta, Elena Bernardis, Oleg Sokolsky, and Insup Lee. Automating weak label
+generation for data programming with clinicians in the loop. In Conference on Connected
+Health: Applications,SystemsandEngineeringTechnologies(CHASE),2024. (Citedon17)
+[35] Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, et al.
+Languagemodelsareunsupervisedmultitasklearners. OpenAIblog,1(8):9,2019. (Citedon6)
+[36] NivedRajaraman,LinF.Yang,JiantaoJiao,andKannanRamchandran.Towardthefundamental
+limitsofimitationlearning. InProceedingsofthe34thInternationalConferenceonNeural
+InformationProcessingSystems,NIPS’20,RedHook,NY,USA,2020.CurranAssociatesInc.
+ISBN9781713829546. (Citedon19)
+[37] SharathChandraRaparthy,EricHambro,RobertKirk,MikaelHenaff,andRobertaRaileanu.
+Generalizationtonewsequentialdecisionmakingtaskswithin-contextlearning. arXivpreprint
+arXiv:2312.03801,2023. (Citedon1,2,3,5,6,7,9,17,28)
+[38] ScottReed,KonradZolna,EmilioParisotto,SergioGomezColmenarejo,AlexanderNovikov,
+GabrielBarth-Maron,MaiGimenez,YurySulsky,JackieKay,JostTobiasSpringenberg,etal.
+Ageneralistagent. arXivpreprintarXiv:2205.06175,2022. (Citedon1,2)
+[39] ThomasSchmied,FabianPaischer,VihangPatil,MarkusHofmarcher,RazvanPascanu,and
+SeppHochreiter. Retrieval-augmenteddecisiontransformer: Externalmemoryforin-contextrl.
+arXivpreprintarXiv:2410.07071,2024. (Citedon30)
+[40] DhruvShah,AjaySridhar,ArjunBhorkar,NoriakiHirose,andSergeyLevine. Gnm: Ageneral
+navigationmodeltodriveanyrobot. In2023IEEEInternationalConferenceonRoboticsand
+Automation(ICRA),pp.7226–7233.IEEE,2023. (Citedon2)
+[41] Dhruv Shah, Ajay Sridhar, Nitish Dashora, Kyle Stachowicz, Kevin Black, Noriaki Hi-
+rose, and Sergey Levine. Vint: A foundation model for visual navigation. arXiv preprint
+arXiv:2306.14846,2023. (Citedon2)
+13
+PublishedasaconferencepaperatICLR2025
+[42] Aaditya Singh, Stephanie Chan, Ted Moskovitz, Erin Grant, Andrew Saxe, and Felix Hill.
+The transient nature of emergent in-context learning in transformers. Advances in Neural
+InformationProcessingSystems,36,2024. (Citedon16)
+[43] JakeSnell,KevinSwersky,andRichardZemel. Prototypicalnetworksforfew-shotlearning.
+Advancesinneuralinformationprocessingsystems,30,2017. (Citedon4)
+[44] KaustubhSridharandSrikantSukumar. Finite-time,event-triggeredtrackingcontrolofquadro-
+tors. In5thCEASSpecialistConferenceonGuidance,Navigation&Control(EurGNC19)
+Milano,Italy,2019. (Citedon17)
+[45] KaustubhSridhar,OlegSokolsky,InsupLee,andJamesWeimer. Improvingneuralnetwork
+robustness via persistency of excitation. In 2022 American Control Conference (ACC), pp.
+1521–1526.IEEE,2022. (Citedon17)
+[46] KaustubhSridhar,SouradeepDutta,DineshJayaraman,JamesWeimer,andInsupLee.Memory-
+consistentneuralnetworksforimitationlearning.arXivpreprintarXiv:2310.06171,2023.(Cited
+on4,7,16,17)
+[47] KaustubhSridhar,SouradeepDutta,JamesWeimer,andInsupLee. Guaranteedconformanceof
+neurosymbolicmodelstonaturalconstraints.InLearningforDynamicsandControlConference,
+pp.76–89.PMLR,2023. (Citedon17)
+[48] OctoModelTeam,DibyaGhosh,HomerWalke,KarlPertsch,KevinBlack,OierMees,Sudeep
+Dasari,JoeyHejna,TobiasKreiman,CharlesXu,etal. Octo: Anopen-sourcegeneralistrobot
+policy. arXivpreprintarXiv:2405.12213,2024. (Citedon1,2,3)
+[49] OriolVinyals,CharlesBlundell,TimothyLillicrap,DaanWierstra,etal. Matchingnetworksfor
+oneshotlearning. Advancesinneuralinformationprocessingsystems,29,2016. (Citedon4)
+[50] YanWang,Wei-LunChao,KilianQWeinberger,andLaurensVanDerMaaten. Simpleshot: Re-
+visitingnearest-neighborclassificationforfew-shotlearning. arXivpreprintarXiv:1911.04623,
+2019. (Citedon4)
+[51] ZhouWang,AlanCBovik,HamidRSheikh,andEeroPSimoncelli. Imagequalityassessment:
+fromerrorvisibilitytostructuralsimilarity. IEEEtransactionsonimageprocessing, 13(4):
+600–612,2004. (Citedon6)
+[52] MengdiXu,YikangShen,ShunZhang,YuchenLu,DingZhao,JoshuaTenenbaum,andChuang
+Gan. Prompting decision transformer for few-shot policy generalization. In international
+conferenceonmachinelearning,pp.24631–24645.PMLR,2022. (Citedon3)
+[53] John Yang, Carlos E Jimenez, Alexander Wettig, Kilian Lieret, Shunyu Yao, Karthik
+Narasimhan,andOfirPress. Swe-agent: Agent-computerinterfacesenableautomatedsoftware
+engineering. arXivpreprintarXiv:2405.15793,2024. (Citedon1)
+[54] JonathanYang,DorsaSadigh,andChelseaFinn. Polybot: Trainingonepolicyacrossrobots
+whileembracingvariability. arXivpreprintarXiv:2307.03719,2023. (Citedon2)
+[55] JonathanYang,CatherineGlossop,ArjunBhorkar,DhruvShah,QuanVuong,ChelseaFinn,
+DorsaSadigh,andSergeyLevine. Pushingthelimitsofcross-embodimentlearningformanipu-
+lationandnavigation. arXivpreprintarXiv:2402.19432,2024. (Citedon2)
+[56] YahanYang,RamneetKaur,SouradeepDutta,andInsupLee. Interpretabledetectionofdistri-
+butionshiftsinlearningenabledcyber-physicalsystems. In2022ACM/IEEE13thInternational
+ConferenceonCyber-PhysicalSystems(ICCPS),pp.225–235.IEEE,2022. (Citedon17)
+[57] ZhuolinYang,WeiPing,ZihanLiu,VijayKorthikanti,WeiliNie,De-AnHuang,LinxiFan,
+ZhidingYu,ShiyiLan,BoLi,etal. Re-vilm: Retrieval-augmentedvisuallanguagemodelfor
+zeroandfew-shotimagecaptioning. arXivpreprintarXiv:2302.04858,2023. (Citedon30)
+[58] TianheYu,DeirdreQuillen,ZhanpengHe,RyanJulian,KarolHausman,ChelseaFinn,and
+SergeyLevine. Meta-world:Abenchmarkandevaluationformulti-taskandmetareinforcement
+learning. InConferenceonrobotlearning,pp.1094–1100.PMLR,2020. (Citedon17)
+14
+PublishedasaconferencepaperatICLR2025
+[59] AndrewZhao,DanielHuang,QuentinXu,MatthieuLin,Yong-JinLiu,andGaoHuang. Expel:
+Llm agents are experiential learners. In Proceedings of the AAAI Conference on Artificial
+Intelligence,volume38,pp.19632–19642,2024. (Citedon30)
+[60] HaoyuZhen,XiaowenQiu,PeihaoChen,JinchengYang,XinYan,YilunDu,YiningHong,
+andChuangGan. 3d-vla: A3dvision-language-actiongenerativeworldmodel. arXivpreprint
+arXiv:2403.09631,2024. (Citedon2)
+[61] YichenZhu,ZhicaiOu,XiaofengMou,andJianTang. Retrieval-augmentedembodiedagents.
+InProceedingsoftheIEEE/CVFConferenceonComputerVisionandPatternRecognition,pp.
+17985–17995,2024. (Citedon30)
+[62] YukeZhu,JosiahWong,AjayMandlekar,RobertoMartín-Martín,AbhishekJoshi,Soroush
+Nasiriany,andYifengZhu. robosuite: Amodularsimulationframeworkandbenchmarkfor
+robotlearning. arXivpreprintarXiv:2009.12293,2020. (Citedon17)
+[63] Brianna Zitkovich, Tianhe Yu, Sichun Xu, Peng Xu, Ted Xiao, Fei Xia, Jialin Wu, Paul
+Wohlhart,StefanWelker,AyzaanWahid,etal. Rt-2: Vision-language-actionmodelstransfer
+webknowledgetoroboticcontrol. InConferenceonRobotLearning,pp.2165–2183.PMLR,
+2023. (Citedon1,2,3)
+15
+PublishedasaconferencepaperatICLR2025
+APPENDIX
+A ADDITIONAL DETAILS FOR REGENT AND VARIOUS BASELINES
+AdditionalDetailsforREGENT
+MixedReLU activation: MixedReLU is a tanh-like activation function from [46] given by
+MixedReLU(x) = (2(ReLU(x+1) − ReLU(x−1)) − 1) which simplifies to −1 for x < −1, x
+2 2
+for−1≤x≤1,and1forx>1.
+Normalizingdistancesto[0,1]:Wecomputethe95thpercentileofalldistancesd(s,s′)betweenany
+(retrievedorquery)statesandthefirst(closest)retrievedstates′. Thisvalueiscomputedfromthe
+demonstrationsD andisusedtonormalizealldistancesinthatenvironment. Thisvalueiscalculated
+j
+forall(trainingorunseen)environmentsduringthepreprocessingstage. Ifafternormalization,a
+distancevalueisgreaterthan1,wesimplyclipitto1.
+Softeningπ logitsfordiscreteactionenvironments: Letusassumethatthediscreteactionspace
+R&P
+consistsofN differentactions. Wehavethefollowing.
+act
+(cid:40) 1+(Nact−1)(1−d(st,s′)) ,ifa=a′
+π
+R&P
+(a|s
+t
+,c
+t
+)=
+d(st,s′)
+Nact
+,ifa̸=a′
+(3)
+Nact
+Thedistributioninducedbythemodifiedπ functionassignsallprobabilitymasstotheactiona′
+R&P
+whend(s ,s′)=0andactslikeauniformdistributionwhend(s ,s′)=1,therebypreventingbias
+t t
+towardanysinglelogit.
+Architecturalhyperparameters: Inbothsettings,thetransformertrunkconsistsof12layersand12
+headswithahiddensizeof768. Wesetthemaximumpositionencodingsto40for20(state,previous
+reward)’sand20actions. Ofthese20,19belongtotheretrievedcontextand1belongstothequery.
+IntheJAT/Gatosetting,themaximummulti-discreteobservationsizeis212(forBabyAI).The
+maximumcontinuousobservationsizeasdiscussedbeforeinSection4issetto513,aconsequenceof
+theResNet18imageembeddingmodels’s[13]embeddingsizeof512withanadditional1dimension
+forthereward. Alllinearencodinglayersmapfromtheircorrespondinginputsizetothehiddensize.
+FollowingtheJATmodel,thelineardecoderheadforpredictingcontinuousactionsmapsfromthe
+hiddensizetothemaximumcontinuoussizediscussedabove(513). Ontheotherhand,thelinear
+decoderheadforpredictingdistributionsoverdiscreteactionsmapsfromthehiddensizetoonly
+themaximumnumberofdiscreteactionsacrossalldiscreteenvironments(18),whereasintheJAT
+model,theymaptothefullGPT2vocabsizeof50257.
+In the JAT/Gato setting, the original JAT architecture has a much larger context size (that is
+not required for REGENT), a larger image encoder (than the resnet18 used in REGENT), a much
+largerdiscretedecoderpredictingdistributionsovertheentireGPT2vocabsize(insteadofjustthe
+maximumnumberofdiscreteactionsinREGENT),andhas(optional)decodersforpredictingvarious
+observations(thatisalsonotrequiredforREGENT).
+IntheProcGensetting,MTThasa18layers,16heads,andahiddensizeof1024–allthreeofwhich
+aremuchlargerthanREGENT’sarchitecturalhyperparametersmentionedabove.
+Traininghyperparameters: IntheJAT/Gatosetting,weuseabatchsizeof512andtheAdamW
+optimizerwithparametersβ =0.9andβ =0.999. Thelearningratestartsat5e-5anddecaysto
+1 2
+zerothrough3epochsoverallpre-trainingdata. Weearlystopafterasingleepochbecausewefind
+thatovertrainingreducesin-contextlearningperformance. Thisobservationisconsistentwithsimilar
+observationsaboutthetransienceofin-contextlearninginliterature[42].
+IntheProcGensetting,weuseabatchsizeof1024,astartinglearningof1e-4alsodecayingover3
+epochsoverallthepre-trainingdatawithanearlystopafterthefirstepoch. WeagainusetheAdamW
+optimizerwithparametersβ =0.9andβ =0.95.
+1 2
+Designatingretrievaldemonstrationsineachtrainingenvironment’sdataset: IntheJAT/Gato
+setting, we designate 100 random demonstrations from the each of training vector observation
+environmentsastheretrievalsubsetforthatenvironment.Wealsodesignate5randomdemonstrations
+fromthetrainingimageenvironmentsastheretrievalsubsetsforsaidenvironments. IntheProcGen
+16
+PublishedasaconferencepaperatICLR2025
+setting,withonly20demonstrationsperlevelperenvironment,wedesignateall20astheretrieval
+setforthatlevelinthatenvironment.
+Weuseallstatesinalldemonstrationsineachtrainingenvironment’sdatasetasquerystates. So,
+whenaquerystateisfromademonstrationinthedesignatedretrievalsubset, wesimplyretrieve
+from all other demonstrations in the designated retrieval subset except the current one. When a
+querystateisfromademonstrationnotinthedesignatedretrievalsubset,weretrievesimplyfrom
+thedesignatedretrievalsubset. Thisway,weensurethatnoneoftheretrievedstatesarefromthe
+samedemonstrationasthequerystate. Apossibledirectionforfutureworkincludesintelligently
+designating and collecting demonstrations for retrieval (perhaps using ideas like persistency of
+excitation[45],memory-basedmethods[56,46,47,34],expertinterventionmethods[16]).
+Choice of held-out environments: In the JAT/Gato setting, for the unseen environments, we
+hold-outthe5Metaworldenvironmentsrecommendedin[58],the5Atarienvironmentsheld-out
+in[28],andfinally,wechoosetwoMujocoenvironmentsofmixeddifficulty(seeFigure1). Inthe
+ProcGensetting,followingMTT[37],wehold-out5environments.
+Inthiswork,wegeneralizetounseenenvironmentsfromthesamesuitesasthetrainingenvironments.
+Infuturework,itwouldbeinterestingtoexaminewhatisneededforgeneralizationtonewsuites(such
+asmoremanipulationsuites[62],quadrotor,drivingsimulators[12,14,44],biologicalsimulation
+[32],etc.).
+Additionaldetailsonallenvironments: IntheJAT/Gatosetting,theAtarienvironmentshave18
+discreteactionsandfourconsecutivegrayscaleimagesasstates. However,weembedeachcombined
+four-stackedimage,withanoff-the-shelfResNet18encoder[13],intoavectorof512dimensions
+andusethisimageembeddingeverywhere(forR&PandREGENT).AllMetaworldenvironments
+haveobservationswith39dimensionsandactionswith4dimensions. Mujocoenvironmentshave
+observationswith4to376dimensionsandactionswith1to17dimensions.TheBabyAIenvironments
+haveupto7discreteactions. Theyhavediscreteobservationsandtextobservations. Aftertokenizing
+the BabyAI text observations, which specify a goal in natural language, into 64 tokens, BabyAI
+observationshave212totaldimensionsandconsistonlyofdiscretevalues.
+AdditionalDetailsonVariousBaselines
+Additional information on re-training JAT/Gato: When retraining JAT/Gato, we follow all
+hypepermaterschosenin[19]. WenotethatweskiptheVQAdatasetsinourretrainingofJAT/Gato,
+anduseasmallerbatchsizetofitavailableGPUs. ForJAT/Gato(All Data)wetrainoverthe
+fullJATdatasetforthespecified250ktrainingsteps. ForJAT/GatowetrainontheREGENTsubset
+(whichis5-10xsmaller)for25ktrainingsteps. Inbothvariants,thetraininglossconvergestothe
+samelowvalueatabout5000stepsintothetrainingrun.
+Additional information on JAT/Gato + RAG (at inference): We note that JAT/Gato is like
+a typical LLM— it has a causal transformer architecture and undergoes vanilla pretraining on
+consecutive states-rewards-actions. In both the JAT/Gato + RAG baselines, we use the same
+retrievalmechanismasREGENT.Weprovidetheretrievedstates-rewards-actionscontexttothese
+RAGbaselinesreplacingthecontextofthepastfewstates-rewards-actionsinvanillaJAT/Gato
+baselines.
+REGENTsignificantlyoutperformsbothJAT/Gato+RAGbaselinesinFigure4. Thisdemonstrates
+theadvantageofREGENT’sarchitectureandretrievalaugmentedpretrainingoverjustperforming
+RAGatinferencetime. But,theJAT/Gato+RAGbaselinesoutperformvanillaJAT/Gatoaswell
+astheJAT/GatofullyFinetunedbaselinesintheunseenmetaworldenvironments. Fromthiswecan
+concludethatRAGatinferencetimeisalsoimportantforperformance.
+AdditionalinformationonJAT/GatoFinetunedandREGENTFinetuned: Startingfromapre-
+trainedcheckpoint,wefinetunethefullREGENTandJAT/Gatocheckpointsusingthesameopti-
+mizeraspre-trainingtimebutstartingwith1/10ththelearningrate(i.e.,5e-6)andfor3epochsover
+thefinetuningdemonstrations. WeusethissamerecipeacrossallenvironmentsandforbothREGENT
+andJAT/Gato. Weonlyuse3epochstopreventtheoverwritingofanycapabilitieslearnedduring
+pre-training.
+AdditionalinformationonParameterEfficientFinetuing(PEFT)ofJAT/GatowithIA3[30]:
+WefinetunedJAT/GatoandJAT/Gato(AllData)withtheIA3PEFTmethod[30]andplottedthe
+17
+PublishedasaconferencepaperatICLR2025
+resultsinFigure4. Weusedthehuggingfaceimplementationandthehyperparametersgiveninthe
+IA3paper(i.e. 1000trainingsteps,batchsizeof8,andtheadafactoroptimizerwith3e-3learning
+rateand60warmupstepsinalineardecayschedule). WefoundthatfinetuningJAT/GatowithIA3
+improvedperformanceoveroursimplefullfinetuningrecipe,especiallyin3metaworldenvironments.
+REGENTstilloutperformsboththeIA3finetunedJAT/GatoandthefullyfinetunedJAT/Gatoin
+allunseenenvironmentsinFigure4.
+Additionalinformationonthetrain-from-scratchbehaviorcloningbaseline: Forthepolicyin
+thisbaseline,weusetheImpalaCNN[18]inAtarienvironmentsandaMLPwithtwohiddenlayers
+with256neuronseachinMetaworldandMujocoenvironments. Weusethesamelearningrate(5e-5)
+forthesame3epochswiththesameoptimizer(AdamWwithβ =0.9andβ =0.999)asusedfor
+1 2
+REGENTexceptweuseaconstantlearningrateschedule.
+AdditionalinformationonDRIL:Weaddedanimitationlearningbaseline,DRIL[6],totheatari
+environmentsinFigure4. PleasenotethatDRILconsistsoftwostages. Thefirststageispretraining
+withaBCloss. Inthesecondstage,theDRILensemblepolicyisallowedtointeractintheonline
+environmentwhereitreducesthevariancebetweenthemembersofitsensemblewithanonlineRL
+algorithm. Werunthesecondonlinestagefor1Mstepsoraround1000episodes. REGENTandall
+theothermethodsinFigure4,ontheotherhand,arecompletelyofflineandneverinteractwithany
+environmentfortraining. WhileDRILimprovesovertheBCbaseline,REGENTstilloutperforms
+DRILinallthreeunseenatarienvironments.
+Additional information on MTT: The MTT model weights are closed-source. In their ICML
+publication, theauthorsdonotprovideresultsonnewlevels. MTTisalsodifficulttotrainfrom
+scratchinanysettingsincetheyputmultiplefulltrajectoriesinthecontextofthetransformer,leading
+toexplodingGPUVRAMrequirementsbeyondacademiccomputeresources. However,wesimply
+reportthebestvaluesfromtheirpaperintheirexactsettingtodemonstrateREGENT’ssignificantly
+improvedperformanceevenwitha3xsmallermodelandanorder-of-magnitudelesspretrainingdata.
+Similarly,wecomparewithJAT/GatointheirexactsettingandsignificantlyoutperformJAT/Gato
+andJAT/GatoFinetuned,eventhoughJAT/Gatohas1.5xourparametersand5-10xourdata.
+WenotethatitislikelythatMTTperformanceisclosetorandomonacoupleofunseenProcGen
+environmentsonlybecausetheauthorsareforcedtoconstrainMTTrolloutsto200steps,stopping
+shortofthetruehorizonoftheseenvironments. Thisissimplybecauseofthequadraticallyincreasing
+complexityofattentionwithincreaseincontextsize. MTTalsolikelydoesnotreportresultsbeyond
+4demonstrationsinthecontextforthisreason. Yet,thisisnotanissueforR&PorREGENTwhich
+canscaletoanynumberofdemonstrationstoretrievefromsinceitonlyusesuptothe19closest
+statesinthecontext.
+B PROOF OF THEOREM 5.2
+Toprovetheorem5.2,wefirststateandprovethefollowinglemma.
+Letusrefertothefamilyofpoliciesrepresentedbyπθ (a|s,r,c)inEquation(1)forvariousθas
+REGENT
+Πθ(a|s,r,c). TheparametersθofthetransformeraredrawnfromthespaceΘ.
+LemmaB.1. (TotalVariationinthePolicyClass)ThetotalvariationofthepolicyclassΠθ(a|s,r,c)
+in environment j, ∀ θ ,θ ∈ Θ andforsomes ∈ S , r ∈ R , c ∈ C , defined as
+1 2 j j j
+sup sup|π
+R
+θ1
+EGENT
+(a|s,r,c)−π
+R
+θ2
+EGENT
+(a|s,r,c)|,isupperboundedby(1−e −λdI Dj).
+θ1,θ2 a
+Proof: Wehave,
+sup sup|πθ1 (a|s,r,c)−πθ2 (a|s,r,c)|
+REGENT REGENT
+θ1,θ2 a
+(cid:18) (cid:19)
+= sup sup(1−e−λd) Softmax(π (a|s,r,c))−Softmax(π (a|s,r,c)) (4)
+θ1 θ2
+θ1,θ2 a
+(cid:18) (cid:19)
+=(1−e−λd)sup sup Softmax(π (a|s,r,c))−Softmax(π (a|s,r,c)) (5)
+θ1 θ2
+θ1,θ2 a
+−λdI
+≤(1−e Dj) (6)
+18
+PublishedasaconferencepaperatICLR2025
+The first equality holds because for the same tuple of (state, previous reward, context), the R&P
+componentdoesnotchangesinceitisnotaffectedbythechoiceofparameters. Thelastinequality
+canbeinterpretedasapropertyofSoftmaxandthedistancetothemostisolatedstate.
+Now,werewritetheorem5.2belowandproveit.
+Theorem B.2. The sub-optimality gap in environment j is
+J(π
+j
+∗)−J(π
+R
+θ
+EGENT
+)≤min{H,H2(1−e
+−λdI
+Dj)}
+Proof: Recallthat inimitationlearning, ifthepopulation totalvariation(TV) riskT(πˆ,π∗) ≤ ϵ,
+then,J(π∗)−J(πˆ)≤min{H,H2ϵ}(See[36]Lemma4.3). UsingthiswithLemmaB.1provesthe
+theorem.
+Themainconsequenceofthistheorem,alsoobservedinourresults,isthatthesub-optimalitygap
+reduceswithmoredemonstrationsinD becauseofthereduceddistancetothemostisolatedstate.
+j
+19
+PublishedasaconferencepaperatICLR2025
+C ADDITIONAL JAT/GATO RESULTS
+Effectofnumberofstates/rewards/actionsinthecontext: Weplotthenormalizedreturnobtained
+byREGENTfordifferentcontextsizesatevaluationtimeinunseenenvironmentsinFigure9. Wefind
+that,ingeneral,alargercontextsizeleadstobetterperformance. Wealsonoticethattheimprovement
+in performance saturates quickly in many environments. Our choice of 20 states in the context
+(includingthequerystate)leadstothebestperformanceoverall.
+Figure9:NormalizedreturnsobtainedbyREGENTintheunseenMetaworldandAtarienvironmentswithafixedretrievalbufferagainstthe
+numberofstatesgivenin-context(includingthequerystate).Pleasenotethatthecontextsizeis2n−1iftherearenstatesinthecontext.
+Eachvalueisfromasinglemodeltrainingseedbutevaluatedover100rolloutsofdifferentseedsinMetaworldand15rolloutsofdifferentseeds
+(withpsticky=0.05)inAtari.
+Figure10:NormalizedreturnsobtainedbyREGENTintheunseenMetaworldandAtarienvironmentswithafixedretrievalbufferagainstthe
+choiceoforderingofstatesinthecontext.Eachvalueisfromasinglemodeltrainingseedbutevaluatedover100rolloutsofdifferentseedsin
+Metaworldand15rolloutsofdifferentseeds(withpsticky=0.05)inAtari.
+Effectoftheorderingofthecontext: WeplotthenormalizedreturnobtainedbyREGENTfordiffer-
+entchoicesofcontextorderingatevaluationtimeinunseenenvironmentsinFigure10. Weevaluated
+threeoptions: "current", "random-permuted", and"reverse". Inthe"current"order, theretrieved
+tuplesof(state,previousreward,action)areplacedinorderoftheirclosenesstothequerystates .
+t
+In"random-permuted",theretrievedtuplesareplacedinarandomlychosenorderinthecontext.
+20
+PublishedasaconferencepaperatICLR2025
+In"reverse",the"current"orderoftheretrievedtuplesisreversedwiththefurtheststateinthe19
+retrievedstatesplacedfirst. Ourcurrentchoiceperformsthebestoverall. Itsignificantlyoutperforms
+theothertwoorderingsinthemorechallengingtaskofgeneralizingtounseenAtarigameswhich
+havedifferentimageobservations,dynamics,andrewards. Insomemetaworldenvironmentsonthe
+otherhand,allthreeorderingshavesimilarperformancedenotingthatallthe19retrievedstatesfor
+eachquerystateareverysimilartoeachother.
+Inferenceruntimevalues:InFigure11,weplottheinferenceruntimevaluesofREGENT’stwomain
+componentsinametaworldenvironment: retrievalfromdemonstrationsandforwardpropagation
+throughtheREGENTarchitecture. Wefindthatretrievaltakesbetween2to8millisecondsoftime
+(forincreasingnumberofdemonstrationstoretrievefrom)whileforwardpropagationtakesaround
+8millisecondsuniformly. Boththeseruntimesaresmallenoughtoallowreal-timedeploymentof
+REGENTonrealrobots.
+Figure11:AverageruntimevaluesforretrievalandforwardpropagationthroughREGENTinmetaworldforvariousnumberofdemonstrations
+intheretrievalbuffer.
+Effect of the distance metric: We compared REGENT with cosine distance everywhere (from
+pretrainingtoevaluation)againstourcurrentversionofREGENTwithℓ distanceeverywherein
+2
+theJAT/GatosettinginFigure12. REGENTwithcosinedistanceperformssimilarlytoREGENT
+withℓ distancein3unseenmetaworldenvironments. Intheotherunseenmetaworldenvironments
+2
+aswellasthemorechallengingunseenatarienvironments,REGENTwithℓ distancesignificantly
+2
+outperforms REGENT with cosine distance. We speculate that this is because the magnitude of
+observationsisimportantwithbothimageembeddingsandproprioceptivestatesandthisisonly
+takenintoaccountbytheℓ distance(notthecosinedistance).
+2
+Figure12:NormalizedreturnsintheunseenMetaworldandAtarienvironmentsagainstthenumberofdemonstrationtrajectoriestheagent
+canretrievefrom.The’REGENT(cosinedistance)’valuesareanaverageover100rolloutsofdifferentseedsinMetaworldand15rolloutsof
+differentseeds(withpsticky=0.05)inAtari.
+21
+PublishedasaconferencepaperatICLR2025
+GeneralizationtounseenMujocoenvironments/embodiments: InthetwounseenMujocotasks
+showninFigure13,R&Pappearstobeastrongbaselineevenatgeneralizingtonewembodiments!
+Moreover,afterfinetuningonjust25demonstrations,onlyREGENT,notJAT/Gato,significantly
+improvestooutperformothermethodsandonlycontinuestogetbetterwithmoredemonstrations.
+Figure13:NormalizedreturnsintheunseenMujocoenvironmentsagainstthenumberofdemonstrationtrajectoriestheagentcanretrievefrom
+orfinetuneon.Eachvalueisanaverageacross100rolloutsofdifferentseeds.
+Additionalqualitativeexamples: WeplotexamplesoftheinputsandoutputsofREGENTatvarious
+states during a rendered rollout in the metaworld-bin-picking environment in Figure 14. In this
+continuousMetaworldexample,REGENTcanbeseenpredictingactionsthataresomewhatsimilar
+to but not the same as the first retrieved (R&P) action. These differences lead to better overall
+performanceasseeninFigure4. ThesedifferencesarealsothedirectresultofREGENT’sin-context
+learningcapabilities,learnedfromthepreprocesseddatasetsfromthepre-trainingenvironments.
+Figure14:QualitativeexamplesofafewinputsandoutputsofREGENTforvariousstatesinarenderedrolloutintheunseen,continuousaction
+space,metaworld-bin-pickingenvironment.
+22
+PublishedasaconferencepaperatICLR2025
+Figure15:Normalizedreturnsineachofthe45seenMetaworldenvs.Eachvalueisanaverageacross100rolloutsofdifferentseeds.SeeTable
+3forallvalues.
+Figure16:Normalizedreturnsineachofthe9seenMujocoenvs.Eachvalueisanaverageacross100rolloutsofdifferentseeds.SeeTable4for
+allvalues.
+Figure17:Normalizedreturnsineachofthe52seenAtarienvs.Eachvalueisanaverageacross15rolloutsofdifferentseeds.SeeTable5for
+allvalues.
+Figure18:Normalizedreturnsineachofthe45seenBabyAIenvs.Eachvalueisanaverageacross100rolloutsofdifferentseeds.SeeTable6
+forallvalues.
+23
+PublishedasaconferencepaperatICLR2025
+LIRD
+niarT
+otaG/TAJ
+otaG/TAJ
+otaG/TAJ
+otaG/TAJ
+otaG/TAJ
+otaG/TAJ
+otaG/TAJ
+otaG/TAJ
+TNEGER
+TNEGER
+P&R
+muN
+vnE
+morF
+)ataDllA(
+)ataDllA(
+)ataDllA(
+)ataDllA(
+TFEP
+denuteniF
+GAR+
+denuteniF
+somed
+hctarcS
+TFEP
+denuteniF
+GAR+
+htiw
+3AIhtiw
+3AI
+-
+0.0
+0.0±10.0
+0.0
+10.0
+0.0
+500.0±0.0
+0.0
+10.0
+0.0
+520.0±3.0
+241.0±13.0
+33.0
+52
+gnikcip-nib-dlrowatem
+-
+0.0
+0.0±10.0
+0.0
+10.0
+0.0
+500.0±10.0
+0.0
+40.0
+0.0
+940.0±6.0
+130.0±55.0
+4.0
+05
+gnikcip-nib-dlrowatem
+-
+0.0
+0.0±10.0
+10.0
+10.0
+0.0
+500.0±10.0
+10.0
+80.0
+0.0
+120.0±96.0
+790.0±95.0
+43.0
+57
+gnikcip-nib-dlrowatem
+-
+0.0
+0.0±10.0
+10.0
+20.0
+0.0
+500.0±10.0
+0.0
+60.0
+0.0
+500.0±37.0
+150.0±76.0
+33.0
+001
+gnikcip-nib-dlrowatem
+-
+10.0
+0.0±0.0
+0.0
+90.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+90.0±18.0
+321.0±37.0
+85.0
+52
+esolc-xob-dlrowatem
+-
+0.0
+0.0±0.0
+0.0
+2.0
+0.0
+0.0±0.0
+0.0
+2.0
+0.0
+201.0±68.0
+241.0±28.0
+96.0
+05
+esolc-xob-dlrowatem
+-
+0.0
+0.0±0.0
+0.0
+32.0
+0.0
+0.0±0.0
+0.0
+4.0
+0.0
+710.0±99.0
+620.0±48.0
+86.0
+57
+esolc-xob-dlrowatem
+-
+0.0
+0.0±0.0
+0.0
+13.0
+0.0
+0.0±0.0
+0.0
+65.0
+0.0
+500.0±89.0
+760.0±39.0
+18.0
+001
+esolc-xob-dlrowatem
+-
+0.0
+930.0±32.0
+13.0
+81.0
+42.0
+210.0±21.0
+21.0
+33.0
+31.0
+210.0±8.0
+910.0±37.0
+85.0
+52
+kcol-rood-dlrowatem
+-
+30.0
+820.0±92.0
+52.0
+42.0
+42.0
+120.0±90.0
+51.0
+43.0
+31.0
+410.0±28.0
+740.0±18.0
+55.0
+05
+kcol-rood-dlrowatem
+-
+10.0
+620.0±4.0
+72.0
+13.0
+42.0
+920.0±41.0
+71.0
+93.0
+31.0
+220.0±48.0
+820.0±58.0
+36.0
+57
+kcol-rood-dlrowatem
+-
+30.0
+910.0±24.0
+82.0
+83.0
+42.0
+920.0±51.0
+71.0
+84.0
+31.0
+0.0±58.0
+820.0±58.0
+46.0
+001
+kcol-rood-dlrowatem
+-
+0.0
+630.0±51.0
+70.0
+13.0
+60.0
+750.0±22.0
+30.0
+63.0
+10.0
+730.0±27.0
+450.0±56.0
+35.0
+52
+kcolnu-rood-dlrowatem
+-
+10.0
+380.0±52.0
+70.0
+24.0
+60.0
+80.0±32.0
+30.0
+74.0
+10.0
+130.0±48.0
+940.0±18.0
+55.0
+05
+kcolnu-rood-dlrowatem
+-
+0.0
+470.0±3.0
+50.0
+44.0
+60.0
+220.0±2.0
+20.0
+14.0
+10.0
+500.0±29.0
+800.0±88.0
+87.0
+57
+kcolnu-rood-dlrowatem
+-
+30.0
+490.0±42.0
+80.0
+5.0
+60.0
+130.0±61.0
+30.0
+54.0
+10.0
+500.0±39.0
+710.0±9.0
+68.0
+001
+kcolnu-rood-dlrowatem
+-
+0.0
+430.0±92.0
+50.0
+60.0
+10.0
+910.0±1.0
+70.0
+70.0
+10.0
+220.0±45.0
+220.0±26.0
+72.0
+52
+tresni-dnah-dlrowatem
+-
+0.0
+210.0±85.0
+60.0
+1.0
+10.0
+130.0±61.0
+40.0
+31.0
+10.0
+210.0±96.0
+130.0±86.0
+45.0
+05
+tresni-dnah-dlrowatem
+-
+0.0
+710.0±36.0
+60.0
+1.0
+10.0
+220.0±61.0
+40.0
+22.0
+10.0
+120.0±97.0
+820.0±87.0
+65.0
+57
+tresni-dnah-dlrowatem
+-
+10.0
+560.0±16.0
+30.0
+41.0
+10.0
+450.0±51.0
+20.0
+32.0
+10.0
+0.0±38.0
+240.0±28.0
+96.0
+001
+tresni-dnah-dlrowatem
+0.0±0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+240.0±71.0
+0.0±80.0
+80.0
+)99511(7
+gnop-irata
+0.0±0.0
+0.0
+500.0±0.0
+0.0
+0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+0.0±32.0
+0.0±2.0
+81.0
+)33561(01
+gnop-irata
+610.0±40.0
+0.0
+500.0±0.0
+0.0
+0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+900.0±32.0
+900.0±32.0
+81.0
+)86412(31
+gnop-irata
+610.0±60.0
+0.0
+500.0±0.0
+0.0
+0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+500.0±3.0
+740.0±52.0
+81.0
+)00462(61
+gnop-irata
+0.0±0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+0.0±90.0
+500.0±80.0
+40.0
+)95721(3
+neila-irata
+0.0±0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+500.0±90.0
+500.0±80.0
+50.0
+)35371(4
+neila-irata
+0.0±0.0
+0.0
+0.0±0.0
+0.0
+0.0
+0.0
+500.0±0.0
+0.0
+0.0
+0.0
+500.0±90.0
+0.0±80.0
+50.0
+)48622(5
+neila-irata
+500.0±10.0
+0.0
+0.0±0.0
+0.0
+10.0
+0.0
+500.0±0.0
+0.0
+0.0
+0.0
+500.0±1.0
+500.0±90.0
+50.0
+)29672(6
+neila-irata
+620.0±1.0
+0.0
+500.0±40.0
+20.0
+20.0
+10.0
+500.0±20.0
+0.0
+10.0
+0.0
+500.0±28.0
+710.0±28.0
+86.0
+)20911(4
+namcapsm-irata
+240.0±60.0
+0.0
+0.0±40.0
+20.0
+20.0
+10.0
+500.0±20.0
+10.0
+20.0
+0.0
+610.0±38.0
+130.0±18.0
+86.0
+)02541(5
+namcapsm-irata
+540.0±71.0
+0.0
+500.0±40.0
+10.0
+20.0
+10.0
+500.0±30.0
+20.0
+20.0
+0.0
+900.0±98.0
+920.0±58.0
+28.0
+)09422(9
+namcapsm-irata
+740.0±81.0
+0.0
+0.0±40.0
+20.0
+10.0
+10.0
+0.0±30.0
+10.0
+10.0
+0.0
+0.0±9.0
+130.0±68.0
+28.0
+)06152(01
+namcapsm-irata
+400.0
+341.0
+250.0
+921.0
+40.0
+360.0
+920.0
+561.0
+910.0
+336.0
+206.0
+374.0
+naeMetagerggA
+dnanaemllarevoehtetupmoceW.iratAni)50.0=ykcitsphtiw(sdeestnereffidfostuollor51dnadlrowateMnisdeestnereffidfostuollor001ssorcadetaulavesitnegahcae,deesgniniartralucitraparoF.4erugiFniseulaV:1elbaT hcaedenutenfiew,nehT.seicilopTNEGEReerhtdetaulaveylhguorohtdnadeniartewtahtsnaemsiht,TNEGERroF.LIRDdna,senilesab3AIhtiwTFEPeht,denuteniFTNEGER,TNEGERrofsdeesgniniarteerhtrevonoitaiveddradnats noitaiveddradnatslanfiehtdnasdeesnoitaulavednasdeesgniniarthtobrevoegarevalanfiehtetupmoceW.seicilopdenutenfi69folatotarof,tnemnorivnerepstniop4dnastnemnorivne8htiw,semit23seicilopTNEGEReerhtesehtfo
+.llatasretemarapgniniartynaevahtonseodtisasdeesgniniartssorcanoitaiveddradnatsaevahtonseodP&RtahtetoneW.sdeesgniniartrevo
+24
+PublishedasaconferencepaperatICLR2025
+Env Num R&P REGENT REGENT JAT/Gato JAT/Gato JAT/Gato JAT/Gato Train
+demos Finetuned Finetuned (AllData) (AllData) From
+Finetuned Scratch
+mujoco-halfcheetah 25 0.08 0.01 0.19 0.0 0.0 0.0 0.0 0.04
+mujoco-halfcheetah 50 0.08 0.01 0.26 0.0 0.01 0.0 0.0 0.04
+mujoco-halfcheetah 75 0.09 0.0 0.31 0.0 0.03 0.0 0.0 0.04
+mujoco-halfcheetah 100 0.1 0.0 0.34 0.0 0.03 0.0 0.01 0.04
+mujoco-hopper 25 0.21 0.01 0.01 0.0 0.0 0.01 0.03 0.04
+mujoco-hopper 50 0.26 0.01 0.04 0.0 0.0 0.01 0.03 0.02
+mujoco-hopper 75 0.24 0.01 0.1 0.0 0.0 0.01 0.05 0.02
+mujoco-hopper 100 0.25 0.01 0.12 0.0 0.0 0.01 0.05 0.01
+AggregateMean 0.164 0.008 0.171 0.0 0.009 0.005 0.021 0.031
+Table2:ValuesinFigure13.Eachvalueisanaverageacross100rolloutsofdifferentseeds.
+Env Numdemos REGENT JAT/Gato
+metaworld-assembly 100 0.83 0.89
+metaworld-basketball 100 0.68 0.03
+metaworld-button-press-topdown-wall 100 0.62 0.43
+metaworld-button-press-topdown 100 0.62 0.43
+metaworld-button-press-wall 100 0.94 0.61
+metaworld-button-press 100 0.62 0.43
+metaworld-coffee-button 100 0.84 0.33
+metaworld-coffee-pull 100 0.62 0.01
+metaworld-coffee-push 100 0.18 0.04
+metaworld-dial-turn 100 0.83 0.33
+metaworld-disassemble 100 2.24 0.0
+metaworld-door-close 100 1.0 0.46
+metaworld-door-open 100 0.98 0.46
+metaworld-drawer-close 100 1.0 0.89
+metaworld-drawer-open 100 0.96 0.91
+metaworld-faucet-close 100 0.53 0.16
+metaworld-faucet-open 100 0.99 0.68
+metaworld-hammer 100 0.95 0.52
+metaworld-handle-press-side 100 0.99 0.83
+metaworld-handle-press 100 0.99 0.83
+metaworld-handle-pull-side 100 0.48 0.0
+metaworld-handle-pull 100 0.48 0.0
+metaworld-lever-pull 100 0.19 0.03
+metaworld-peg-insert-side 100 0.7 0.15
+metaworld-peg-unplug-side 100 0.31 0.02
+metaworld-pick-out-of-hole 100 0.01 0.0
+metaworld-pick-place-wall 100 0.99 0.01
+metaworld-pick-place 100 0.99 0.01
+metaworld-plate-slide-back-side 100 1.0 0.02
+metaworld-plate-slide-back 100 1.0 0.02
+metaworld-plate-slide-side 100 0.99 0.19
+metaworld-plate-slide 100 1.0 0.02
+metaworld-push-back 100 0.84 0.01
+metaworld-push-wall 100 0.81 0.01
+metaworld-push 100 0.84 0.01
+metaworld-reach-wall 100 0.99 1.03
+metaworld-reach 100 0.99 1.03
+metaworld-shelf-place 100 0.96 0.0
+metaworld-soccer 100 0.61 0.21
+metaworld-stick-pull 100 0.88 0.04
+metaworld-stick-push 100 0.75 0.02
+metaworld-sweep-into 100 0.91 0.16
+metaworld-sweep 100 0.91 0.16
+metaworld-window-close 100 0.9 0.1
+metaworld-window-open 100 0.97 0.14
+AggregateMean 0.82 0.281
+Table3:ValuesinFigure15.Eachvalueisanaverageacross100rolloutsofdifferentseeds.
+25
+PublishedasaconferencepaperatICLR2025
+Env Numdemos REGENT JAT/Gato
+mujoco-ant 100 0.17 0.12
+mujoco-doublependulum 100 0.02 0.01
+mujoco-humanoid 100 0.02 0.02
+mujoco-pendulum 100 0.06 0.03
+mujoco-pusher 100 0.9 0.95
+mujoco-reacher 100 0.9 0.91
+mujoco-standup 100 0.26 0.2
+mujoco-swimmer 100 0.82 0.97
+mujoco-walker 100 0.05 0.16
+AggregateMean 0.356 0.374
+Table4:ValuesinFigure16.Eachvalueisanaverageacross100rolloutsofdifferentseeds.
+Env Numdemos REGENT JAT/Gato
+atari-amidar 5 0.96 0.02
+atari-assault 5 0.02 0.02
+atari-asterix 5 0.13 0.03
+atari-asteroids 5 0.07 0.0
+atari-atlantis 5 0.18 0.03
+atari-bankheist 5 0.46 0.18
+atari-battlezone 5 0.47 0.01
+atari-beamrider 5 0.04 0.0
+atari-berzerk 5 0.14 0.0
+atari-bowling 5 1.0 1.0
+atari-boxing 5 0.22 0.38
+atari-breakout 5 0.15 0.0
+atari-centipede 5 0.35 0.07
+atari-choppercommand 5 0.02 0.0
+atari-crazyclimber 5 0.19 0.14
+atari-defender 5 0.1 0.01
+atari-demonattack 5 0.0 0.0
+atari-doubledunk 5 0.54 0.28
+atari-enduro 5 0.0 0.0
+atari-fishingderby 5 0.62 0.1
+atari-freeway 5 0.82 0.6
+atari-frostbite 5 0.44 0.01
+atari-gopher 5 0.66 0.01
+atari-gravitar 5 0.03 0.06
+atari-hero 5 1.0 0.17
+atari-icehockey 5 0.21 0.1
+atari-jamesbond 5 0.01 0.0
+atari-kangaroo 5 0.0 0.0
+atari-krull 5 0.5 0.41
+atari-kungfumaster 5 0.0 0.02
+atari-montezumarevenge 5 0.0 0.0
+atari-namethisgame 5 0.61 0.03
+atari-phoenix 5 0.07 0.0
+atari-pitfall 5 0.97 1.01
+atari-privateeye 5 0.0 0.79
+atari-qbert 5 0.57 0.01
+atari-riverraid 5 0.19 0.04
+atari-roadrunner 5 0.03 0.02
+atari-robotank 5 0.23 0.04
+atari-seaquest 5 0.48 0.11
+atari-skiing 5 0.0 0.0
+atari-solaris 5 0.0 0.0
+atari-surround 5 0.36 0.03
+atari-tennis 5 0.15 0.01
+atari-timepilot 5 0.04 0.0
+atari-tutankham 5 0.16 0.02
+atari-upndown 5 0.13 0.01
+atari-venture 5 1.0 1.0
+atari-videopinball 5 0.0 0.01
+atari-wizardofwor 5 0.76 0.01
+atari-yarsrevenge 5 0.01 0.01
+atari-zaxxon 5 0.14 0.01
+AggregateMean 0.293 0.131
+Table5:ValuesinFigure17.Eachvalueisanaverageacross15rolloutsofdifferentseeds.
+26
+PublishedasaconferencepaperatICLR2025
+Env Numdemos REGENT JAT/Gato
+babyai-action-obj-door 20 0.39 0.57
+babyai-blocked-unlock-pickup 20 0.45 0.97
+babyai-boss-level-no-unlock 20 0.49 0.1
+babyai-boss-level 20 0.49 0.1
+babyai-find-obj-s5 20 0.61 0.92
+babyai-go-to-door 20 0.49 0.89
+babyai-go-to-imp-unlock 20 0.21 0.03
+babyai-go-to-local 20 0.66 0.46
+babyai-go-to-obj-door 20 0.14 0.76
+babyai-go-to-obj 20 0.14 0.76
+babyai-go-to-red-ball-grey 20 0.68 0.76
+babyai-go-to-red-ball-no-dists 20 0.95 0.98
+babyai-go-to-red-ball 20 0.68 0.76
+babyai-go-to-red-blue-ball 20 0.71 0.71
+babyai-go-to-seq 20 0.46 0.46
+babyai-go-to 20 0.49 0.89
+babyai-key-corridor 20 0.07 0.47
+babyai-mini-boss-level 20 0.61 0.28
+babyai-move-two-across-s8n9 20 0.0 0.0
+babyai-one-room-s8 20 0.96 0.97
+babyai-open-door 20 0.58 0.92
+babyai-open-doors-order-n4 20 0.54 0.33
+babyai-open-red-door 20 0.99 0.99
+babyai-open-two-doors 20 0.37 0.37
+babyai-open 20 0.58 0.92
+babyai-pickup-above 20 0.44 0.86
+babyai-pickup-dist 20 0.66 0.4
+babyai-pickup-loc 20 0.42 0.38
+babyai-pickup 20 0.44 0.86
+babyai-put-next-local 20 0.12 0.0
+babyai-put-next 20 0.12 0.0
+babyai-synth-loc 20 0.5 0.3
+babyai-synth-seq 20 0.59 0.07
+babyai-synth 20 0.5 0.3
+babyai-unblock-pickup 20 0.25 0.23
+babyai-unlock-local 20 0.93 0.99
+babyai-unlock-pickup 20 0.81 0.96
+babyai-unlock-to-unlock 20 0.35 0.79
+babyai-unlock 20 0.93 0.99
+AggregateMean 0.508 0.577
+Table6:ValuesinFigure18.Eachvalueisanaverageacross100rolloutsofdifferentseeds.
+27
+PublishedasaconferencepaperatICLR2025
+D ADDITIONAL PROCGEN RESULTS
+Figure19:Normalizedreturnsinunseenlevelsinall12ProcGentrainingenvironmentsagainstthenumberofdemonstrationtrajectoriesthe
+agentcanretrievefrom.Eachvalueisanaverageacross10levelswith5rolloutseachwithpsticky=0.1.SeeTable8forallvalues.
+Env stickyprob numdemos (epoch,endbatch) REGENT R&P MTT[37]
+ninja p=0.2 n=2 (0,11612) 7.13±0.09 5.67
+n=4 (0,11612) 7.53±0.34 5.5 4.1±0.35
+n=8 (0,11612) 6.8±0.85 6.4
+n=12 (0,11612) 7.6±0.28 6.33
+n=16 (0,11612) 7.8±0.28 7.4
+n=20 (0,11612) 8.07±0.19 7.6
+climber p=0.2 n=2 (0,11612) 4.65±0.25 3.17
+n=4 (0,11612) 6.01±0.52 3.95 1.85±0.41
+n=8 (0,11612) 5.89±0.44 3.12
+n=12 (0,11612) 7.02±0.13 5.64
+n=16 (0,11612) 6.2±0.43 3.77
+n=20 (0,11612) 6.13±0.72 5.41
+plunder p=0.2 n=2 (0,11612) 10.48±0.43 8.46
+n=4 (0,11612) 12.33±0.48 8.3 2.5±0.2
+n=8 (0,11612) 12.23±0.66 8.2
+n=12 (0,11612) 13.51±0.22 9.36
+n=16 (0,11612) 13.75±0.2 9.84
+n=20 (0,11612) 14.13±0.26 10.8
+jumper p=0.2 n=2 (0,11612) 4.53±0.25 3.75
+n=4 (0,11612) 5.4±0.57 4.0 4.65±0.28
+n=8 (0,11612) 5.6±0.71 4.25
+n=12 (0,11612) 6.47±1.06 5.25
+n=16 (0,11612) 6.47±0.47 6.0
+n=20 (0,11612) 6.4±0.33 5.5
+Table7:ValuesinFigure5beforenormalization.WetrainedthreeREGENTgeneralistagentsforthreetrainingseeds.Weevaluatedeachofthe
+threeagents’performance,aswellastheR&Pagent,across10levelswith5rolloutsandpsticky=0.2ineachunseenProcGenenvironment.
+Wecomputedthefinalaverageoverbothtrainingseedsandevaluationlevels/rolloutsandthefinalstandarddeviationovertrainingseeds.The
+valuesforMTTarethebestscoresreportedin[37].
+28
+PublishedasaconferencepaperatICLR2025
+Env stickyprob numdemos (epoch,endbatch) REGENT R&P REGENT(IDseed)
+bigfish p=0.1 n=2 (0,11612) 11.32 6.75
+n=4 (0,11612) 14.32 11.85
+n=8 (0,11612) 18.82 14.7
+n=12 (0,11612) 20.66 14.02
+n=16 (0,11612) 21.32 14.43
+n=20 (0,11612) 22.74 13.28 25.7
+bossfight p=0.1 n=2 (0,11612) 3.76 1.45
+n=4 (0,11612) 5.52 3.38
+n=8 (0,11612) 5.24 3.67
+n=12 (0,11612) 5.12 3.17
+n=16 (0,11612) 4.32 3.51
+n=20 (0,11612) 4.44 4.1 5.6
+caveflyer p=0.1 n=2 (0,11612) 7.44 2.74
+n=4 (0,11612) 7.34 2.98
+n=8 (0,11612) 7.0 3.29
+n=12 (0,11612) 6.96 3.27
+n=16 (0,11612) 6.72 3.31
+n=20 (0,11612) 7.08 4.04 7.68
+chaser p=0.1 n=2 (0,11612) 1.15 1.01
+n=4 (0,11612) 1.51 1.51
+n=8 (0,11612) 1.46 1.47
+n=12 (0,11612) 1.61 1.77
+n=16 (0,11612) 1.47 1.53
+n=20 (0,11612) 1.79 1.73 2.4
+coinrun p=0.1 n=2 (0,11612) 7.8 6.2
+n=4 (0,11612) 7.2 5.9
+n=8 (0,11612) 7.0 6.4
+n=12 (0,11612) 6.8 6.2
+n=16 (0,11612) 7.2 6.6
+n=20 (0,11612) 8.0 5.8 8.2
+dodgeball p=0.1 n=2 (0,11612) 3.36 1.93
+n=4 (0,11612) 3.44 1.8
+n=8 (0,11612) 4.04 2.17
+n=12 (0,11612) 3.72 2.07
+n=16 (0,11612) 3.64 2.33
+n=20 (0,11612) 3.56 2.4 7.12
+fruitbot p=0.1 n=2 (0,11612) 3.18 0.98
+n=4 (0,11612) 7.48 1.6
+n=8 (0,11612) 11.02 3.67
+n=12 (0,11612) 13.02 4.38
+n=16 (0,11612) 15.04 7.45
+n=20 (0,11612) 15.62 4.67 16.36
+heist p=0.1 n=2 (0,11612) 4.6 3.8
+n=4 (0,11612) 5.0 3.7
+n=8 (0,11612) 5.2 4.9
+n=12 (0,11612) 5.4 3.4
+n=16 (0,11612) 6.0 5.1
+n=20 (0,11612) 5.4 4.6 7.2
+leaper p=0.1 n=2 (0,11612) 6.4 3.33
+n=4 (0,11612) 7.4 5.83
+n=8 (0,11612) 7.6 7.17
+n=12 (0,11612) 8.2 7.5
+n=16 (0,11612) 9.0 7.83
+n=20 (0,11612) 9.2 6.17 9.2
+maze p=0.1 n=2 (0,11612) 5.6 5.0
+n=4 (0,11612) 4.8 3.1
+n=8 (0,11612) 5.8 4.9
+n=12 (0,11612) 6.0 4.6
+n=16 (0,11612) 6.0 4.5
+n=20 (0,11612) 6.0 4.5 8.4
+miner p=0.1 n=2 (0,11612) 2.88 2.14
+n=4 (0,11612) 4.72 3.12
+n=8 (0,11612) 3.68 2.96
+n=12 (0,11612) 4.54 3.09
+n=16 (0,11612) 4.38 3.45
+n=20 (0,11612) 3.76 3.12 6.58
+starpilot p=0.1 n=2 (0,11612) 12.52 10.28
+n=4 (0,11612) 11.94 11.33
+n=8 (0,11612) 12.82 10.93
+n=12 (0,11612) 14.9 10.8
+n=16 (0,11612) 15.34 10.49
+n=20 (0,11612) 11.8 10.08 16.1
+Table8:ValuesinFigures6and19beforenormalization.Eachvalueisanaverageacross10levelswith5rolloutseach.
+29
+PublishedasaconferencepaperatICLR2025
+E ADDITIONAL RELATED WORK
+Inadditiontoourrelatedworksection,wediscussotherrelevantpaperswherearetrievalbiashas
+beenrecognizedasausefulcomponenthere[61,57,59,23,25,39].
+RAEA[61]performsbehaviorcloningineachnewenvironmentwithaccesstoa“policymemory
+bank”andfocusesonimprovingperformanceinatrainingtask. InRAEA’sappendix,theauthors
+demonstrateveryinitialsignsofgeneralizationtonewtasksonlyaftertrainingonafewdemonstra-
+tionsfromthenewtasks. REGENTontheotherhandpretrainsageneralistpolicythatcangeneralize
+withoutanyfinetuningtocompletelynewenvironmentswithdifferentobservations,dynamics,and
+rewards. Re-ViLM[57]trainsaretrieval-augmentedimagecaptioningmodel,whichwhiledemon-
+stratingtheusefulnessofaretrievalbiasbeyondroboticsandgame-playingtasks,isnotapplicableto
+oursettings.
+Expel[59]andRAP[23]buildLLMagentsforhigh-levelplanningontopoffrozenLLMs. Although
+off-the-shelfLLMsarenotyethelpfulwithlow-levelfine-grainedcontinuouscontrol,thesemethods
+couldbekeyinhigh-levelsemantictext-basedactionspaces.
+GLAs[25]andRADT[39]arerecentin-contextreinforcementlearning(RL)methods. Webriefly
+discussedearlierin-contextRLmethodsinourrelatedworksection. GLAsattempttogeneralizeto
+newmujocoembodimentsviain-contextRLbutonlyshowminorimprovementsoverrandomagents.
+RADTemphasizesthattheyareunabletogeneralizeviain-contextRLtounseenprocgen,metaworld,
+orDMControlenvironments. REGENT,ontheotherhand,isanin-contextimitationlearningmethod
+thatgeneralizestounseenmetaworld,atari,andprocgenenvironmentsviaretrievalaugmentation
+(from a retrieval buffer of a few expert demonstrations) and in-context learning. REGENT also
+struggleswithgeneralizationtonewmujocoembodimentslikeGLAs.
+30

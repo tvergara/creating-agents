@@ -1,0 +1,1189 @@
+UnderreviewasaconferencepaperatICLR2025
+000 CTNET: A CNN-TRANSFORMER HYBRID NETWORK
+001
+002 FOR 6D OBJECT POSE ESTIMATION
+003
+004
+Anonymousauthors
+005
+Paperunderdouble-blindreview
+006
+007
+008
+009 ABSTRACT
+010
+011 Recent advances in 6D pose estimation primarily rely on CNNs, but they strug-
+012 gletograsplong-rangedependenciesandtheglobalcontext,whichareessential
+013 forpreciseposedetermination. Althoughdeeperorexpandednetworksarecom-
+014 monlyusedtotacklethis,theyleadtosignificantcomputationalburdenswithout
+fullyaddressingtheseconstraints. Toovercomethesechallenges,wepresentCT-
+015
+Net, a hybrid network that fuses the strengths of CNN and Transformer, aiming
+016
+for accurate 6D pose estimation from a solitary RGB-D image. CTNet employs
+017
+Transformer to capture elusive long-range dependencies and the global context,
+018
+whilelightweightCNNsadeptlyextractdetailedlocalfeatures. Thiscomplemen-
+019
+tary approach offers a comprehensive feature representation, eliminating the ne-
+020 cessity for excessively deep networks. To further bolster the CNNs’ efficiency,
+021 we introduce the Hierarchical Feature Extractor (HFE), which enhances the C2f
+022 and ELAN modules for optimal feature extraction. Additionally, we integrate
+023 a CNN-based PointNet module, designed to extract vital spatial data from the
+024 pointcloud. TheTransformerelementcapturesglobalcontextualinsights,which
+025 arethenseamlesslyintegratedwiththelocalandspatialfeaturesextractedbythe
+CNNs to ensure precise 6D pose estimation. Experiments demonstrate that CT-
+026
+NetachieveshighaccuracywithnearlyhalftheFLOPsofcurrentmethodsonthe
+027
+LineMOD and YCB-Video datasets. Furthermore, the HFE is highly adaptable,
+028
+showingexcellenttransferabilityacrossother6Dposeestimationarchitectures.
+029
+030
+031 1 INTRODUCTION
+032
+033
+6D pose estimation aims to determine the position and orientation of objects in 3D space (Xiang
+034
+et al., 2014), with significant applications in complex robotic manipulation tasks (Tremblay et al.,
+035 2018; Collet et al., 2011), immersive augmented reality experiences (Marchand et al., 2015), and
+036 advanced autonomous driving systems (Chen et al., 2017; Geiger et al., 2012). In order to fulfill
+037 thereal-timedemandsoftheseapplications,poseestimationoftenneedstobeprocessedonmobile
+038 computing platforms (Yang et al., 2024). However, the high computational complexity of current
+039 modelsposeschallengesforefficientperformancewithinsuchresource-constrainedenvironments.
+040
+Totackle6Dposeestimation,researchersexplorediverseapproaches,leveragingCNNsandPCNs
+041 (Zhang&Liu,2023;Yuanetal.,2018). MethodsrelyingontextureinformationfromRGBimages
+042 (Pengetal.,2019;Tekinetal.,2018b;Kehletal.,2017;Kendalletal.,2015)encounterdifficulties
+043 suchasdecreasedaccuracywithweaklytexturedimagesandsensitivitytolightingvariations.Alter-
+044 natively,methodsusinggeometricinformationfrompointclouds(Qietal.,2017a;b)strugglewith
+045 highredundancy, unstructureddata, andsensitivitytoocclusionandspatialdeformation. Toover-
+046 cometheseobstacles,methodsfusingRGBimageswithpointclouddata(Moetal.,2022;Heetal.,
+2021; 2020; Wang et al., 2019) exhibit robustness in handling complex occlusions and textureless
+047
+objects,surpassingearliertechniquesinaccuracyandadaptability.
+048
+049 Despite these advancements, existing methods still face two significant challenges. Firstly, tradi-
+050 tionalCNNsstruggletocapturelong-rangedependenciesandglobalcontext,whicharecrucialfor
+051 accurate6Dposeestimation,astheyrequireadeepunderstandingofthecomplexrelationshipsbe-
+052 tweenobjectparts. Secondly,densefusionnetworks(Huaetal.,2021;Heetal.,2020;Wangetal.,
+2019)encountercomputationalredundancyduringmultimodaldataprocessing,stemmingfromtheir
+053
+inherentintricacyinintegratingdiversemodalinformation.
+1
+UnderreviewasaconferencepaperatICLR2025
+054
+055
+056
+057
+058
+059
+060
+061
+062
+063
+064
+065
+066
+067
+068
+069
+070
+071
+072 Figure1: ComparisonofCNNs,Transformers,andtheircombination(ourmethod)byGrad-CAM
+073 (Selvarajuetal.,2017). TheGrad-CAMimagesfeaturebrightregionsthathighlighttheareascon-
+074 tributing most to the network’s predictions. The CNNs primarily focuses on local features, such
+075 as edges and textures, whereas the Transformers captures a wider global context. In contrast, our
+methodachievesamorebalancedextractionofbothlocaldetailsandglobalrelationships.
+076
+077
+078
+079
+To addressthese challenges, we proposetwo targetedapproaches: 1) We explorethe combination
+080
+of Transformer and CNN in a hybrid architecture. Transformer excel in capturing long-range de-
+081
+pendencies and overall context, whereas CNN specialize in extracting detailed local features. By
+082
+balancing their strengths in information capture, the network achieves comprehensive feature rep-
+083
+resentationandpreciseaccuracywithouttheneedfordeeplayers. 2)Wedesign2Dconvolutional
+084
+networks to concurrently process RGB images and point cloud data, enabling efficient integration
+085 oflocalfeatureswhileavoidingthecomplexitiesofdensefusionnetworks.
+086
+Basedontheseapproaches, weintroduceCTNet, ahybridnetworkdesignedtoestimate6Dposes
+087
+fromRGB-Ddata. ItsremarkableefficacyisapparentinFigure1. Wetransformthedepthimage
+088
+intoanXYZmapthatisalignedwiththecorrespondingRGBimage. AsshowninFigure2,thear-
+089
+chitectureofCTNetisasfollows: First,weenhancetheC2f(Jocheretal.,2023)andELAN(Wang
+090
+etal.,2023)modulestodeveloptheHierarchicalFeatureExtractor(HFE).Second,theselocalfea-
+091 turesareintegratedwiththeXYZmapandsubsequentlyinputintoaCNN-basedPointNet(Qietal.,
+092 2017a)module, whichencodesthespatialinformationpresentinthepointclouds. Then, aTrans-
+093 former is utilized to establish global dependencies, compensating for the long-range associations
+094 oftenmissedbyCNNs. Finally,weaggregatedifferentmorphologicalfeaturesforposeestimation.
+095 WeevaluateCTNetonLineMOD(Hinterstoisseretal.,2011)andYCB-Video(Xiangetal.,2017)
+096 datasets, which demonstrates its superiority by balancing between accuracy and inference speed.
+Ourmajorcontributionsareasfollows:
+097
+098
+099 • We propose CTNet, a hybrid network that integrates CNN and Transformer architectures
+100 for 6D pose estimation, effectively capturing comprehensive feature information without
+101 theneedforexcessivelydeepnetworkstructures.
+102
+103
+• We propose the Hierarchical Feature Extractor (HFE) for extracting local features from
+104
+RGB-Ddata,whichachievesbothlowcomputationalcostandexceptionalperformance.
+105
+106
+• Throughcomprehensiveexperiments,weconfirmtheeffectivenessofourmethod,exhibit-
+107
+ingstrongperformanceonthepubliclyaccessibleLineMODandYCB-Videodatasets.
+2
+UnderreviewasaconferencepaperatICLR2025
+108 2 RELATED WORK
+109
+110
+Pose Estimation Based on RGB-D Data. Previous methods (Hua et al., 2021; He et al., 2021;
+111 2020;Wangetal.,2019)utilizedensefusionnetworkstointegrateRGBandpointcloudfeatures,
+112 thereby exploiting both texture and geometry information in RGB-D data. However, dense fusion
+113 networksencountercomputationalredundancyduringmultimodaldataprocessing,stemmingfrom
+114 theirinherentintricacyinintegratingdiversemodalinformation. Anothermethod(Moetal.,2022)
+115 uses 2D convolutional kernels to extract RGB and point cloud features simultaneously, similar to
+116 our approach. However, it is limited in capturing long-range dependencies due to its exclusive
+relianceonCNNs. Incontrast,ourmethodsurpassestheselimitationswithaholisticstrategy. We
+117
+deviseaCNNmoduleforextractinglocalfeaturesandintegrateatransformermodulethatcaptures
+118
+globaldependencies. Byseamlesslymerginglocalandglobalfeatures, weenhancetheutilization
+119
+ofRGB-Ddata,ultimatelyboostingtheperformanceofposeestimation.
+120
+121
+Hybrid CNN-Transformer Architectures for 6D Pose Estimation. Vision transformers, origi-
+122
+nallydevelopedforNLP(Vaswanietal.,2017),nowfindwidespreaduseindiversecomputervision
+123
+tasks,suchasimageclassification(Dosovitskiyetal.,2020),objectdetection(Leeetal.,2022;Liu
+124 et al., 2021; Xu et al., 2021), and semantic segmentation (Xie et al., 2021), showing considerable
+125 potential. In our approach, we deviate from methods that rely solely on visual transformers (San-
+126 dler et al., 2018). Instead, we opt to leverage transformer for capturing long-range dependencies
+127 insequencesandintegratingthemintothefeatureinformationfor6Dposeestimation. Thisdiffers
+128 fromtraditionalbackbonenetworks,suchastransformer-onlyarchitectures(e.g.,PVT(Wangetal.,
+129 2021)andswintransformer(Liuetal.,2021))andthoseentirelybasedonCNNs(e.g.,ResNet(He
+et al., 2016)). Our hybrid network efficiently balances local and global feature extraction with a
+130
+lightweightnetwork,leadingtoamoreefficientnetworkdesign.
+131
+132
+133 3 METHODS
+134
+135 3.1 NETWORKARCHITECTURE
+136
+137 ThispaperaimstorecognizerigidobjectsanddeterminetheirrotationsR∈SO(3)andtranslations
+t∈R3withinthecameracoordinatesystem,utilizingaRGB-Dimage. Toachievethis,wedevelop
+138
+anetworkcalledCTNet,whichisillustratedinFigure2. RefertoAppendixAforinputpreparation
+139
+andpreprocessingdetails.
+140
+141
+142
+3.2 LOCALFEATUREEXTRACTION
+143
+Toboostefficiencyandminimizeparameters,wedeveloptheHierarchicalFeatureExtractor(HFE)
+144
+byenhancingboththeC2f(Jocheretal.,2023)andELAN(Wangetal.,2023)architectures. This
+145
+modulesubstitutesthetraditionalCNN-basedResNetemployedinearliermethodsforlocalfeature
+146 extraction. The network is organized into two primary segments for processing: initial feature
+147 extraction(comprisinglayers1and2)andadvancedfeatureextraction(comprisinglayers3and4).
+148
+149 InitialFeatureExtraction. TheinitialstageutilizesPConv(Chenetal.,2023)combinedwithan
+150 enhancedC2fmoduletoenableefficientfeatureextraction,asshowninFigure2. PConvselectively
+151 processeschannels,significantlyloweringmemoryusageandcomputationaloverhead. Thechannel
+152 ratior(c p :c)determinesthisload.Givenafeaturemapwithdimensionsh×wandakernelsizeofk,
+153 thecomputationalandmemoryaccessloadsareminimized,asillustratedinthefollowingequations:
+154 l =c2×h×w×k2, (1)
+1 p
+155
+l =c ×h×w+c2×k2 ≈c ×h×w. (2)
+156 2 p p p
+157
+Bysettingr to 1 ,PConvreducestheseloadstojust0.02%and1.56%ofthatrequiredbyregular
+158 64
+convolution,renderingthemnearlynegligible.
+159
+160 The C2f module improves feature representation by efficiently splitting, processing, and merging
+thefeaturemapbacktogether. ItemploysBottleneckstructuresthatreduceparameterswhilemain-
+161
+taininggradientflow,enablingthenetworktocapturediversefeaturescales. Whencombinedwith
+3
+UnderreviewasaconferencepaperatICLR2025
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+Figure2:CTNetOverview.First,RGB-XYZdataisproducedfromtheRGB-Dimagebycombining
+179
+color and depth information. The HFE processes the RGB-XYZ data, utilizing shallow layers for
+180
+initiallocalfeatureextractionanddeeplayersformorecomplexlocalfeatureextraction. Theoutput
+181
+fromthedeeplayers,alongwiththeXYZmap,isfedintoaPointNet-likemoduletoextractspatial
+182 featuresfromthepointcloud. Meanwhile,theRGB-XYZdataispassedthroughaPyramidVision
+183 Transformer(PVT)tocaptureglobalfeaturesthatcomplementthoseextractedbytheCNNs.Finally,
+184 aggregated features are formed by amalgamating the local, spatial, and global features, and these
+185 aresubsequentlyemployedfor6Dposeestimation. Theposethatexhibitsthemaximumconfidence
+186 scoreischosenasthefinalresult.
+187
+188
+189 PConv,thisapproachyieldstwosignificantadvantages:1)richerinputretentionfromPConv,boost-
+190 ingfeatureextractionefficiency; 2)reducedcomputationalcosts,enablingamorelightweightnet-
+workwithoutcompromisingaccuracy.
+191
+192 Building on the integration of C2f and PConv, we further enhance the Bottleneck structure. We
+193 introduce two layers: a Depthwise Separable Convolution (DSC) layer and a Channel Attention
+194 Mechanism(CAM)(Wooetal.,2018)layer. Bothlayersincorporatenormalizationandactivation
+195 functionstoenhancefeaturerepresentation. ThenumberofBottleneckstructuresisalsoincreased
+196 to further improve feature extraction. Assuming input and output channels of C in and C out , a fea-
+ture map size of h×w, and a kernel size of k×k, the computational loads for DSC and regular
+197
+convolution,denotedasl andl ,arecalculatedasfollows:
+198 3 4
+199 (cid:32) n (cid:33)
+(cid:88)
+200 l =C h×w×k2+n×h×w×C , (3)
+3 in i out
+201 i=1
+202 l =h×w×C ×C ×k2, (4)
+4 in out
+203
+204 wherek i isthesizeofthei-thconvolutionalkernel,andnisthenumberofkernels. Thecomputa-
+tionalloadratiobetweenDSCandregularconvolutionis:
+205
+206 l C (cid:0)(cid:80)n h×w×k2+n×h×w×C (cid:1) (cid:80)n k2 n
+207 3 = in i=1 i out = i=1 i + . (5)
+l h×w×C ×C ×k2 C ×k2 k2
+208 4 in out out
+209 With 64 input channels, 32 output channels, and a 3×3 kernel, the computational load of DSC is
+210 only 14.24% of that of a standard 3×3 convolution. The redesigned Bottleneck structure offers
+211 severalbenefits: 1)thecombinationofDSCandCAMprovidesalightweightyeteffectivestructure
+212 forstackingwithintheC2fmodule;2)inshallowlayers,wherefeaturemapshavehighresolution,
+213 theCAMamplifiesfeaturecorrelations,improvingearly-stagefeatureextraction;3)increasingthe
+214 number of Bottleneck structures enhances the network’s ability to capture features across various
+scales, thereby improving overall feature extraction. For a detailed overview of the C2f module
+215
+structureandtheimprovedBottleneckdesign,refertoAppendixB.
+4
+UnderreviewasaconferencepaperatICLR2025
+216 Advanced Feature Extraction. We optimize the original ELAN architecture into a lightweight
+217 variant,referredtoasL-ELAN.ELANfirstreducestheinputdatachannelsF toF viatheCBS
+in 2
+218 submoduleM (1×1convolution). ItthengatherslocalfeaturesusingfourCBSsubmodules(M
+2 3
+219 to M , each with 3×3 convolutions) and utilizes multiple shortcut connections to output multi-
+6
+220 scale information F 2 , F 3 , and F 4 . The ELAN module achieves strong performance by reducing
+221 parametersthroughchannelshrinkingandextractingrichfeaturesviaresidualconnections.
+222
+Indeeperlayers,wherechannelsdoubleandfeaturesbecomemoreabstract,wedesigntheL-ELAN
+223 tofurtherlightenthestructure. WeremovethesubmoduleM toreduceoverheadandreplacethe
+4
+224 M kernel from 1×1 to 3×3, increasing feature diversity by making F and F scales different.
+2 1 2
+225 F and F maintain their levels with two and four 3×3 convolutions. Finally, F , F , F , and F
+3 4 1 2 3 4
+226 areconcatenatedandfittedbyM 7 toproduceF out . Theseadjustmentspreservemulti-scalefeature
+227 integrationwhilereducingparameterswithoutperformanceloss. DetailsoftheELANandL-ELAN
+228 structuresareprovidedinAppendixB.
+229
+230 3.3 SPATIALFEATUREEXTRACTIONFORPOINTCLOUDS
+231
+Followingtheextractionoflocalfeatures,weutilizeaCNN-basedPointNetmodule,asreferenced
+232
+in (Qi et al., 2017a), to encode the spatial information inherent in the point cloud. This encoding
+233
+processinvolvestheuseof1×1convolutions,whicheffectivelycaptureboththelocalfeaturesand
+234
+thepointcoordinates.Toderivethespatialfeaturesofthepointcloud,wesubjecttheconvolveddata
+235
+tomaxpoolingandthenpadittomatchthesizeofthelocalfeatures,usingaveragepoolingasour
+236 paddingmethod.
+237
+In comparison, the method outlined in (Li et al., 2018b) relies on 2D convolutional networks to
+238
+extract features from XYZ maps of point clouds. However, this approach proves less effective
+239
+thanheterogeneousstructuremethods,asdocumentedin(Wangetal.,2019;Heetal.,2020). The
+240
+primaryreasonforthisunderperformanceliesinthelossofspatialinformationthatoccursduring
+241
+the2DconvolutionoperationsappliedtoXYZmaps,ashighlightedin(Moetal.,2022).
+242
+243
+3.4 GLOBALFEATUREEXTRACTION
+244
+245 To address the CNN network’s global perception limitations, we incorporate a Pyramid Vision
+246 Transformer (PVT) (Wang et al., 2021) to capture long-range dependencies, thereby enhancing
+247 globalfeatureextraction.
+248
+PVT employs a pyramid-like architecture, systematically reducing spatial resolution across four
+249
+stages to learn multi-level features. Each stage consists of a Spatial Reduction Attention (SRA)
+250 layerandaFeed-ForwardNetwork(FFN).TheSRAutilizesamulti-headself-attentionmechanism
+251 to effectively model long-distance dependencies while minimizing computational complexity by
+252 decreasingpixelcount.
+253 To process an input feature map F ∈ RHi×Wi×C at the ith stage with dimensions of height H
+i
+,
+254
+width W , and C channels), we first perform Layer Normalization (LN) (Ba et al., 2016). The
+i
+255 features are then rearranged into a flattened format, generating vector tokens X ∈ RN×C, where
+256 N =H ×W ,signifiesthetotalpixelcountofthefeaturemap. ThetokensX aremappedtotheir
+i i
+257 correspondingqueryQ,keyK,andvalueV ∈ RN×C vectorsusingtrainedlinearmappingsW ,
+Q
+258 W , and W ∈ RC×C. To optimize memory usage, the spatial extents of K and V are trimmed
+K V
+259 downbeforeapplyingself-attention,calculatedas:
+260
+(cid:18) QKT (cid:19)
+261 Attention(Q,K,V)=Softmax √ V, (6)
+262 C head
+263 where C denotesthechannel depthperattentionhead inSRA.Asstatedin Equation6, every
+head
+264 token in the entire input space F can interact with any other token, including itself. The global
+265 featureextractionbenefitsfromthedualself-attentionmechanisminPVT:1)Theself-attentionin
+266 each transformer layer expands the network’s receptive field to cover the entire image, enabling
+267 interactionbetweendistantpixelsandenhancinglong-rangedependencycapture;2)Byembedding
+268 bothdepthandRGBdataintoeachtoken,theself-attentionmechanismevaluatespixelsimilarities
+anddepthinformationtogether,allowingdepthdatatopropagateandcorrectpixelerrorsformore
+269
+accuratefeatureextraction.
+5
+UnderreviewasaconferencepaperatICLR2025
+270
+3.5 6DPOSEREGRESSION
+271
+272 Thelocalfeatures,spatialfeaturesofthepointcloud,andglobalfeaturesareconcatenatedtoform
+273 theaggregatedfeaturesF ={f i }N i=o ,f i ∈d.Followingthemethodin(Moetal.,2022),weestimate
+274 rotationR i ∈SO(3)andtranslationt i ∈R3usingtheaggregatedfeaturesf i andthecorresponding
+275 visible points p˙ i ∈P˙. Three 1x1 convolution heads (B T , B Q , B C ) are employed to regress the
+276 translationoffsets△t˙ i ∈R3,quaternions(q i ∈R4,∥q i ∥=1)andconfidencesc i ∈[0,1],asshown
+inFigure2. DetailedformulasandprocessesareprovidedinAppendixC.
+277
+278
+279 4 EXPERIMENTS
+280
+281
+4.1 IMPLEMENTATIONDETAILS
+282
+283 TheRGBimageandXYZmapareresizedto128×128.Dataset-specifictrainingprotocolsareused.
+284 ForLineMOD,thebatchsizeis8,itrunsfor100epochs,andthelearningraterangesfrom5×10−4
+285 to5×10−6. AsforYCB-Video, thebatchsizeis64, itgoesthrough30epochs, andthelearning
+286 raterangesfrom1.8×10−4to1.8×10−5. DetailsareprovidedinAppendixD.
+287
+288 4.2 DATASETS
+289
+290 LineMOD (Hinterstoisser et al., 2011) comprises 13 video sequences, each showcasing a unique
+low-textured object, serving as a benchmark for evaluating 6D object pose estimation methods
+291
+(Wangetal.,2019;Vidaletal.,2018;Sundermeyeretal.,2018;Tekinetal.,2018a;Lietal.,2018c;
+292
+Buch et al., 2017; Drost et al., 2010). Following segmentation practices outlined in the literature
+293
+(Wang et al., 2019; Peng et al., 2019; Xiang et al., 2017), we allocate 15% of the RGB-D images
+294
+for eachobject tothe training setand reservethe remainderfor testing, without incorporating any
+295
+additionalsyntheticdata.
+296 YCB-Video (Xiang et al., 2017) features 21 objects captured in 92 RGB-D videos, highlighting
+297 a diverse range of object shapes and textures under various occlusion conditions. Consistent with
+298 previous studies (He et al., 2020; Wang et al., 2019; Xiang et al., 2017), we utilize 80 videos for
+299 training and select 2,949 keyframes from the remaining 12 videos as our test set, augmenting our
+300 trainingdatawith80,000syntheticimagesprovidedby(Xiangetal.,2017).
+301
+302 4.3 METRICS
+303
+304 Inaccordancewithestablishedpractices(Heetal.,2021;Wangetal.,2019;Xiangetal.,2017),we
+employtheADDandADD-Smetricsforaccuracyevaluation,designatingADDfornon-symmetric
+305
+objectsandADD-Sforsymmetricones. FortheLineMODdataset, accuracyisassessedbasedon
+306
+an ADD(S) value of less than 10% of the model’s diameter, and we calculate the corresponding
+307
+percentageaccuracy. FortheYCB-Videodataset,weutilizetheareaunderthecurve(AUC)ofthe
+308
+ADD-S and ADD(S) metrics, varying the distance threshold from 0 cm to 10 cm to generate the
+309
+accuracy-threshold curve, from which we then compute the area between this curve and the XY
+310 axes(Moetal.,2022). AdditionaldetailsregardingtheADDandADD-Smetricsareprovidedin
+311 AppendixE.
+312
+313
+4.4 COMPARISONWITHSOTAMETHODS
+314
+315 In this section, we comprehensively evaluate the performance of CTNet against state-of-the-art
+316 (SOTA) methods on the LineMOD and YCB-Video datasets. To provide a thorough analysis, we
+317 presentbothquantitativeandqualitativeresults.
+318
+319 ResultsonLineMOD. Thevisualizationresultsofasamplecomparisonbetweenourmethodand
+320 ES6DontheLineMODdatasetareshowninFigure3. TheLineMODdatasetestimatestheposeof
+321 objectscenteredonamarkedboard,wherecoloreddotsrepresentsampledpointsofthe3Dmodel
+322 of the object. After pose estimation, the sampled points are projected onto the image; the closer
+theprojectedpointsmatchthetargetobject,themoreaccuratetheposeestimation. Thehighlighted
+323
+areas indicate objects with significant differences between the results of the two algorithms. The
+6
+UnderreviewasaconferencepaperatICLR2025
+324
+325
+326
+327
+328
+329
+330
+331
+(a)ES6D
+332
+333
+334
+335
+336
+337
+338
+339
+(b)Ours
+340
+341 Figure3: ThevisualizationresultsonLineMOD.
+342
+343 Table1: ComparisonofADD(S)accuracyonLineMODdataset.
+344
+345 Object DenseFusion PVN3D ES6D Ours
+346
+ape 92.3 95.5 91.4 95.2
+347
+benchvise 93.2 94.5 96.1 99.0
+348
+camera 94.4 94.2 98.0 99.0
+349
+can 93.1 94.3 96.0 100.0
+350 cat 96.5 95.5 99.0 100.0
+351 driller 87.0 93.3 97.0 100.0
+352 duck 92.3 94.6 96.2 95.3
+353 eggbox 99.8 100.0 99.1 100.0
+354 glue 100.0 100.0 100.0 100.0
+355 holepuncher 92.1 95.1 99.1 100.0
+iron 97.0 92.1 99.0 97.9
+356
+lamp 95.3 93.7 99.0 99.0
+357
+phone 92.8 93.6 97.1 99.0
+358
+359 MEAN 94.3 95.1 97.5 98.8
+360
+361
+362 visualizationresultsdemonstratethatourmethodgeneratesdenserandmoreaccuratesampledpoints
+363 comparedwithES6D.
+364
+TheperformancecomparisonofdifferentmethodsontheLineMODdatasetispresentedinTable1.
+365
+DenseFusion(Wangetal.,2019),PVN3D(Heetal.,2020),andES6D(Moetal.,2022)arethecur-
+366 rentmainstreamposeestimationnetworks. Asshown,ouralgorithmachieves100%ornear100%
+367 accuracy for most objects, with an average accuracy improvement of 4.5%, 3.7%, and 1.3% over
+368 DenseFusion(iterative),PVN3D,andES6D,respectively,acrossthe13objects. Notably,DenseFu-
+369 sion (iterative) includes an iterative refinement post-processing step, while our algorithm does not
+370 useanypost-processingorrefinement.Thisdemonstratestheeffectivenessofthehybridarchitecture
+371 ofCNNandTransformerinCTNet.
+372
+373 Results on YCB-Video The visualization results of a sample comparison between our method
+374 and ES6D on the YCB-Video dataset are depicted in Figure 4. The YCB-Video dataset estimates
+375 theposeofallobjectsinthescene,wherecoloreddotsrepresentthesampledpointsofeachobject.
+376 Thehighlightedareasindicateobjectswithsignificantdifferencesbetweentheresultsofthetwoal-
+gorithms.Thevisualizationresultsdemonstratethatourmethodgeneratesdenserandmoreaccurate
+377
+sampledpointscomparedwithES6D.
+7
+UnderreviewasaconferencepaperatICLR2025
+378
+379
+380
+381
+382
+383
+384
+385
+(a)ES6D
+386
+387
+388
+389
+390
+391
+392
+393
+(b)Ours
+394
+395 Figure4: ThevisualizationresultsonYCB-Video.
+396
+397 Table2: ComparisonofADD-SandADD(S)accuracyonYCB-Videodataset.
+398
+399 DenseFusion PVN3D ES6D Ours
+Object
+400 ADD-S ADD(S) ADD-S ADD(S) ADD-S ADD(S) ADD-S ADD(S)
+401 master chef can 95.9 77.2 96.2 79.2 96.1 70.6 97.2 76.9
+402 cracker box 95.4 94.2 95.9 94.7 95.3 94.8 96.2 95.9
+403 sugar box 96.7 96.5 97.4 96.4 98.2 98.2 98.2 98.2
+tomato soup can 97.5 97.4 96.6 88.5 95.0 90.2 96.7 92.4
+404
+mustard bottle 97.9 94.3 97.4 96.3 97.9 97.9 98.2 97.8
+405 tuna fish can 95.7 76.3 96.2 88.6 96.2 92.6 96.5 93.0
+406 pudding box 97.6 96.5 96.7 95.2 97.9 97.9 97.7 97.7
+407 gelatin box 99.0 97.6 97.8 96.2 98.6 98.6 98.9 98.9
+potted meat can 90.1 83.7 93.6 88.3 92.4 86.0 93.5 87.0
+408
+banana 98.0 85.2 96.7 93.6 96.7 95.8 97.3 96.4
+409 pitcher base 97.1 96.3 97.1 96.5 97.6 97.6 97.3 97.3
+410 bleach cleanser 96.9 92.7 96.1 93.1 96.0 91.3 97.1 94.1
+411 bowl 91.4 91.4 88.7 88.7 95.5 95.5 95.9 95.9
+mug 96.2 91.0 97.5 95.5 96.5 94.0 96.7 94.5
+412
+power drill 95.8 95.0 96.8 95.3 97.2 97.1 97.3 97.2
+413 wood block 92.6 92.6 91.5 91.5 93.7 93.7 94.1 94.1
+414 scissors 86.6 64.4 96.9 93.5 90.3 79.2 90.1 78.2
+415 large marker 97.7 91.9 96.7 91.8 97.8 92.4 97.9 92.9
+large clamp 89.5 89.5 94.4 94.4 96.2 96.2 96.5 96.5
+416
+extra large clamp 93.3 93.3 91.1 91.1 95.2 95.2 95.2 95.2
+417 foam brick 92.6 92.6 96.8 96.8 95.9 95.9 97.0 97.0
+418
+MEAN 94.9 90.0 95.4 92.6 96.0 92.9 96.5 93.7
+419
+420
+421
+Table 2 displays the ADD-S and ADD(S) AUC values, as well as their averages, for 21 objects
+422
+(with symmetrical objects highlighted in bold) in the YCB-Video dataset across various methods.
+423 TheexperimentaloutcomesdemonstratethatouralgorithmoutperformsDenseFusion,PVN3D,and
+424 ES6D by an average accuracy improvement of 3.7%, 1.1%, and 0.8% on ADD(S), and by 1.6%,
+425 1.1%, and 0.5% on ADD-S, respectively. Given the challenging occluded scenarios in the YCB-
+426 Video dataset, these results indicate that CTNet exhibits strong robustness in handling such cases.
+427 TheaccuracyresultsforbothdatasetsarepresentedaslinegraphsinAppendixF.
+428
+429 4.5 ABLATIONSTUDIES
+430
+We further analyze the contribution of individual modules in CTNet by comparing six different
+431
+network configurations, as detailed in Table 3. The results show that the complete architecture,
+8
+UnderreviewasaconferencepaperatICLR2025
+432 Table 3: Ablation studies of CTNet. IFEL: initial feature extraction layers, including PConv and
+433 C2fmodules;AFEL:advancedfeatureextractionlayers,featuringtheL-ELANmodule;SIE:spatial
+434 informationencoding;PVT:pyramidvisiontransformer.
+435
+436 IFEL AFEL LineMOD YCB Time FLOPs Parameters
+Method SIE PVT
+PConv C2f L-ELAN ADD(S) ADD(S) (ms) (G) (M)
+437
+438 Unifiedlike(Lietal.,2018a) 96.0 91.5 20.3 7.39 17.85
+CTNet 1 ✓ 97.5 92.9 15.7 6.5 14.9
+439
+CTNet 2 ✓ ✓ 97.6 93.0 14.3 6.3 14.9
+440 CTNet 3 ✓ ✓ ✓ 97.9 93.1 11.3 2.3 5.7
+441 CTNet 4 ✓ ✓ ✓ ✓ 98.3 93.4 11.1 2.7 6.1
+442 CTNet 5 ✓ ✓ ✓ ✓ ✓ 98.8 93.7 12.5 3.6 6.4
+443
+444
+445
+446 CTNet 5, which integrates IFEL, AFEL, SIE, and PVT, achieves the best overall performance. In
+contrast, the Unified like (Li et al., 2018a) underperforms in both accuracy and inference speed.
+447
+Notably, CTNet 2, which introduces PConv layers, demonstrates a substantial improvement over
+448
+CTNet 1, highlighting the positive interaction between PConv and C2f. Furthermore, CTNet 3,
+449
+which adds the AFEL, significantly reduces FLOPs while maintaining accuracy, highlighting the
+450
+efficiencyoftheL-ELANdesign. AlthoughtheinclusionofSIEinCTNet 4andPVTinCTNet 5
+451
+slightly increases FLOPs compared to CTNet 3, the gains in accuracy outweigh these additions.
+452 Thisconfirmsthecomplementarynatureoflocal,spatial,andglobalfeatureextraction,reinforcing
+453 therobustnessofCTNet’shybridarchitecture.
+454
+455
+456 Table4: PracticaleffectsofapplyingtheHFEtoother6Dposeestimationframes.
+457
+458 Method ADD-S ADD(S) Time(ms) FLOPs(G) Parameters(M)
+459
+DenseFusion(origin) 94.8 90.1 39.9 11.8 17.2
+460
+DenseFusion(HFE) 96.4 93.1 14.1 2.7 5.4
+461
+PVN3D(origin) 95.4 92.6 199.6 190.8 31.1
+462
+PVN3D(HFE) 96.5 92.8 82.6 90.5 9.0
+463
+ES6D(origin) 97.5 92.9 15.8 6.7 15.1
+464
+ES6D(HFE) 98.5 93.2 12.6 3.7 7.0
+465
+466
+467
+468 ToshowcasetheadaptabilityofHFEwithinCTNet, wesubstitutedtheCNNcomponentsofthree
+prominentalgorithmswithournovelHFEandcarriedoutexperimentsontheYCB-Videodataset.
+469
+Theoutcomes,detailedinTable4,revealthatincorporatingHFEboostsinferencespeedby64.7%,
+470
+58.6%, and 20.3% for DenseFusion, PVN3D, and ES6D, respectively. Furthermore, FLOPs are
+471
+decreased by 77.1%, 52.6%, and 44.8%, and parameter counts are reduced by 68.6%, 71.1%, and
+472
+53.6%fortheserespectiveframeworks. Notably, accuracyalsoimprovesacrossallthreesystems.
+473
+ThesefindingshighlightHFE’sexceptionaltransferabilityandefficiency,establishingitasaversa-
+474 tileandeffectivecomponentfor6Dposeestimationnetworks.
+475
+476
+477
+5 CONCLUSIONS
+478
+479
+480 ThispaperintroducesCTNet, ahybridarchitecturecombiningCNNandTransformercomponents
+481 for6Dposeestimation. TheCNN-basedHierarchicalFeatureExtractor(HFE)optimizeslocalfea-
+482 tureextraction,andthePyramidVisionTransformer(PVT)capturesabroaderglobalcontext.Along
+483 with CNN-based PointNet spatial encoding, this design achieves superior pose estimation perfor-
+484 mance. ExperimentsontheLineMODandYCB-VideodatasetsshowthatCTNetbalancesaccuracy
+and efficiency, surpassing current models. Furthermore, HFE enhances other architectures when
+485
+integrated,provingitsrobustnessandadaptability.
+9
+UnderreviewasaconferencepaperatICLR2025
+486 REFERENCES
+487
+Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization. arXiv preprint
+488
+arXiv:1607.06450,2016.
+489
+490 AndersGlentBuch,LilitaKiforenko,andDirkKraft. Rotationalsubgroupvotingandposecluster-
+491 ingforrobust3dobjectrecognition. In2017IEEEInternationalConferenceonComputerVision
+492 (ICCV),pp.4137–4145.IEEE,2017.
+493
+JierunChen,Shiu-hongKao,HaoHe,WeipengZhuo,SongWen,Chul-HoLee,andS-HGaryChan.
+494
+Run,don’twalk:chasinghigherflopsforfasterneuralnetworks.InProceedingsoftheIEEE/CVF
+495
+conferenceoncomputervisionandpatternrecognition,pp.12021–12031,2023.
+496
+497 XiaozhiChen, HuiminMa, JiWan, BoLi, andTianXia. Multi-view3dobjectdetectionnetwork
+forautonomousdriving. InProceedingsoftheIEEEconferenceonComputerVisionandPattern
+498
+Recognition,pp.1907–1915,2017.
+499
+500 AlvaroCollet,ManuelMartinez,andSiddharthaSSrinivasa. Themopedframework: Objectrecog-
+501 nition and pose estimation for manipulation. The international journal of robotics research, 30
+502 (10):1284–1306,2011.
+503
+AlexeyDosovitskiy,LucasBeyer,AlexanderKolesnikov,DirkWeissenborn,XiaohuaZhai,Thomas
+504
+Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, et al. An
+505
+image is worth 16x16 words: Transformers for image recognition at scale. arXiv preprint
+506 arXiv:2010.11929,2020.
+507
+BertramDrost,MarkusUlrich,NassirNavab,andSlobodanIlic. Modelglobally,matchlocally:Ef-
+508
+ficientandrobust3dobjectrecognition. In2010IEEEcomputersocietyconferenceoncomputer
+509
+visionandpatternrecognition,pp.998–1005.Ieee,2010.
+510
+511 AndreasGeiger,PhilipLenz,andRaquelUrtasun. Arewereadyforautonomousdriving? thekitti
+512 vision benchmark suite. In 2012 IEEE conference on computer vision and pattern recognition,
+513 pp.3354–3361.IEEE,2012.
+514
+KaimingHe,XiangyuZhang,ShaoqingRen,andJianSun. Deepresiduallearningforimagerecog-
+515
+nition. In Proceedings of the IEEE conference on computer vision and pattern recognition, pp.
+516 770–778,2016.
+517
+518 Yisheng He, Wei Sun, Haibin Huang, Jianran Liu, Haoqiang Fan, and Jian Sun. Pvn3d: A
+deep point-wise 3d keypoints voting network for 6dof pose estimation. In Proceedings of the
+519
+IEEE/CVFconferenceoncomputervisionandpatternrecognition,pp.11632–11641,2020.
+520
+521 Yisheng He, Haibin Huang, Haoqiang Fan, Qifeng Chen, and Jian Sun. Ffb6d: A full flow bidi-
+522 rectionalfusionnetworkfor6dposeestimation. InProceedingsoftheIEEE/CVFconferenceon
+523 computervisionandpatternrecognition,pp.3003–3013,2021.
+524
+StefanHinterstoisser,StefanHolzer,CedricCagniart,SlobodanIlic,KurtKonolige,NassirNavab,
+525
+andVincentLepetit. Multimodaltemplatesforreal-timedetectionoftexture-lessobjectsinheav-
+526 ily cluttered scenes. In 2011 international conference on computer vision, pp. 858–865. IEEE,
+527 2011.
+528
+WeitongHua,ZhongxiangZhou,JunWu,HuangHuang,YueWang,andRongXiong. Rede: End-
+529
+to-endobject6dposerobustestimationusingdifferentiableoutlierselimination. IEEERobotics
+530
+andAutomationLetters,6(2):2886–2893,2021.
+531
+532 GlennJocher,AyushChaurasia,andJingQiu.Ultralyticsyolov8,2023.URLhttps://github.
+533 com/ultralytics/ultralytics.
+534
+WadimKehl,FabianManhardt,FedericoTombari,SlobodanIlic,andNassirNavab. Ssd-6d: Mak-
+535
+ingrgb-based3ddetectionand6dposeestimationgreatagain. InProceedingsoftheIEEEinter-
+536
+nationalconferenceoncomputervision,pp.1521–1529,2017.
+537
+538 Alex Kendall, Matthew Grimes, and Roberto Cipolla. Posenet: A convolutional network for real-
+time6-dofcamerarelocalization. InProceedingsoftheIEEEinternationalconferenceoncom-
+539
+putervision,pp.2938–2946,2015.
+10
+UnderreviewasaconferencepaperatICLR2025
+540
+Youngwan Lee, Jonghee Kim, Jeffrey Willette, and Sung Ju Hwang. Mpvit: Multi-path vision
+541 transformerfordenseprediction.InProceedingsoftheIEEE/CVFconferenceoncomputervision
+542 andpatternrecognition,pp.7287–7296,2022.
+543
+ChiLi,JinBai,andGregoryDHager. Aunifiedframeworkformulti-viewmulti-classobjectpose
+544
+estimation. InProceedingsoftheeuropeanconferenceoncomputervision(eccv),pp.254–269,
+545
+2018a.
+546
+547 ChiLi,JinBai,andGregoryDHager. Aunifiedframeworkformulti-viewmulti-classobjectpose
+548 estimation. InProceedingsoftheeuropeanconferenceoncomputervision(eccv),pp.254–269,
+549 2018b.
+550
+YiLi,GuWang,XiangyangJi,YuXiang,andDieterFox. Deepim: Deepiterativematchingfor6d
+551
+pose estimation. In Proceedings of the European Conference on Computer Vision (ECCV), pp.
+552
+683–698,2018c.
+553
+554 ZeLiu,YutongLin,YueCao,HanHu,YixuanWei,ZhengZhang,StephenLin,andBainingGuo.
+555 Swintransformer: Hierarchicalvisiontransformerusingshiftedwindows. InProceedingsofthe
+556 IEEE/CVFinternationalconferenceoncomputervision,pp.10012–10022,2021.
+557
+EricMarchand,HideakiUchiyama,andFabienSpindler. Poseestimationforaugmentedreality: a
+558
+hands-onsurvey. IEEEtransactionsonvisualizationandcomputergraphics,22(12):2633–2651,
+559
+2015.
+560
+561 NingkaiMo, WanshuiGan, NaotoYokoya, andShifengChen. Es6d: Acomputationefficientand
+562 symmetry-aware6dposeregressionframework. InProceedingsoftheIEEE/CVFconferenceon
+computervisionandpatternrecognition,pp.6718–6727,2022.
+563
+564
+Sida Peng, Yuan Liu, Qixing Huang, Xiaowei Zhou, and Hujun Bao. Pvnet: Pixel-wise voting
+565 network for 6dof pose estimation. In Proceedings of the IEEE/CVF conference on computer
+566 visionandpatternrecognition,pp.4561–4570,2019.
+567
+CharlesRQi,HaoSu,KaichunMo,andLeonidasJGuibas. Pointnet: Deeplearningonpointsets
+568
+for3dclassificationandsegmentation.InProceedingsoftheIEEEconferenceoncomputervision
+569
+andpatternrecognition,pp.652–660,2017a.
+570
+571 CharlesRuizhongtaiQi,LiYi,HaoSu,andLeonidasJGuibas. Pointnet++: Deephierarchicalfea-
+572 turelearningonpointsetsinametricspace. Advancesinneuralinformationprocessingsystems,
+573 30,2017b.
+574
+MarkSandler,AndrewHoward,MenglongZhu,AndreyZhmoginov,andLiang-ChiehChen. Mo-
+575
+bilenetv2: Inverted residuals and linear bottlenecks. In Proceedings of the IEEE conference on
+576
+computervisionandpatternrecognition,pp.4510–4520,2018.
+577
+578 SoheilSarabandiandFedericoThomas. Asurveyonthecomputationofquaternionsfromrotation
+579 matrices. Journalofmechanismsandrobotics,11(2):021006,2019.
+580
+RamprasaathRSelvaraju,MichaelCogswell,AbhishekDas,RamakrishnaVedantam,DeviParikh,
+581
+andDhruvBatra. Grad-cam: Visualexplanationsfromdeepnetworksviagradient-basedlocal-
+582
+ization. InProceedingsoftheIEEEinternationalconferenceoncomputervision, pp.618–626,
+583
+2017.
+584
+585 Martin Sundermeyer, Zoltan-Csaba Marton, Maximilian Durner, Manuel Brucker, and Rudolph
+586 Triebel. Implicit 3d orientation learning for 6d object detection from rgb images. In Proceed-
+587
+ingsoftheeuropeanconferenceoncomputervision(ECCV),pp.699–715,2018.
+588
+Bugra Tekin, Sudipta N Sinha, and Pascal Fua. Real-time seamless single shot 6d object pose
+589
+prediction. InProceedingsoftheIEEEconferenceoncomputervisionandpatternrecognition,
+590 pp.292–301,2018a.
+591
+592 Bugra Tekin, Sudipta N Sinha, and Pascal Fua. Real-time seamless single shot 6d object pose
+prediction. InProceedingsoftheIEEEconferenceoncomputervisionandpatternrecognition,
+593
+pp.292–301,2018b.
+11
+UnderreviewasaconferencepaperatICLR2025
+594
+Jonathan Tremblay, Thang To, Balakumar Sundaralingam, Yu Xiang, Dieter Fox, and Stan Birch-
+595 field. Deep object pose estimation for semantic robotic grasping of household objects. arXiv
+596 preprintarXiv:1809.10790,2018.
+597
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez,
+598
+Łukasz Kaiser, and Illia Polosukhin. Attention is all you need. Advances in neural informa-
+599
+tionprocessingsystems,30,2017.
+600
+601 JoelVidal, Chyi-YeuLin, andRobertMart´ı. 6dposeestimationusinganimprovedmethodbased
+602 onpointpairfeatures. In20184thinternationalconferenceoncontrol,automationandrobotics
+603 (iccar),pp.405–409.IEEE,2018.
+604
+Chen Wang, Danfei Xu, Yuke Zhu, Roberto Mart´ın-Mart´ın, Cewu Lu, Li Fei-Fei, and Silvio
+605
+Savarese. Densefusion: 6d object pose estimation by iterative dense fusion. In Proceedings
+606
+oftheIEEE/CVFconferenceoncomputervisionandpatternrecognition,pp.3343–3352,2019.
+607
+608 Chien-Yao Wang, Alexey Bochkovskiy, and Hong-Yuan Mark Liao. Yolov7: Trainable bag-of-
+609 freebiessetsnewstate-of-the-artforreal-timeobjectdetectors. InProceedingsoftheIEEE/CVF
+610
+conferenceoncomputervisionandpatternrecognition,pp.7464–7475,2023.
+611
+WenhaiWang,EnzeXie,XiangLi,Deng-PingFan,KaitaoSong,DingLiang,TongLu,PingLuo,
+612
+andLingShao. Pyramidvisiontransformer: Aversatilebackbonefordensepredictionwithout
+613 convolutions. InProceedingsoftheIEEE/CVFinternationalconferenceoncomputervision,pp.
+614 568–578,2021.
+615
+Sanghyun Woo, Jongchan Park, Joon-Young Lee, and In So Kweon. Cbam: Convolutional block
+616
+attention module. In Proceedings of the European conference on computer vision (ECCV), pp.
+617
+3–19,2018.
+618
+619 Yu Xiang, Roozbeh Mottaghi, and Silvio Savarese. Beyond pascal: A benchmark for 3d object
+620 detectioninthewild. InIEEEwinterconferenceonapplicationsofcomputervision,pp.75–82.
+621 IEEE,2014.
+622
+YuXiang,TannerSchmidt,VenkatramanNarayanan,andDieterFox.Posecnn:Aconvolutionalneu-
+623
+ralnetworkfor6dobjectposeestimationinclutteredscenes. arXivpreprintarXiv:1711.00199,
+624
+2017.
+625
+626 Enze Xie, Wenhai Wang, Zhiding Yu, Anima Anandkumar, Jose M Alvarez, and Ping Luo. Seg-
+627 former: Simple and efficient design for semantic segmentation with transformers. Advances in
+628
+neuralinformationprocessingsystems,34:12077–12090,2021.
+629
+WeijianXu,YifanXu,TylerChang,andZhuowenTu. Co-scaleconv-attentionalimagetransform-
+630 ers. In Proceedings of the IEEE/CVF international conference on computer vision, pp. 9981–
+631 9990,2021.
+632
+633 Xingjian Yang, Zhitao Yu, and Ashis G Banerjee. Sparse color-code net: Real-time rgb-based 6d
+objectposeestimationonedgedevices. arXivpreprintarXiv:2406.02977,2024.
+634
+635
+WentaoYuan,TejasKhot,DavidHeld,ChristophMertz,andMartialHebert. Pcn:Pointcompletion
+636 network. In2018internationalconferenceon3Dvision(3DV),pp.728–737.IEEE,2018.
+637
+638 QinZhangandXiushanLiu. Robotindoornavigationpointcloudmapgenerationalgorithmbased
+onvisualsensing. JournalofIntelligentSystems,32(1):20220258,2023.
+639
+640
+641
+642
+643
+644
+645
+646
+647
+12
+UnderreviewasaconferencepaperatICLR2025
+648 A INPUT PREPARATION AND PREPROCESSING
+649
+650
+Followingthemethodin(Moetal.,2022),weusethesegmentationnetworkfromPoseCNN(Xiang
+651
+etal.,2017)toobtainmasksandboundingboxesfortargetobjects. EachmaskandRGB-Dimage
+652 patch,croppedbytheboundingboxes,isusedasinput. TThemaskeddepthpixelsarenormalized,
+653 convertedintoanXYZmap,andconcatenatedwiththeRGBpatchtoforma6-channelinput.
+654
+655
+656 B DETAILED STRUCTURES OF KEY MODULES
+657
+658 Inthissection,weintroducethespecificdesignsofC2f,itsBottleneckstructures,aswellasELAN
+659 andL-ELANmodules.
+660
+661 C2fModule TheC2fmodule(Jocheretal.,2023)isacomponentforextractingfeaturesatmul-
+662 tiple levels. As depicted in Figure 5, the initial phase involves passing the feature map through a
+663 CBSsubmodule,whichintegratesConv,BatchNorm,andSiLUelements. Thissubmodulecontains
+664 a 1 × 1 convolutional kernel, a normalization layer, and an activation layer. Following this, the
+665 moduleincorporatestheCSPdesign,dividingthefeaturemapintotwopaths. Onepathisdirectly
+forwardedtotheConcatmodule,whiletheotherundergoesBottleneckprocessingbeforemerging
+666
+withthefirstpathintheConcatmodule.
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687
+688
+Figure5: TheframeworkofC2fmodule.
+689
+690
+691
+692 Bottleneck Structure within C2f The Bottleneck structure is composed of two convolutional
+693 layerslinkedbyaresidualconnection. AsshowninFigure6, thisstructureinitiallydecreasesthe
+694 channelcountandsubsequentlyreinstatesit. Inourimplementation,wereplacethetraditionalcon-
+695 volutionallayersinthecompressionandexpansionphaseswithdepthwiseseparableconvolutional
+layersandchannelattentionmechanismlayers,respectively.
+696
+697
+698 ELANandL-ELANModules ThedifferencesbetweenELAN(Wangetal.,2023)andL-ELAN
+699 areclearlyvisibleinFigure7. Specifically,inL-ELAN,wereplacethe1×1convolutionalkernel
+700 in component M 3 with 3 × 3 kernel, enhancing its ability to capture spatial context. Addition-
+ally,weremovecomponentM entirely,simplifyingthearchitectureandimprovingcomputational
+701 4
+efficiency. ThesemodificationsenhancethepracticalityoftheL-ELANmodule.
+13
+UnderreviewasaconferencepaperatICLR2025
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718
+719
+720
+721
+722
+723
+Figure6: ImprovedBottleneckstructureintheC2fmodule.
+724
+725
+726
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736
+737
+738
+739
+740
+741
+742
+743
+744
+745
+746 (a)ELAN (b)L-ELAN
+747
+748 Figure7: TheframeworksofELANandL-ELANmodule.
+749
+750
+C 6D POSE REGRESSION
+751
+752
+Followingthemethodin(Moetal.,2022),weestimaterotationR ∈SO(3)andtranslationt ∈R3
+753 i i
+754 using the aggregated features f i and the corresponding visible points p˙ i ∈P˙. Three 1x1 con-
+volution heads (B , B , B ) are used to regress the translation offsets △t˙ ∈ R3, quaternions
+755 T Q C i
+(q ∈R4,∥q ∥=1)andconfidencesc ∈[0,1],asshowninFigure2.
+i i i
+14
+UnderreviewasaconferencepaperatICLR2025
+756 3D translation regression. Treating the origin of the normalized object coordinate system as a
+757 virtualkeypoint,thetranslationt canbeobtainedbycalculatingtheoffset△t˙ betweenthevisible
+i i
+758 pointsp˙ andtheorigin. Thisequationcanbeexpressedas:
+i
+759 t˙ =B (f ), (7)
+i T i
+760 (p˙ +△t˙)
+761 t i = i γ i +p c , (8)
+762
+heretheoffsetdistributionofthevisiblepointsp˙ iswithinaspecificsphere.
+i
+763
+764
+3Drotationregression. Weusequaternionsastherotationrepresentationfollowing(Xiangetal.,
+765 2017;Wangetal.,2019). Therotationmatrixweobtainisasfollows:
+766
+R =Quaternion matrix(Norm(B (f )), (9)
+i Q} i
+767 q
+768 Norm(q i )= ∥q i ∥ , (10)
+i
+769
+whereQuaternion matrix(·)representsthefunctionthatconvertsquaternionsintoarotationma-
+770
+trix(Sarabandi&Thomas,2019).
+771
+772 Confidenceregression. Todeterminetheoptimalregressionresults,wesetupaconfidenceesti-
+773 mationheadtoevaluatetheconfidencec ofeachfeature. Theequationisasfollows:
+i
+774 c =Sigmoid(B (f )), (11)
+i C i
+775
+whereweusedtheself-supervisedmethodmentionedin(Wangetal.,2019)totraintheconfidence
+776 branchB .
+C
+777
+778
+D IMPLEMENTATION DETAIL
+779
+780
+TheRGBimageandXYZmapareuniformlyresizedto128×128. Thetrainingprotocolvariesby
+781
+dataset. For the LineMOD dataset, we use a batch size of 8 and train the model for 100 epochs,
+782 startingwithaninitiallearningrateof5×10−4,whichdecaysto5×10−6usingacosineannealing
+783 schedulefromthe90thepochonward. Alinearwarm-upisappliedduringthefirstepoch,gradually
+784 increasingthelearningratefrom5×10−6to5×10−4.FortheYCB-Videodataset,wesetthebatch
+785 sizeto64andtrainthemodelfor30epochs,beginningwithaninitiallearningrateof1.8×10−4,
+786 which decays using a cosine annealing schedule and is maintained at 1.8 × 10−5 from the 20th
+787 epochuntiltheendoftraining. Alinearwarm-upphaseincreasesthelearningratefrom1.8×10−6
+788 to 1.8 × 10−4 during the first epoch. These training strategies ensure efficient convergence and
+optimalperformanceofthemodelacrossdifferentdatasets.
+789
+790
+791 E METRICS
+792
+793 Wefollowtheevaluationmethodsusedin(Xiangetal.,2017;Wangetal.,2019;Heetal.,2021),
+794 employingtheaveragedistancemetricsADDandADD-Stoassesstheaccuracyofthealgorithm.
+795 The ADD metric is calculated by computing the average distance between the transformed object
+verticesusingthepredictedpose[R,T]andthegroundtruthpose[R∗,T∗]:
+796
+797 ADD = 1 (cid:88) ||(Rx+T)−(R∗x+T∗)||, (12)
+798 m
+x∈O
+799 where x is a point in the object point cloud O and m is the number of points in the point cloud.
+800 However, the ADD metric can only be applied to non-symmetric objects with unique true values.
+801 For symmetric objects, which have multiple equivalent true poses, we use the ADD-S, which is
+invarianttosymmetry. TheADD-Scalculationisasfollows:
+802
+803 ADD−S = 1 (cid:88) min ||(Rx +T)−(R∗x +T∗)||. (13)
+804 m
+x1∈O
+x2∈O 1 2
+805 To comprehensively evaluate the performance of our algorithm, we consider an ADD(S) less than
+806 10% of the model diameter as the criterion for a correct estimation on the LineMOD dataset and
+807 calculatethepercentageaccuracy. FortheYCB-Videodataset,weemploytheAUCoftheADD-S
+808 andADD(S)metrics,adjustingthedistancethresholdfrom0cmto10cmtogeneratetheaccuracy-
+thresholdcurveandsubsequentlycalculatetheareabetweenthiscurveandtheXYaxes(Moetal.,
+809
+2022).
+15
+UnderreviewasaconferencepaperatICLR2025
+810 F ACCURACY RESULTS ON BOTH DATASETS
+811
+812 Figure8comparestheperformanceofCTNetwiththreeotheradvancedmethodsontheLineMOD
+813 and YCB-Video datasets. In this comparison, the X-axis represents the object categories in the
+814 datasets,alongwiththeaverageperformanceacrossallcategories(MEAN).TheY-axissignifiesthe
+815 ADD(s)metric,whichquantifiestheaccuracyofobjectrecognition. Evidently,theredline,which
+816 representsCTNet,demonstratessuperiorrecognitionaccuracyformostobjectsincomparisontothe
+817 otherthreemethods. Thisnotabledifferenceunderscorestheprecisionadvantagethatourapproach
+offers.
+818
+819
+820
+821
+822
+823
+824
+825
+826
+827
+828
+829
+830
+831
+832
+833
+834
+835
+836
+837
+838
+839
+840
+841
+Figure8: PerformancecomparisononLineMODandYCB-Videodatasets.
+842
+843
+844
+845
+846
+847
+848
+849
+850
+851
+852
+853
+854
+855
+856
+857
+858
+859
+860
+861
+862
+863
+16

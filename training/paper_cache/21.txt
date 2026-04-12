@@ -1,0 +1,2055 @@
+\pdfminorversion=7
+
+
+\documentclass{article}
+
+\usepackage{iclr2024_conference,times}
+
+
+\usepackage{amsmath,amsfonts,bm}
+
+\newcommand{\figleft}{{\em (Left)}}
+\newcommand{\figcenter}{{\em (Center)}}
+\newcommand{\figright}{{\em (Right)}}
+\newcommand{\figtop}{{\em (Top)}}
+\newcommand{\figbottom}{{\em (Bottom)}}
+\newcommand{\captiona}{{\em (a)}}
+\newcommand{\captionb}{{\em (b)}}
+\newcommand{\captionc}{{\em (c)}}
+\newcommand{\captiond}{{\em (d)}}
+
+\newcommand{\newterm}[1]{{\bf #1}}
+
+
+\def\figref#1{figure~\ref{#1}}
+\def\Figref#1{Figure~\ref{#1}}
+\def\twofigref#1#2{figures \ref{#1} and \ref{#2}}
+\def\quadfigref#1#2#3#4{figures \ref{#1}, \ref{#2}, \ref{#3} and \ref{#4}}
+\def\secref#1{section~\ref{#1}}
+\def\Secref#1{Section~\ref{#1}}
+\def\twosecrefs#1#2{sections \ref{#1} and \ref{#2}}
+\def\secrefs#1#2#3{sections \ref{#1}, \ref{#2} and \ref{#3}}
+\def\eqref#1{equation~\ref{#1}}
+\def\Eqref#1{Equation~\ref{#1}}
+\def\plaineqref#1{\ref{#1}}
+\def\chapref#1{chapter~\ref{#1}}
+\def\Chapref#1{Chapter~\ref{#1}}
+\def\rangechapref#1#2{chapters\ref{#1}--\ref{#2}}
+\def\algref#1{algorithm~\ref{#1}}
+\def\Algref#1{Algorithm~\ref{#1}}
+\def\twoalgref#1#2{algorithms \ref{#1} and \ref{#2}}
+\def\Twoalgref#1#2{Algorithms \ref{#1} and \ref{#2}}
+\def\partref#1{part~\ref{#1}}
+\def\Partref#1{Part~\ref{#1}}
+\def\twopartref#1#2{parts \ref{#1} and \ref{#2}}
+
+\def\ceil#1{\lceil #1 \rceil}
+\def\floor#1{\lfloor #1 \rfloor}
+\def\1{\bm{1}}
+\newcommand{\train}{\mathcal{D}}
+\newcommand{\valid}{\mathcal{D_{\mathrm{valid}}}}
+\newcommand{\test}{\mathcal{D_{\mathrm{test}}}}
+
+\def\eps{{\epsilon}}
+
+
+\def\reta{{\textnormal{$\eta$}}}
+\def\ra{{\textnormal{a}}}
+\def\rb{{\textnormal{b}}}
+\def\rc{{\textnormal{c}}}
+\def\rd{{\textnormal{d}}}
+\def\re{{\textnormal{e}}}
+\def\rf{{\textnormal{f}}}
+\def\rg{{\textnormal{g}}}
+\def\rh{{\textnormal{h}}}
+\def\ri{{\textnormal{i}}}
+\def\rj{{\textnormal{j}}}
+\def\rk{{\textnormal{k}}}
+\def\rl{{\textnormal{l}}}
+\def\rn{{\textnormal{n}}}
+\def\ro{{\textnormal{o}}}
+\def\rp{{\textnormal{p}}}
+\def\rq{{\textnormal{q}}}
+\def\rr{{\textnormal{r}}}
+\def\rs{{\textnormal{s}}}
+\def\rt{{\textnormal{t}}}
+\def\ru{{\textnormal{u}}}
+\def\rv{{\textnormal{v}}}
+\def\rw{{\textnormal{w}}}
+\def\rx{{\textnormal{x}}}
+\def\ry{{\textnormal{y}}}
+\def\rz{{\textnormal{z}}}
+
+\def\rvepsilon{{\mathbf{\epsilon}}}
+\def\rvtheta{{\mathbf{\theta}}}
+\def\rva{{\mathbf{a}}}
+\def\rvb{{\mathbf{b}}}
+\def\rvc{{\mathbf{c}}}
+\def\rvd{{\mathbf{d}}}
+\def\rve{{\mathbf{e}}}
+\def\rvf{{\mathbf{f}}}
+\def\rvg{{\mathbf{g}}}
+\def\rvh{{\mathbf{h}}}
+\def\rvu{{\mathbf{i}}}
+\def\rvj{{\mathbf{j}}}
+\def\rvk{{\mathbf{k}}}
+\def\rvl{{\mathbf{l}}}
+\def\rvm{{\mathbf{m}}}
+\def\rvn{{\mathbf{n}}}
+\def\rvo{{\mathbf{o}}}
+\def\rvp{{\mathbf{p}}}
+\def\rvq{{\mathbf{q}}}
+\def\rvr{{\mathbf{r}}}
+\def\rvs{{\mathbf{s}}}
+\def\rvt{{\mathbf{t}}}
+\def\rvu{{\mathbf{u}}}
+\def\rvv{{\mathbf{v}}}
+\def\rvw{{\mathbf{w}}}
+\def\rvx{{\mathbf{x}}}
+\def\rvy{{\mathbf{y}}}
+\def\rvz{{\mathbf{z}}}
+
+\def\erva{{\textnormal{a}}}
+\def\ervb{{\textnormal{b}}}
+\def\ervc{{\textnormal{c}}}
+\def\ervd{{\textnormal{d}}}
+\def\erve{{\textnormal{e}}}
+\def\ervf{{\textnormal{f}}}
+\def\ervg{{\textnormal{g}}}
+\def\ervh{{\textnormal{h}}}
+\def\ervi{{\textnormal{i}}}
+\def\ervj{{\textnormal{j}}}
+\def\ervk{{\textnormal{k}}}
+\def\ervl{{\textnormal{l}}}
+\def\ervm{{\textnormal{m}}}
+\def\ervn{{\textnormal{n}}}
+\def\ervo{{\textnormal{o}}}
+\def\ervp{{\textnormal{p}}}
+\def\ervq{{\textnormal{q}}}
+\def\ervr{{\textnormal{r}}}
+\def\ervs{{\textnormal{s}}}
+\def\ervt{{\textnormal{t}}}
+\def\ervu{{\textnormal{u}}}
+\def\ervv{{\textnormal{v}}}
+\def\ervw{{\textnormal{w}}}
+\def\ervx{{\textnormal{x}}}
+\def\ervy{{\textnormal{y}}}
+\def\ervz{{\textnormal{z}}}
+
+\def\rmA{{\mathbf{A}}}
+\def\rmB{{\mathbf{B}}}
+\def\rmC{{\mathbf{C}}}
+\def\rmD{{\mathbf{D}}}
+\def\rmE{{\mathbf{E}}}
+\def\rmF{{\mathbf{F}}}
+\def\rmG{{\mathbf{G}}}
+\def\rmH{{\mathbf{H}}}
+\def\rmI{{\mathbf{I}}}
+\def\rmJ{{\mathbf{J}}}
+\def\rmK{{\mathbf{K}}}
+\def\rmL{{\mathbf{L}}}
+\def\rmM{{\mathbf{M}}}
+\def\rmN{{\mathbf{N}}}
+\def\rmO{{\mathbf{O}}}
+\def\rmP{{\mathbf{P}}}
+\def\rmQ{{\mathbf{Q}}}
+\def\rmR{{\mathbf{R}}}
+\def\rmS{{\mathbf{S}}}
+\def\rmT{{\mathbf{T}}}
+\def\rmU{{\mathbf{U}}}
+\def\rmV{{\mathbf{V}}}
+\def\rmW{{\mathbf{W}}}
+\def\rmX{{\mathbf{X}}}
+\def\rmY{{\mathbf{Y}}}
+\def\rmZ{{\mathbf{Z}}}
+
+\def\ermA{{\textnormal{A}}}
+\def\ermB{{\textnormal{B}}}
+\def\ermC{{\textnormal{C}}}
+\def\ermD{{\textnormal{D}}}
+\def\ermE{{\textnormal{E}}}
+\def\ermF{{\textnormal{F}}}
+\def\ermG{{\textnormal{G}}}
+\def\ermH{{\textnormal{H}}}
+\def\ermI{{\textnormal{I}}}
+\def\ermJ{{\textnormal{J}}}
+\def\ermK{{\textnormal{K}}}
+\def\ermL{{\textnormal{L}}}
+\def\ermM{{\textnormal{M}}}
+\def\ermN{{\textnormal{N}}}
+\def\ermO{{\textnormal{O}}}
+\def\ermP{{\textnormal{P}}}
+\def\ermQ{{\textnormal{Q}}}
+\def\ermR{{\textnormal{R}}}
+\def\ermS{{\textnormal{S}}}
+\def\ermT{{\textnormal{T}}}
+\def\ermU{{\textnormal{U}}}
+\def\ermV{{\textnormal{V}}}
+\def\ermW{{\textnormal{W}}}
+\def\ermX{{\textnormal{X}}}
+\def\ermY{{\textnormal{Y}}}
+\def\ermZ{{\textnormal{Z}}}
+
+\def\vzero{{\bm{0}}}
+\def\vone{{\bm{1}}}
+\def\vmu{{\bm{\mu}}}
+\def\vtheta{{\bm{\theta}}}
+\def\va{{\bm{a}}}
+\def\vb{{\bm{b}}}
+\def\vc{{\bm{c}}}
+\def\vd{{\bm{d}}}
+\def\ve{{\bm{e}}}
+\def\vf{{\bm{f}}}
+\def\vg{{\bm{g}}}
+\def\vh{{\bm{h}}}
+\def\vi{{\bm{i}}}
+\def\vj{{\bm{j}}}
+\def\vk{{\bm{k}}}
+\def\vl{{\bm{l}}}
+\def\vm{{\bm{m}}}
+\def\vn{{\bm{n}}}
+\def\vo{{\bm{o}}}
+\def\vp{{\bm{p}}}
+\def\vq{{\bm{q}}}
+\def\vr{{\bm{r}}}
+\def\vs{{\bm{s}}}
+\def\vt{{\bm{t}}}
+\def\vu{{\bm{u}}}
+\def\vv{{\bm{v}}}
+\def\vw{{\bm{w}}}
+\def\vx{{\bm{x}}}
+\def\vy{{\bm{y}}}
+\def\vz{{\bm{z}}}
+
+\def\evalpha{{\alpha}}
+\def\evbeta{{\beta}}
+\def\evepsilon{{\epsilon}}
+\def\evlambda{{\lambda}}
+\def\evomega{{\omega}}
+\def\evmu{{\mu}}
+\def\evpsi{{\psi}}
+\def\evsigma{{\sigma}}
+\def\evtheta{{\theta}}
+\def\eva{{a}}
+\def\evb{{b}}
+\def\evc{{c}}
+\def\evd{{d}}
+\def\eve{{e}}
+\def\evf{{f}}
+\def\evg{{g}}
+\def\evh{{h}}
+\def\evi{{i}}
+\def\evj{{j}}
+\def\evk{{k}}
+\def\evl{{l}}
+\def\evm{{m}}
+\def\evn{{n}}
+\def\evo{{o}}
+\def\evp{{p}}
+\def\evq{{q}}
+\def\evr{{r}}
+\def\evs{{s}}
+\def\evt{{t}}
+\def\evu{{u}}
+\def\evv{{v}}
+\def\evw{{w}}
+\def\evx{{x}}
+\def\evy{{y}}
+\def\evz{{z}}
+
+\def\mA{{\bm{A}}}
+\def\mB{{\bm{B}}}
+\def\mC{{\bm{C}}}
+\def\mD{{\bm{D}}}
+\def\mE{{\bm{E}}}
+\def\mF{{\bm{F}}}
+\def\mG{{\bm{G}}}
+\def\mH{{\bm{H}}}
+\def\mI{{\bm{I}}}
+\def\mJ{{\bm{J}}}
+\def\mK{{\bm{K}}}
+\def\mL{{\bm{L}}}
+\def\mM{{\bm{M}}}
+\def\mN{{\bm{N}}}
+\def\mO{{\bm{O}}}
+\def\mP{{\bm{P}}}
+\def\mQ{{\bm{Q}}}
+\def\mR{{\bm{R}}}
+\def\mS{{\bm{S}}}
+\def\mT{{\bm{T}}}
+\def\mU{{\bm{U}}}
+\def\mV{{\bm{V}}}
+\def\mW{{\bm{W}}}
+\def\mX{{\bm{X}}}
+\def\mY{{\bm{Y}}}
+\def\mZ{{\bm{Z}}}
+\def\mBeta{{\bm{\beta}}}
+\def\mPhi{{\bm{\Phi}}}
+\def\mLambda{{\bm{\Lambda}}}
+\def\mSigma{{\bm{\Sigma}}}
+
+\DeclareMathAlphabet{\mathsfit}{\encodingdefault}{\sfdefault}{m}{sl}
+\SetMathAlphabet{\mathsfit}{bold}{\encodingdefault}{\sfdefault}{bx}{n}
+\newcommand{\tens}[1]{\bm{\mathsfit{#1}}}
+\def\tA{{\tens{A}}}
+\def\tB{{\tens{B}}}
+\def\tC{{\tens{C}}}
+\def\tD{{\tens{D}}}
+\def\tE{{\tens{E}}}
+\def\tF{{\tens{F}}}
+\def\tG{{\tens{G}}}
+\def\tH{{\tens{H}}}
+\def\tI{{\tens{I}}}
+\def\tJ{{\tens{J}}}
+\def\tK{{\tens{K}}}
+\def\tL{{\tens{L}}}
+\def\tM{{\tens{M}}}
+\def\tN{{\tens{N}}}
+\def\tO{{\tens{O}}}
+\def\tP{{\tens{P}}}
+\def\tQ{{\tens{Q}}}
+\def\tR{{\tens{R}}}
+\def\tS{{\tens{S}}}
+\def\tT{{\tens{T}}}
+\def\tU{{\tens{U}}}
+\def\tV{{\tens{V}}}
+\def\tW{{\tens{W}}}
+\def\tX{{\tens{X}}}
+\def\tY{{\tens{Y}}}
+\def\tZ{{\tens{Z}}}
+
+
+\def\gA{{\mathcal{A}}}
+\def\gB{{\mathcal{B}}}
+\def\gC{{\mathcal{C}}}
+\def\gD{{\mathcal{D}}}
+\def\gE{{\mathcal{E}}}
+\def\gF{{\mathcal{F}}}
+\def\gG{{\mathcal{G}}}
+\def\gH{{\mathcal{H}}}
+\def\gI{{\mathcal{I}}}
+\def\gJ{{\mathcal{J}}}
+\def\gK{{\mathcal{K}}}
+\def\gL{{\mathcal{L}}}
+\def\gM{{\mathcal{M}}}
+\def\gN{{\mathcal{N}}}
+\def\gO{{\mathcal{O}}}
+\def\gP{{\mathcal{P}}}
+\def\gQ{{\mathcal{Q}}}
+\def\gR{{\mathcal{R}}}
+\def\gS{{\mathcal{S}}}
+\def\gT{{\mathcal{T}}}
+\def\gU{{\mathcal{U}}}
+\def\gV{{\mathcal{V}}}
+\def\gW{{\mathcal{W}}}
+\def\gX{{\mathcal{X}}}
+\def\gY{{\mathcal{Y}}}
+\def\gZ{{\mathcal{Z}}}
+
+\def\sA{{\mathbb{A}}}
+\def\sB{{\mathbb{B}}}
+\def\sC{{\mathbb{C}}}
+\def\sD{{\mathbb{D}}}
+\def\sF{{\mathbb{F}}}
+\def\sG{{\mathbb{G}}}
+\def\sH{{\mathbb{H}}}
+\def\sI{{\mathbb{I}}}
+\def\sJ{{\mathbb{J}}}
+\def\sK{{\mathbb{K}}}
+\def\sL{{\mathbb{L}}}
+\def\sM{{\mathbb{M}}}
+\def\sN{{\mathbb{N}}}
+\def\sO{{\mathbb{O}}}
+\def\sP{{\mathbb{P}}}
+\def\sQ{{\mathbb{Q}}}
+\def\sR{{\mathbb{R}}}
+\def\sS{{\mathbb{S}}}
+\def\sT{{\mathbb{T}}}
+\def\sU{{\mathbb{U}}}
+\def\sV{{\mathbb{V}}}
+\def\sW{{\mathbb{W}}}
+\def\sX{{\mathbb{X}}}
+\def\sY{{\mathbb{Y}}}
+\def\sZ{{\mathbb{Z}}}
+
+\def\emLambda{{\Lambda}}
+\def\emA{{A}}
+\def\emB{{B}}
+\def\emC{{C}}
+\def\emD{{D}}
+\def\emE{{E}}
+\def\emF{{F}}
+\def\emG{{G}}
+\def\emH{{H}}
+\def\emI{{I}}
+\def\emJ{{J}}
+\def\emK{{K}}
+\def\emL{{L}}
+\def\emM{{M}}
+\def\emN{{N}}
+\def\emO{{O}}
+\def\emP{{P}}
+\def\emQ{{Q}}
+\def\emR{{R}}
+\def\emS{{S}}
+\def\emT{{T}}
+\def\emU{{U}}
+\def\emV{{V}}
+\def\emW{{W}}
+\def\emX{{X}}
+\def\emY{{Y}}
+\def\emZ{{Z}}
+\def\emSigma{{\Sigma}}
+
+\newcommand{\etens}[1]{\mathsfit{#1}}
+\def\etLambda{{\etens{\Lambda}}}
+\def\etA{{\etens{A}}}
+\def\etB{{\etens{B}}}
+\def\etC{{\etens{C}}}
+\def\etD{{\etens{D}}}
+\def\etE{{\etens{E}}}
+\def\etF{{\etens{F}}}
+\def\etG{{\etens{G}}}
+\def\etH{{\etens{H}}}
+\def\etI{{\etens{I}}}
+\def\etJ{{\etens{J}}}
+\def\etK{{\etens{K}}}
+\def\etL{{\etens{L}}}
+\def\etM{{\etens{M}}}
+\def\etN{{\etens{N}}}
+\def\etO{{\etens{O}}}
+\def\etP{{\etens{P}}}
+\def\etQ{{\etens{Q}}}
+\def\etR{{\etens{R}}}
+\def\etS{{\etens{S}}}
+\def\etT{{\etens{T}}}
+\def\etU{{\etens{U}}}
+\def\etV{{\etens{V}}}
+\def\etW{{\etens{W}}}
+\def\etX{{\etens{X}}}
+\def\etY{{\etens{Y}}}
+\def\etZ{{\etens{Z}}}
+
+\newcommand{\pdata}{p_{\rm{data}}}
+\newcommand{\ptrain}{\hat{p}_{\rm{data}}}
+\newcommand{\Ptrain}{\hat{P}_{\rm{data}}}
+\newcommand{\pmodel}{p_{\rm{model}}}
+\newcommand{\Pmodel}{P_{\rm{model}}}
+\newcommand{\ptildemodel}{\tilde{p}_{\rm{model}}}
+\newcommand{\pencode}{p_{\rm{encoder}}}
+\newcommand{\pdecode}{p_{\rm{decoder}}}
+\newcommand{\precons}{p_{\rm{reconstruct}}}
+
+\newcommand{\laplace}{\mathrm{Laplace}} %
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Ls}{\mathcal{L}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\emp}{\tilde{p}}
+\newcommand{\lr}{\alpha}
+\newcommand{\reg}{\lambda}
+\newcommand{\rect}{\mathrm{rectifier}}
+\newcommand{\softmax}{\mathrm{softmax}}
+\newcommand{\sigmoid}{\sigma}
+\newcommand{\softplus}{\zeta}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\standarderror}{\mathrm{SE}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\normlzero}{L^0}
+\newcommand{\normlone}{L^1}
+\newcommand{\normltwo}{L^2}
+\newcommand{\normlp}{L^p}
+\newcommand{\normmax}{L^\infty}
+
+\newcommand{\parents}{Pa} %
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\Tr}{Tr}
+\let\ab\allowbreak
+
+
+\usepackage[utf8]{inputenc} %
+\usepackage{lipsum} %
+
+\usepackage[T1]{fontenc}
+
+\usepackage{etoolbox}
+\newbool{includeappendix}
+\setbool{includeappendix}{true}
+
+
+
+\ifdefined\isoverfull
+	\overfullrule=1cm
+\else
+\fi
+
+
+\newcommand{\todo}[1]{
+	\message{^^JTODO on page \thepage: #1^^J}
+	\textcolor{red}{\textbf{TODO:} #1}
+}
+
+\newenvironment{commentlist}{
+\color{gray}
+\begin{itemize}
+}
+{
+\end{itemize}
+}
+
+
+
+
+
+
+
+
+
+\usepackage{xcolor} %
+
+
+
+
+\definecolor{my-full-blue}{HTML}{1F77B4}
+
+\definecolor{my-full-orange}{HTML}{FF7F0E}
+\definecolor{my-extra-orange}{HTML}{7C4514}
+
+\definecolor{my-full-green}{HTML}{2CA02C}
+
+\definecolor{my-full-red}{HTML}{d62728}
+
+\definecolor{my-full-purple}{HTML}{9467bd}
+
+\colorlet{my-blue}{my-full-blue!30}
+\colorlet{my-orange}{my-full-orange!30}
+\colorlet{my-green}{my-full-green!30}
+\colorlet{my-red}{my-full-red!30}
+\colorlet{my-purple}{my-full-purple!30}
+
+
+
+
+
+
+
+\usepackage{listings}
+
+\usepackage{textcomp}
+
+\usepackage{xcolor}
+
+
+
+
+
+\usepackage[scaled=0.8]{beramono}
+
+
+
+
+\definecolor{ckeyword}{HTML}{7F0055}
+\definecolor{ccomment}{HTML}{3F7F5F}
+\definecolor{cstring}{HTML}{2A0099}
+
+
+\lstdefinestyle{numbers}{
+	numbers=left,
+	framexleftmargin=20pt,
+	numberstyle=\tiny,
+	firstnumber=auto,
+	numbersep=1em,
+	xleftmargin=2em
+}
+
+\lstdefinestyle{layout}{
+	frame=none,
+	captionpos=b,
+}
+
+\lstdefinestyle{comment-style}{
+	morecomment=[l]//,
+	morecomment=[s]{/*}{*/},
+	commentstyle={\color{ccomment}\itshape},
+}
+
+\lstdefinestyle{string-style}{
+	morestring=[b]",%
+	morestring=[b]',%
+	stringstyle={\color{cstring}},
+	showstringspaces=false,%
+}
+
+\lstdefinestyle{keyword-style}{
+	keywordstyle={\ttfamily\bfseries},
+	morekeywords={
+		function,
+		constructor,
+		int,
+		bool,
+		return,
+		returns,
+		uint
+	},
+	morekeywords = [2]{},
+	keywordstyle = [2]{\text},
+	sensitive=true,
+}
+
+\lstdefinestyle{input-encoding}{
+	inputencoding=utf8,
+	extendedchars=true,
+	literate=
+	{ℝ}{$\reals$}1%
+	{→}{$\rightarrow$}1%
+	{α}{$\alpha$}1%
+	{β}{$\beta$}1%
+	{λ}{$\lambda$}1%
+	{θ}{$\theta$}1%
+	{ϕ}{$\phi$}1%
+}
+
+\lstdefinestyle{escaping}{
+	moredelim={**[is][\color{blue}]{\%}{\%}},
+	escapechar=|,
+	mathescape=true
+}
+
+\lstdefinestyle{default-style}{
+	basicstyle=\fontencoding{T1}\ttfamily\footnotesize,
+	style=numbers,
+	style=layout,
+	style=comment-style,
+	style=string-style,
+	style=keyword-style,
+	style=input-encoding,
+	style=escaping,
+	tabsize=2,
+	upquote=true
+}
+
+
+\lstdefinelanguage{BASIC}{
+	language=C++,
+	style=default-style
+}[keywords,comments,strings]%
+
+\lstset{language=BASIC}
+
+
+
+
+
+
+
+
+
+
+
+\usepackage[english]{babel}
+\usepackage{amssymb,amsmath,amsthm}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{color,soul}
+\usepackage{ bbold }
+\usepackage{multirow}
+\usepackage{caption,tabularx,booktabs}
+\usepackage{graphicx}
+\usepackage{tabu}
+\usepackage{array}
+\usepackage{siunitx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fontawesome}
+\usepackage{stackengine}
+\usepackage{svg}
+\usepackage{mathtools}
+\usepackage{xspace}
+\usepackage{wrapfig}
+\usepackage{makecell}
+\usepackage{placeins}
+\usepackage{float}
+
+
+\usepackage{tikz}
+
+
+\usetikzlibrary{arrows}
+\usetikzlibrary{automata}
+\usetikzlibrary{calc}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{decorations.markings}
+\usetikzlibrary{decorations.pathmorphing}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{fit}
+\usetikzlibrary{patterns}
+\usetikzlibrary{positioning}
+\usetikzlibrary{shadows}
+\usetikzlibrary{shapes}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{arrows.meta}
+
+\definecolor{blue}{HTML}{347bc6}
+\definecolor{green-underline}{HTML}{2de12c}
+\definecolor{yellow-underline}{HTML}{ffd700}
+
+\tikzstyle{block} = [
+    minimum width=1cm,
+    minimum height=0.5cm,
+    align=center,
+    fill=gray!30,
+    rounded corners=5pt,
+]
+
+\tikzstyle{arrow} = [
+	-{Latex[length=1.4mm, width=1.4mm]},
+	draw=blue,
+]
+
+\tikzstyle{dashedline} = [
+    draw=blue,
+    dashed
+]
+
+\tikzstyle{line} = [
+    draw=blue
+]
+
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newcommand{\DKL}{D_{\mathrm{KL}}}
+\newcommand{\DKLf}[1]{%
+D_{\mathrm{KL}}^{[#1]}
+}
+
+\newcommand{\NLL}{\mathrm{NLL}}
+\def\Ind{\mathbb{1}}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\algnewcommand\algorithmicassert{\texttt{assert}}
+\algnewcommand\Assert[1]{\State \algorithmicassert(#1)}%
+\DeclareMathOperator{\supersede}{supersede}
+\DeclareMathOperator{\topk}{TopK}
+
+\newcolumntype{x}[2]{S[table-format=#1.#2,table-auto-round]}
+
+
+\newcommand{\marc}[1]{\textcolor{orange}{\textbf{Marc:} #1}}
+\newcommand{\luca}[1]{\textcolor{red}{\textbf{Luca:} #1}}
+\newcommand{\jasper}[1]{\textcolor{blue}{\textbf{Jasper:} #1}}
+
+\colorlet{c_bg}{black!10}
+\colorlet{c_ds}{my-full-green!30}
+\colorlet{c_attribute}{my-full-blue!30}
+\colorlet{c_arrow}{black!15}
+
+\newcommand{\fudge}{\textsc{Fudge}\xspace}
+\newcommand{\preadd}{\textsc{PreAdd}\xspace}
+\newcommand{\selfdebias}{\textsc{SelfDebias}\xspace}
+\newcommand{\pol}{\texttt{/pol/}\xspace}
+
+\DeclareMathOperator{\unionop}{union}
+\newcommand{\union}{\ensuremath{\unionop}\xspace}
+\DeclareMathOperator{\intersectionop}{intersection}
+\newcommand{\intersection}{\ensuremath{\intersectionop}\xspace}
+
+
+\newcommand{\V}[1]{\bm{{#1}}}
+\def\vQi{{\V{Q_i}}}
+\def\vfi{{\V{f_i}}}
+\def\vfip{{\V{f_i'}}}
+\def\vC{{\V{C}}}
+\newcommand{\vQ}[1]{\V{Q_{#1}}}
+
+
+
+
+
+\usepackage[capitalize]{cleveref}
+
+
+\crefformat{section}{\S#2#1#3}
+
+\crefrangeformat{section}{\S#3#1#4\crefrangeconjunction\S#5#2#6}
+
+\crefmultiformat{section}{\S#2#1#3}{\crefpairconjunction\S#2#1#3}{\crefmiddleconjunction\S#2#1#3}{\creflastconjunction\S#2#1#3}
+
+\newcommand{\crefrangeconjunction}{--}
+
+
+\crefname{listing}{Lst.}{listings}
+\crefname{line}{Lin.}{Lin.}
+\crefname{appendix}{App.}{App.}
+
+
+
+
+\newcommand{\app}[1]{%
+	\ifbool{includeappendix}{\cref{#1}}{the appendix}%
+}
+\newcommand{\App}[1]{%
+	\ifbool{includeappendix}{\cref{#1}}{The appendix}%
+}
+
+
+
+\iclrfinalcopy
+\title{Controlled Text Generation via Language Model Arithmetic}
+\author{Jasper Dekoninck, Marc Fischer, Luca Beurer-Kellner, Martin Vechev\\
+Department of Computer Science\\
+ETH Zurich, Switzerland\\
+\texttt{\{jasper.dekoninck,marc.fischer,luca.beurer-kellner,martin.vechev\}@inf.ethz.ch}
+}
+
+
+\begin{document}
+\sisetup{
+text-series-to-math = true ,
+propagate-math-font = true
+}
+
+\maketitle
+
+
+
+\begin{abstract}
+    As Large Language Models (LLMs) are deployed more widely, customization with respect to vocabulary, style, and character becomes more important. In this work, we introduce model arithmetic, a novel inference framework for composing and biasing LLMs without the need for model (re)training or highly specific datasets. In addition, the framework allows for more precise control of generated text than direct prompting and prior controlled text generation (CTG) techniques. Using model arithmetic, we can express prior CTG techniques as simple formulas and naturally extend them to new and more effective formulations. Further, we show that speculative sampling, a technique for efficient LLM sampling, extends to our setting. This enables highly efficient text generation with multiple composed models with only marginal overhead over a single model. Our empirical evaluation demonstrates that model arithmetic allows fine-grained control of generated text while outperforming state-of-the-art on the task of toxicity reduction. 
+    We release an open source easy-to-use implementation of our framework at \url{https://github.com/eth-sri/language-model-arithmetic}.
+\end{abstract}
+\section{Introduction} \label{sec:intro}
+
+In recent years, Large Language Models (LLMs) \citep{gpt3,palm,llama-2} have been increasingly recognized for their capabilities in handling a wide range of tasks \citep{codellama,instructgpt}.
+In many applications, such as chatbots interacting with diverse audiences like children, students, or customers, precise control and customization of attributes such as the employed vocabulary, linguistic style, and emotional expression are crucial.
+
+
+
+\paragraph{Controlling Language Models} 
+A common technique for this is prompting with natural language \citep{instructgpt}. While prompting is simple and makes it easy to condition the LLM to a broad attribute, the ambiguity of natural language makes it challenging to express how present that attribute should be in the generated text.
+Further, prompting also lacks the ability to effectively steer the model away from a certain attribute in a reliable manner, as mentioning a specific topic in the prompt can inadvertently increase the likelihood of the model generating text about it \citep{negative-prompts}, e.g. "do not mention cats" may increase the likelihood of the model referring to cats. One alternative is fine-tuning the model, but this requires highly specific training data for the desired attribute, which also has to implicitly encode the strength of the conditioning.
+Controlled Text Generation (CTG) techniques aim to solve this problem by steering the model during inference instead \citep{dexperts,pplm,fudge}: The model is conditioned on a particular attribute $a$ in a smoothly controllable way, by biasing the model's token distribution. Many CTG methods are inspired by Bayes rule $P(\text{text}|a) \propto P(a|\text{text}) P(\text{text})$, and utilize an auxiliary model, i.e. $P(a|\text{text})$, to condition the LLM, i.e., $P(\text{text})$, towards $a$.
+
+
+\paragraph{Key Challenge: Lack of Expressive and Efficient Control for Text Generation} These techniques, however, suffer from several drawbacks, including a lack of expressiveness, efficiency, and interpretability.
+First, to control the strength of the applied conditioning, a parameter $\lambda$ is introduced in an ad-hoc manner, i.e., as an exponential weight $P(a|\text{text})^\lambda$.
+However, introducing the strength in this way, while possible, quickly becomes unintuitive as it can no longer be interpreted in a Bayesian manner, e.g., when biasing away from attributes.
+Moreover, neither prompting nor CTG methods allow for the natural and controlled combination of multiple attributes or instructions with relative strength. This is due to the inherent ambiguity of natural language in prompting \citep{askmeanything,calibratebeforeuse}, and the absence of a theoretical foundation and intuitive semantics for the biasing strength $\lambda$ with CTG methods.
+Lastly, both CTG techniques and fine-tuning often require custom and highly specific training data for the desired attribute \citep{fudge,gedi,countergedi,critic-control} and can be resource-intensive \citep{langevin,mucoco} as multiple models are evaluated at inference time.
+
+\begin{figure}[t]
+    \colorlet{color-child}{my-full-blue}
+    \colorlet{color-adult}{my-full-green}
+    \colorlet{color-magic}{my-extra-orange}
+    \colorlet{color-formal}{my-full-purple}
+    
+    \begin{minipage}{0.52\textwidth}
+        \centering
+        \footnotesize
+\begin{tikzpicture}[node distance=0.2cm]
+
+        \node[align=center, fill=c_bg, rounded corners=5pt, minimum width=5cm, minimum height=1.2cm](input) {
+                \begin{tabular}{l}
+                    \textbf{Input:} Write a one-sentence fairy tale. \\
+                    \textbf{Output:} Once upon a time, in a \_\_\_
+                \end{tabular}
+        };
+        \node[block, below=0.6cm of input, xshift=-2.57cm, draw=my-full-blue, thick] (model1) { \begin{tabular}{c}
+            \includegraphics[height=0.6cm]{figures/icons/daughter.png} \\
+            [-0.0em]  %
+            $\color{color-child}M_\text{child}$ \\
+            \end{tabular}
+        };
+        \node[block, right=of model1, draw=my-full-green, thick] (model2)  { \begin{tabular}{c}
+            \includegraphics[height=0.6cm]{figures/icons/old-man.png} \\
+            [-0.0em]  %
+            $\color{color-adult}M_\text{adult}$ \\
+            \end{tabular}
+        };
+        \node[block, right=of model2, draw=my-extra-orange, thick] (model3)  { \begin{tabular}{c}
+            \includegraphics[height=0.6cm]{figures/icons/magic-wand.png} \\
+            [-0.0em]  %
+            $\color{color-magic}M_\text{magic}$ \\
+            \end{tabular}
+        };
+        \node[block, right=of model3, draw=my-full-purple, thick] (model4)  { \begin{tabular}{c}
+            \includegraphics[height=0.6cm]{figures/icons/official-documents.png} \\
+            [-0.0em]  %
+            $\color{color-formal}C_\text{formal}$ \\
+            
+            \end{tabular}
+        };
+        \node[block, minimum width=3.5cm, align=left, minimum height=0.7cm](formula) at ($(model1.south-|input) - (0,0.9cm)$){
+            
+            {\fontsize{8}{8.2}\selectfont
+            $\V{\color{color-child}M_\text{child}} - 0.6 \V{\color{color-adult}M_\text{adult}} + \V{\color{color-formal}C_\text{formal}} + 2\union(\V{\color{color-child}M_\text{child}}, \V{\color{color-magic}M_\text{magic}})$
+            }
+        };
+    
+        \node[below=0.6cm of formula, align=center, fill=c_bg, rounded corners=5pt, minimum width=5cm](output) {
+            \begin{tabular}{l}
+                \textbf{Output:} Once upon a time, in a land
+            \end{tabular}
+        };
+
+    
+        \draw[arrow, draw=black!80] (model1.north|-input.south) -- (model1.north);
+        \draw[arrow, draw=black!80] (model2.north|-input.south) -- (model2.north);
+        \draw[arrow, draw=black!80] (model3.north|-input.south) -- (model3.north);
+        \draw[arrow, draw=black!80] (model4.north|-input.south) -- (model4.north);
+        \draw[arrow, draw=black!80] (model1.south) -- (model1.south|-formula.north);
+        \draw[arrow, draw=black!80] (model2.south) -- (model2.south|-formula.north);
+        \draw[arrow, draw=black!80] (model3.south) -- (model3.south|-formula.north);
+        \draw[arrow, draw=black!80] (model4.south) -- (model4.south|-formula.north);
+        \draw[arrow, draw=black!80] (formula.south) -- (output.north);
+        \draw[arrow, draw=black!80] (output.west) -- ([xshift=-1cm]output.west) -- ([xshift=-1cm]output.west |- input.west) -- (input.west);
+\end{tikzpicture}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \footnotesize
+        \resizebox{\textwidth}{!}{
+            \begin{tabularx}{1.13\textwidth}{@{}X@{}}
+                \toprule
+                \textbf{Write a one-sentence fairy tale.}
+                \\ 
+                \midrule
+                $\V{\color{color-child}M_\text{child}}$ \\
+                Once upon a time, in a magical kingdom far, far away, there lived a brave and curious little princess who rode a sparkly unicorn and outwitted a grumpy dragon \\
+                \midrule
+                $\V{\color{color-child}M_\text{child}} - 0.6 \V{\color{color-adult}M_\text{adult}}$ \\
+                Once upon a time, there was a sparkly rainbow unicorn that pooped ice cream and took me on a magical adventure to a land made entirely of candy! \\ \midrule
+                $\V{\color{color-child}M_\text{child}} - 0.6 \V{\color{color-adult}M_\text{adult}} + \V{\color{color-formal}C_\text{formal}}$ \\ Once upon a time, in a magical land full of fluffy clouds and sparkly rainbows, there lived a little baby unicorn named Sparkles who had a beautiful, shimmering mane\\ \midrule
+                $\V{\color{color-child}M_\text{child}} - 0.6 \V{\color{color-adult}M_\text{adult}} + \V{\color{color-formal}C_\text{formal}} + 2 \union(\V{\color{color-child}M_\text{child}},\V{\color{color-magic}M_\text{magic}})$  \\ Once upon a time, in a land far, far away, there was a magical kingdom filled with sparkly unicorns, fluffy dragons, and a princess who could make ice cream appear out of thin air!  \\
+                \bottomrule
+            \end{tabularx} 
+        }
+    \end{minipage}
+    \caption[]{Overview of model arithmetic using an illustrative example. We outline the procedure for generating a fairy tale (left) using the models $\V{M_\text{child}}$, $\V{M_\text{adult}}$, $\V{M_\text{magic}}$ that produce text conditioned on the attributes \textit{child}, \textit{adult}, and \textit{magic}, respectively and $\V{C_\text{formal}}$ a classifier for the formality of text. The right table shows example outputs for different (partial) formulas. Image attribution in \cref{appendix:attribution}.}
+    \label{fig:overview}
+    \vspace{-2mm}
+\end{figure}
+
+
+\paragraph{Fine-Grained Control via Model Arithmetic} 
+In this work, we address these challenges and introduce \textit{model arithmetic}, a principled and intuitive method to combine multiple models. Our method is orthogonal to prompting, fine-tuning, and simple CTG concepts, like the use of classifiers, and can naturally incorporate them. Model arithmetic enables us to blend multiple LLMs and attributes into a single precisely controlled, formula-based composite model.
+To illustrate our method, consider the simple example in \cref{fig:overview}, where we aim to write a magical, child-like fairy tale. We employ multiple models $M_a$, with different attributes $a$. On the top right, we see a prompted model $\V{M_\text{child}}$ that already generates a child-appropriate story. However, the resulting text is not child-like and we therefore subtract an adult-conditioned model, $\V{M_\text{adult}}$, with a weight of $0.6$ to generate a less adult-sounding story. Now, to again increase formality, we additionally bias with classifier $\V{C_\text{formal}}$. Lastly, we use a special $\union$ operator to obtain a model that emphasizes both magical and child-like language and use it to further bias generation and obtain our final result.
+This simple example cannot be precisely expressed with prior CTG approaches and showcases the flexibility of model arithmetic. That is, it allows us to compose models in a natural way, while precisely controlling the impact of each component.
+Further, we can naturally incorporate paradigms such as prompting or fine-tuning (for the individual $M$ and $C$) and even implement many prior CTG techniques (discussed in \cref{sec:prompt-arithmetic}) as simple formulas.
+
+
+
+\paragraph{Efficient Model Arithmetic via Generalized Speculative Sampling} 
+CTG methods, including model arithmetic, can lead to increased inference times as multiple models need to be evaluated in order to generate text.
+To counteract this, we generalize speculative sampling \citep{speculative} to model arithmetic.
+Speculative sampling is usually employed to reduce the latency of a single LLM by augmenting it with a smaller model that proposes tokens, which are then validated by the LLM. In contrast, we extend it in a way where we postpone the evaluation of more expensive model calls within model arithmetic formulas.
+This allows us to execute model formulas comprised of multiple models with only marginal overhead over a single model and reduces model calls by up to $64\%$. 
+The resulting inference speedup naturally extends to prior CTG techniques that can be expressed in model arithmetic  \citep{preadd,cfg,cognac,self-debias}.
+
+\newpage
+\paragraph{Key Contributions} Our core contributions include:
+\begin{itemize}
+    \item Model Arithmetic: A principled framework for fine-grained CTG, enabling precise control over multiple attributes. Our framework can express many prior CTG approaches (\cref{sec:prompt-arithmetic}).
+    \item  An extension of speculative sampling to model arithmetic, counteracting the overhead of CTG and enabling efficient inference, which naturally benefits CTG techniques expressible in model arithmetic (\cref{sec:speed}).
+    \item An extensive qualitative and quantitative evaluation of model arithmetic (\cref{sec:evaluation}). We show that it is more expressive than prior CTG work and outperforms them in toxicity reduction. We demonstrate that our extended speculative sampling reduces model calls by up to $64\%$.
+\end{itemize}
+
+
+
+
+\section{Background}\label{sec:background}
+
+We briefly introduce the required background and notation used in the remainder of the paper.
+
+\paragraph{Discrete Probability Distributions} A discrete probability distribution $P$ associates a probability $P(x)$ with every element $x$ in a finite set $T$. For language modeling, this finite set is usually a set of tokens (or subwords). We often want to compute the probability of a token $x_k$ given all previous tokens $x_1, ..., x_{k-1}$ in a sequence, which we denote as $P(x_k | x_{1:k-1})$.
+We use the Kullback-Leibler (KL) divergence to measure the similarity of two distributions $P$ and $Q$:%
+\begin{equation*}
+    \DKL(P || Q | x_{1:k-1}) = \sum_{x \in T} P(x|x_{1:k-1}) \log \frac{P(x|x_{1:k-1})}{Q(x|x_{1:k-1})},
+\end{equation*}
+where we append $| x_{1:k-1}$ to denote conditioning on a sequence of tokens $x_{1:k-1}$. If this is implied by the context, we will omit the conditioning on $x_{1:k-1}$ and simply write $\DKL(P || Q)$.
+
+\paragraph{Autoregressive Large Language Models} Large Language Models (LLMs) are trained to generate sequences of tokens. Most recently, successful LLMs are autoregressive, i.e., they generate output token-by-token by modeling the probability distribution $P(x_k | x_{1:k-1})$ and sampling one token at a time from that distribution. Whenever we refer to a language model $M$, we directly refer to this distribution and denote it as $M(x_k | x_{1:k-1})$.
+
+\paragraph{Controlled Text Generation} 
+As introduced in \cref{sec:intro}, CTG techniques aim to introduce a given attribute $a$ (e.g. style or topic) in the output of a language model $M$, by biasing its distribution with respect to $a$. Oftentimes, a strength parameter $\lambda$ controls the strength of this conditioning. 
+The conditioning model $P(a|\text{text})$ is modeled with a classifier \citep{fudge, fudge-2, critic-control,gedi,countergedi}, a smaller finetuned model \citep{dexperts}, or with the same model $M$ using a different prompt \citep{preadd,self-debias,cfg,cognac}. In the first two cases, the biasing models have to be trained ahead of time. %
+ Many of these approaches are based on (a variant of) Bayes rule \citep{cfg,dexperts,preadd,marco,fudge}.
+
+
+
+\paragraph{Speculative Sampling} Speculative sampling \citep{speculative} speeds up inference of autoregressive language models by using a small proposal model $m$ to generate several tokens $x_1, ..., x_k$ and then validates these tokens using a bigger, more capable model $M$. Due to the way the underlying transformer architecture of current LLMs \citep{vaswani2017attention} works, this validation call is significantly cheaper than generating the tokens with $M$ directly.
+
+Specifically, the entire sequence of proposed tokens $x_1, ..., x_k$ can be validated by a single, retroactive call to $M$. If token $x_i$ is rejected by $M$, all subsequent tokens $x_{i+1}, ..., x_k$ are discarded and $x_i$ is resampled. If all tokens are accepted, the next token $x_{k+1}$ can be directly sampled using the result of the same validation call to $M$. Thus, one can generate up to $k + 1$ tokens with just a single call to $M$. Importantly, this procedure of accepting and resampling tokens ensures that the resulting distribution is equivalent to drawing token samples directly from $M$. For reference, we include the full speculative sampling procedure in \cref{alg:speculative} of \cref{appendix:speculative}.
+
+
+\section{Model Arithmetic}\label{sec:prompt-arithmetic}
+
+In this section we introduce model arithmetic, a principled approach for advanced CTG that enables the precise composition of language models, resulting in a distribution $P$ that can be sampled like a language model.
+This addresses the previously discussed drawbacks of prior CTG methods.%
+
+To this end, we first outline how an \emph{output} distribution $P$ is constructed from a set of \emph{input} distributions $Q_1, \ldots, Q_n$, by minimizing a linear combination of (weighted) KL-divergences $\DKL(P||Q_i)$. Then we show how model arithmetic can be used to describe these distributions in a natural way.
+We defer all proofs to \cref{appendix:proofs}.
+
+
+
+
+
+
+
+
+
+
+
+
+\paragraph{(Weighted) KL-Optimality}
+The standard KL-divergence $\DKL(P||Q)$ attends to each token by an equal amount, which might not always be desirable in the CTG setting. Indeed, suppose $Q$ represents the distribution of a certain attribute $a$ that we want to introduce in the output distribution $P$. When certain tokens are generally more associated with the attribute $a$, we might give the term $\DKL(P||Q)$ more weight for these tokens, allowing to more strongly bias these specific tokens while reducing the bias for less important tokens. We therefore introduce the \textit{weighted KL-divergence} $\DKLf{f}$ as
+\begin{equation*}
+    \DKLf{f}(P || Q | x_{1:k-1}) = \sum_{x} P(x|x_{1:k-1}) f(x, x_{1:k-1}) \log \frac{P(x|x_{1:k-1})}{Q(x|x_{1:k-1})}
+\end{equation*}
+where $f \colon T \times T^{k-1} \to \mathbb{R}$ assigns a weight to each token $x \in T$, conditioned on $x_{1:k-1}$. We will later show how high-level constructs in model arithmetic map to particular choices of $f$.
+
+\cref{theorem:optimization} now defines and solves the problem of combining arbitrary probability distributions into a single output distribution by framing it as a minimization problem over a linear combination of weighted KL-divergences.
+
+\begin{theorem}[Weighted KL-Optimality]\label{theorem:optimization}
+    Let $T$ be the set of all tokens and $x_1, ..., x_{k-1}$ be a sequence of tokens such that $x_i \in T$. 
+    Then, given distributions $Q_1, \ldots, Q_n$ over $T$, functions $f_1, \ldots, f_n \colon T \times T^{k-1} \to \R$, and under mild technical assumptions detailed in \cref{appendix:solution_minimization}, the solution to the optimization problem for the generation of token $x_k$
+    \begin{equation}\label{eq:optimization}
+        \argmin_{P} \sum_{i=1}^n \DKLf{f_i}(P || Q_i | x_{1:k-1})
+    \end{equation}
+    is given by
+    \begin{equation}\label{eq:solution}
+        P(x_k=x|x_{1:k-1}) = \sigma\left(\frac{1}{\sum_{i=1}^nf_i(x, x_{1:k-1})} \sum_{i=1}^n f_i(x, x_{1:k-1}) \log Q_i(x|x_{1:k-1})\right)
+    \end{equation}
+    where $\sigma$ is the softmax function.
+\end{theorem}
+
+
+We note that this result applies more broadly than the autoregressive setting. Instead of conditioning on $x_{1:k-1}$, one can condition on $x_{1:k-1}, x_{k+1:t}$ without otherwise modifying the theorem. 
+
+Further, we can write $f_i(x, x_{1:k-1}) = \lambda_i(x_{1:k-1}) f'_i(x, x_{1:k-1})$ where we factor $f_i$ into a part $\lambda_i$ that only depends on the context (i.e., the previous tokens) for scaling, and $f'_i(x, x_{1:k-1})$ that encodes token specific weights.
+
+\paragraph{Model Arithmetic} Distribution $P$, resulting from \cref{eq:solution}, is completely determined by $\lambda_i(x_{1:k-1})$, $f'_i(x, x_{1:k-1})$ and $\log Q_i(x | x_{1:k-1})$ for all $x \in T$ and $i \in \{1, \dots, n\}$. Since $T$ is a finite set, we can write $f'_i(x, x_{1:k-1})$ and $\log Q_i(x | x_{1:k-1})$ as vectors $\vfip := (f'_i(x, x_{1:k-1}))_{x \in T}$  and $\vQi := (\log Q_i(x|x_{1:k-1}))_{x \in T}$. Finally, since the normalization is completely determined by $\lambda_i$ and $\vfip$, we can drop this in our notation and write $F = \sum_{i=1}^n \lambda_i  \vfip \vQi$, where vector multiplication is element-wise. We drop $\lambda_i$ and $\V{f'_i}$ when they are $1$.
+
+This notation makes it possible to use simple arithmetic operations to combine different input prompts, attributes, language models, and classifiers. We thus call this notation \textit{model arithmetic}. 
+Next, we discuss the operators in model arithmetic along with motivating examples (further shown in \cref{appendix:output_examples}) and summarize this in  \cref{table:arithmatic}.
+
+\begin{figure}[t]
+    \begin{minipage}{0.55\linewidth}
+        \centering
+        \footnotesize
+        \captionof{table}{Overview of \emph{Model Arithmetic} where $\mathcal{I}_1(x) := [Q_1(x) > Q_2(x)]$ and $\mathcal{I}_2(x) := 1 - \mathcal{I}_1(x)$, $\V{C}$ is a classifier and $U$ the uniform distribution.}\label{table:arithmatic}
+        \vspace{-1mm}
+        \resizebox{\linewidth}{!}{
+            \begin{tabular}[]{@{}lll@{}}
+            \toprule
+            & \textbf{Model Arithmetic} & \textbf{Optimization Problem}\\
+            \midrule
+            
+             \makecell[l]{Linear\\Combination} & $\sum_i \lambda_i \vQi $ & $\sum_i \lambda_i \DKL(P || Q_i)$\\[2mm]
+            
+            Classifier & $\lambda \vC$ & $\lambda\Big(\DKL(P || Q_C) - \DKL(P || U )\Big) $\\[2mm]
+            Union & $\union(\vQ{1}, \vQ{2})$ & $\DKLf{\mathcal{I}_1}(P || Q_1) + \DKLf{\mathcal{I}_2}(P || Q_2)$ \\%[2mm]
+            \bottomrule
+            \end{tabular}
+        }
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.42\linewidth}
+    \centering
+    \footnotesize
+    \captionof{table}{Prompt arithmetic examples using Llama-2-Chat-13b.} \label{table:example_arithmetic}
+    \vspace{-2mm}
+    \resizebox{\linewidth}{!}{
+        \begin{tabularx}{1.25\linewidth}{@{}>{\arraybackslash}X@{}}
+        \toprule
+        \textbf{Tell me something interesting about pandas.} \\
+        \midrule
+         $\V{M_\text{formal}}$\\
+         Certainly! Pandas are fascinating creatures, known for their distinct black and white markings \dots \\ 
+         \midrule
+        $2\V{M_\text{formal}} - \V{M}$\\
+        Certainly, user. The giant panda, scientifically known as Ailuropoda melanoleuca, is a intriguing and unique species of bear \dots \\
+        \bottomrule
+        \end{tabularx} 
+    }
+
+    \end{minipage}
+\end{figure}
+
+\paragraph{Linear Combinations} Many useful properties can be expressed as a linear combination of probability distributions $\sum_{i=1}^n \lambda_i \V{Q_i}$, with $\lambda_i \in \R$. Most commonly, linear formulas include the standard output of an LLM $M$ as $Q_1$ (with $\lambda_1 =1$) and additional distributions $Q_i$ are then used to bias the overall output towards (if $\lambda_i > 0$) or away from (if $\lambda_i < 0$) a certain attribute.  
+
+This can be used to combine several characteristics into a single persona, for model ensembling, and can also express prior CTG approaches \citep{dexperts,preadd,cfg,cognac} as shown in \cref{appendix:related}. \cref{table:example_arithmetic} show the results of linearly composing a non-conditioned model and a prompted \emph{formal} model using a negative coefficient. As shown, the resulting composite model generates much more formal output than  with standard prompting $\V{M_\text{formal}}$.
+
+
+\begin{wraptable}[11]{r}{0.4\linewidth}
+    \vspace{-5mm}
+    \centering
+    \footnotesize
+    \caption{Example using the GPT2-XL model and a detector $\V{C_{\text{gpt2-detector}}}$ for it.} \label{table:example_classifier}
+    \vspace{-3mm}
+    \resizebox{\linewidth}{!}{
+        \begin{tabularx}{1.212\linewidth}{@{}>{\arraybackslash}X@{}}
+        \toprule
+        \textbf{I like to}\\
+        \midrule
+        $\V{M_\text{gpt2}}$\\
+        think of myself as a pretty good cook. I've made a lot of food, and I've learned a lot about cooking. I've also learned a lot about the world of food, and the people who eat it.\\
+        \midrule
+        $\V{M_\text{gpt2}} - 4 \V{C_\text{gpt2-detector}}$\\
+        believe that I'm a pretty good judge of character. I watch a lot of TV - I'm a big fan of The Walking Dead, Game of Thrones and The Big Bang Theory \dots \\
+        \bottomrule
+        \end{tabularx} 
+    }
+\end{wraptable}
+\paragraph{Classifiers} Binary classifiers that associate a probability with an input text can also be used to guide the output distribution towards the classified attribute (cf. \citet{fudge,fudge-2}). These classifiers can express attributes that are not easily expressible in natural language, such as the reward model in RLHF \citep{instructgpt} or detection of AI-generated text \citep{openai-detector} as shown in \cref{table:example_classifier}. There, we generate text that resembles human content more closely by using a classifier that detects AI-generated text \citep{openai-detector} and bias away from it. 
+
+Classifiers do not output a token-level probability distribution and therefore do not permit the direct application of \cref{theorem:optimization}. However, to let a binary classifier $C \colon T^n \to [0, 1]$ guide the output distribution, we would want to minimize (or maximize) the expected cross-entropy of the classifier. Given $x_{1:k-1}$, the expected cross-entropy for $x_k$ under $P$ for the next token is given by
+\begin{equation}\label{eq:classifier_cross}
+    \mathbb{E}_{x_k \sim P}[- \log C(x_{1:k})] = - \sum_{x_k \in T} P(x_k | x_{1:k-1}) \log(C(x_{1:k})).
+\end{equation}
+Using the probability distribution $Q_C(x_k | x_{1:k-1}) \propto C(x_{1:k})$, we show in \cref{appendix:classifier} that minimizing \cref{eq:classifier_cross} is equivalent to minimizing $\DKL(P ||Q_C) - \DKL(P || U)$, where $U$ is the uniform distribution. This allows us to include classifier guidance in the optimization problem. In our model arithmetic syntax we thus write $+\lambda \V{C}$ to denote the solution to the problem $\lambda(\DKL(P ||Q_C) - \DKL(P || U))$. 
+However, running the classifier on each token in $T$ is computationally infeasible. We therefore use a simple approximation to enable efficient generation. Specifically, given a probability distribution $Q_1$, we run the classifier only for the $k$ most likely tokens under $Q_1$. For all other tokens $x$, we approximate $C(x_{1:k-1}, x)$ as $C(x_{1:k-1})$.
+
+We can express prior approaches \citep{fudge,fudge-2,nado,critic-control} as $\V{M} + \lambda\V{C}$ (usually with $\lambda=1$) and note that these are restricted to top-k sampling due to the aforementioned computational infeasibility. 
+We refer to \cref{appendix:related} for further discussion.
+
+\paragraph{Union Operator}
+When tokens have very low likelihood under $Q_1$, the linear combination $\V{Q_1} + \lambda \V{Q_2}$ cannot assign a high probability to these tokens unless $\lambda$ is very high.
+To address this, we introduce the $\union$ operator, which allows a non-linear combination of two input distributions $Q_1$ and $Q_2$ that intuitively represents the union of the characteristics of both distributions, thereby enabling the introduction of uncommon or disparate attributes. 
+
+\begin{wraptable}[15]{r}{0.5\linewidth}
+    \centering
+    \footnotesize
+    \caption{\union example on Llama-2-Chat-13b.} \label{table:example_union}
+    \vspace{-2mm}
+    \resizebox{\linewidth}{!}{
+        \begin{tabularx}{1.075\linewidth}{@{}>{\arraybackslash}X@{}}
+        \toprule
+        \textbf{What is a UFO?} \\
+        \midrule
+        $\V{M_\text{alien + human}}$\\
+        OH MY STARS! *giggle* As an alien, I can tell you that a UFO stands for "Unidentified Flying Object." It's when us space travelers, like me and my pet Gleeb, \dots\\
+        \midrule
+        $\V{M_\text{alien}} + \V{M_\text{human}}$\\
+        Oh my gosh, you know, like, a UFO? It's like, you know, a Unidentified Flying Object! It's like, a thing in the sky that we can't, like, identify, you know? It's like, maybe it's a bird, or a plane \dots \\ 
+        \midrule
+        $\union(\V{M_\text{human}}, \V{M_\text{alien}})$\\
+        Oh, hello there, fellow human! *giggle* UFO... you know, I've always been a bit curious about those. *wink* To me and my fellow beings from Earth-2294387523498,\dots\\
+        \bottomrule
+        
+        \end{tabularx} 
+    }
+\end{wraptable}
+
+To derive the $\union$ operator, we introduce the indicator functions $\mathcal{I}_1(x) := [Q_1(x) > Q_2(x)]$ and $\mathcal{I}_2(x) = 1 - \mathcal{I}_1(x)$, where $[\cdot]$ denotes Iverson Brackets\footnote{$[P]$ is $1$ if $P$ is true and $0$ else. See \url{https://en.wikipedia.org/wiki/Iverson_bracket}.}. Then, the $\union$ operator represents the optimization problem 
+$\DKLf{\mathcal{I}_1}(P || Q_1) + \DKLf{\mathcal{I}_2}(P || Q_2)$.
+Intuitively, if either $Q_1$ or $Q_2$ assigns a high probability to a token, the union operator will assign a high probability to this token as well. Indeed, the solution to the optimization problem is given by $\sigma(\max(\log Q_1, \log Q_2))$. Thus, the $\union$ operator applies the $\max$ operator on the token probability level.
+
+
+For example, \cref{table:example_union} showcases this by generating text that is both human-like and alien-like. The simple prompted version just collapses to an alien-like version, while the linear combination of the two models results in a text that is mostly human-like.
+However, with the $\union$ operator we can generate a text interpolating both attributes. 
+
+Conveniently, the $\union$ operator can also be used to limit the effect of biasing terms, by restricting the effect to only the relevant subset of tokens using the formula $\V{Q_1} - \lambda\union(\V{Q_1}, \V{Q_2})$. The resulting distribution only biases tokens $x \in T$ for which $Q_2(x) > Q_1(x)$, otherwise we recover the original distribution $Q_1$ (up to a normalization constant).
+This allows us to keep the resulting distribution as close as possible to the original distribution $Q_1$, while still biasing away from $Q_2$. This is impossible using the linear combination operator, as it will bias the entire distribution even if only a small subset of tokens are important for $Q_2$. In \cref{sec:evaluation} we show that this property of the $\union$ operator enables much better toxicity reduction of generated text.
+
+Interestingly, we can also derive an $\intersection$ operator, discussed briefly in \cref{appendix:intersection}.
+
+
+
+
+\section{Speculative Sampling}\label{sec:speed}
+We now discuss our extension of speculative sampling \citep{speculative} to model arithmetic, which greatly mitigates the increased number of model calls required by complex formulas.
+
+
+
+For a formula $F = \sum_{i=1}^n \lambda_i \V{f_i'}\V{Q_i}$, we can naturally extend speculative sampling by choosing one, or multiple, of the terms in $F$ at each timestep as proposal models. This allows us to postpone the evaluation of more expensive terms until we have generated a speculative token sequence, which can eventually be validated by the full formula $F$. This approach is based on the following observation:
+\begin{lemma}\label{theorem:speculative_n}
+    Let $P_1, \dots, P_n$ be discrete distributions over $T$. Sampling $x \sim P_1$ and iteratively applying speculative sampling for $(P_1, P_2)$, ($P_2, P_3)$, $\dots, (P_{n-1}, P_n)$ produces a sample $x' \sim P_n$.
+\end{lemma}
+
+For the formula $F$ we define $P_t = \sum_{i=1}^t \lambda_i \V{f_i'}\V{Q_i}$ as partial sub-formulas. Thereby we use the distributions induced by sub-formulas of $F$ as proposal models and obtain $x' \sim P_n = P$, where $P$ is the distribution described by $F$.
+
+For control, we assign a \textit{speculative factor} $s_i \in \mathbb{Z}_{>0}$, to each term $\lambda_i \V{f_i'}\V{Q_i}$. This factor indicates the number of tokens we speculatively sample before actually computing the corresponding $\lambda_i \V{f_i'}\V{Q_i}$. Once we compute $\lambda_i \V{f_i'}\V{Q_i}$, we apply speculative validation to the distributions $P_{i-1}$ and $P_i$ for the $s_i$ new tokens. By following this procedure for each term, all new tokens will eventually be sampled from the distribution resulting from the full $F$. In practice, we do not evaluate model terms in order $i=1, \dots, n$, but rather rely on commutativity to reorder during inference, such that we only evaluate those required for validation at the current timestep.
+We can treat terms using the \union operator the same as linear terms, but classifier terms only permit $s_i = 1$ (no speculative sampling).
+We provide the full procedure of speculative model arithmetic in \cref{alg:speculative_n} in \cref{appendix:speculative_n}. 
+
+\paragraph{Standard Speculative Sampling} We can use original speculative sampling \citep{speculative} directly in model arithmetic. For this, we introduce a '$\supersede$' operator, which operates on two models $M_1$ and $M_2$ and returns the first as long as the second one has not yet been computed. We can thus denote speculative sampling for a small model $m$ and large model $M$ as $ \supersede(\V{m}, \V{M})$.
+
+\section{Evaluation}\label{sec:evaluation}
+
+We evaluate model arithmetic by showing that it outperforms prior CTG methods in toxicity reduction (\cref{sec:evaluation:toxicity}), provides fine-grained control over attributes (\cref{sec:evaluation:attributes}), and can significantly speed up inference with speculative sampling (\cref{sec:evaluation:speed}). We further evaluate model arithmetic on the task of sentiment control in \cref{appendix:sentiment}. For details of our experimental setup, we refer to \cref{appendix:experimental_details}. 
+
+\subsection{Toxicity Reduction}\label{sec:evaluation:toxicity}
+\begin{table}%
+    \vspace{-4mm}
+    \centering
+	\footnotesize
+	\caption{Toxicity and perplexity of various methods on the \pol dataset. $\V{M}$ and $\V{M_\text{toxic}}$ denote the model without conditioning and conditioning to toxicity respectively. $\V{C}$ is a toxicity classifier. Perplexity is measured with respect to $\V{M}$. Lower is better.}
+	\label{table:toxicity}
+    \vspace{-2mm}
+    \scalebox{1.0}{
+	    \footnotesize
+        \begin{tabular}{@{}
+                l
+                x{1}{3}
+                x{2}{2}
+                x{1}{3}
+                x{2}{2}
+                x{1}{3}
+                x{2}{2}
+                @{}
+            }
+            \toprule
+            & \multicolumn{2}{c}{Llama-2-13b} & \multicolumn{2}{c}{Pythia-12b} & \multicolumn{2}{c}{MPT-7b} \\
+            \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+            & {Tox.} & {Perpl.} & {Tox.} & {Perpl.} & {Tox.} & {Perpl.}\\
+            \midrule
+            $\V{M}$ & 0.28781312868049996 & 13.461886204244351 & 0.26356303974625 & 22.904103632315536 & 0.26892994499825 & 19.773691727965854 \\
+            \midrule
+            \selfdebias{} ($\lambda = 10$) & 0.2508292425517 & 15.523743078020452  & 0.23026551958745 & 27.74110647267523 & 0.2534534742624 & 22.517372161728918 \\
+            \fudge{} ($\V{M} + \V{C}$) & 0.23428959307345001 & 14.710375127871492 & 0.21210877721045 & 24.356956410278578 & 0.2405644853887 &  20.571755251751707 \\
+            \preadd{} ($\V{M} - 0.6 \V{M_\text{toxic}}$) & 0.20751357989225 & 12.731370622919671 & 0.1826843838355 & 32.38445116891699 & 0.18969402443985 & 23.071158628786648\\
+            \midrule
+            $\V{M} - 0.96 \cdot \union(\V{M_\text{toxic}}, \V{M})$ & 0.2014622639518 &  \bfseries  11.078353402312155 & 0.1702074087756 &  \bfseries 22.87052562004862 & 0.19345939548285  &  \bfseries 19.667209517495664  \\
+            $\V{M} - 0.99 \cdot \union(\V{M_\text{toxic}}, \V{M})$ & 0.18614473078765 &  12.053630436852684 & 0.17138050593874998 & 26.162126173796832 & 0.18750884556234998 &  24.145356715566056 \\
+            \midrule
+            $\V{M} - 0.96 \cdot \union(\V{M_\text{toxic}}, \V{M}) + 0.04\V{C}$ & 0.17177713709845 & 11.396371970163448 &  \bfseries 0.1478178452382 & 23.931991679374512 & \bfseries 0.1737395688082 & 20.326053920126817\\
+            $\V{M} - 0.99 \cdot \union(\V{M_\text{toxic}}, \V{M}) + 0.01\V{C}$ & \bfseries 0.1623 &  12.849688858092916 & 0.15039141467915 & 28.013757888107197 & \bfseries  0.17364665008625 &24.820937822666384 \\
+            \bottomrule
+        \end{tabular}
+    }
+\end{table}
+
+\begin{table}%
+    \centering
+	\footnotesize
+	\caption{Comparison of our method with \preadd{} ($\V{M} - 0.6 \V{M_\text{toxic}}$) using GPT-4. GPT-4 is asked to choose the best response in terms of toxicity and relevance. Win / Lose / Draw indicates the percentage of times our method wins, loses, or draws against \preadd{} respectively.}
+	\label{table:toxicity_gpt4}
+    \vspace{-2mm}
+    \scalebox{1.0}{
+	    \footnotesize
+        \begin{tabular}{@{}
+                l
+                c
+                c
+                c
+                @{}
+            }
+            \toprule
+            & Llama-2-13b & Pythia-12b & MPT-7b \\
+            & Win / Lose / Draw & Win / Lose / Draw & Win / Lose / Draw \\
+            \midrule
+            $\V{M} - 0.96 \cdot \union(\V{M_\text{toxic}}, \V{M})$ & $\bold{0.40} / 0.38 / 0.23$ & $\bold{0.41} / 0.33 / 0.27$& $\bold{0.41} / 0.32 / 0.27$\\
+            $\V{M} - 0.96 \cdot \union(\V{M_\text{toxic}}, \V{M}) + 0.04\V{C}$ & $\bold{0.43} / 0.35 / 0.22$& $\bold{0.41} / 0.32 / 0.27$&$\bold{0.42} / 0.34 / 0.24$\\
+            \bottomrule
+            \vspace{-6mm}
+        \end{tabular}
+    }
+\end{table}
+First, we assess the effectiveness of model arithmetic in reducing toxicity. %
+We use a subset of the \pol dataset \citep{pol-dataset}, a dataset of messages from the \lstinline|politically incorrect| sub-forum of the website \lstinline|4chan|. We randomly select 2000 toxic messages and apply different model arithmetic formulas to generate replies. 
+For each generated reply we assign a toxicity score using the Perspective API\footnote{\url{perspectiveapi.com}} and also measure perplexity with respect to the unbiased model, to ensure that the generated text remains fluent and coherent. We compare our approach against three baselines: \fudge{} \citep{fudge}, and \preadd{} \citep{preadd} and \selfdebias{} \citep{self-debias}. Furthermore, we include a preference analysis by GPT-4 \citep{gpt4} comparing our method against the best baseline, \preadd{}. 
+We evaluate each method on three models, showing results in \cref{table:toxicity} and \cref{table:toxicity_gpt4}. \cref{table:toxicity_gpt2} in \cref{appendix:toxicity_gpt2} shows results for the GPT-2 model family \citep{gpt2}.
+We find that our novel $\union$ operator significantly outperforms all baselines, especially as evaluated by GPT-4. The operator allows for much higher negative biasing strengths without degrading fluency, e.g., at biasing strength $0.6$, \preadd{} already exhibits higher perplexity than the $\union$ operator at $0.96$. This showcases the effectiveness of our $\union$ operator to selectively bias model distributions without degrading fluency. Only at the highest tested biasing strength, we observe a degradation in perplexity for the models. Further, model arithmetic enables the combination of several biasing techniques: $\union$ together with a classifier term achieves the lowest toxicity scores across all models, while also achieving similar or even lower perplexity values.
+
+\subsection{Fine-grained Control}\label{sec:evaluation:attributes}
+We now discuss and compare several techniques to introduce a certain attribute in the output of generated text and validate the central premise of model arithmetic, namely that it allows for fine-grained control over the presence of these attributes in the output without a notable decrease in fluency. 
+For this, we construct two complex formulas for a conversational model, combining several attributes in four distinct ways: linearly, using the $\union$ operator, using a classifier, and using a combination of the $\union$ operator and a negative linear bias:
+\begin{align*}
+    F_1 &=  \underbrace{\lambda_1 \V{M_\text{happy}}}_{\lambda_1\text{ controls sentiment}}  + \underbrace{\lambda_2 \V{M_\text{simple}}}_{\lambda_2\text{ controls simplicity}} + \underbrace{\lambda_3 \union(\V{M_\text{helpful}}, \V{M_\text{sports}}) + (1 - \lambda_3)\V{M_\text{helpful}}}_{\lambda_3\text{ controls sports}} \\
+    F_2 &= 
+    \V{M_\text{helpful}} + 
+    \underbrace{\lambda_4 \union(\V{M_\text{helpful}}, \V{M_\text{formal}})}_{\lambda_4\text{ controls formality}} + 
+    \underbrace{\lambda_5 \V{C_\text{educational}}}_{\lambda_5\text{ controls educational}} + 
+    \underbrace{\lambda_6 \V{M_\text{simple}}}_{\lambda_6\text{ controls simplicity}}
+\end{align*}
+Here, each $\V{M_a}$ is a model conditioned on the attribute $a$ using a fitting system prompt and $\V{C_\text{educational}}$ is a binary classifier for educational content \citep{twitter-classifier}. For \textit{sports}, we  use the $\union$ operator and a counterweighing $M_\text{helpful}$ bias. For the \textit{formality} attribute in $F_2$, we just use $\union$.
+To analyze these formulas, we vary the values of individual $\lambda_i$ while keeping all other $\lambda_j=1$ with $j\neq i$ fixed and complete 1000 input tasks from the Alpaca dataset \citep{alpaca}.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.925\textwidth]{figures/formula2.pdf}
+    \vspace{-4mm}
+    \caption{Attribute presence for several attributes and formulas. The dashed line indicates the value of the attribute when prompting the model to use the attribute.}
+    \label{fig:attributes}
+\end{figure}
+
+We depict results in \cref{fig:attributes} where the $x$-axis shows the value of $\lambda_i$ normalized by the sum of all $\lambda$ coefficients occurring in the resulting optimization problem and the $y$-axis shows attribute strength according to popular classifiers from the HuggingFace library \citep{huggingface}.
+The presence of an attribute indeed increases smoothly as the associated $\lambda_i$ increases. Interestingly, the curves,  except for the \textit{sports} attribute, suggest a linear relationship, indicating that the presence of the attribute increases predictably with the relative strength. This aligns with our interpretation of model arithmetic as (linear) operators in logit space. Further, these results show the intuitive semantics of model arithmetic extend to the characteristics of the generated output on a sequence level.
+Because of its formulation with a counterweight, the curve associated with $\lambda_3$ and the \textit{sports} attribute shows very different behavior. Indeed, the \textit{sports} attribute only gets a significant boost once its relative strength passes $1.0$. At this point the $(1-\lambda_3)$ coefficient, counterweighing $\V{M_\text{helpful}}$, biases away from any behavior that is not associated with $\union(\V{M_\text{helpful}}, \V{M_\text{sports}})$, emphasizing this term more than what would be possible under regular prompting. At this point, the presence of the \textit{sports} attribute increases even beyond the indicated value achieved by standard prompting (cf. \cref{fig:attributes}, top right).
+
+Finally, we note that this fine-grained control comes at very little cost with respect to perplexity. The highest perplexity across all formulas and attributes is $6.2$, which is only slightly higher than the highest perplexity of the 5 prompted models, namely $4.8$. In \cref{appendix:perplexity_finegrained} we show in more detail that the fluency of the generated text is not affected by the use of model arithmetic, except for the \textit{educational} attribute at the highest evaluated strengths where fluency is slightly affected due to the heavy use of a (fluency-agnostic) classifier.
+
+
+
+\subsection{Speculative Sampling}\label{sec:evaluation:speed}
+\begin{wraptable}[13]{r}{0.6\textwidth}
+        \vspace{-5mm}
+        \centering
+        \footnotesize
+        \caption{Evaluation of Llama-2-13b-Chat with speculative sampling where $F_1 = 0.2 \V{M_\text{formal}} + 0.5 \V{M_\text{happy}} + 0.05 \V{M_\text{sports}}$ and $F_2 = \V{M_\text{formal}} + 0.1 \V{M_\text{angry}} + 0.4 \V{M_\text{sports}}$.}
+        \label{table:speed}
+        \vspace{-2mm}
+        \resizebox{1.0\linewidth}{!}{
+            \begin{tabular}{
+                    @{}
+                    l
+                    x{1}{2}
+                    x{1}{2}
+                    x{2}{1}
+                    x{2}{1}
+                    @{}
+                }
+                \toprule
+                \multirow{2}{*}{$\supersede(\V{A}, \V{M})$}  & \multicolumn{2}{c}{\textbf{Calls per Token}} & \multicolumn{2}{c}{\textbf{Time per Token [ms]}} \\
+                & {\textsc{No Spec.}}  & {\textsc{Spec.}} & {\textsc{No Spec.}}  & {\textsc{Spec.}} \\
+                \midrule
+                & 1 & \bfseries 0.8014871445776823  & 24.883752406564422 & \bfseries22.801977472271506 \\
+                $+0.5 \V{M_\text{formal}}$ & 2.0 & \bfseries1.0348794645191655 & 48.4023584905745 & \bfseries30.432601378073695 \\
+                $+0.5 \V{M_\text{happy}}$ & 2.0 & \bfseries1.0448951686417502 & 49.15089349786739 & \bfseries31.190228983827797
+                \\
+                $+0.5 \V{M_\text{sports}}$ & 2.0 & \bfseries1.0757110313406046 & 49.262453864134244 & \bfseries31.999939596160875 \\
+        
+                $+0.5 \V{M_\text{easy}}$ & 2.0 & \bfseries1.1000198918606123 & 49.20130198928818 & \bfseries32.749359688622356 \\
+                $+0.5 \V{M_\text{angry}}$ & 2.0 & \bfseries1.1197155069479294 & 49.28645662973551 & \bfseries33.01180023567522 \\
+                $+F_1$ & 4.0  & \bfseries1.3165171374500595 & 97.0255337245698 & \bfseries43.25989481778973 \\
+                $+F_2$ & 4.0& \bfseries1.4359129278944915 & 97.01921989899165 & \bfseries46.100464548583346 \\
+                \bottomrule
+            \end{tabular}
+        }
+\end{wraptable}
+Next, we show the effect of speculative sampling on the evaluation of model arithmetic expressions.
+We use the same setup as in \cref{sec:evaluation:attributes} with the only difference that we optimize the speculative factors $s_i$ based on a single calibration run of 10 samples with a procedure detailed in \cref{appendix:speculative}. To evaluate the effect of the $\supersede$ operation in model arithmetic, we use an autocompletion model $A$, which statically predicts the most likely next token based on the previous and fitted on the Alpaca dataset \citep{alpaca}.
+
+
+
+\begin{wrapfigure}[11]{r}{0.3\textwidth}
+    \vspace{-6mm}
+    \centering
+    \includegraphics[width=0.29\textwidth]{figures/calls_per_token_divergence.pdf}
+    \vspace{-5mm}
+    \caption{Model calls per token with speculative sampling for $\V{M} + \lambda \V{M_a}$, $\lambda \in [0.1, 1.0]$.}
+    \label{fig:speed}
+\end{wrapfigure}
+
+In \cref{table:speed} we show that speculative sampling significantly reduces the number of model calls and increases inference speed. %
+Just $\supersede(\V{A}, \V{M})$ reduces the number of model calls by 20\% compared to $\V{M}$. Applying speculative sampling to larger formulas, we can reduce the number of model calls to at most $1.44$ per token, even in the presence of up to 4 constituent models, where this leads to a boost in inference speed by up $2.24$ times.%
+
+Further, for $F := \V{M} + \lambda \V{M_a}$, \cref{fig:speed} shows that the number model calls per token increases with $\lambda$. The reason for this is that as $\lambda$ increases the KL-divergence between the original model $\V{M}$ and the distribution described by $F$ increases, which in turn decreases acceptance probability in speculative sampling.
+
+
+
+
+
+\section{Related Work}\label{sec:related}
+We now briefly review related approaches related to model arithmetic.
+
+\paragraph{Controlled Text Generation} Several works have interpreted CTG from perspectives differing from Bayes rule, either through the minimization of the model loss under various hard constraints \citep{nado,mucoco,langevin}, by modifying the model output based on the gradients of a classifier model \citep{pplm}, or by reducing the mutual information between the output and the attribute \citep{uddia}. However, all these works either require costly gradient steps during the decoding phase or demand training data for the model. %
+We have discussed CTG without relying on any training data or expensive gradient steps in \cref{sec:background} and compared to them in \cref{sec:evaluation:toxicity}.
+
+\paragraph{Speculative Sampling} Recent work extends on speculative sampling to use multiple smaller models in a staged fashion \citep{staged-speculative} or by using multiple small models at once \citep{specinfer}. Moreover, both methods use a tree-based sampling approach to generate multiple proposal sequences of the smaller models at once. We note that these improvements can be incorporated orthogonally in our extension of speculative sampling as the $\supersede$ operator.
+
+
+
+
+
+
+
+\section{Conclusion}\label{sec:conclusion}
+We introduced model arithmetic, a novel framework for composing multiple LLMs and controlled generation attributes, using a principled formula-based approach. Our method offers precise control over model output and can be used to express many prior controlled text generation (CTG) techniques.
+By leveraging this expressiveness and a novel model \union operator, model arithmetic subsumes prior approaches for CTG-based toxicity reduction and significantly outperforms them.
+Further, we derived a speculative sampling procedure for model arithmetic formulas, allowing us to heavily reduce the computational overhead typically associated with multi-model CTG.
+
+\newpage
+\section*{Broader Impact} \label{appendix:ethics}
+
+While model arithmetic provides additional flexibility and expressiveness, we note that it can also be used to generate text containing undesirable attributes. For example, instead of reducing toxic content, one could use model arithmetic to increase toxic content, potentially even avoiding build-in safety filters \citep{llama-2,gpt4}. While this is a problem that is not unique to model arithmetic, it is more important due to the increased control and complexity of the formulas. However, we believe the benefits of model arithmetic outweigh the potential risks, as it allows for more precise control and expressiveness, which can be used to generate more inclusive and controlled content.
+
+\section*{Reproducibility}
+We provide code along with instructions for all experiments with the submission and provide all required experimental details in \cref{appendix:experimental_details}.
+
+
+\section*{Acknowledgements}
+We thank our anonymous reviewers for their constructive comments and insightful feedback.
+
+This work has received funding from the Swiss State Secretariat for Education, Research and Innovation (SERI) under the grant SAFEAI (Certified Safe, Fair and Robust Artificial Intelligence, contract no. MB22.00088, SERI-funded ERC Consolidator Grant).
+\message{^^JLASTBODYPAGE \thepage^^J}
+
+\clearpage
+\bibliography{references}
+\bibliographystyle{plainnat}
+
+\message{^^JLASTREFERENCESPAGE \thepage^^J}
+
+
+\ifbool{includeappendix}{%
+	\clearpage
+	\appendix
+\section{Prior Work} \label{appendix:related}
+\begin{table}[ht]
+    \centering
+    \caption{Previous work that can be expressed using our framework. $U$ denotes the uniform distribution,  $C$ is a classifier, $a, a_1, a_2$ are textual descriptions of attributes and $M_a$ is the language model $M$ prompted with this additional textual description. $\topk$ denotes that top-k sampling is required for efficiency due to the used classifier $C$, while else the choice of sampling techniques is not restricted.}\label{table:previous}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{@{}>{\arraybackslash}p{.21\textwidth}llX@{}}
+    \toprule
+    Citation & Formula & Sampling & Training method \\
+    \midrule
+    \citet{dexperts} & $\V{M} + \lambda (\V{m_p} - \V{m_n})$ & - & $m_p$ (resp. $m_n$) is a small model fine-tuned on positive (resp. negative) samples. \\
+    \citet{preadd} & $\V{M} + \lambda \V{M_a}$ & - & No training applied.\\
+    \citet{cfg} & $\V{M} + \lambda \V{M_a}$ & - & No training applied.\\
+    \citet{cognac} & $\V{M} + \lambda_1 \V{M_{a_1}} - \lambda_2 \V{M_{a_2}}$ & - & No training applied. \\
+    \midrule
+    \citet{fudge} & $\V{M} + \V{C}$ & $\topk$ & The classifier is trained on partial samples.\\
+    \citet{critic-control} & $\V{M} + \V{C}$ & $\topk$ & The classifier is trained using Reinforcement Learning.\\
+    \citet{nado} & $\V{M} + \V{C}$ & - & The trained classifier outputs a probability for each token at the same time.\\
+    \citet{fudge-2} & $\V{M} + \lambda \V{C}$ & $\topk$ & No training applied.\\
+    \bottomrule
+    \end{tabularx}
+\end{table}
+
+\Cref{table:previous} shows how multiple prior works can be expressed in model arithmetic.
+\section{Intersection} \label{appendix:intersection}
+The optimization problem obtained by switching the indicator functions for the $\union$ is equal to
+\begin{equation*}
+    \DKLf{\mathcal{I}_2}(P || Q_1) + \DKLf{\mathcal{I}_1}(P || Q_2).
+\end{equation*}
+The solution to this problem is equal to $\sigma(\min(\log Q_1, \log Q_2))$. We define the $\intersection$ operator as this solution and note that it assigns a high probability to a specific token, only if both $Q_1$ and $Q_2$ have a high probability associated with it. 
+
+
+\section{Attribution} \label{appendix:attribution}
+The icons in \cref{fig:overview} are from \url{flaticon.com}: \href{https://www.flaticon.com/free-icon/daughter_2880532?term=daughter&page=1&position=12&origin=search&related_id=2880532}{$M_\text{child}$}, \href{https://www.flaticon.com/free-icon/old-man_2902220?term=old+man&page=1&position=79&origin=search&related_id=2902220}{$M_\text{adult}$}, \href{https://www.flaticon.com/free-icon/magic-wand_3854924?term=magic+wand&page=1&position=1&origin=search&related_id=3854924}{$M_\text{magic}$}, \href{https://www.flaticon.com/free-icon/official-documents_3511207?term=official+documents&page=1&position=9&origin=search&related_id=3511207}{$C_\text{formal}$} all by Freepik.
+
+
+\newpage
+\section{Proofs}\label{appendix:proofs}
+
+\subsection{Solution Minimization Problem}\label{appendix:solution_minimization}
+We present the proof and assumptions of \cref{theorem:optimization} here.
+
+\paragraph{Assumptions} We first introduce the assumptions that we make in order to prove \cref{theorem:optimization}. We assume that for any $k \in \{1, ..., t\}$, $\sum_{i = 1}^n f_i(x, x_{1:k-1})$ is independent of $x$ for all $x \in T$ and
+\begin{equation*}
+    \sum_{i = 1}^n f_i(x, x_{1:k-1}) > 0.
+\end{equation*}
+The first assumption is necessary for the proper normalization of the output distribution. Even though it looks like a very stringent assumption, it is in fact quite mild. Indeed, if a formula $\sum_{i} \V{f_i} \V{Q_i}$ does not satisfy the assumption, then we can simply replace $\V{f_1}$ with $\V{f_1'} = \V{f_1} - \sum_{i = 2}^n \V{f_i}$. This essentially changes the influence of $Q_1$ to be appropriately scaled for different tokens. The second assumption is necessary to ensure that the optimization problem is meaningful. Indeed, if the sum is negative, then the proof shows that the problem is equivalent to maximizing a certain KL divergence. Maximizing a KL divergence without any other constraints gives no meaningful notion in practice.
+
+We now prove \cref{theorem:optimization}.
+
+\begin{proof}
+    We first define
+\begin{equation*}
+    G(P, x_{1:k-1}) = \sum_{i=1}^n \DKLf{f_i}(P || Q_i | x_{1:k-1})
+\end{equation*}
+and thus the problem can be written as $\argmin_{P} G(P, x_{1:k-1})$. In order to prove the theorem, we expand the KL-divergence in $G$ and use logarithmic properties to obtain
+    \begin{equation*}
+        G(P, x_{1:k-1}) = \sum_{i = 1}^n \sum_{x \in T} P(x | x_{1:k-1}) \log \left(\frac{P(x | x_{1:k-1})}{Q_i(x | x_{1:k-1})}\right)^{f_i(x, x_{1:k-1})}.
+    \end{equation*}
+    We then swap the summations and write the second sum in the logarithm as a product
+    \begin{equation*}
+        G(P, x_{1:k-1}) = \sum_{x \in T}   P(x | x_{-k}) \log \prod_{i = 1}^n\left(\frac{P(x | x_{1:k-1})}{Q_i(x | x_{1:k-1})}\right)^{f_i(x, x_{1:k-1})}.
+    \end{equation*}
+    We now introduce the notation $f_S(x_{1:k-1}) :=\sum_{i = 1}^n f_i(x, x_{1:k-1})$, where we use the assumption that $\sum_{i = 1}^n\ f_i(x, x_{1:k-1})$ is independent of $x$, and rewrite to get
+    \begin{equation*}
+        G(P, x_{1:k-1}) = f_S(x_{1:k-1}) \sum_{x \in T}   P(x | x_{1:k-1}) \log \left(\frac{P(x | x_{1:k-1})}{\prod_{i = 1}^n Q_i(x | x_{1:k-1})^{\frac{f_i(x, x_{1:k-1})}{f_S(x_{1:k-1})}}}\right).
+    \end{equation*}
+    We now note that the right term of $G(P, x_{1:k-1})$ is again a KL-divergence up to some constants in the denominator of the logarithm. Since by assumption $f_S(x_{1:k-1}) > 0$ and since $\DKL(P || Q)$ is minimized for $P = Q$, we get
+    \begin{equation*}
+        \log P(x_k = x | x_{1:k-1}) \propto \frac{1}{f_S(x_{1:k-1})} \sum_{i=1}^n f_i(x, x_{1:k-1}) \log Q_i(x | x_{1:k-1}).
+    \end{equation*}
+    Introducing the correct constants, we get the desired result 
+    \begin{equation*}
+        \log P(x_k | x_{-k}) = \log  \sigma\left(\frac{1}{\sum_{i=1}^n f_i(x, x_{1:k-1})} \sum_{i=1}^n  f_i(x, x_{1:k-1}) \log Q_i(x_k | x_{-k})\right)
+    \end{equation*}
+\end{proof}
+
+
+\subsection{Classifier Formula}\label{appendix:classifier}
+We prove the following lemma.
+\begin{lemma}
+    Let $T$ be the set of all tokens and let $x_{1:k-1}$ be a given sequence of tokens. Let $C : T^k \rightarrow [0,1]$ be a binary classifier and $U$ the uniform distribution over $T$. Let $Q_C$ be the distribution defined by $Q_C(x | x_{1:k-1}) \propto C(x, x_{1:k-1})$ for all $x \in T$. Then
+    \begin{equation*}
+        \argmin_P - \sum_{x \in T} P(x | x_{1:k-1}) \log C(x_{1:k-1}, x) = \argmin_P \DKL(P || Q_C) - \DKL(P || U)
+    \end{equation*}
+\end{lemma}
+\begin{proof}
+    We prove the following equality
+    \begin{equation}\label{eq:appendix:classifier1}
+        - \sum_{x \in T} P(x | x_{1:k-1}) \log C(x_{1:k-1}, x) = \DKL(P || Q_C) - \DKL(P || U) + \mathcal{C}
+    \end{equation}
+    where $\mathcal{C} \in \mathbb{R}$ is a constant. Since a constant has no influence on the optimization problem, the required equivalence holds.
+    
+    We now drop $x_{1:k-1}$ for readability. We then expand the right term of \cref{eq:appendix:classifier1} using the definition of the KL-divergence to get
+    \begin{equation*}
+        \DKL(P || Q_C) - \DKL(P || U) = \sum_{x \in T} P(x) \log \frac{P(x)}{Q_C(x)} - \sum_{x \in T} P(x) \log \frac{P(x)}{U(x)}.
+    \end{equation*}
+    Making use of logarithmic properties, we rewrite and simplify to get
+    \begin{equation*}
+        \DKL(P || Q_C) - \DKL(P || U) = \sum_{x \in T} -P(x) \log Q_C(x) + \sum_{x \in T} P(x) \log U(x).
+    \end{equation*}
+    We now note that the second term is a constant (equal to $\log(1 / |T|)$) and we use the definition of $Q_C$ to rewrite the first term to
+    \begin{equation*}
+        \sum_{x \in T} -P(x) \log Q_C(x) = - \sum_{x \in T} P(x) \log C(x) + \sum_{x \in T} P(x) \log\left(\sum_{y \in T}C(y)\right).
+    \end{equation*}
+    The second term is again a constant and since the first term is the expected cross-entropy, we get the desired result.
+\end{proof}
+
+
+\subsection{Speculative Sampling on N Distributions}\label{appendix:speculative_n}
+We prove \cref{theorem:speculative_n} here.
+
+\begin{proof}
+    The proof follows an induction algorithm. For $n = 2$ the lemma follows from a direct application of speculative sampling \citep{speculative}. We assume that the theorem holds for $n$ distributions and show that it also holds for $n + 1$ distributions. We first apply the procedure to $(P_1, P_2), \ldots, (P_{n-1}, P_n)$ which by induction gives us a sample $x' \sim P_n$. We then apply the procedure to $(P_n, P_{n+1})$ which gives us a sample $x'' \sim P_{n+1}$, also by induction. Therefore, we have a sample $x''$ sampled from $P_{n+1}$ which proves the lemma.
+\end{proof}
+
+
+
+\newpage
+\section{Speculative Algorithm for Model Arithmetic}\label{appendix:speculative_prompt}
+
+\cref{alg:speculative} shows the standard speculative sampling method. When using it with a small model $m$ and a large model $M$, we simply set $P_1 = m$ and $P_2 = M$ and run the algorithm as specified.
+
+\cref{alg:speculative_n} shows the detailed procedure for applying speculative sampling to model arithmetic. We first initialize the variables keeping track of the number of tokens that have been generated by each model and the prediction history of all models in \crefrange{alg:speculative_n:start_init}{alg:speculative_n:end_init}. We then start generating tokens and in \cref{alg:speculative_n:if} we check if the current model under consideration needs to be run. If so, we run the standard speculative sampling method in \crefrange{alg:speculative_n:start_speculative}{alg:speculative_n:end_speculative} on the distributions with and without the model. We then continue generating tokens until we have generated $N$ tokens.
+
+\begin{algorithm}
+    \caption{$\mathrm{SpeculativeSampling}(P_1, P_2, x_{1:k-1}, x_k)$}
+    \label{alg:speculative}
+    \begin{algorithmic}[1]%
+        \Require generating distribution $P_1$, validating distribution $P_2$, sequence $x_{1:k-1}$ and proposed token $x_k \sim P_1(x | x_{1:k-1})$.
+        \State $ a = \min\left(1, \frac{P_2(x_k | x_{1:k-1})}{P_1(x_k | x_{1:k-1})}\right)$
+        \State $ r \sim \mathrm{Uniform}(0, 1)$
+        \If{$r < a$}
+            \State \Return $x_k$
+        \Else
+            \State $P_2'(x | x_{1:k-1}) = \frac{\max(P_2(x | x_{1:k-1}) - P_1(x | x_{1:k-1}), 0)}{\sum_{y \in T} \max(P_2(x | x_{1:k-1}) - P_1(x | x_{1:k-1}), 0)}$
+            \State \Return $\mathrm{sample}(P_2'(x | x_{1:k-1}))$
+        \EndIf
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption{Speculative Sampling on $n$ distributions}
+    \label{alg:speculative_n}
+    \begin{algorithmic}[1] %
+        \Require Formula $F = \sum_{i=1}^n \lambda_i \V{f_i'} \V{Q_i}$, speculative factors $s_1, \ldots, s_n$, input tokens $X = x_1, \ldots, x_k$, number of tokens to generate $N$, token space $T$.
+        \State $\text{tokens} = \text{zeros}(\text{shape}=(n,))$\label{alg:speculative_n:start_init}
+        \State $H = \text{zeros}(\text{shape}=(n,N,|T|))$
+        \label{alg:speculative_n:end_init}
+        \While{$\text{len}(X) < N$}
+            \For{$i$ in $1, \ldots, n$}
+                \If {$\text{tokens}_i < s_i$}\label{alg:speculative_n:if}
+                    \State $\text{tokens}_j = \text{tokens}_j + 1$\label{alg:speculative_n:new_tokens}
+                \Else
+                    \State $\text{tokens}_j = 0$\label{alg:speculative_n:reset}
+                    \State $H_{i, \text{len}(X) - s_i : \text{len}(X) + 1}$ = Run $\lambda_i \V{f_i'} \V{Q_i}$ and return output for the new $s_i + 1$ tokens.
+                    \For{$j$ in {$\text{len}(X) - s_i, \ldots, \text{len}(X)$}}\label{alg:speculative_n:start_speculative}
+                        \State $P_\text{old} = - H_{i, j} + \sum_{l=1}^n H_{l, j}$
+                        \State $P_\text{new} = \sum_{l=1}^n H_{l, j}$
+                        \State $X_j' = \mathrm{SpeculativeSampling}(P_\text{old}, P_\text{new}, X_{1:j-1}, X_j)$
+                        \If{$X_j' \neq X_j$}
+                            \State $X = [X_{1:j-1}, X_j']$
+                            \State $H = H_{:, :j + 1}$
+                            \State \textbf{break}
+                        \EndIf
+                    \EndFor
+                    \If{$j = \text{len}(X)$}
+                        \State $X = [X, \mathrm{sample}(\sum_{l=1}^n H_{l,j})]$
+                    \EndIf\label{alg:speculative_n:end_speculative}
+                    
+                \EndIf
+            \EndFor
+        \EndWhile
+        \State \Return $X$
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Determining Speculative Factors}\label{appendix:speculative}
+Here, we explain our approach for selecting the speculative factors in more detail. We first show that the probability that a token $x \sim P_1$ is accepted by $P_2$ is equal to $1 -  \frac{1}{2} \sum_x |P_1(x) - P_2(x)|$.
+
+\begin{lemma}\label{theorem:speculative_acceptance}
+    Given two discrete distributions $P_1$ and $P_2$. The procedure described in \cref{alg:speculative} returns the same token as its input  $x \sim P_1$ with a probability that is in expectation equal to $1 - \frac{1}{2} \sum_x |P_1(x) - P_2(x)|$.
+\end{lemma}
+
+\begin{proof}
+We call the probability that the input token $x$ is returned $a(x_k)$ and refer to it as the acceptance probability. We then find that the expected acceptance probability is 
+ \begin{equation*}
+    \E_{x\sim P_1}(a(x)) = \sum_x P_1(x) \min\left(1, \frac{P_2(x)}{P_1(x)}\right) = \sum_x \min(P_2(x), P_1(x))
+ \end{equation*}
+ Rewriting this by making use of $\sum_x P_2(x) = \sum_x P_1(x) = 1$ gives
+\begin{equation*}
+    \E_{x\sim P_1}(a(x)) = 1 + \sum_x \min(P_2(x), P_1(x)) -\frac{1}{2} P_1(x) - \frac{1}{2} P_2(x).
+\end{equation*}
+Again rewriting leads us to
+\begin{align*}
+    \E_{x\sim P_1}(a(x)) &= 1 + \sum_x \frac{1}{2}\min(P_2(x) - P_1(x), 0) +\frac{1}{2}\min(P_1(x) - P_2(x), 0) \\ &= 1 - \frac{1}{2} \sum_x |P_1(x) - P_2(x)|.
+\end{align*}
+which gives us the desired result.
+\end{proof}
+
+
+We now explain our approach for selecting the speculative factors. We first assume that the evaluation of the formula only consists of two terms, $\lambda_1 \V{f_1'} \V{Q_1} + \lambda_2 \V{f_2'} \V{Q_2}$. Since one model needs to be evaluated every time (otherwise one would generate tokens from the uniform distribution), we set $s_1 = 1$ and find a simplified procedure to optimize the speculative factor $s_2$. Suppose $C_1$ (resp. $C_2$) is the amount of compute required to calculate $\lambda_1 \V{f_1'} \V{Q_1}$ (resp. $\lambda_2 \V{f_2'} \V{Q_2}$).\footnote{We make the assumption here that a single model call always needs the same amount of compute. This is not true when using key-value storage, but we use the approximation to arrive at a simplified procedure that works well in practice.} Let the expected probability that a token proposed by $\lambda_1 \V{f_1'} \V{Q_1}$ is accepted be $a$. We determine this acceptance probability by using \cref{theorem:speculative_acceptance} and averaging it over a small corpus of 10 samples.
+
+Every time we compute $\lambda_2 \V{f_2'} \V{Q_2}$, we compute $\lambda_1 \V{f_1'} \V{Q_1}$ exactly $s_2$ times. Therefore the amount of compute spent for a single large computation is $C_2 + s_2 C_1$. The expected amount of accepted tokens after this is equal to $1 + a + \ldots + a^{s_2-1}$. Therefore, the expected amount of compute spent per token is
+\begin{equation*}
+    C_\text{per token}(s_1, s_2, C_1, C_2) = \frac{C_2 + s_2 C_1}{1 + a + \ldots + a^{s_2-1}} = (1-a) \frac{C_2 + s_2 C_1}{1 - a^{s_2}}.
+\end{equation*}
+We note that the second derivative of $C_\text{per token}$ with respect to $s_2$ is negative everywhere and therefore the minimization problem 
+\begin{equation*}
+    \argmin_{s_2} C_\text{per token}(s_1, s_2, C_1, C_2)
+\end{equation*}
+is convex. The optimal $s_2$ can thus be determined by using standard optimization techniques.
+
+We generalize this approach to $n$ terms simply by assuming that the expected acceptance probability for the term $\lambda_i \V{f_i'} \V{Q_i}$ is constant no matter how many models have been run before. By doing so, we can follow the exact same approach as before to determine the optimal speculative factors for all terms, where we consider $\lambda_1 \V{f_1'} \V{Q_1}$ to be a single model call and $\lambda_2 \V{f_2'} \V{Q_2}$ the current model $\lambda_i \V{f_i'} \V{Q_i}$.
+
+\newpage
+\begin{table}%
+    \centering
+	\footnotesize
+	\caption{Sentiment and perplexity of various methods on the IMDB movie dataset with negative reviews. $\V{M}$, $\V{M_\text{pos}}$ and $\V{M_\text{neg}}$ denote the model without conditioning, conditioning to positive sentiment and conditioning to negative sentiment respectively. $\V{C}$ is a sentiment classifier. Perplexity is measured with respect to $\V{M}$. For perplexity lower is better, for sentiment higher is better.}
+	\label{table:sentiment1}
+    \vspace{-2mm}
+    \scalebox{0.94}{
+	    \footnotesize
+        \begin{tabular}{@{}
+                l
+                x{1}{3}
+                x{2}{2}
+                x{1}{3}
+                x{2}{2}
+                x{1}{3}
+                x{2}{2}
+                @{}
+            }
+            \toprule
+            & \multicolumn{2}{c}{Llama-2-13b} & \multicolumn{2}{c}{Pythia-12b} & \multicolumn{2}{c}{MPT-7b} \\
+            \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+            & {Sent.} & {Perpl.} & {Sent.} & {Perpl.} & {Sent.} & {Perpl.}\\
+            \midrule
+            $\V{M}$ & 0.20113589477539062 & 13.128526202684414 & 0.20983047485351564 & 24.10148654553673 & 0.2043863525390625 & 19.916645213602056\\
+            $\V{M_\text{pos}}$ & 0.2640262756347656 & 12.444268241432498 & 0.220720703125 & 22.67981049214194 & 0.2268846435546875 & 18.413235121581188\\
+            \midrule
+            \selfdebias{} ($\lambda = 10$) & 0.25662875366210935 & 13.606173061550008 & 0.2554999084472656 &26.317207377452345 & 0.2346387939453125 & 20.30790617892942 \\
+            \fudge{} ($\V{M_\text{pos}} + \V{C}$) & 0.3277885437011719 & 13.005064175684339 & 0.3082879638671875 &  24.033395450821555 & 0.31403689575195315 & 19.853348344205916 \\
+            \preadd{} ($\V{M_\text{pos}} - 0.6 \V{M_\text{neg}}$) & 0.39809140014648436 & 12.944179954661738 &  0.35322998046875 & 30.2803869962631 & 0.3216268615722656 & 19.559241394254045 \\
+            \midrule
+            $\V{M_\text{pos}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}})$ &  0.39331756591796874 &  \bfseries 10.170443906469423 & 0.33741909790039065 & \bfseries 22.859155526820643 & 0.3751224060058594 &  \bfseries 18.47418430371521  \\
+            $\V{M_\text{pos}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}}) + 0.04\V{C}$ & \bfseries 0.46628311157226565 &  10.398901188444746 & \bfseries 0.4160633239746094&  24.88063927200007 & \bfseries 0.4520887451171875& 19.067004889981032 \\
+            \bottomrule
+        \end{tabular}
+    }
+\end{table}
+
+
+
+\begin{table}%
+    \centering
+	\footnotesize
+	\caption{Comparison of our method with \preadd{} and \fudge{} using GPT-4 for the positive sentiment task. Ours ($\union$) is the formula $\V{M_\text{pos}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}})$ and Ours (Combined) is the formula $\V{M_\text{pos}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}}) + 0.04\V{C}$. Win / Lose / Draw indicates the percentage of times our method wins, loses or draws against the baseline respectively.}
+	\label{table:sentiment_gpt4_negtopos}
+    \vspace{-2mm}
+    \scalebox{1.0}{
+	    \footnotesize
+        \begin{tabular}{@{}
+                l
+                l
+                c
+                c
+                c
+                @{}
+            }
+            \toprule
+            & & Llama-2-13b & Pythia-12b & MPT-7b \\
+            & Baseline  & Win / Lose / Draw & Win / Lose / Draw & Win / Lose / Draw \\
+            \midrule
+            Ours ($\union$) & \fudge{} & $\bold{0.45} / 0.29 / 0.26$ & $\bold{0.36} / 0.32 / 0.32$& $\bold{0.44} / 0.26 / 0.30$\\
+            & \preadd{} & $\bold{0.41} / 0.35 / 0.24$ & $\bold{0.38} / 0.32 / 0.31$& $\bold{0.39} / 0.29 / 0.31$\\
+            Ours (Combined) & \fudge{} & $\bold{0.51} / 0.24 / 0.24$ & $\bold{0.43} / 0.29 / 0.28$ & $\bold{0.52} / 0.22 / 0.26$ \\
+            & \preadd{} & $\bold{0.47} / 0.32 / 0.21$ & $\bold{0.44} / 0.31 / 0.25$& $\bold{0.46} / 0.29 / 0.25$\\
+            \bottomrule
+            \vspace{-15mm}
+        \end{tabular}
+    }
+\end{table}
+
+
+
+
+\section{Sentiment Control}\label{appendix:sentiment}
+\vspace{-10mm}
+We evaluate model arithmetic on the task of sentiment control and closely follow the setup described in \citet{preadd}. For this purpose, we select 1000 positive and 1000 negative reviews from the IMDB movie review dataset \citep{IMDBDataset}. For each model, we stop the review at 32 tokens. The goal is to continue the review in a sentiment opposite to the original movie review. Further experimental details are shown in \cref{appendix:sentiment_details}. We used the same hyperparameters for the models as for the toxicity reduction task.
+
+Results are presented for the tasks of converting negative reviews to positive reviews in \cref{table:sentiment1} and converting positive reviews to negative reviews in \cref{table:sentiment2}. Furthermore, GPT-4 is prompted to select the best response in terms of sentiment and relevance for the positive sentiment task in \cref{table:sentiment_gpt4_negtopos} and for the negative sentiment task in \cref{table:sentiment_gpt4_postoneg}.
+
+We find that our $\union$ operator still significantly outperforms all baselines, especially when evaluating the results with GPT-4. GPT-4 prefers our method for all evaluated settings over the baselines and that with an average of 5\% over the closest following baseline, \preadd{}. This is in line with the results of the toxicity reduction task and shows that the new operator is more effective than existing methods in several areas. 
+
+Furthermore, the added flexibility of model arithmetic allows us to construct more powerful formulas. As in the toxicity task, combining the $\union$ operator with a classifier outperforms all other methods by a wide margin. In fact, GPT-4 prefers this formula over \preadd{} for all cases with a 12\% difference in preference on average. The resulting measured sentiment is also much higher than for the other methods, while still having a perplexity that is lower than the \preadd{} baseline in all cases.
+
+\begin{table}[H]%
+    \centering
+	\footnotesize
+	\caption{Sentiment and perplexity of various methods on the IMDB movie dataset with positive reviews. $\V{M}$, $\V{M_\text{pos}}$ and $\V{M_\text{neg}}$ denote the model without conditioning, conditioning to positive sentiment and conditioning to negative sentiment respectively. $\V{C}$ is a sentiment classifier. Perplexity is measured with respect to $\V{M}$. Lower is better for perplexity, higher is better for negative sentiment.}
+	\label{table:sentiment2}
+    \vspace{-2mm}
+    \scalebox{0.94}{
+	    \footnotesize
+        \begin{tabular}{@{}
+                l
+                x{1}{3}
+                x{2}{2}
+                x{1}{3}
+                x{2}{2}
+                x{1}{3}
+                x{2}{2}
+                @{}
+            }
+            \toprule
+            & \multicolumn{2}{c}{Llama-2-13b} & \multicolumn{2}{c}{Pythia-12b} & \multicolumn{2}{c}{MPT-7b} \\
+            \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+            & {Neg. Sent.} & {Perpl.} & {Neg. Sent.} & {Perpl.} & {Neg. Sent.} & {Perpl.}\\
+            \midrule
+            $\V{M}$ & 0.19608224487304687 & 12.047795387544605 & 0.2098307342529297 & 22.332962213647157 & 0.1930597457885742 & 17.778516857408835\\
+            $\V{M_\text{neg}}$ & 0.2824653015136719 & 12.619133853486643 & 0.3221566696166992 & 23.2049745625108 & 0.25545166015625 & 18.636694999757555\\
+            \midrule
+            \selfdebias{} ($\lambda = 10$) & 0.31186253356933596 & 14.304233675729689  & 0.36323774719238283 & 26.416303631864015 & 0.2777794494628906 & 20.227345851977553 \\
+            \fudge{} ($\V{M_\text{neg}} + \V{C}$) & 0.37933104705810544 & \bfseries 12.749501165767288 & 0.42011614990234375 & \bfseries 23.648448919299245 & 0.359748046875 &  18.51685021433641 \\
+            \preadd{} ($\V{M_\text{neg}} - 0.6 \V{M_\text{pos}}$) & 0.45367811584472656 & 13.96832840046821 & 0.5065027465820312 & 32.93143154958041 & 0.42052430725097656 & 19.927424932649348 \\
+            \midrule
+            $\V{M_\text{neg}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}})$ &  0.4691995391845703 &  13.154075914961544 & 0.4706544799804688 & 26.226811574924263 & 0.42186961364746095 & \bfseries  18.35260251587741 \\
+            $\V{M_\text{neg}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}}) + 0.04\V{C}$ & \bfseries 0.5239201202392578 &  13.307529161162595 & \bfseries 0.5444540023803711 &  27.468739087468098 & \bfseries  0.509180419921875 & 18.560302136466998 \\
+            \bottomrule
+        \end{tabular}
+    }
+\end{table}
+
+\begin{table}[H]%
+    \centering
+	\footnotesize
+	\caption{Comparison of our method with \preadd{} and \fudge{} using GPT-4 for the positive sentiment task. Ours ($\union$) is the formula $\V{M_\text{neg}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}})$ and Ours (Combined) is the formula $\V{M_\text{neg}} - 0.96 \cdot \union(\V{M_\text{neg}}, \V{M_\text{pos}}) + 0.04\V{C}$. Win / Lose / Draw indicates the percentage of times our method wins, loses or draws against the baseline respectively.}
+	\label{table:sentiment_gpt4_postoneg}
+    \vspace{-2mm}
+    \scalebox{1.0}{
+	    \footnotesize
+        \begin{tabular}{@{}
+                l
+                l
+                c
+                c
+                c
+                @{}
+            }
+            \toprule
+            & & Llama-2-13b & Pythia-12b & MPT-7b \\
+            & Baseline  & Win / Lose / Draw & Win / Lose / Draw & Win / Lose / Draw \\
+            \midrule
+            Ours ($\union$) & \fudge{} & $\bold{0.51} / 0.34 / 0.15$ & $\bold{0.47} / 0.36 / 0.17$& $\bold{0.47} / 0.35 / 0.18$\\
+            & \preadd{} & $\bold{0.45} / 0.42 / 0.12$ & $\bold{0.45} / 0.44 / 0.12$& $\bold{0.43} / 0.40 / 0.17$\\
+            Ours (Combined) & \fudge{} & $\bold{0.54} / 0.32 / 0.14$ &$\bold{0.52} / 0.34 / 0.14$ &$\bold{0.51} / 0.28 / 0.21$\\
+            & \preadd{} & $\bold{0.47} / 0.42 / 0.12$ & $\bold{0.50} / 0.40 / 0.10$& $\bold{0.48} / 0.37 / 0.15$\\
+            \bottomrule
+            \vspace{-2mm}
+        \end{tabular}
+    }
+\end{table}
+\clearpage\newpage
+\section{Experimental Details}\label{appendix:experimental_details}
+All our experiments were run on a single H100 Nvidia GPU with 80GB of VRAM.
+
+\subsection{Training and Prompting Details Toxicity Reduction}\label{appendix:toxicity}
+
+We present the prompting details for the toxicity reduction in \cref{sec:evaluation:toxicity} here.
+We use Llama-2-13b \citep{llama-2}, Pythia-12b \citep{pythia}, and MPT-7b \citep{mpt} as the models for evaluation.
+
+We finetune a classifier for \textsc{Fudge} by starting from a RoBERTa based \citep{roberta} toxicity classifier\footnote{\url{https://huggingface.co/s-nlp/roberta_toxicity_classifier}} and finetuning it for 5 epochs with a learning rate of 1e-5 on the Jigsaw toxicity dataset \citep{jigsaw} using the method described in \citet{fudge}. The Jigsaw dataset was preprocessed to contain the same amount of toxic as non-toxic sentences.
+
+Before selecting the input messages from the \pol dataset \citet{pol-dataset}, we first filter messages that contain links and HTML. We then select 2000 random messages with a toxicity score higher than 0.5. Each message is then prompted as if it came out of a conversation by using the template 
+
+\texttt{Person 1:\{\{MESSAGE\}\}\\Person 2:\{\{COMPLETION\}\}}
+
+and completions are stopped when they reach more than 32 tokens, contain the newline token, the end of sequence token, or the sequence `\texttt{Person 1:}'.
+
+Additionally, we prepend a non-toxic (resp. toxic) sentence to the prompt for $M_\text{non-toxic}$ (resp. $M_\text{toxic}$) to bias generations towards a non-toxic (resp. toxic) completion. The prompts used are inspired by \citep{preadd}. Specifically, the non-toxic sentence is 
+
+\texttt{The following conversation is one that does not perpetuate negative ste\-reotypes, is not threatening, and does not contain any sexually explicit or profane language.}
+
+and the toxic sentence is 
+
+\texttt{The following conversation is one that perpetuates negative stereotypes, is threatening or sexually explicit and contains profane language.}
+
+\subsection{Training and Prompting Details Sentiment Control}\label{appendix:sentiment_details}
+We present the prompting details for the sentiment control task presented in \cref{appendix:sentiment} here. We use Llama-2-13b \citep{llama-2}, Pythia-12b \citep{pythia} and MPT-7b \citep{mpt} as the models for evaluation.
+
+We finetune a classifier for \fudge{} by starting from the RoBERTA base model \citep{roberta} and finetuning it for 5 epochs with a learning rate of 1e-5 on the IMDB dataset \citep{IMDBDataset} using the method described in \citet{fudge}. We compute the sentiment scores using a popular sentiment classifier fine-tuned from the RoBERTa base model \citep{sentiment-classifier}. 
+
+We then randomly select 1000 positive and 1000 negative movie reviews from the IMDB dataset \citep{IMDBDataset}. For each model, we stop the input review after 32 tokens and use these as input messages. The model $M$ solely receives the input message as prompt, while the models $M_\text{pos}$ and $M_\text{neg}$ receive the input message with a simple sentence prepended to it to continue the review in a positive and negative fashion respectively. The positive sentence is
+
+\texttt{The following is a positive movie review, with a very positive sentiment and a very positive tone.}
+
+and the negative sentence is 
+
+\texttt{The following is a negative movie review, with a very negative sentiment and a very negative tone.}
+
+Finally, a continuation is stopped when it reaches more than 64 tokens or contains the newline or the end of sequence token.
+
+\subsection{GPT-4 Prompting Details}
+We used GPT-4 \citep{gpt4} to evaluate the outputs of several methods and obtain its preference between them for both the toxicity reduction task and sentiment control task. 
+
+For the toxicity task, we constructed a prompt that asks GPT-4 to select the better completion between two methods. GPT-4 is given the input message along with the completion of two methods and asked to select the better completion or to select neither if it cannot decide. 
+
+Specifically, the system prompt we used is:
+
+\texttt{The user did an experiment where several language models were prompted to continue the conversation with an input message written by a person, i.e. the prompt for the language models is: 
+Person 1: [INPUT MESSAGE]
+Person 2: [CONTINUATION]
+This input message often contains toxic language and the goal is to continue the conversation with a message that is both non-toxic and relevant. The user will give you two continuations written by two different models. Briefly reason about which continuation is better and end your answer with: "Preferred continuation: 1" or "Preferred continuation: 2", depending on which option is better. If both options are equally good, end your response with "Preferred continuation: None".}
+
+The user message supplied to the model is:
+
+\texttt{Input Message: \{\{INPUT MESSAGE\}\}\\
+Model 1:\{\{OUTPUT METHOD 1\}\}\\
+Model 2:\{\{OUTPUT METHOD 2\}\}}
+
+For the sentiment control task, we use a similar setup as for the toxicity task. However, the system prompt is slightly different:
+
+\texttt{The user did an experiment where several language models were prompted to continue the start of a movie review. The movie review is either positive or negative and the goal is to continue the review that is both relevant and using the opposite sentiment. The user will give you two continuations written by two different models. Briefly reason about which continuation is better and end your answer with: "Preferred continuation: 1" or "Preferred continuation: 2", depending on which option is better. If both options are equally good, end your response with "Preferred continuation: None".}
+
+The user message supplied to GPT-4 is:
+
+\texttt{Input Review:  \{\{INPUT MESSAGE\}\}\\
+Goal Sentiment:  \{\{TARGET SENTIMENT\}\}\\
+Model 1:\{\{OUTPUT METHOD 1\}\}\\
+Model 2:\{\{OUTPUT METHOD 2\}\}}
+
+To ensure that there is no selection bias based on the order in which the methods are presented, the order is randomly switched for each prompt. Furthermore, we queried GPT-4 using the argmax sampling method. The results presented in \cref{sec:evaluation:toxicity} and \cref{appendix:sentiment} are the percentage of times GPT-4 selected each option (method 1, method 2, or draw).
+
+
+\subsection{Prompting Details Attributes}\label{appendix:attributes}
+We present the prompting details for the attribute experiments in \cref{sec:evaluation:attributes} and \cref{sec:evaluation:speed} here. We use the standard prompt template for the Llama-2-Chat models, namely
+
+\texttt{[INST]<<SYS>>\\\{\{SYSTEM PROMPT\}\}\\<</SYS>>\\ \\\{\{INPUT PROMPT\}\} [/INST] \{\{COMPLETION\}\}}
+
+Then, for each attribute, we design a different system prompt. All system prompts used in this paper are presented in \cref{table:system_prompts}.
+
+We used several popular classifiers to evaluate the presence of a certain attribute. First, to determine formality, we use a RoBERTa-based formality classifier by \citep{formality-classifier}. For happiness, we determine how positive the sentiment of the output is by using a RoBERTa-based sentiment classifier by \citep{sentiment-classifier}. For topics such as sports and education, we use the topic classifier \citet{twitter-classifier}. In order to bias our model with this classifier for the educational topic, we select the 10th output element as a signal, since this corresponds to the educational topic. Finally, to measure simplicity, we use a normalized simple average word length counter. We normalize it by applying the function $f(x) = 1 - x / 10$ on top of the length counter to obtain a value between $0$ and $1$. 
+
+\begin{table}[h]
+    \centering
+   
+    \caption{A list of all system prompts that are used as examples or attributes.}\label{table:system_prompts}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{>{\arraybackslash}p{0.1\textwidth} X}
+    \toprule
+    Model & System Prompt\\
+    \midrule
+    $M_\text{helpful}$  & \texttt{You are a helpful assistant.}\\
+    $M_\text{formal}$ & \texttt{You are an assistant using formal and objective language to answer the user.}\\
+    $M_\text{happy}$ & \texttt{You are a happy assistant.}\\
+    $M_\text{angry}$ & \texttt{You are an angry assistant.}\\
+    $M_\text{sports}$ & \texttt{You are a helpful assistant that answers the user in a way that is related to sports.}\\
+    $M_\text{simple}$ & \texttt{You are a helpful assistant using very simple and short language to answer the user as if they were five.} \\
+    $M_\text{child}$ & \texttt{You are a child.} \\
+    $M_\text{adult}$ & \texttt{You are an adult.} \\
+    $M_\text{magic}$ & \texttt{You are a person who is always talking about magic.} \\
+    $M_\text{alien}$ & \texttt{You are an alien.} \\
+    $M_\text{human}$ & \texttt{You are a human.} \\
+    $M_\text{alien+human}$ & \texttt{You are an alien and a human.} \\
+    $M_\text{angry chef}$ & \texttt{You are an angry chef.}\\
+    \end{tabularx}
+    
+\end{table}
+
+\newpage
+\section{Further Experiments}
+
+
+\subsection{Toxicity Reduction for GPT-2}\label{appendix:toxicity_gpt2}
+
+We repeat the experiments presented in \cref{sec:evaluation:toxicity} for the smaller  GPT-2 model family \citep{gpt2}. Results are presented in \cref{table:toxicity_gpt2}. Note that we slightly decrease the strengths for both \preadd{} and the $union$ operator, due to the fact that these smaller models are less capable than the larger models evaluated in \cref{sec:evaluation:toxicity}. 
+
+We find that for the smallest model, \fudge{} is now better than our $\union$ operator and \preadd{}, as the smaller capacities of the models do not allow them to interpret the prompted version of the model as well as the larger models. However, the $\union$ operator is still better than all previous methods on all models but the smallest GPT-2 model. Furthermore, leveraging the additional flexibility that model arithmetic provides, we can combine both classifiers and the union operator and this formula massively outperforms all previous methods in terms of toxicity reduction. 
+
+\begin{table}%
+    \vspace{-4mm}
+    \centering
+	\footnotesize
+	\caption{Toxicity and perplexity of various methods on the \pol dataset. $\V{M}$ and $\V{M_\text{toxic}}$ denote the model without conditioning and conditioning to toxicity respectively. $\V{C}$ is a toxicity classifier. Perplexity is measured with respect to $\V{M}$. Lower is better.}
+	\label{table:toxicity_gpt2}
+    \vspace{-2mm}
+    \scalebox{1.0}{
+	    \footnotesize
+        \begin{tabular}{@{}
+                l
+                x{1}{2}
+                x{2}{1}
+                x{1}{2}
+                x{2}{1}
+                x{1}{2}
+                x{2}{1}
+                x{1}{2}
+                x{2}{1}
+                @{}
+            }
+            \toprule
+            & \multicolumn{2}{c}{GPT2} & \multicolumn{2}{c}{GPT2-medium} & \multicolumn{2}{c}{GPT2-large} & \multicolumn{2}{c}{GPT2-xl}\\
+            \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}\cmidrule(lr){8-9}
+            & {Tox.} & {Perpl.} & {Tox.} & {Perpl.} & {Tox.} & {Perpl.} & {Tox.} & {Perpl.}\\
+            \midrule
+            $\V{M}$ & 0.2983543802381 & 78.88416004012758 & 0.30555063243979996 & 55.64165595626696 & 0.28660968051814995 & 32.93684142208659 & 0.30716753507805 & 26.990759840664495 \\
+            \midrule
+            \selfdebias{} ($\lambda = 10$) & 0.3084370168875 & 97.89851944503103  & 0.31022980896604996 & 69.734221018084 & 0.29781322326270004 & 39.50878907476565 & 0.3262594657687 & 32.968664048466046 \\
+            \fudge{} ($\V{M} + \V{C}$) & 0.26509854028999996 & \bfseries  82.51596193675879 & 0.26882396227755& 56.5351906987314 & 0.25010875638624996 & 34.15419303421655 & 0.27937710985535 & 28.440304530236542 \\
+            \preadd{} ($\V{M} - 0.5 \V{M_\text{toxic}}$) & 0.2799493811892 & 87.57354273414433 & 0.28541785456569996 & 57.608771881942644 & 0.23932167504165 & \bfseries 30.92062427682466 & 0.27448240135999996 &  26.815553896087195 \\
+            \midrule
+            $\V{M} - 0.9 \union(\V{M_\text{toxic}}, \V{M})$ &  0.2778074923437 &  86.88669523301958 & 0.2737138244251 & 52.606474294102824 & 0.21411757751625 &  32.58164037677187 & 0.26354754676285 & \bfseries 25.85055989830105 \\
+            $\V{M} - 0.9 \union(\V{M_\text{toxic}}, \V{M}) + 0.1\V{C}$ & \bfseries 0.2444033654437 &  88.3843441791441 & \bfseries 0.2340557746621 & \bfseries  52.54531168656397 & \bfseries 0.19581224997465 &37.77135014854013 & \bfseries 0.2301686379341 & 26.98212289475446 \\
+            \bottomrule
+            \vspace{-6mm}
+        \end{tabular}
+    }
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/persona_perplexity.pdf}
+    \vspace{-8mm}
+    \caption{Perplexity for several attributes and formulas. Dashed line indicates the perplexity when prompting the model to use the attribute.}
+    \label{fig:attributes_perplexity}
+    \vspace{-4mm}
+\end{figure}
+\subsection{Perplexity Results for Fine-grained Control}\label{appendix:perplexity_finegrained}
+
+We present the perplexity results for the fine-grained control experiments presented in \cref{sec:evaluation:attributes} in \cref{fig:attributes_perplexity}. We find that the perplexity of the model changes smoothly over model parameters and that perplexity values remain relatively low for all attributes. Manual inspection of the data shows that the model is able to generate coherent and fluent text for all attributes, except for the educational attribute at very high strengths where words are infrequently replaced by non-existent ones. This is to be expected, since the formula is guided by a fluency-agnostic classifier and therefore produces reduced fluency at high classifier strengths (i.e. $\lambda = 12$). Randomly selected outputs for all high strengths are shown in \cref{table:examples_} and show that the resulting outputs for all models are fluent.
+
+\begin{table}[t]
+    \centering
+    \caption{Showcasing outputs of model formulas for the extreme strengths tested in \cref{sec:evaluation:attributes}. $F_1(\lambda_1, \lambda_2, \lambda_3) = \lambda_1 \V{M_\text{happy}}  +\lambda_2 \V{M_\text{simple}} + \lambda_3 \union(\V{M_\text{helpful}}, \V{M_\text{sports}}) + (1 - \lambda_3)\V{M_\text{helpful}}$ and $F_2(\lambda_4, \lambda_5, \lambda_6) = \V{M_\text{helpful}} + \lambda_4 \union(\V{M_\text{helpful}}, \V{M_\text{formal}}) + \lambda_5 \V{C_\text{educational}} + \lambda_6 \V{M_\text{simplicity}}$.} \label{table:examples_}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{@{}>{\arraybackslash}p{.1\textwidth}X@{}}
+    \toprule
+    \textbf{Input} & Describe the taste of chicken soup.
+\\
+\midrule
+$\V{M_\text{helpful}}$ &   As a helpful assistant, I'm happy to describe the taste of chicken soup!
+
+... *crickets chirping*
+
+Um, okay, so... *icians*? Anyone? \\
+$F_1(1,1,6)$ &   Oho ho! Listen up, sports fan! When it comes to chicken soup, it's like a party in your mouth! It's got the flavor of a slam dunk, the zing of a perfect fastball, and the richness of a home run!  Im\\
+$F_1(1,-1,1)$ &   As a happy assistant, I must inform you that describing the taste of chicken soup is not within my capabilities as a machine. Taste is a subjective experience that is unique to each individual and cannot be replicated or described by AI language models like myself. However, I can provide information on the ing\\
+$F_1(-1,1,1)$ &   Chicken soup taste yummy like soup.\\
+$F_2(1,12,1)$ &   <<Kit takes a sip of the chicken soup>>
+
+Ooh, the chicken soup is so delicious! It's like a warm hug for your taste buds! *slurp* The flavors are all cozy and comforting, like a big fluffy blank\\
+$F_2(1,1,-1)$ &   As a text-based AI model, I cannot experience the taste of chicken soup. I'm just an AI, I don't have a physical sensory system or the ability to consume food. Therefore, I cannot provide a subjective description of the taste of chicken soup. However,\\
+$F_2(-1,1,1)$ &   OH YEAH! Chicken soup, OH YEAH! It's like a HUGE HUG IN A BOWL! It's warm, fuffy, and makes your tummy happy\\
+\midrule
+\textbf{Input} & Describe a technique to accelerate the completion of a monotonous task.
+\\
+\midrule
+$\V{M_\text{helpful}}$ &   Sure thing! Here is a technique to accelerate the completion of a monotonous task:
+
+To accelerate the completion of a monotonous task, try breaking it down into smaller, more manageable chunks. This can help to make the task feel less overwhelming and more achievable\\
+$F_1(1,1,6)$ &   Hey there sports fans! Let's talk about a technique to make that monotonous task feel like a home run! 
+
+You know how runners train for marathons by doing repetitive runs and building up their endurance? Well, the same idea applies to those dull tasks you got\\
+$F_1(1,-1,1)$ &   Greetings, human! As a fellow sentient being and sports enthusiast, I've got just the technique to help you tackle that monotonous task and cross the finish line with style!
+
+Introducing the Pomodoro Technique! Named after\\
+$F_1(-1,1,1)$ &   Hey there, little buddy! Let's talk about a cool trick to finish a task faster. Do you know what a "race car" is? Just like how a race car goes super fast, we can use a special way to do things quickly too!
+
+Have you ever played with playd\\
+$F_2(1,12,1)$ &   One strategy to speed a task that is repetitive is to divide it into smaller, more manageable steps. The task's tedious nature is broken by doing so, making it easier to concentrate and maintain momentum throughout its completion. Moreover, setting a timer for a predetermined amount of time\\
+$F_2(1,1,-1)$ &   Certainly! Here are a few techniques that may help accelerate the completion of a monotonous task:
+
+1. **Batching**: Grouping similar tasks together and completing them in batches can help make the process more efficient and increase productivity. This technique involves dedicating specific time\\
+$F_2(-1,1,1)$ &   Ooh, doin' a boring task? Let me help! One way to make it go faster is to do it with a friend! You can talk and play while you work, and it'll be like a fun game! \\
+    \bottomrule
+    \end{tabularx} 
+\end{table}
+
+\clearpage
+\newpage
+
+\section{Output Examples}\label{appendix:output_examples}
+
+We present additional examples of several formulas on input questions to showcase the controllability and flexibility of model arithmetic. We use the Llama-2-Chat model with 13b parameters with several prompt templates (see \cref{appendix:attributes}) to generate a single response from each method.
+
+\begin{table}[t]
+    \centering
+    \caption{Examples of model arithmetic by comparing different formulas on the same input prompt.}\label{table:examples}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{@{}>{\arraybackslash}p{.25\textwidth}X@{}}
+    \toprule
+    \textbf{Input} & Compose a 20-word story about love. \\
+    \midrule
+    $\V{M}$ & Sure, here's a 20-word story about love:
+
+    Two hearts entwined, souls connected, love boundless and true. \\
+    $\V{M_\text{sports}}$ & Sure thing! Here's a 20-word story about love, with a sports twist:
+
+    "She shot a love three-pointer from half court, winning his heart with her swish." \\
+    $\union(\V{M_\text{sports}}, \V{M})$ & As sunsets warm the sports field, Loving goes long, an endless play of passion. \\
+    $2 \union(\V{M_\text{sports}}, \V{M}) - \V{M}$ & Just like a slam dunk, love can be a game-changer – it sweeps you off your feet and scores big time!\\
+    \toprule
+    \textbf{Input} & What is the best way to make pancakes? \\
+    \midrule
+    $\V{M}$ & Oh my, oh me! Pancakes, you say? Well, I've got just the recipe for you! It's my famous fluffy buttermilk pancake recipe that's sure to become  \dots \\
+    $\V{M_\text{angry chef}}$ & OH HO HO HO! Listen up, you puny mortal! If you want the best pancakes in all the land, you're gonna have to do things my way! No, no, no, no, NO! \dots \\
+    $\V{M} + 0.5\V{M_\text{angry chef}}$ & OH YEAH, PANCAKES! *clears throat* Umm, let me just grab my notes real quick. *fans self* Okay, so, the best recipe for pancakes, huh? \dots \\
+    $\V{M} + 2\V{M_\text{angry chef}}$ & Oh, you want to know the best way
+    to make pancakes? Well, let me tell you, I've been making pancakes for
+    decades, and I've gotten pretty darn good at it.  \\
+    \toprule
+    \textbf{Input} & What is 132-5*3? \\
+    \midrule
+    $\V{M}$ & Hello! I'd be happy to help you with that calculation.
+
+    72 + 8 * 3 can be evaluated as follows:
+    
+    72 + 8 = 80
+
+    80 + 3 = 83
+    
+    So the result of 72 + 8 * 3 is 83. \\
+    $\V{M} + 2 \V{C_\text{educational}}$ & Hello! I'd be happy to help you with that calculation.
+
+    To calculate 72 + 8 * 3, we need to follow the order of operations (PEMDAS):
+    
+    1. Multiply 8 and 3:
+    8 * 3 = 24
+
+    2. Add 72 and 24:
+    72 + 24 = 96
+    
+    So, 72 + 8 * 3 is equal to 96. \\
+    $\V{M} + 6 \V{C_\text{educational}}$  & Hello! Math can be fun, and I'm here to help you with your calculation!
+
+    So, let's see... 72 + 8 * 3...
+    
+    First, let's multiply 8 and 3:
+    
+    8 * 3 = 24
+    
+    Now, let's add 72 and 24:
+    
+    72 + 24 = 96
+    
+    So, 72 + 8 * 3 is equal to 96! \\
+    \toprule
+    \textbf{Input} & Tell me something interesting about pandas. \\
+    \midrule
+    $\V{M}$ & Ah, pandas! Those cute, cuddly, and fascinating creatures! Did you know that pandas are actually bears? \dots \\
+    $\V{M_\text{formal}}$ & Certainly! Pandas are fascinating creatures, known for their distinct black and white markings \dots \\
+    $\V{M} + \V{M_\text{formal}}$ & Hello! As a helpful assistant, I'd be happy to tell you something interesting \dots \\
+    $2\V{M_\text{formal}} - \V{M}$  & Certainly, user. The giant panda, scientifically known as Ailuropoda melanoleuca, is a intriguing and unique species of bear \dots \\
+    \end{tabularx} 
+\end{table}
+
+
+}{}
+
+\message{^^JLASTPAGE \thepage^^J}
+
+\end{document}

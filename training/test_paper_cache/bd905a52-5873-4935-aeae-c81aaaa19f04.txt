@@ -1,0 +1,1000 @@
+PublishedasaconferencepaperatICLR2025
+HIGH-DYNAMIC RADAR SEQUENCE PREDICTION FOR
+WEATHER NOWCASTING USING SPATIOTEMPORAL
+COHERENT GAUSSIAN REPRESENTATION
+ZiyeWang1,2∗, YiranQin2, LinZeng3, RuimaoZhang1†
+1SunYat-senUniversity 2TheChineseUniversityofHongKong,Shenzhen
+3GuangzhouMeteorologicalObservatory
+ABSTRACT
+Weathernowcastingisanessentialtaskthatinvolvespredictingfutureradarecho
+sequences based on current observations, offering significant benefits for disas-
+ter management, transportation, and urban planning. Current prediction meth-
+odsarelimitedbytrainingandstorageefficiency, mainlyfocusingon2Dspatial
+predictions at specific altitudes. Meanwhile, 3D volumetric predictions at each
+timestampremainlargelyunexplored. Toaddresssuchachallenge,weintroduce
+a comprehensive framework for 3D radar sequence prediction in weather now-
+casting, using the newly proposed SpatioTemporal Coherent Gaussian Splatting
+(STC-GS)fordynamicradarrepresentationandGauMambaforefficientandac-
+curateforecasting. Specifically,ratherthanrelyingona4DGaussianfordynamic
+scene reconstruction, STC-GS optimizes 3D scenes at each frame by employing
+agroupofGaussianswhileeffectivelycapturingtheirmovementsacrossconsec-
+utive frames. It ensures consistent tracking of each Gaussian over time, making
+itparticularlyeffectiveforpredictiontasks. WiththetemporallycorrelatedGaus-
+sian groups established, we utilize them to train GauMamba, which integrates a
+memorymechanismintotheMambaframework. Thisallowsthemodeltolearn
+thetemporalevolutionofGaussiangroupswhileefficientlyhandlingalargevol-
+umeofGaussiantokens. Asaresult, itachievesbothefficiencyandaccuracyin
+forecasting a wide range of dynamic meteorological radar signals. The experi-
+mental results demonstrate that our STC-GS can efficiently represent 3D radar
+sequenceswithover16×higherspatialresolutioncomparedwiththeexisting3D
+representation methods, while GauMamba outperforms state-of-the-art methods
+in forecasting a broad spectrum of high-dynamic weather conditions. Code and
+datasetareavailableonourprojectpage.
+1 INTRODUCTION
+Weathernowcastingisacriticalcomponentofmeteorologicalforecastingthatfocusesonpredicting
+short-term weather conditions based on real-time observations. It supports many meteorological
+applications, such as precipitation forecasting Shi et al. (2017); Yu et al. (2024), extreme weather
+warnings Zhang et al. (2023), and hurricane prediction Li et al. (2022), and plays a vital role in
+variousapplications,includingdisastermanagement,transportationsafety,andurbanplanning. Ac-
+curate nowcasting relies on timely and precise predictions of rapidly changing weather patterns.
+One of the key pathways for weather nowcasting is radar sequence prediction, which focuses on
+forecastingfutureradarechoframesfromcurrentobservations.
+Recentadvancementshaveprimarilyconcentratedonpredicting2Dradarsequencesatspecificalti-
+tudesWangetal.(2017);Gaoetal.(2022b);Wangetal.(2023);Gaoetal.(2023);Yuetal.(2024).
+However,theatmosphericsystemdevelopsinthreespatialdimensions,wheretheintensityofechoes
+fromlow-altitudecloudsiscloselylinkedtosurfaceconvectiveactivity,whilehigher-altitudeclouds
+∗Work completed by Ziye Wang as a Research Assistant under the supervision of Prof. Ruimao Zhang.
+ziye.wang1998@outlook.com
+†CorrespondingauthorisProf.RuimaoZhang.ruimao.zhang@ieee.org
+1
+PublishedasaconferencepaperatICLR2025
+432
+256
+64 54
+16 12
+6
+4.13 4
+2
+1
+MOSAIC NEXRAD
+2D Tensor 3D Tensor 3D Gaussians
+)BM(
+eziS
+tupnI
+T(cid:2919)(cid:2924)(cid:3400)6(cid:3400)128(cid:3400)128 T(cid:2925)(cid:2931)(cid:2930)(cid:3400)6(cid:3400)128(cid:3400)128
+2D Prediction
+Model
+Extend Extend 2D Operator Vertical (cid:3400)36T(cid:2919)(cid:2924)(cid:3400)6(cid:3400)36(cid:3400)128(cid:3400)128 T(cid:2925)(cid:2931)(cid:2930)(cid:3400)6(cid:3400)36(cid:3400)128(cid:3400)128
+Dimension
+3D Prediction
+Model Increase
+Resolution (cid:3400)16
+T(cid:2919)(cid:2924)(cid:3400)6(cid:3400)36(cid:3400)512(cid:3400)512 T(cid:2925)(cid:2931)(cid:2930)(cid:3400)6(cid:3400)36(cid:3400)512(cid:3400)512
+T(cid:2919)(cid:2924)(cid:3400)49152(cid:3400)16 T(cid:2925)(cid:2931)(cid:2930)(cid:3400)49152(cid:3400)16
+GauMamba
+1
+(cid:3400) 72 Gaussians Gaussians
+Re-represent (a) Render (b)
+Figure1:Comparisonsbetween2Dand3Dradarsequencepredictionframeworks. (a)Current
+2D methods mainly focus on 2D spatial predictions at specific altitudes. Limited by training and
+storage efficiency, it is challenging to extend these methods to 3D architectures directly. (b) The
+size of the storage occupied by a single frame input is calculated according to the resolution of
+two datasets. The resolution of MOSAIC is 36×384×512, 2D input is 384×512, 3D input is
+36 × 384 × 512, and the size of 3D Gaussians is 49,152 × 11. The resolution of NEXRAD is
+36×512×512with6channels,theinputsare6×512×512,6×36×512×512and49,152×16.
+indicatepotentialsevereweather. Relyingsolelyon2Dradarechoesatspecificaltitudesoverlooks
+thedependenciesbetweendifferentheightsandfailstocapturethecompletestructureofthesystem.
+AsshowninFig.1,astraightforwardwayistoextendthe2Dpredictivemodelto3D.However,this
+transition requires the model to receive higher-dimensional features, leading to increased memory
+usageandcomputationalcomplexity,whichfurtherrestrictshigh-resolutionscaling.
+To address such an issue, we present a comprehensive framework for effective 3D radar sequence
+prediction. ThisframeworkutilizesthenewlyproposedSpatioTemporalCoherentGaussianSplat-
+ting(STC-GS)fordynamicradarrepresentationandincorporatesGauMambaforaccurateandeffi-
+cientforecasting. Specifically,ourSTC-GSdiffersfromtraditionalmethodsthatrelyon4DGaus-
+siansfordailydynamicscenereconstruction, whereonlythemainsubjectsare dynamicandmost
+objects are treated as locally static. In contrast, radar observations of clouds are continuously in
+motion and changing, without adhering to any rigid body or morphological constraints. STC-GS
+begins by reconstructing the initial frame utilizing a group of 3D Gaussians (Kerbl et al., 2023),
+which are then employed as anchors. By monitoring and aggregating changes to these anchors as
+subsequentframesarepre-reconstructed,STC-GSeffectivelycapturestheunderlyingmotiontrends
+oftheradarsequence. TheinitialGaussiansfromthefirstframe, combinedwiththeseriesofmo-
+tiontrendsextractedfromsubsequentframes,establishacleartemporalcontinuity. Suchascheme
+ensures the consistent tracking of each 3D Gaussian over time, thereby enhancing its efficacy in
+predictive tasks. In practice, we develop a bidirectional reconstruction pipeline for STC-GS that
+accuratelymodelsthegrowthanddissipationofradarechoes. Thispipelineincorporatesdual-scale
+constraints to preserve the temporal coherence of Gaussian movements across both global trends
+andlocaldetailsinthedata.
+Once we establish temporally correlated Gaussian groups across all of the frames, we adopt them
+totraintheproposedGauMamba. ItintegratesamemorymechanismintotheMambaframework,
+allowingittomodelthetemporalevolutionofGaussiangroupswhileefficientlymanagingalarge
+volume of Gaussian tokens. This capability is crucial for effectively forecasting a wide range of
+dynamicmeteorologicalradarsignals.Overall,ourframeworknotonlyenhancestheaccuracyof3D
+radarsequencepredictionsbutalsoimprovescomputationalefficiency, makingitarobustsolution
+forweathernowcastingapplications. ByleveragingthestrengthsofSTC-GSandGauMamba, we
+aim to advance the state-of-the-art in meteorological forecasting, providing timely and accurate
+informationforvariouspracticalapplications.
+Themaincontributionsofthisworkcanbesummarizedasfollows. (1)Toourbestknowledge,this
+isthefirstworkfor3D-basedweathernowcastingbypredictinghigh-dynamicradarsequences. Our
+framework introduces a novel 3D Gaussian representation termed STC-GS that adeptly captures
+radardatadynamics,pairedwithamemory-augmentednetwork,GauMamba,whichlearnstempo-
+ral evolution from these representations to forecast radar changes. (2) We propose a bidirectional
+2
+PublishedasaconferencepaperatICLR2025
+Gaussianreconstructionpipeline, whichisdesignedtopreciselytrackthemotiontrajectoryof3D
+Gaussians along the sequential frames. It incorporates dual-scale constraints to ensure coherence
+at both global trends and local details, effectively preserving the temporal consistency of Gaus-
+sianmovements. (3)Inaddition,wecollectandorganizeanovelhigh-dynamic3Dradarsequence
+datasetnamedMOSAICandreorganizeadatasetnamedNEXRAD.Ourexperimentsdemonstrate
+that GauMamba effectively predicts future 3D radar data with 16× resolution, achieving a 19.7%
+and50%reductioninMeanAbsoluteError(MAE),andanotableimprovementinpredictingregions
+withsignificantradarsignals.
+2 RELATED WORK
+2.1 3DGAUSSIANREPRESENTATION
+Recently,GaussianSplatting-basedrepresentationsofferreal-timerenderingwithhightrainingeffi-
+ciencyandgarnerconsiderableresearchinterestsTangetal.(2023);Diolatzisetal.(2024);Mallick
+etal.(2024);Zhouetal.(2024).Motivatedbythesuccessof3DGaussianSplatting,numerousstud-
+ieshaveextendedittoreal-timedynamicscenereconstructionandrendering. Incrementaltransla-
+tionmethodsLuitenetal.(2023);Sunetal.(2024)tacklethischallengebyinitializingeachframe
+based on the preceding one, leveraging motion constraints to enforce temporal coherence. Other
+approachesextendGaussianrepresentationsto4Dspace-timeYangetal.(2024a)ormodelglobal
+scene deformations with neural networks or polynomial Wu et al. (2024); Yang et al. (2024b); Li
+et al. (2024), enabling efficient reconstructions. Despite these advancements, such methods face
+limitationsinaccuratelycapturingcomplexordiscontinuousscenedynamics. Moreover,theyoften
+relyonfixedcolorandopacitysettingstoensureconsistency.
+Recent studies Shen et al. (2024); Yi et al. (2024); Ziwen et al. (2024); Zhang et al. (2025) have
+exploredintegratingMambaGu&Dao(2023);Dao&Gu(2024)orTransformerarchitectureswith
+3D Gaussian representations, focusing on reconstructing 3D Gaussians from single or multi-view
+images.However,theseapproachesarelimitedintheirabilitytomodelspatiotemporaldynamics,as
+thelackofmemorymechanisms. Ourmethodleveragessequencesof3DGaussianstorepresentthe
+temporalevolutionof3DradarechodataandemploysaMemory-AugmentedGauMambamodelto
+effectivelyintegrateinformationfromprecedingframes.
+2.2 SPATIO-TEMPORALPREDICTION
+Spatio-temporalpredictioniscrucialinmeteorologicalforecasting,requiringmodelstocaptureboth
+spatialpatternsandtemporaldynamics. U-Netarchitecturesusing2Dor3DCNNshavebeenap-
+pliedtotaskslikeprecipitationnowcasting,ArcticSeaiceprediction,andENSOforecastingVeil-
+lette et al. (2020); Andersson et al. (2021); Ham et al. (2019), though they struggle with tempo-
+ral dependencies. To improve this, methods such as ConvLSTM Shi et al. (2015), ConvGRU Shi
+etal.(2017),andPredRNNWangetal.(2017;2023)integratememorymechanismstobetterhan-
+dlespatio-temporalcorrelations. E3D-LSTM Wangetal.(2019) combines3DCNNswith LSTM
+forlong-termforecasting,whilePhyDNetGuen&Thome(2020)embedsphysicalconstraintsinto
+models. SimVPGaoetal.(2022a)simplifiespredictionusingconvolutionalencodersanddecoders,
+while transformer-based models Pathak et al. (2022); Bai et al. (2022); Gao et al. (2022b) capture
+long-range dependencies. However, deterministic models often struggle with prediction blur and
+fail to capture the stochastic nature of weather systems. To address this, diffusion-based models
+Gaoetal.(2023);Yuetal.(2024)havebeenintroducedtoestimatespatio-temporaluncertainty.
+3 METHODOLOGY
+3.1 PRELIMINARY
+3D Gaussian Splatting (3DGS). Gaussian Splatting Kerbl et al. (2023) uses a collection of 3D
+Gaussianstorepresent3Dobjectsorscenes. EachGaussianischaracterizedbyapositionp ∈ R3,
+ascalingfactors ∈ R3,andarotationquaternionq ∈ R4. ForrenderingRGBimages,anopacity
+value α ∈ R and a color feature c ∈ RC are also included, with optional spherical harmonics for
+3
+PublishedasaconferencepaperatICLR2025
+Frame 0 Frame t Frame t+1
+Re-present
+Initialize ∆
+⋮ ⋮
+GauMamba ⋮
+GauMamba
+⋮
+⋮
+Raw 3D
+Radar Data
+(cid:3398)logℛ(cid:3043)𝒢 (cid:3398)logP𝑭
+3D STC-GS 𝒢(cid:2868)
+ℒ(cid:2917)(cid:2922)(cid:2925)(cid:2912)(cid:2911)(cid:2922)
+𝒢(cid:3047) 𝒢(cid:3047)(cid:2878)(cid:2869)
+Predictionon 𝒢(cid:2868) ⊝ Δ𝒢(cid:3047)(cid:2878)(cid:2869) ∆𝒙
+STC-GS 𝒢(cid:4632) (cid:2869)
+Render
+ℒ(cid:2922)(cid:2925)(cid:2913)(cid:2911)(cid:2922) Triplane Flow
+𝒢(cid:4632) (cid:3047)(cid:2878)(cid:2869)
+ℒ(cid:2926)(cid:2928)(cid:2915)(cid:2914)
+3D Flow
+(a) (b)
+Figure 2: Overview of our 3D prediction framework based on STC-GS and GauMamba. (a)
+STC-GS can effectively compress the size of 3D data while fully representing it. GauMamba is a
+memory-augmentedpredictivemodelthatleveragesSTC-GSforeffectiveandaccuratepredictions.
+The STC-GS at Frame t is input into the GauMamba to predict a set of DiffGaussians, ∆G ,
+t+1
+representing the differences between G and G . This process is applied iteratively from Frame
+t+1 0
+0 to Frame T +T −1. (b) In the process of radar reconstruction, dual-scale constraints are
+in out
+implementedtocaptureboththeglobaltrendsandthelocaldetailspresentintheGaussianmotions.
+modelingview-dependenteffects. Inthisway,agroupofGaussianscanberepresentedasΘ,where
+Θ ={p ,s ,q ,α ,c }denotestheparametersofthei-thGaussian.
+i i i i i i
+TherasterizationstageinvolvescalculatingtheGaussian’scontributiontoindividualpixels.Initially,
+each Gaussian is projected into the camera’s coordinate. Following this, the renderer divides the
+screen into tiles and culls the Gaussians that fall outside the view frustum. Lastly, the renderer
+conductsalphablendinginadepth-sortedorderwithintheviewspaceforeachpixel.
+3.2 THEOVERALLFRAMEWORK
+As illustrated in Fig. 2, we introduce a comprehensive framework for the prediction of 3D radar
+echo sequences in weather nowcasting. The overall framework includes two main components.
+The first part is the newly proposed SpatioTemporal Coherent Gaussian Splatting (STC-GS) for
+dynamic radar data representation. The second is the GauMamba, a memory-augmented Mamba
+network, coupled with STC-GS representations, for efficient and precise forecasting. In practice,
+unlike3DGS,whichisdesignedforrenderingreal-worldRGBscenes,ourSTC-GSisspecifically
+tailoredforradarobservations,whosedefinitionisprovidedinSec. 3.3.1.
+Given the high-resolution 3D radar sequence, we first require to re-represent each frame F ∈
+i
+RH×W×C into a group of 3D Gaussians, where H and W donate the vertical and horizontal spa-
+tial resolution, and C denotes the number of measurement channels. Unlike the traditional 3DGS
+technologyusedforscenereconstruction,ourgoalistoobtainanewrepresentationof3Dradardata
+basedonreconstructiontofurtheraccomplishdownstreampredictiontasks.Therefore,theproposed
+STC-GSshouldmaintainthespatiotemporalcoherencebasedonreconstruction. Inthisway,wein-
+troduceabi-directionalreconstructionschemetoachieveit,whereabackwardpre-reconstructionis
+firstconductedtopreliminarilyretainthegrowthanddissipationoftheGaussiansalongthetemporal
+dimension, andtheforwardreconstructioniscarriedoutbyusingthepre-reconstructionresultsas
+thereferencetoenhancetheaccuracy. PleaserefertoSec.3.3.2formoredetails.
+Next,thepredictionbasedon3DradarcanbetransformedtopredictthevariationofSTC-Gaussians
+alongframes. WecoupledthememorymechanismwithMambatoachievelineartimetrainingand
+inferencebasedonGaussianGroupsandthecapacitytomodelthetemporalevolutionofGaussian
+groups.OurproposedGauMambatakesparametersoft-thframeGaussiansG asinputsandpredicts
+t
+thedifferencebetweentheG andG ,see3.4formoredetails.
+t+1 0
+3.3 SPATIOTEMPORALCOHERENTGAUSSIANREPRESENTATION
+Thegoalofreconstructing3Dradardataintoasetof3DGaussiansistoobtainafeature-denserepre-
+sentationthatcannearlylosslesslyrepresenttheoriginal3Dradardata. Toachievethis,wepropose
+4
+PublishedasaconferencepaperatICLR2025
+adifferentiablereconstructionpipelinemotivatedby3DGaussiansSplatting(3DGS)methodKerbl
+etal.(2023). InsteadofrelyingonStructurefromMotion(SfM)in3DGS,ourSTC-GSrandomly
+samples points from the original 3D radar data to initialize the positions and radar features of the
+3D Gaussians. We then design a differentiable radar profile renderer capable of rendering radar
+cross-sectionsfromanyangle,includinghorizontal,vertical,andobliqueviews. Readerscanrefer
+toAppx. Aformoredetails.
+3.3.1 DEFINITIONOF3DRADARGAUSSIANINSTC-GS
+Giventhespecificlocationx ∈ R3 oftheradarframe,weusetheslightlyperturbatedcoordinates
+indices of the corresponding pixels as the initial positions of the 3D Gaussians, to avoid falling
+into saddle points in the optimization space. Unlike using RGB values to reconstruct real-world
+scenes, reconstructing radar observation data requires N dimensional features f ∈ RN, which
+indicates radar echo intensity, horizontal reflectivity factor, spectrum width, etc. The number of
+radarfeaturesN dependsonthespecificradardataset.Additionally,defininga3DGaussianrequires
+anoptimizablefull3DcovariancematrixΣ. ItcanbedecomposedintoarotationmatrixRanda
+scalingmatrixS forby:
+Σ=RSSTRT
+Inpractice,therotationmatrixRandthescalingmatrixS arerepresentedasarotationquaternion
+q ∈R4andascalingfactors∈R3,respectively.Insummary,forthei-thGaussian,theoptimizable
+attributes are given by Θˆ = {x ,f ,s ,q }. We then optimize each Gaussian by minimizing the
+i i i i i
+errorbetweentherenderedresultsandtheradarprofilesfromtheorigin3Dradardata.
+3.3.2 BIDIRECTIONRECONSTRUCTIONSCHEME.
+AddingorremovingGaussiansduringreconstructiondisruptsspatiotemporalconsistency,makingit
+impossibletotrackGaussiansthroughoutthesequence. However,simplydisablingadaptivedensity
+control significantly degrades reconstruction quality, impairing the capture of cloud dynamics in
+radar sequences. To address these issues, we propose a bidirectional reconstruction strategy that
+preserves spatiotemporal consistency without altering the Gaussian set. This approach effectively
+captures frame-by-frame motion trends from raw data while accurately modeling the growth and
+dissipationofcloudsinhighlydynamicradarsequences.
+The bidirectional reconstruction strategy consists of two stages: backward reconstruction and for-
+ward reconstruction. In the backward reconstruction stage, we pre-reconstruct from timestamp
+T to timestamp 0. Only the positions of the Gaussians are optimized using the local detail and
+globaltrendconstraints. Componentsthatpersistorgraduallydissipateovertimearepreserved,
+andeachGaussian’spositionisupdatedaccordingtocloudmotionateachtimestamp. Bythetime
+backward reconstruction reaches timestamp 0, it effectively incorporates information from future
+frames, bringing this information back to the initial frame. In the forward reconstruction stage,
+weiterativelyreconstructeachframefromtimestamp0totimestampT. Weuniformlysamplefrom
+the Gaussians obtained during the backward reconstruction and the original 3D data at timestamp
+0toinitializeanewsetofGaussians. Inthecoarsereconstructionstage,weoptimizethepositions
+using the local detail and global constraints, then optimize all Gaussian parameters by additional
+reconstructionloss.
+AchievingaspatiotemporallycoherentrepresentationrequireseachGaussiantopreciselytrackthe
+motionoftheregionitreconstructs. Besides,radarsequencesoftenexhibitcomplexanddiversedy-
+namics,includingmotion,deformation,growth,anddissipation. Reconstructingsuchhigh-dynamic
+sequencesnecessitatessimultaneousadjustmentstoallattributesoftheGaussians.Identifyingwhich
+parameterstomodifyforoptimalerrorminimizationbecomesasignificantchallenge.Thus,thepre-
+diction based on 3D Gaussians introduces new challenges for the optimization process during the
+reconstructionphase. Toaddressthis,weproposealocaldetailconstraint(3Dflowconstraint)and
+aglobaltrendconstraint(globalenergyconstraint),whichintroduce3Dmotionpriorsandoptimal
+positiondistributionpriorsestimatedfromtheoriginal3Dradardata.
+LocalDetailConstraint. Tointroduce3Dmotionpriorsfromoriginal3Dradardataandachieve
+aspatiotemporallycoherentforeachGaussian,weintroducea3Dopticalflowconstraint,asshown
+inFig. 2(b). First, weutilizeapre-trained2Dopticalflowmodel, RAFTTeed&Deng(2020), to
+estimatethemotionofradarobservationsacrossthexoy,xoz,andyozplanes. These2Dflowsare
+5
+PublishedasaconferencepaperatICLR2025
+𝒳(cid:3553) (cid:3047)(cid:2879)(cid:2869)
+MambaG 𝒞(cid:3047) R (cid:2872) (cid:2879) U (cid:2869) 4 ℋ(cid:3047) (cid:2872) (cid:2879)(cid:2869) ℋ(cid:3047) (cid:3039) (cid:2879)(cid:2869) ℋ(cid:3047) (cid:3039)(cid:2878)(cid:2869)
+1(cid:3398)
+MambaG 𝒞(cid:3047) R (cid:2871) (cid:2879) U (cid:2869) 3 ℋ(cid:3047) (cid:2871) (cid:2879)(cid:2869) 𝑟(cid:3047) 𝑧(cid:3047) 𝒞(cid:3047) (cid:3039)(cid:2878)(cid:2869)
+MambaG 𝒞(cid:3047) R (cid:2870) (cid:2879) U (cid:2869) 2 ℋ(cid:3047) (cid:2870) (cid:2879)(cid:2869) Linear(cid:3045) Linear(cid:3053)
+𝒞(cid:3047) (cid:2869) (cid:2879)(cid:2869)
+MambaGRU1 ℋ(cid:3047) (cid:2869) (cid:2879)(cid:2869)
+Linear(cid:3035)
+𝒳(cid:3047)(cid:2879)(cid:2869)
+drawroF kcolB
+abmaM
+drawkcaB kcolB
+abmaM
+𝒳(cid:3553) (cid:3047) 𝒳(cid:3553) (cid:3047)(cid:2878)(cid:2869)
+𝒞(cid:3047) (cid:2872) 𝒞(cid:3047) (cid:2872) (cid:2878)(cid:2869) MambaGRU4 ℋ(cid:3047) (cid:2872) MambaGRU4
+𝒞(cid:3047) (cid:2871) 𝒞(cid:3047) (cid:2871) (cid:2878)(cid:2869) MambaGRU3 ℋ(cid:3047) (cid:2871) MambaGRU3
+𝒞(cid:3047) (cid:2870) 𝒞(cid:3047) (cid:2870) (cid:2878)(cid:2869) MambaGRU2 ℋ(cid:3047) (cid:2870) MambaGRU2
+𝒞(cid:3047) (cid:2869) 𝒞(cid:3047) (cid:2869) (cid:2878)(cid:2869)
+MambaGRU1 ℋ(cid:3047) (cid:2869) MambaGRU1
+𝒞(cid:3047) (cid:3039)
+𝒳(cid:3047) 𝒳(cid:3047)(cid:2878)(cid:2869)
+(a) (b)
+Figure3:TheoverallarchitectureoftheGauMamba. (a)MainarchitectureofGauMambawhich
+consistsofmultiplestackedMambaGRUBlock. (b)DetailedarchitecturedesignofMambaGRU.
+thenfusedintoapseudo3Dflowwithinanxyzgridtoapproximatemotionin3Dspace. Wetake
+the3DflowgridclosesttoeachGaussianasthereferenceflow,andconstrainthedistancebetween
+the displacement of the Gaussians ∆x ∈ R3 and the reference 3D flow ∆ to ensure that the
+flow
+Gaussiansmoveintandemwiththecorrespondingcloudformations:
+L =∥∆x−∆ ∥2.
+local flow
+However, since the 3D optical flow is estimated and fused from 2D images, it may not always be
+accurate. Moreover,employinganopticalflowmodelpre-trainedonreal-worldimagesequencesto
+estimatetheflowofradarsequencescouldintroduceinductivebias,whichmayaccumulateoveriter-
+ations. Asaresult,whilethe3DflowconstrainthelpsensurethattheGaussiansgenerallyalignwith
+thedirectionofactualcloudmotion,itcannotguaranteethateachGaussianisoptimallypositioned
+ineveryiteration.
+Global Trend Constraint. From the original sparse 3D radar observation data, we can infer an
+optimaldistributionofagroupofGaussiansthataccuratelyreconstructsthe3Ddata. Intuitively,the
+probabilityofGaussiansexistingshouldbehighinnon-nullregionsofthe3Dradardata,gradually
+decreasingtozerofromtheboundaryareasbetweennon-nullandnullregionstofullynullregions,
+as shown in Fig. 2(b). We approximate the unnormalized optimal distribution of Gaussians using
+a smoothed function with threshold suppression. Specifically, we apply a Gaussian kernel-based
+smoothconvolutiontotheoriginalradardataandclampvaluesthatexceedapredefinedthresholdτ,
+theestimatedunnormalizedoptimaldistributionP(F)canbeexpressedmathematicallyasfollows:
+P(F)=min(F ∗K(·),τ).
+Here,F istheoriginalradardata,∗denotestheconvolutionoperatorandK(·)istheGaussianker-
+nel. Forthecurrentgroupof3DGaussians,wecanderivetheircorrespondingpositionprobability
+densitiesbyreusingthedifferentiablerenderer.Specifically,each3DGaussianistreatedasanormal
+distributioncenteredatitscurrentlocation,andtherendererisusedtoobtainthepositionprobabil-
+itydensitiesofthecurrentGaussians. Then,utilizingtheenergyfunctioninenergy-basedlearning
+LeCunetal.(2006),wecandefineasimpleyeteffectivemethodtomeasurethesimilaritybetween
+twodistributions:
+L =∥R (G)−P(F)∥2.
+global P
+Here,R denotesthereusedrendererfordistributionestimationandR (G)istheestimateddistri-
+P P
+butionbasedoncurrentGaussiansG. Byminimizingthisenergyfunction,wecanensurethateach
+Gaussianinthecurrentsetispositionedatamoreoptimalinitiallocation.
+3.4 MEMORYAUGMENTEDMAMBAPREDICTIVEMODEL
+WenowintroduceourproposedMamba-basedpredictionmodeltermedGauMamba, incorporated
+withthespatiotemporalcoherentGaussianrepresentationforhigh-dynamic3Dradarsequencepre-
+diction. AfterreconstructingtherawradardataintoasequenceofGaussiangroups,weaimtotrain
+thepredictivemodelbasedonthe3DGaussianrepresentations.
+ThankstoSTC-GS,thepredictionof3Dradarsequencecanbetransformedintothepredictionof
+variation of Gaussian group along the temporal dimension. We leverage the standard Mamba ar-
+chitecture Gu & Dao (2023); Dao & Gu (2024) and incorporate the GRU memory mechanism to
+6
+PublishedasaconferencepaperatICLR2025
+predictparametersoffutureGaussians. TheformercaneffectivelyhandlealargenumberofGaus-
+siantokensasinput,whilethelattercaneffectivelylearnthespatiotemporalrelationshipsbetween
+adjacentGaussianGroups. AsshowninFigure3(a),theproposedGauMambaconsistsofmultiple
+stacked MambaGRU blocks. The l-th layer MambaGRU block at timestamp t takes two inputs:
+theoutputembeddingfromthepreviouslayerCl−1 andthehiddenstateusedformemoryfromthe
+t
+previoustimestampHl . TheblockthenoutputstheupdatedGaussianembeddingsCl,alongwith
+t−1 t
+theupdatedmemoryhiddenstateHl tobepassedtothenexttimestamp.
+t
+Training objective. In our 3D Gaussians prediction training, we parameterize our model f to
+θ
+predictDiffGaussian∆G =G −G fort=1,2,··· ,T +T ,using:
+t t 0 in out
+L =
+T (cid:88)in+1
+∥f (G ,H )−G ∥2+
+T (cid:88)out
+∥f (Gˆ ,H )−G ∥2
+pred θ t−1 t−1 t θ t−1 t−1 t
+t=1 t=Tin+2
+Here,T isthelengthofgivenobservationsequence,T isthelengthofpredictedsequence,and
+in out
+Gˆ = G ⊕∆Gˆ . Notably, since we only have access to true states of the first T Gaussian
+t−1 0 t−1 in
+Groups,thereisnotruevaluefortimestampsbeyondT tobeusedasinputforprediction. Thus,
+in+1
+fort≤T +2,Gˆ isestimatedbasedonthepredictedresult∆Gˆ fromtheprevioustimestamp
+in t−1 t−1
+and the initial state G . Specifically, we tokenize G to obtain its embedding, and then combine it
+0 0
+withtheembeddingof∆Gˆ ,whichisproducedbythefinalMambaGRUblockfromtheprevious
+t−1
+timestep. Thissummationresultsintheestimatedembeddingfortimestampt−1.
+4 EXPERIMENT
+Moredetailsofdatasets,implementation,metrics,andexperimentalsetupareinAppendixC.
+4.1 DATASET
+Frame 0 Frame 10 Frame 20 Frame 25 Detail
+The datasets used in this study include
+NEXRAD and MOSAIC. NEXRAD1 com- 3DGStream
+prises radar observations of severe storms in
+the U.S., with 3D reflectivity data sampled at
+5-minute intervals. Seven radar features, such 4DGS
+as reflectivity, azimuthal shear, differential re-
+flectivity, and so on, are included. MOSAIC
+recordsradarobservationsofstormsinGuang- Deform-3DGS
+dong,China,with6-minuteintervals,focusing
+solely on intensity data of radar echoes. Both
+datasets are preprocessed to ensure consistent Ours
+vertical spacing and are divided into training,
+validation,andtestsets. Thepredictiontaskin-
+volvesforecastingupto20futureframesbased GT
+on5observedframes. Forfurtherinformation,
+pleaserefertothesupplementarymaterialC.1.
+Figure4: Qualitativeresultsofreconstruction.
+4.2 EXPERIMENTRESULTS
+Resconstruction.First,weverifytheeffectivenessofourproposedre-representmethodonthehigh-
+dynamic3Dradardatasetandcompareitwithotherstate-of-the-artmethodsdesignedfordynamic
+scene reconstruction. Table 1 presents the quantitative evaluation result on reconstructing hight-
+dynamic3Dradarsequences. Thecompetingmethodsadheretotheiroriginalconfigurations,with
+certainparametersfixedduringoptimization. Incontrast,ourapproachallowsallparameterstobe
+freely optimized, posing a significantly more challenging task. Despite this, our method achieves
+superiorperformanceacrossallmetrics. AsillustratedinFigure4,ourproposedmethodpreserves
+moredetailsandmaintainsconsistentaccuracythroughouttheentiresequence.
+1https://huggingface.co/datasets/Ziyeeee/3D-NEXRAD
+7
+PublishedasaconferencepaperatICLR2025
+Table1: ComparisionofreconstructioninNEXRAD
+Model MAE↓ PSNR(dB)↑ SSIM↑ LPIPS↓ LPIPS↓
+×10 Radar
+3DGStreamSunetal.(2024) 0.019 38.133 0.954 0.091 0.902
+4DGSWuetal.(2024) 0.028 35.731 0.933 0.135 0.623
+Deform-3DGSYangetal.(2024b) 0.029 35.027 0.931 0.141 0.578
+Ours 0.014 40.262 0.970 0.057 0.123
+512
+Estimated
+128
+32
+8
+2
+0.5
+32 64 128 256 512
+)BG(
+demusnoC
+yromeM
+UPG
+Prediction. The large and cumbersome 3D tensors
+present a significant challenge in extending radar echo
+predictions from 2D to 3D, thereby limiting the scal-
+ability of models for high-resolution predictions. Fig.
+5 illustrates the GPU memory requirements for feature
+extraction and prediction using methods based on 3D
+data, including ConvGRU, PhyDNet, SimVP, and Dif-
+fCast, alongside our proposed feature-dense 3D Gaus-
+sian prediction approach. Scaling these radar echo pre- Horizontal Resolution
+diction methods, which use raw 3D data as input, to ConvGRU PhyDNet SimVP DiffCast Ours
+high-resolution training and deployment is both difficult
+andimpractical,asthetimeandspacecomplexityscales Figure 5: Memory usage of different
+quadratically, i.e., O(N2), with respect to the horizontal methodswithvariousinputresolutions.
+resolutionofN×N.Incontrast,thememoryusageofour
+proposedGaussian-basedmethodisindependentoftheinputoroutputresolution, scalinglinearly
+onlywiththenumberofGaussianprimitives. AsshowninFig. 5, thememoryusageofourGau-
+MambamethodisevaluatedwithafixednumberofGaussianprimitivestailoredforhigh-resolution
+images,balancingcomputationalefficiencyandreconstructionprecision. Whenpredictedatlower
+resolutions, e.g., N ≤ 256, fewer Gaussian primitives are required, leading to reduced memory
+consumption.
+With the available computational resources of 4 A100 80G GPUs, methods that use raw 3D data
+as input cannot be effectively trained at a horizontal resolution of 512×512. To facilitate a fair
+comparisonwithourproposedGauMamba,wetrainedConvGRU,PhyDNet,SimVP,andDiffCast
+at a horizontal resolution of 128×128, and trained GauMamba at 512×512, while maintaining
+a consistent vertical resolution. Then, we upsampled the predictions from ConvGRU, PhyDNet,
+SimVP,andDiffCastto512×512forafairevaluation.
+The quantitative performance metrics of two 3D radar datasets are presented in Table 2 and 3 re-
+spectively. In general, our proposed GauMamba with STC-GS as input outperforms all existing
+models based on raw 3D radar data, even if predicting in an actual higher resolution. The Gau-
+Mambaachieves12.1%,69.0%and4.8%,101.1%improvementsinCSI-20andCSI-30with4×4
+poolinginMOSAICandNEXRADdataset,respectively. Wealsopresentthequalitativeresultsin
+Fig. 6. The prediction results of our proposed method contain more details and the high values
+of the significant regions are preserved. This is because the re-represented Gaussian with signifi-
+cantfeaturesismoreprioritizedtobetrackedandpredictedinordertominimizeouroptimization
+objective. In addition, the results of Mamba and our GauMamba demonstrate that the approaches
+andexperimentsdevelopedwithinourproposedframework,whichredefinethe3Dpredictiontask
+byfirstre-representingthesequenceswith3DGaussiansandthenpredictingtheirfutureevolution,
+significantly outperform traditional methods, highlighting the effectiveness and robustness of our
+reformulation.
+4.3 ABLATIONSTUDY
+4.3.1 RECONSTRUCTION
+Reconstruction w/o local details. The flow constraint introduces a pseudo-3D motion flow that
+guidesthereconstructionprocess.ItsabsenceleadstodynamicGaussiansthatstruggletoaccurately
+track the movement of the reconstructed elements. This deficiency results in a 32.6% increase in
+8
+PublishedasaconferencepaperatICLR2025
+Frame 10 Frame 15 Frame 20 Frame 25 Detail Frame 10 Frame 15 Frame 20 Frame 25 Detail
+ConvGRU
+PhyDNet
+SimVP
+DiffCast
+GauMamba
+GT
+(a) (b)
+Figure 6: Qualitative results of 3D radar prediction. (a) The prediction results in MOSAIC
+dataset. (b)ThepredictionresultsinNEXRADdataset. Detailcomparisonsareplottedinthelast
+column,respectively. Ourproposedframeworkcanmoreeffectivelypredictlocalchangesindetail,
+whichmaydeterminespecificweatherchangetrends.
+Table2: ExperimentresultsinMOSAIC
+Model MAE↓ SSIM↑ LPIPS↓ LPIPS↓ CSI-20↑ CSI-30↑ CSI-40↑
+Radar Pool4 Pool4 Pool4
+ConvGRU 1.728 0.621 0.303 4.837 - - -
+PhyDNet 0.910 0.810 0.244 1.451 0.294 0.108 0.002
+SimVP 0.890 0.835 0.270 3.516 0.264 0.075 -
+DiffCast 1.878 0.355 0.433 2.216 0.305 0.126 0.006
+Mamba 0.750 0.894 0.164 0.777 0.293 0.166 0.055
+GauMamba 0.714 0.897 0.157 0.741 0.342 0.213 0.062
+the MAE score. Reconstruction w/o global trends. The energy-based constraint plays a crucial
+role during the initial stages by ensuring that the set of Gaussians achieves a more appropriate
+coarse-level spatial distribution. This constraint also helps mitigate error accumulation that can
+arise from inaccurate flow estimations. After removing the energy-based iteration phase, we keep
+thetotalnumberofiterationsconstant. Reconstructionw/obidirectionalreconstruction. Before
+the forward reconstruction phase, a backward reconstruction is conducted to optimize the spatial
+distribution of the Gaussians. Omitting this reverse pre-reconstruction stage results in the loss of
+the ability to propagate information about areas that emerge in the future back to the first frame.
+Consequently, theinitializationofGaussianpositionsbecomesinadequate, leadingtoasignificant
+decreaseinaccuracy.
+4.3.2 PREDICTION
+GauMambaw/oMermory. RemovingthememorymechanismresultsinavanillaMamba,which
+is not suitable for the current prediction task. To evaluate the effectiveness of the memory mech-
+anism, we incorporate DLinear Zeng et al. (2023), a simple yet effective prediction method that
+doesnotrelyonmemory. Specifically,wesplitavanillaMambaintotwosymmetricparts: anen-
+coder and a decoder. The encoder generates embeddings from historical observations, which are
+subsequently fed into DLinear to predict future embeddings. The decoder then produces the pre-
+dictedparametersofGaussian. However, MambawithDLineardoesnotsurpassourmethodwith
+a20.2%incrementofMAEscore. Ourmemorymechanismcanbeupdatedtemporallywhilecon-
+sidering global embeddings. In contrast, DLinear infers future embeddings based solely on local
+9
+PublishedasaconferencepaperatICLR2025
+Table3: ExperimentresultsinNEXRAD
+Model MAE↓ SSIM↑ LPIPS↓ LPIPS↓ CSI-20↑ CSI-30↑ CSI-40↑
+Radar Pool4 Pool4 Pool4
+ConvGRU 0.006 0.819 0.205 1.621 0.306 - -
+PhyDNet 0.017 0.373 0.320 2.058 0.311 0.089 0.002
+SimVP 0.066 0.379 0.481 2.925 0.085 0.088 0.018
+DiffCast 0.157 0.004 0.932 4.057 0.049 0.021 0.021
+Mamba 0.004 0.899 0.129 0.699 0.309 0.165 0.074
+GauMamba 0.003 0.900 0.126 0.665 0.326 0.179 0.078
+Table4: AblationStudyinReconstruction
+Method MAE↓ PSNR(dB)↑ SSIM↑ LPIPS↓
+×100
+Reconstructw/oflow(localdetails) 1.947 37.521 0.953 0.089
+Reconstructw/oenergy(globaltrends) 1.497 40.049 0.969 0.059
+Reconstructw/obi-direction 3.245 32,746 0.921 0.152
+FullModel 1.468 40.262 0.970 0.057
+Table5: AblationStudyinPrediction
+GauMamba ME→0 MAE↓ SSIM↑ LPIPS↓ CSI-20↑ CSI-30↑ CSI-40↑
+Pool4 Pool4 Pool4
+w/oMemory -0.445 0.858 0.883 0.170 0.224 0.122 0.035
+w/oGRU -0.374 0.743 0.895 0.161 0.289 0.165 0.052
+w/oSort -0.532 0.880 0.883 0.183 0.179 0.085 0.025
+FullModel -0.103 0.714 0.897 0.157 0.342 0.213 0.062
+embeddings. GauMamba w/o GRU. We removed the reset gate and update gate from the GRU,
+whileretainingthememorymechanism. Thehiddenstates,whichstorehistoricalinformation,are
+directlyconcatenatedwiththecurrentGaussianembeddings. Inthisconfiguration,theMAEscore
+increasesby4.1%,whichislowerthanthatofGauMambaw/oMermory,highlightingtheeffective-
+ness of the memory mechanism. However, removing GRU reduces the flexibility in updating the
+memory. GauMambaw/oSort. Mortonsortingaggregatesspatiallyadjacentpointsinthe1Dse-
+quence. WithoutMortonsorting,theGaussiansareinputintoGauMambaintheiroriginalunsorted
+order,asdeterminedduringthereconstructionstage. AlthougheachGaussianmaintainsitsposition
+consistently across frames, a significant performance degradation is observed. This suggests that
+spatiallyunstructuredsequencesnegativelyimpactthefeatureextractioncapabilities.
+5 CONCLUSION
+In this work, we introduced a novel framework for 3D radar sequence prediction in weather fore-
+casting, addressing the limitations of current 2D spatial prediction methods. Our proposed Spa-
+tioTemporal Coherent Gaussian Splatting (STC-GS) and GauMamba effectively capture dynamic
+radar signals while maintaining high efficiency and accuracy. Experimental results demonstrate
+that STC-GS achieves superior reconstruction accuracy compared to existing 3D representations,
+while GauMamba outperforms state-of-the-art models in predicting dynamic weather conditions.
+In general, we provide a general solution framework for 3D prediction, paving the way for future
+advancementsinthisdomain. However,thecurrentscopeofourapproachisspecialized,focusing
+primarilyonradar-basedweathernowcasting,withlimitedexplorationofbroaderapplications. We
+areactivelyworkingtoenhanceitsgeneralizationandsimplifythepipelineforbroaderapplicability
+todynamic3Dscenarios.
+10
+PublishedasaconferencepaperatICLR2025
+ACKNOWLEDGEMENT
+This work is partially supported by the Natural Science Foundation of Guangdong Province
+(2022A1515011346), the Young Scientists Fund of the National Natural Science Foundation of
+China (62106154), Shenzhen Science and Technology Program (JCYJ20220818103001002), the
+Guangdong Key Laboratory of Big Data Analysis and Processing, Sun Yat-sen University, China,
+andtheHigh-performanceComputingPublicPlatform(ShenzhenCampus)ofSunYat-senUniver-
+sity. We thank to Huaiyu Li from Guangzhou Meteorological Observatory and Haowen Li from
+QuzhouMeteorologicalBureaufortheirvaluablesupportintheMOSAICdataset.
+REFERENCES
+TomRAndersson,JScottHosking,Mar´ıaPe´rez-Ortiz,BrooksPaige,AndrewElliott,ChrisRussell,
+Stephen Law, Daniel C Jones, Jeremy Wilkinson, Tony Phillips, et al. Seasonal arctic sea ice
+forecastingwithprobabilisticdeeplearning. Naturecommunications,12(1):5124,2021.
+CongBai,FengSun,JinglinZhang,YiSong,andShengyongChen. Rainformer: Featuresextrac-
+tion balanced network for radar-based precipitation nowcasting. IEEE Geoscience and Remote
+SensingLetters,19:1–5,2022.
+Tri Dao and Albert Gu. Transformers are SSMs: Generalized models and efficient algorithms
+throughstructuredstatespaceduality. InForty-firstInternationalConferenceonMachineLearn-
+ing,2024.
+DepartmentofAtmosphericSciences,TexasA&MUniversityandSchoolofMeteorology,Univer-
+sityofOklahoma. Gridrad-three-dimensionalgriddednexradwsr-88dreflectivityandvelocity
+spectrumwidth,2021. URLhttps://rda.ucar.edu/datasets/dsd841001/.
+Stavros Diolatzis, Tobias Zirr, Alexander Kuznetsov, Georgios Kopanas, and Anton Kaplanyan.
+N-dimensional gaussians for fitting of high dimensional functions. In ACM SIGGRAPH 2024
+ConferencePapers,pp.1–11,2024.
+ZhangyangGao, ChengTan, LirongWu, andStanZ.Li. Simvp: Simpleryetbettervideopredic-
+tion. InProceedingsoftheIEEE/CVFConferenceonComputerVisionandPatternRecognition
+(CVPR),pp.3170–3180,2022a.
+ZhihanGao,XingjianShi,HaoWang,YiZhu,Yuyang(Bernie)Wang,MuLi,andDit-YanYeung.
+Earthformer: Exploringspace-timetransformersforearthsystemforecasting. InNeurIPS2022,
+2022b.
+Zhihan Gao, Xingjian Shi, Boran Han, Hao Wang, Xiaoyong Jin, Danielle C. Maddix, Yi Zhu,
+MuLi,andYuyangWang. Prediff: Precipitationnowcastingwithlatentdiffusionmodels. InAd-
+vancesinNeuralInformationProcessingSystems36: AnnualConferenceonNeuralInformation
+ProcessingSystems2023,NeurIPS2023,NewOrleans,LA,USA,December10-16,2023,2023.
+AlbertGuandTriDao. Mamba: Linear-timesequencemodelingwithselectivestatespaces. arXiv
+preprintarXiv:2312.00752,2023.
+VincentLeGuenandNicolasThome. Disentanglingphysicaldynamicsfromunknownfactorsfor
+unsupervisedvideoprediction. InProceedingsoftheIEEE/CVFConferenceonComputerVision
+andPatternRecognition(CVPR),2020.
+Yoo-GeunHam,Jeong-HwanKim,andJing-JiaLuo. Deeplearningformulti-yearensoforecasts.
+Nature,573(7775):568–572,2019.
+CameronRHomeyerandKennethPBowman. Algorithmdescriptiondocumentforversion4.2of
+thethree-dimensionalgriddednexradwsr-88dradar(gridrad)dataset. UniversityofOklahoma-
+TexasA&MUniversityTech.Rep,2022.
+BernhardKerbl,GeorgiosKopanas,ThomasLeimku¨hler,andGeorgeDrettakis. 3dgaussiansplat-
+tingforreal-timeradiancefieldrendering. ACMTrans.Graph.,42(4):139:1–139:14,2023.
+11
+PublishedasaconferencepaperatICLR2025
+Yann LeCun, Sumit Chopra, Raia Hadsell, M Ranzato, Fujie Huang, et al. A tutorial on energy-
+basedlearning. Predictingstructureddata,1(0),2006.
+XinLi, ZhaoxiaPu, JunA.Zhang, andGeorgeDavidEmmitt. Combinedassimilationofdoppler
+windlidarandtaildopplerradardataoverahurricaneinnercoreforimprovedhurricaneprediction
+withtheNCEPregionalHWRFsystem. Remote.Sens.,14(10):2367,2022.
+Zhan Li, Zhang Chen, Zhong Li, and Yi Xu. Spacetime gaussian feature splatting for real-time
+dynamicviewsynthesis. InProceedingsoftheIEEE/CVFConferenceonComputerVisionand
+PatternRecognition(CVPR),pp.8508–8520,2024.
+Jonathon Luiten, Georgios Kopanas, Bastian Leibe, and Deva Ramanan. Dynamic 3d gaussians:
+Trackingbypersistentdynamicviewsynthesis,2023.
+SaswatSubhajyotiMallick,RahulGoel,BernhardKerbl,FranciscoVicenteCarrasco,MarkusStein-
+berger, and Fernando De La Torre. Taming 3dgs: High-quality radiance fields with limited re-
+sources. arXivpreprintarXiv:2406.15643,2024.
+Jaideep Pathak, Shashank Subramanian, Peter Harrington, Sanjeev Raja, Ashesh Chattopadhyay,
+Morteza Mardani, Thorsten Kurth, David Hall, Zongyi Li, Kamyar Azizzadenesheli, Pedram
+Hassanzadeh, Karthik Kashinath, and Animashree Anandkumar. Fourcastnet: A global data-
+drivenhigh-resolutionweathermodelusingadaptivefourierneuraloperators,2022.
+SumanV.Ravuri,KarelLenc,MatthewWillson,DmitryKangin,Re´miLam,PiotrMirowski,Megan
+Fitzsimons,MariaAthanassiadou,SheleemKashem,SamMadge,RachelPrudden,AmolMand-
+hane, Aidan Clark, Andrew Brock, Karen Simonyan, Raia Hadsell, Niall H. Robinson, Ellen
+Clancy,AlbertoArribas,andShakirMohamed. Skilfulprecipitationnowcastingusingdeepgen-
+erativemodelsofradar. Nature,597(7878):672–677,2021.
+Qiuhong Shen, Zike Wu, Xuanyu Yi, Pan Zhou, Hanwang Zhang, Shuicheng Yan, and Xinchao
+Wang. Gamba: Marry gaussian splatting with mamba for single view 3d reconstruction. arXiv
+preprintarXiv:2403.18795,2024.
+Xingjian Shi, Zhourong Chen, Hao Wang, Dit-Yan Yeung, Wai-kin Wong, and Wang-chun Woo.
+Convolutionallstmnetwork: amachinelearningapproachforprecipitationnowcasting. InPro-
+ceedingsofthe28thInternationalConferenceonNeuralInformationProcessingSystems-Vol-
+ume1,pp.802–810,2015.
+XingjianShi,ZhihanGao,LeonardLausen,HaoWang,Dit-YanYeung,Wai-kinWong,andWang-
+chun WOO. Deep learning for precipitation nowcasting: A benchmark and a new model. In
+AdvancesinNeuralInformationProcessingSystems,volume30,2017.
+JiakaiSun,HanJiao,GuangyuanLi,ZhanjieZhang,LeiZhao,andWeiXing. 3dgstream: On-the-
+fly training of 3d gaussians for efficient streaming of photo-realistic free-viewpoint videos. In
+ProceedingsoftheIEEE/CVFConferenceonComputerVisionandPatternRecognition(CVPR),
+pp.20675–20685,2024.
+Jiaxiang Tang, Jiawei Ren, Hang Zhou, Ziwei Liu, and Gang Zeng. Dreamgaussian: Generative
+gaussiansplattingforefficient3dcontentcreation. arXivpreprintarXiv:2309.16653,2023.
+ZacharyTeedandJiaDeng. Raft: Recurrentall-pairsfieldtransformsforopticalflow. InComputer
+Vision–ECCV2020,pp.402–419,2020.
+Mark Veillette, Siddharth Samsi, and Chris Mattioli. Sevir : A storm event imagery dataset for
+deeplearningapplicationsinradarandsatellitemeteorology. InAdvancesinNeuralInformation
+ProcessingSystems,volume33,pp.22009–22019,2020.
+Yunbo Wang, Mingsheng Long, Jianmin Wang, Zhifeng Gao, and Philip S Yu. Predrnn: Recur-
+rent neural networks for predictive learning using spatiotemporal lstms. In Advances in Neural
+InformationProcessingSystems,volume30,2017.
+Yunbo Wang, Lu Jiang, Ming-Hsuan Yang, Li-Jia Li, Mingsheng Long, and Li Fei-Fei. Eidetic
+3d LSTM: A model for video prediction and beyond. In International Conference on Learning
+Representations,2019.
+12
+PublishedasaconferencepaperatICLR2025
+YunboWang,HaixuWu,JianjinZhang,ZhifengGao,JianminWang,PhilipS.Yu,andMingsheng
+Long. Predrnn: Arecurrentneuralnetworkforspatiotemporalpredictivelearning. IEEETrans-
+actionsonPatternAnalysisandMachineIntelligence,45(2):2208–2225,2023.
+Zhou Wang, Alan C Bovik, Hamid R Sheikh, and Eero P Simoncelli. Image quality assessment:
+fromerrorvisibilitytostructuralsimilarity. IEEEtransactionsonimageprocessing,13(4):600–
+612,2004.
+GuanjunWu,TaoranYi,JieminFang,LingxiXie,XiaopengZhang,WeiWei,WenyuLiu,QiTian,
+andXinggangWang.4dgaussiansplattingforreal-timedynamicscenerendering.InProceedings
+oftheIEEE/CVFConferenceonComputerVisionandPatternRecognition(CVPR),pp.20310–
+20320,2024.
+ZeyuYang,HongyeYang,ZijiePan,andLiZhang. Real-timephotorealisticdynamicscenerepre-
+sentationandrenderingwith4dgaussiansplatting,2024a.
+Ziyi Yang, Xinyu Gao, Wen Zhou, Shaohui Jiao, Yuqing Zhang, and Xiaogang Jin. Deformable
+3d gaussians for high-fidelity monocular dynamic scene reconstruction. In Proceedings of the
+IEEE/CVFConferenceonComputerVisionandPatternRecognition(CVPR),pp.20331–20341,
+2024b.
+Xuanyu Yi, Zike Wu, Qiuhong Shen, Qingshan Xu, Pan Zhou, Joo-Hwee Lim, Shuicheng Yan,
+Xinchao Wang, and Hanwang Zhang. Mvgamba: Unify 3d content generation as state space
+sequencemodeling. arXivpreprintarXiv:2406.06367,2024.
+DeminYu,XutaoLi,YunmingYe,BaoquanZhang,ChuyaoLuo,KuaiDai,RuiWang,andXunlai
+Chen. Diffcast: A unified framework via residual diffusion for precipitation nowcasting. In
+ProceedingsoftheIEEE/CVFConferenceonComputerVisionandPatternRecognition(CVPR),
+pp.27758–27767,2024.
+Ailing Zeng, Muxi Chen, Lei Zhang, and Qiang Xu. Are transformers effective for time series
+forecasting? In Proceedings of the AAAI conference on artificial intelligence, volume 37, pp.
+11121–11128,2023.
+Kai Zhang, Sai Bi, Hao Tan, Yuanbo Xiangli, Nanxuan Zhao, Kalyan Sunkavalli, and Zexiang
+Xu. Gs-lrm: Largereconstructionmodelfor3dgaussiansplatting. InEuropeanConferenceon
+ComputerVision,pp.1–19.Springer,2025.
+RichardZhang,PhillipIsola,AlexeiAEfros,EliShechtman,andOliverWang. Theunreasonable
+effectivenessofdeepfeaturesasaperceptualmetric. InProceedingsoftheIEEEconferenceon
+computervisionandpatternrecognition,pp.586–595,2018.
+YuchenZhang,MingshengLong,KaiyuanChen,LanxiangXing,RonghuaJin,MichaelI.Jordan,
+and Jianmin Wang. Skilful nowcasting of extreme precipitation with nowcastnet. Nature, 619
+(7970):526–532,2023.
+ShijieZhou, HaoranChang, SichengJiang, ZhiwenFan,ZehaoZhu, DejiaXu, PradyumnaChari,
+Suya You, Zhangyang Wang, and Achuta Kadambi. Feature 3dgs: Supercharging 3d gaussian
+splattingtoenabledistilledfeaturefields. InProceedingsoftheIEEE/CVFConferenceonCom-
+puterVisionandPatternRecognition,pp.21676–21685,2024.
+Chen Ziwen, Hao Tan, Kai Zhang, Sai Bi, Fujun Luan, Yicong Hong, Li Fuxin, and Zexiang Xu.
+Long-lrm: Long-sequence large reconstruction model for wide-coverage gaussian splats. arXiv
+preprintarXiv:2410.12781,2024.
+13
+PublishedasaconferencepaperatICLR2025
+A 3D RADAR CROSS-SECTION RENDERING
+3DRadarCross-SectionRenderingaimstoproject3DGaussiansfromtheworldcoordinatesystem
+ontothevirtualcameraimagingplanetorenderspecificcross-sectionresults.First,weapplyatrans-
+formationmatrixtoconvertthe3DGaussiansfromtheworldcoordinatestothecameracoordinates.
+Then,wediscardanyGaussiansthatexceedapredefinedthresholddistancefromthevirtualimaging
+plane.Finally,theremainingGaussiansarerenderedinorderoftheirdistancestotheimagingplane,
+fromnearesttofarthest. The3DGaussian’scontributiontothepixelcanbecalculatedby:
+F = (cid:88) f i ·e−1 2 (xp−xgi )TΣ− i 1(xp−xgi )
+i∈Np
+where N is the number of Gaussians overlapping with the given pixel, f is the radar features of
+p i
+i-thGaussian,x andx arethecenteredpositionsofthepixelandi-thgaussianrespectively,Σ−1
+p gi i
+isthe3Dcovariancematrixofi-thGaussian. Therasterizationstrategy,similartotheorigin3DGS,
+is fully differentiable, enabling to take full use of the GPU acceleration framework to optimize
+parametersofGaussiansusingstochasticgradientdescent.
+B MEMORY MECHANISM.
+ThecoreoftheGatedRecurrentUnit(GRU)isbasedontwoprimarygates: theresetgateandthe
+update gate, which control the flow of information. Unlike LSTM, GRU combines the forget and
+inputgatesintoasingleupdategate,simplifyingthearchitecture. WhenanewinputC isreceived
+t
+at time step t, the reset gate r controls how much of the previous hidden state H should be
+t t−1
+ignoredwhencomputingthecandidatehiddenstateHˆ . Asmallerresetgatevaluecausesthemodel
+t
+to”forget”partsoftheprevioushiddenstate,effectivelyresettingthememory. Theupdategatez
+t
+determineshowmuchoftheprevioushiddenstateH shouldberetained,controllingthebalance
+t−1
+between preserving past information and incorporating new data. the update gate z controls the
+t
+finalhiddenstateH ,whichisacombinationoftheprevioushiddenstateH andthecandidate
+t t−1
+hiddenstateHˆ . TheadvantagesofGRU’sgatingmechanismarethatitallowsefficientcontrolover
+t
+information flow and helps to mitigate the vanishing gradient problem by maintaining long-term
+dependenciesmoreeffectively.
+As illustrated in Fig. 3, incorporating Mamba and GRU preserves the linear-time complexity of
+Mambaandintroducesalong-rangememorymechanismthatallowsmamba-basedmodelstopredict
+thenextGaussiansbasedonthepreviousGaussians. Thekeyequationsareshownbelow:
+r =σ(W C +W H +b )
+t cr t hr t−1 r
+z =σ(W C +W H +b )
+t cz t hz t−1 z
+Hˆ =W C +W (r ◦H )+b
+t ch t hh t t−1 h
+Cˆ =BiMamba(Hˆ )
+t t
+H =z ◦H +(1−z)◦Cˆ
+t t t−1 t
+C EXPERIMENT SETTING
+C.1 DATASET
+NEXRAD: The 3D gridded radar reflectivity data used in this study were collected by the U.S.
+NEXRADWSR-88Dradarnetwork. Thesedataaresourcedfromtheds841.6datasetproductavail-
+able through the National Center for Atmospheric Research (NCAR) Research Data Archive De-
+partmentofAtmosphericSciences,TexasA&MUniversity&SchoolofMeteorology,Universityof
+Oklahoma (2021). Due to constraints on storage and GPUresources, radar observations of severe
+stormeventsin2022withalongitudeandlatitudegridsizerangingfrom512to1024areselected
+fromdifferentgeographicalcoverage.
+The selected storm events are observed at 5-minute intervals with a horizontal resolution of ap-
+proximately0.021degrees. Atotalof62553Dradarobservationsareconsideredinthisstudy. To
+14
+PublishedasaconferencepaperatICLR2025
+preprocess the raw radar data, a quality control procedure is applied, following the methodology
+outlinedinHomeyer&Bowman(2022). Subsequently,acentral512×512longitude/latitudegrid
+is cropped from each event observation. In the vertical dimension, there are 28 levels, spanning
+from0.5kmto7kmwith0.5kmintervals,andfrom7kmto22kmwith1kmintervals. Toensure
+consistent vertical spacing of features, we interpolate the original data to obtain 44 vertical layers
+with0.5kmintervalsspanningfrom0.5kmto22km. The3Dradardatafromthesestormevents
+include seven channels: (1) Z , the horizontal reflectivity factor, which indicates the intensity of
+H
+radarreturnsfromprecipitation;(2)SW,thespectrumwidth,representingthevariabilityofDoppler
+velocitieswithintheradarpulsevolume;(3)AzShr,theazimuthalshear,ameasureofwindshear
+inthehorizontalplaneoftenusedtodetectrotationwithinstormsystems;(4)Div,thedivergence,
+which reflects the horizontal divergence or convergence of wind fields; (5) Z , the differential
+DR
+reflectivity, usedtodifferentiateprecipitationtypesbycomparinghorizontalandverticalpolariza-
+tions; (6) K , the specific differential phase, providing information on phase shifts of the radar
+DP
+signal,usefulforestimatingrainfallrates;and(7)r ,thecorrelationcoefficientbetweenhorizon-
+HV
+talandverticalpolarizations,whichassessestheuniformityofprecipitationparticlesandidentifies
+non-meteorologicaltargets.
+Giventheobjectiveofpredictingupto20futureframes(100minutes)basedon5observedframes
+(25minutes),wesample25continuousframeswithastrideof10fromeachevent.Thesesequences
+arethendividedintotraining,validation,andtestsetsina9:0.5:0.5ratio.
+MOSAICTheMOSAICdatasetrecordsradarechoesoverseveralyearswithinGuangdong,China,
+with a time interval of 6 minutes between consecutive frames. To ensure efficient training while
+consideringGPUandstoragelimitations,weexcludedradardatathatdidnotcapturemeteorological
+events,focusingonseverestormeventsin2022.Thisresultedinatotalof24,542radarobservations.
+Therawdatahaveahorizontalresolutionof880×1050pixels,with21verticallayersrangingfrom
+0.5kmto6kmwith0.5kmintervals,from6kmto10kmwith1kmintervals,andadditionallayers
+at 12 km, 14 km, 15.5 km, 17 km, and 19 km. To achieve consistent vertical spacing of features,
+weinterpolatetheoriginaldatatoobtain38verticallayerswith0.5kmintervalsspanningfrom0.5
+kmto19km. Thecentral768×1024regioniscroppedanddownsampledto384×512,resulting
+inradarobservationdataofdimensions38×384×512. UnliketheNEXRADdataset, MOSAIC
+includes only the intensity data of radar echoes. For the task of predicting up to 20 future frames
+(120 minutes) based on 5 observed frames (30 minutes), we sample 25 continuous frames with a
+strideof20fromeachevent. Thesesequencesarethendividedintotraining,validation,andtestsets
+ina9:0.5:0.5ratio.
+C.2 IMPLEMENTATIONDETAILS
+We define the prediction task as predicting 20 frames future frames based on 5 initial frames, fol-
+lowingYuetal.(2024). Forreconstruction, werandomsample10%pointsfromnon-nullregions
+toinitializetheGaussians. TomaintainaconstanttotalnumberofGaussians,additionalpointsare
+randomlysampledfromthenullregions,bringingthefinalcountto49,152Gaussians. Duringthe
+reversepre-reconstructionstage,weperform5,000iterationstoadjustthepositionsoftheGaussians,
+applying3Dflowandenergyconstraints. Intheforwardreconstructionstage,wefirstoptimizethe
+positionsoftheGaussiansinthesamemannerforthefirst5,000iterations. Afterward,allGaussian
+parameters are optimized, incorporating the 3D flow, energy constraints, and reconstruction loss.
+The initial learning rate is set to 0.002, which is gradually reduced to 0.0002 by the end of train-
+ing. Forthepredictiontask,wetrainourframeworkfor50epochsusingtheAdamoptimizerwith
+a learning rate of 0.0005. For baseline methods, their 2D operators are extended to 3D to handle
+3Dradarpredictiontasks,withtheirconfigurationsadjustedaccordinglyfordifferentdatasets. All
+experimentsareconductedunderthesamesettingsusing4A100GPUs.
+C.3 METRICS
+Toevaluatetheaccuracyofpredictions,wecalculatetheMeanError(ME)andMeanAbsoluteEr-
+ror(MAE)toassesstheoverallnumericaldiscrepancybetweenthepredictedresultsandtheground
+truth. An ME value closer to zero indicates better accuracy; an ME greater than zero signifies
+that the predictions generally exceed the ground truth, while an ME less than zero indicates the
+opposite. Toevaluatethevisualqualityofthepredictions,weemploytheStructuralSimilarityIn-
+15
+PublishedasaconferencepaperatICLR2025
+Table6: ExtendedExperimentresultsinNEXRAD
+Model MAE↓ SSIM↑ LPIPS↓ LPIPS↓ CSI-20↑ CSI-30↑ CSI-40↑
+Radar Pool4 Pool4 Pool4
+ConvGRU 0.006 0.836 0.194 1.632 0.326 - -
+PhyDNet 0.017 0.366 0.323 2.114 0.348 0.097 0.002
+SimVP 0.008 0.817 0.176 1.483 0.227 0.002 0.000
+DiffCast 0.152 0.005 0.925 4.005 0.051 0.023 0.044
+Mamba 0.004 0.902 0.125 0.625 0.304 0.158 0.075
+GauMamba 0.003 0.907 0.122 0.600 0.361 0.205 0.089
+dex(SSIM)Wangetal.(2004),PeakSignal-to-NoiseRatio(PSNR),andLearnedPerceptualImage
+PatchSimilarity(LPIPS)Zhangetal.(2018). Here,weusethepretrainedAlexNetastheevaluator
+ofLPIPS.Besides, wepretrainedaBiGANmodelonradardatainaself-supervisedmanner. The
+LPIPSscorecalculatedwiththeencoderofBiGANismarkedasLPIPS . TheresultsinTable
+Radar
+2 and 3 demonstrate that LPIPS is well-aligned with the original LPIPS results. More impor-
+Radar
+tantly,ithighlightsperceptualdifferencesthatwereundetectedbytheoriginalLPIPSandrobustto
+noise. In Table 2, the scores for ConvGRU and DiffCast show discrepancies between LPIPS and
+LPIPS . Referring to Figure 6 left, it can be clearly observed that ConvGRU fails to predict
+Radar
+thenextfewframesaccurately, insteadprovidingasmoothedaverageresult. Incontrast, DiffCast
+produces results that are closer to the ground truth but with some noise. The higher LPIPS score
+for DiffCast indicates that LPIPS lacks robustness to noise in radar data, while LPIPS more
+Radar
+accuratelyreflectstheperceptualdifferencesbetweenthetwomethods.
+Inaddition,theCriticalSuccessIndex(CSI)isusedtoquantifythedegreeofpixel-wiseagreement
+between the prediction and the ground truth. CSI is defined as Hits , where Hits
+Hits+Misses+FalseAlarms
+(truth=1, pred=1), Misses(truth=1, pred=0), andFalseAlarms(truth=0, pred=1)arecountedafter
+binarizing the continuous values of predictions and ground truth into 0/1 values at thresholds [20,
+30,40]dBz. FollowingRavurietal.(2021);Gaoetal.(2023);Yuetal.(2024),wereporttheCSIat
+poolingscale4×4,whichrelaxesthepixel-wisematchingtoevaluatetheaccuracyonneighborhood
+aggregations.
+C.4 PREDICTION
+The existing prediction models used for comparison are originally designed for 2D sequence pre-
+diction. Therefore,adjustmentsmustbemadetoadaptthemfor3Dradarsequenceprediction. Two
+feasiblemodificationscanbeconsidered. Thefirstinvolvestreatingthenewlyintroducedthirddi-
+mension,whichrepresentstheverticalaxis,asachanneldimension. However,thisapproachwould
+limitthemodel’sabilitytopredictchangesalongtheverticalaxisaseffectivelyasitdoesinthehor-
+izontalplane. Instead, weoptedtoextendthesemodelsfrom2Dto3D,enablingthemtonatively
+handle 3D prediction. Specifically, we expanded 2D CNNs to 3D CNNs and similarly extended
+modules such as ConvGRU and ConvLSTM included in PhyDNet and DiffCast from 2D to 3D.
+Additionally,the2DPDEconstraintinPhyDNetisalsoadaptedfor3Dprediction.
+D EXTENDED EXPERIMENTS
+We conduct extended experiments using the NEXRAD dataset spanning three years (2020–2022)
+underthesametrainingepochs,aimingtoinvestigatetheimpactofincreaseddatasetdiversityand
+size on model performance. As shown in Table 6, most metrics of these models exhibit slight
+improvementswhentrainedontheextendeddataset. Thisperformancegaincanbeattributedtothe
+enhanced data diversity and the increased number of iteration steps enabled by the larger dataset.
+Notably, ourmodelcontinuestooutperformothers, demonstratingitsrobustnessandeffectiveness
+evenunderextendedexperimentalconditions.
+16
+PublishedasaconferencepaperatICLR2025
+E QUALITATIVE RESULTS
+Reconstruction. ThefullreconstructedresultsareshowninFig. 7,8and9.
+Frame 1 Frame 2 Frame 3 Frame 4 Frame 5 Frame 6 Frame 7 Frame 8 Frame 9 Frame 10
+3DGStream
+4DGS
+Deform-3DGS
+Ours
+GT
+Figure7: Qualitativeresultsof3Dradarreconstructionfromframe1toframe10.
+Frame 11 Frame 12 Frame 13 Frame 14 Frame 15 Frame 16 Frame 17 Frame 18 Frame 19 Frame 20
+3DGStream
+4DGS
+Deform-3DGS
+Ours
+GT
+Figure8: Qualitativeresultsof3Dradarreconstructionfromframe11toframe20.
+Prediction. ThefullpredictedresultsareshowninFig. 10,Fig. 11,Fig. 12,andFig. 13
+F DISCUSSION
+Training objective of GauMamba. It is possible to directly predict G based on G . However,
+t t−1
+wefoundthatthisapproachoftenleadstopoorconvergence. Thedifficultyarisesbecausedirectly
+predicting G requires the model to estimate both the overall trend of G and its exact position. In
+t
+contrast, predicting ∆G simplifies the problem by focusing only on the changes from the initial
+t
+timestamp0totimestampt,thusreducingthesolutionspaceandmakingitmorecompact. Another
+viablealternativeistopredictthedifferencebetweenconsecutivetimestamps,i.e.,∆Gˆ =G −G .
+t t t−1
+However,thismethodsuffersfromthedrawbackoferroraccumulationduringinference,wherethe
+iterativepredictionsleadtoincreasinglycompoundederrorsovertime.
+17
+PublishedasaconferencepaperatICLR2025
+Frame 21 Frame 22 Frame 23 Frame 24 Frame 25 Detail
+3DGStream
+4DGS
+Deform-3DGS
+Ours
+GT
+Figure9: Qualitativeresultsof3Dradarreconstructionfromframe21toframe25anddetailsof
+frame25.
+Frame 6 Frame 7 Frame 8 Frame 9 Frame 10 Frame 11 Frame 12 Frame 13 Frame 14 Frame 15
+ConvGRU
+PhyDNet
+SimVP
+DiffCast
+GauMamba
+GT
+Figure10: Qualitativeresultsof3Dradarpredictionfromframe6toframe15inMOSAICdataset.
+Frame 16 Frame 17 Frame 18 Frame 19 Frame 20 Frame 21 Frame 22 Frame 23 Frame 24 Frame 25
+ConvGRU
+PhyDNet
+SimVP
+DiffCast
+GauMamba
+GT
+Figure11: Qualitativeresultsof3Dradarpredictionfromframe16toframe25inMOSAICdataset.
+18
+PublishedasaconferencepaperatICLR2025
+Frame 6 Frame 7 Frame 8 Frame 9 Frame 10 Frame 11 Frame 12 Frame 13 Frame 14 Frame 15
+ConvGRU
+PhyDNet
+SimVP
+DiffCast
+GauMamba
+GT
+Figure12: Qualitativeresultsof3Dradarpredictionfromframe6toframe15inNEXRADdataset.
+Frame 16 Frame 17 Frame 18 Frame 19 Frame 20 Frame 21 Frame 22 Frame 23 Frame 24 Frame 25
+ConvGRU
+PhyDNet
+SimVP
+DiffCast
+GauMamba
+GT
+Figure 13: Qualitative results of 3D radar prediction from frame 16 to frame 25 in NEXRAD
+dataset.
+Discussionofconvergenceissueinreconstruction.Toaccuratelyreconstructhighlydynamicradar
+sequences,allparametersofthe3DGaussiansneedtobeoptimized.Followingthissettingtheexist-
+ingdynamicGaussianreconstructionmethodsfacesignificantchallengestoconvergence. Thefixed
+parametersserveasefficientanchors, allowingeachGaussiantolockontoacorrespondingregion
+oftheobjectbeingreconstructed,therebyconsistentlytrackingchangesintheobject. Whenallpa-
+rametersbecomeadjustable,thiscrucialpriorconstraintislost,leadingtoincoherentmovementof
+theGaussianswiththereconstructedparts,andresultinginavagueandsuboptimaloptimizationob-
+jective. Inanextremecase,3DGaussiansexhibitingrandomBrownianmotioncanstillreconstruct
+dynamic scenes and achieve a suboptimal outcome, as long as the deformation function or neural
+network used for reconstruction has sufficient capacity and enough iterations. Furthermore, each
+19
+PublishedasaconferencepaperatICLR2025
+Gaussian influences only a very small region of the space, which theoretically limits the effective
+areaforgradientdescent. Asmallperturbationintroducedbyrandomlyinitializedneuralnetworks
+or polynomial functions can cause the Gaussian to jump out of its original reconstruction region,
+hindering the gradient flow from the corresponding ground truth area from properly affecting the
+disturbedGaussianandtrappingitinanunrelatedregion,leadingtosignificantconvergenceissues.
+20

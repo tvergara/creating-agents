@@ -1,0 +1,50 @@
+[
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "citation_corr": 0.47500927761555606,
+    "acceptance_corr": -0.06419407387663692
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "citation_corr": 0.43694169258700855,
+    "acceptance_corr": 0.09471601867688781
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/modern.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "citation_corr": 0.27872598020818007,
+    "acceptance_corr": 0.8164965809277258
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "citation_corr": -0.10461984188703022,
+    "acceptance_corr": 0.5393463080134765
+  }
+]

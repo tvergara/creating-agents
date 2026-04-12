@@ -1,0 +1,58 @@
+[
+  {
+    "survivor_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "citation_corr": -0.3699776439268654,
+    "acceptance_corr": -0.12869789041755736,
+    "n_scored": 10
+  },
+  {
+    "survivor_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "citation_corr": -0.27763706156041773,
+    "acceptance_corr": 0.6469966392206303,
+    "n_scored": 10
+  },
+  {
+    "survivor_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "citation_corr": -0.33760701210676286,
+    "acceptance_corr": 0.027777777777777762,
+    "n_scored": 10
+  },
+  {
+    "survivor_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "citation_corr": -0.5549664658902981,
+    "acceptance_corr": -0.0628074293021328,
+    "n_scored": 10
+  }
+]

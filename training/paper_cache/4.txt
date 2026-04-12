@@ -1,0 +1,1146 @@
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#1figure <ref>
+
+#1Figure <ref>
+#1#2figures <ref> and <ref>
+#1#2#3#4figures <ref>, <ref>, <ref> and <ref>
+
+#1section <ref>
+
+#1Section <ref>
+
+#1#2sections <ref> and <ref>
+
+#1#2#3sections <ref>, <ref> and <ref>
+
+(<ref>)1equation <ref>
+
+#1Equation <ref>
+
+#1<ref>
+
+#1chapter <ref>
+
+#1Chapter <ref>
+
+#1#2chapters<ref>–<ref>
+
+#1algorithm <ref>
+
+#1Algorithm <ref>
+#1#2algorithms <ref> and <ref>
+#1#2Algorithms <ref> and <ref>
+
+#1part <ref>
+
+#1Part <ref>
+#1#2parts <ref> and <ref>
+
+#1⌈#1 ⌉
+#1⌊#1 ⌋
+1
+
+
+
+
+ϵ
+
+
+
+η
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+ϵ
+θ
+𝐚
+𝐛
+𝐜
+𝐝
+𝐞
+𝐟
+𝐠
+𝐡
+𝐢
+𝐣
+𝐤
+𝐥
+𝐦
+𝐧
+𝐨
+𝐩
+𝐪
+𝐫
+𝐬
+𝐭
+𝐮
+𝐯
+𝐰
+𝐱
+𝐲
+𝐳
+
+
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+𝐀
+𝐁
+𝐂
+𝐃
+𝐄
+𝐅
+𝐆
+𝐇
+𝐈
+𝐉
+𝐊
+𝐋
+𝐌
+𝐍
+𝐎
+𝐏
+𝐐
+𝐑
+𝐒
+𝐓
+𝐔
+𝐕
+𝐖
+𝐗
+𝐘
+𝐙
+
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+0
+1
+μ
+θ
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+α
+β
+ϵ
+λ
+ω
+μ
+ψ
+σ
+θ
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+β
+Φ
+Λ
+Σ
+
+
+msl
+boldbxn
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+
+𝒜
+ℬ
+𝒞
+𝒟
+ℰ
+ℱ
+𝒢
+ℋ
+ℐ
+𝒥
+𝒦
+ℒ
+ℳ
+𝒩
+𝒪
+𝒫
+𝒬
+ℛ
+𝒮
+𝒯
+𝒰
+𝒱
+𝒲
+𝒳
+𝒴
+𝒵
+
+
+𝔸
+𝔹
+ℂ
+𝔻
+
+
+𝔽
+𝔾
+ℍ
+𝕀
+𝕁
+𝕂
+𝕃
+𝕄
+ℕ
+𝕆
+ℙ
+ℚ
+ℝ
+𝕊
+𝕋
+𝕌
+𝕍
+𝕎
+𝕏
+𝕐
+ℤ
+
+
+Λ
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+Σ
+
+
+
+
+Λ
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+*
+
+§ 
+
+0pt1ex1ex
+*
+
+ §.§ 
+
+0pt1ex1ex
+
+
+emacs
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+theoremTheorem[section]
+corollaryCorollary[section]
+lemmaLemma[section]
+exampleExample[section]
+remarkRemark[section]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Locality Sensitive Sparse Encoding for
+ Learning World Models Online
+    
+Zichen Liu   Chao Du   Wee Sun Lee  Min Lin   
+
+Sea AI Lab   National University of Singapore
+
+    April 11, 2026
+===================================================================================================
+
+
+Acquiring an accurate world model online for model-based reinforcement learning (MBRL) is challenging due to data nonstationarity, which typically causes catastrophic forgetting for neural networks (NNs). From the online learning perspective, a Follow-The-Leader (FTL) world model is desirable, which optimally fits all previous experiences at each round. Unfortunately, NN-based models need re-training on all accumulated data at every interaction step to achieve FTL, which is computationally expensive for lifelong agents. In this paper, we revisit models that can achieve FTL with incremental updates. Specifically, our world model is a linear regression model supported by nonlinear random features. The linear part ensures efficient FTL update while the nonlinear random feature empowers the fitting of complex environments. To best trade off model capacity and computation efficiency, we introduce a locality sensitive sparse encoding, which allows us to conduct efficient sparse updates even with very high dimensional nonlinear features. We validate the representation power of our encoding and verify that it allows efficient online learning under data covariate shift. We also show, in the Dyna MBRL setting, that our world models learned online using a single pass of trajectory data either surpass or match the performance of deep world models trained with replay and other continual learning methods.
+
+
+
+
+
+
+
+§ INTRODUCTION
+
+
+World models have been demonstrated to enable sample-efficient model-based reinforcement learning (MBRL)  <cit.>, and are deemed as a critical component for next-generation intelligent agents <cit.>.
+Unfortunately, learning accurate world models in an incremental online manner is challenging, because the data generated from agent-environment interaction is nonstationarily distributed, due to the continually changing policy, state visitation, and even environment dynamics. For neural network (NN) based world models, the nonstationarity could lead to catastrophic forgetting <cit.>, making models inaccurate at recently under-visited regions (as illustrated in the top row of fig:forgetting-illustration). Planning with inaccurate models is detrimental as the model errors can compound due to rollouts, resulting in misleading agent updates <cit.>. To attain a world model of good accuracy over the observed data coverage, NN-based methods often maintain all collected experiences from the start of the environment interaction and perform periodic re-training, possibly at every step, resulting in a growing computation cost for lifelong agents.
+
+In this paper, we aim to develop a world model, in the Dyna MBRL architecture <cit.>, that learns incrementally without forgetting prior knowledge about the environment. We notice that re-training NN-based world models every step on previous observations till convergence resembles the concept of Follow-The-Leader (FTL) in online learning <cit.>. While re-training the NN on all previous data is prohibitively expensive, especially under the streaming setting in RL, specific types of models studied in online learning can achieve incremental FTL with only a constant computation cost. To this end, we revisit the classic idea of learning a linear regressor on top of non-linear random features. The loss function of such models is quadratic with respect to the parameters, satisfying the online learning requirement. It may seem a retrograde choice given all the success of deep learning, and the findings that a shallow NN needs to be exponentially large to match the capability of a deep one <cit.>. Nevertheless, we believe it is worth exploring under the RL context for three reasons: (1) In RL, data is streamed online and highly non-stationary, advocating for models capable of incremental FTL. (2) Many continuous control problems have a moderate number of dimensions that could fall within the capability of shallow models <cit.>. (3) Sparse features can be employed to further enlarge the model capacity without extra computation cost <cit.>.=-1
+
+Inspired by <cit.>, we propose an expressive sparse non-linear feature representation which we call locality sensitive sparse encoding. Our encoder generates high-dimensional sparse features with random projection and soft binning. Exploiting the sparsity, we further develop an efficient algorithm for online model learning, which only updates a small subset of weights while continually tracking a solution to the FTL objective. World models learned online with our method are resilient to forgetting compared to those based on NNs (see the bottom row of fig:forgetting-illustration for intuition). We empirically validate the representational advantage of our encoding over other non-linear features, and demonstrate that our method outperforms NNs in the online supervised learning setting <cit.> as well as the model-based reinforcement learning setting <cit.> with models learned online.=-1
+
+
+    
+    < g r a p h i c s >
+
+    
+    This Gridworld environment requires the agent to navigate from the start position (“S") to the goal location (“G") with shortest path. The tabular Q-learning agent starts from a random policy π_0 and improves to get better policies π_t ⋯π_t^', leading to narrower state visitation towards the optimal trajectories (the yellow regions). Due to such distributional shift, the NN-based model (top) may forget recently under-visited regions, even though it has explored there before. The red circles indicate erroneous predictions where the Euclidean distance between the ground truth next state and the prediction is greater than a threshold (δ=0.05). In contrast, our method (bottom) learns online, and at each step incrementally computes the optimal solution over all accumulated data, thus is resilient to forgetting.
+    
+    
+
+
+
+
+
+§ PRELIMINARIES
+ 
+In this section, we first recap the protocol of online learning and introduce the Follow-The-Leader strategy. Then we revisit Dyna, a classic MBRL architecture, where we apply our method to learn world models online.
+
+
+
+ §.§ Online learning
+
+
+
+Online learning refers to a learning paradigm where the learner needs to make a sequence of accurate predictions given knowledge about the correct answers for all prior questions <cit.>. Formally, at round t, the online learner is given a question _t ∈𝒳 and asked to provide an answer to it, which we denote as h_t(_t), letting h_t ∈ℋ: 𝒳→𝒴 be a model in the hypothesis class built by the learner. After predicting the answer, the learner will be revealed the ground truth _t ∈𝒴 and suffers a loss ℓ(h_t(_t), _t). The learner's goal is to adjust its model to achieve the lowest possible regret relative to ℋ defined as Regret_T(ℋ) = max_h^* ∈ℋ( ∑_t=1^T ℓ(h_t(_t), _t) - ∑_t=1^T ℓ(h^*(_t), _t) ). When the input is a convex set 𝒮, the prediction is a vector _t ∈𝒮, and the loss ℓ(_t, _t) is convex, the problem is cast as online convex optimization. Absorbing the target into the loss, ℓ_t(_t) = ℓ(_t, _t), the regret with respect to a competing hypothesis (a vector ) is then defined as Regret_T() = ∑_t=1^T ℓ_t(_t) - ∑_t=1^T ℓ_t(). One intuitive strategy is for the learner to predict a vector _t at any online round such that it achieves minimal loss over all past rounds. This strategy is usually referred to as Follow-The-Leader (FTL):
+
+    ∀ t,  _t = _∈𝒮∑_i=1^t-1ℓ_i().
+
+
+
+
+ §.§ Model-based reinforcement learning with Dyna
+
+
+Reinforcement learning problems are usually formulated with the standard Markov Decision Process (MDP) ℳ = {𝒮, 𝒜, P, R, γ, P_0}, where 𝒮 and 𝒜 denote the state and action spaces, P(^' | , ) the Markovian transition dynamics, R(, , ^') the reward function, γ∈ (0, 1) the discount factor, and P_0 the initial state distribution.
+The goal of RL is to learn the optimal policy that maximizes the discounted cumulative reward: π^*= _π𝔼_π, P[∑_t=0^∞γ^t R(_t, _t, _t+1) |_0=∼P_0].
+
+Model-based RL solves the optimal policy with a learned world model. Existing NN-based MBRL methods <cit.> have shown state-of-the-art performance on various domains but rely heavily on techniques to make data more stationary, such as maintaining a large replay buffer or periodically updating the target network. With these components removed, they would fail to work. When they fail, however, it is unclear how much is due to the forgetting in policies, value functions, or world models because all components are entangled and trained end-to-end in these methods.
+Therefore, we focus on Dyna, which learns a world model (or simply model in RL literature) alongside learning the base agent[We use the term base agent to refer to other components than the model, e.g., the value function and policy.] in a decoupled manner.=-1
+R0.4
+    
+
+    0.4
+    
+    < g r a p h i c s >
+
+    The Dyna architecture.
+    
+    
+
+    
+
+
+[fig:mbrl_dyna_illustration]Figure <ref>fig:mbrl_dyna_illustration illustrates the Dyna architecture that we employ in this paper to study online model learning. The base agent will act in the environment and collect environment experiences, which can be used for learning the world model to mimic the environment's behavior. With such a model learned, the agent then simulate with it to synthesize model experiences for planning updates. Search control defines how the agent queries the model, and some commonly used ones include predecessor <cit.>, on-policy <cit.> and hill-climbing <cit.>.
+Next, we define how to learn and plan with the model.=-1
+
+Model learning. We first formulate how to learn the dynamics model m(^'|, ) with environment experiences. Instead of directly predicting the next state, we model the dynamics as an integrator which estimates the change of the successive states ^' =  + Δ t ·m̂(Δ | , ), where Δ t is the discrete time step. This technique enables more stable predictions and is widely adopted <cit.>. The dynamics can either be modeled as a stochastic or a deterministic function, with the former predicting the state-dependent variance besides the mean to capture aleatoric uncertainty in the environment <cit.>. We focus on learning a deterministic dynamics model since we are mainly interested in environments without aleatoric uncertainty. As shown in <cit.>, deterministic dynamics models can obtain comparable performance with stochastic counterparts. Even when the environment exhibits stochasticity, generating rollouts with fixed variance is also as effective as learned variance <cit.>. Therefore, dynamics model learning is a regression problem with the objective
+
+    _(, , ^') ∼𝒟_envm̂(, ) - Δ^2_2,
+
+where 𝒟_env is the environment experiences and Δ = ^' -. The reward model learning follows a similar regression objective and we will omit it throughout this paper for brevity.
+
+Model planning. In Dyna-style algorithms, the learned model is meant for the agent to interact with, as a substitution of the real environment. When the agent “plans" with the model, it queries the model at (, ) ∈𝒮×𝒜 to synthesize model experiences 𝒟_m = (, , r̂, ^'), which serves as a data source for agent learning. There are various ways to determine how to query the model. For example, the classic Dyna-Q <cit.> conducts one-step simulations on state-action pairs uniformly sampled from prior experiences. More recently, MBPO <cit.> generalizes the one-step simulation to short-horizon on-policy rollout branched from observed states and provides theoretical analysis for the monotonic improvement of model-based policy optimization.
+
+
+
+§ LEARNING WORLD MODELS ONLINE
+
+The agent-environment interaction generates a temporally correlated data stream (_t, _t, r_t, _t+1)_t. At each time step, the world model observes _t = [_t, _t] ∈ℝ^S+A, predicts the next state and suffers a quadratic loss ℓ_t(m̂_t) = m̂_t(_t) - _t^2_2, where S and A are the dimensionalities of state and action spaces, _t = (_t+1 - _t) ∈ℝ^S is the state difference target. In most model-based RL algorithms built with neural networks, the model learning is conducted in a supervised offline manner, with periodic re-training over the whole dataset (see the objective in eq:offline_model_obj). Such methods achieve FTL for NNs but are inefficient due to the growing size of the dataset. We develop in this section an online method for learning world models with efficient incremental update on every single environment step.=-1
+
+
+
+ §.§ Online Follow-The-Leader model learning
+
+Our world model m̂() = ϕ()^⊤ employs a linear function approximation with weights ∈^D× S on an expressive and sparse non-linear feature ϕ() ∈^D. The FTL objective in eq:ftl thus converts to a least squares loss per time step:
+
+    ∀ t,  _t = _∈^D× S_t-1 - _t-1_F^2,
+
+where _τ = [ϕ(_1), …, ϕ(_τ)]^⊤∈ℝ^τ×D denotes non-linear features for observations accumulated until time step τ, _τ = [_1, …, _τ]^⊤∈ℝ^τ× S is the corresponding targets, and ||·||_F denotes the Frobenius norm.
+We can expect our world model with the weights satisfying eq:online_lstsq to have good regret, as the regret of FTL for online linear regression problems with quadratic loss is Regret_T() = 𝒪(log T) <cit.>. As a consequence, our online learned world model will be immune to forgetting, rendering it suitable for lifelong agents.
+
+In the following sections, we present how to attain a feature representation that is expressive enough for modeling complex transition dynamics (sec:feature_representation), as well as how its sparsity helps to achieve efficient incremental update (sec:sparse_incremental_update). 
+
+
+
+ §.§ Feature representation
+
+
+We construct high-dimensional sparse features using random projection followed by soft binning. The input vector _t ∈ℝ^S+A is first projected into feature space σ: →,  where ∈ℝ^d× (S+A) is a random projection matrix sampled from a multivariate Gaussian distribution so that the transformation approximately preserves similarity in the original space <cit.>. Afterwards, each element of σ(_t) is binned in a soft manner by locating its neighboring edges as indices and computing the distances between all edges as values. We denote the binning operation as b: ^d→^D, where D≫d. Compared to naive binning which produces binary one-hot vectors and loses precision, ours has greater discriminative power by generating multi-hot real-valued representations. 
+
+We provide the following example to illustrate. Assume we are binning σ_1(_t) = 1.7 into a 1-d grid with edges [0, 1, 2, 3]. The naive binning would generate a vector [0, 1, 0] to indicate the value falls into the central bin. In comparison, the soft binning first locates the neighbors 1 and 2 as indices, and computes distances to the neighbors as values, thus forming a vector [0, 0.7, 0.3, 0]. Our soft binning can discriminate two inputs falling inside the same bin, such as σ_1(_t) = 1.7 and σ_1(_t) = 1.2, while naive binning fails to do so.
+
+L0.51
+    
+
+    0.51
+    
+    < g r a p h i c s >
+
+    Locality sensitive sparse encoding. σ(·) projects input vectors into a random feature space, and b(·) softly bins σ(_t) into multiple ρ-dimensional grids, which are flattened and stacked into a high-dimensional sparse encoding ϕ(_t).=-1
+    
+    
+
+    
+
+Altogether, our feature encoder ϕ = b ∘σ resembles Locality Sensitive Hashing (LSH) with random projections <cit.> but is more expressive thanks to soft binning. We term our feature representation as Locality sensitive sparse encoding, hence Losse. We depict the overall Losse process in fig:feature_encoding.=-1
+
+We note that the raw output of b can be multi-dimensional before flattening (e.g. 2-dimensional in fig:feature_encoding), and we use ρ to denote its dimensionality. A ρ-dimensional grid has λ evenly spaced bins along each axis, thus producing a highly sparse feature vector of length λ^ρ per grid. Finally, we can stack κ grids with different random projection directions to get diverse features. Losse has guaranteed sparsity as stated in remark:sparsity.
+
+
+    For any ρ, λ, κ∈𝒵_>0, and any input vector , ϕ() outputs a vector whose number of nonzero entries ϕ()_0 satisfies ϕ()_0 ≤κ 2^ρ, and the proportion of nonzero entries in ϕ() is at most (2/λ)^ρ.
+
+
+To give a concrete example, if we set ρ=3 and λ=10, then ϕ()_0 is at most 8κ while the dimension of ϕ() can be as high as 1000κ. The high-dimensional feature brings us more fitting capacity, while the bounded sparsity permits efficient model updates with constant overheads, as we will show in the following section.
+
+
+
+ §.§ Efficient sparse incremental update
+
+
+A no-regret world model after t steps of interaction can be updated online by computing the weights _t+1 (eq:online_lstsq), which can be solved in closed form using the normal equation: _t+1 = _t^-1_t, where _t=_t^⊤_t and _t=_t^⊤_t are two memory matrices. Hence, we obtain a simple algorithm (algo:online_lstsq) to learn the model online at every time step.
+
+0.48
+
+[H]
+    Online model learning
+    [1]
+    t=0, 
+    _0 ∈ℝ^D×D = 0,
+    _0 ∈ℝ^D× S = 0
+    
+    True
+    t  t + 1
+    _t_t-1 +
+    _t_t-1 +
+    _t+1_t^-1_t
+    
+
+
+0.48
+
+[H]
+    Sparse online model learning
+    [1]
+    t=0, 
+    _0 ∈ℝ^D×D = 0,
+    _0 ∈ℝ^D× S = 0
+    
+    True
+    t  t + 1
+    s (ϕ(_t))
+    _t, ss_t-1, ss + ϕ_s(_t) ϕ_s(_t) ^⊤
+    _t, s_t-1, s + ϕ_s(_t) _t ^⊤
+    _t+1, s_t, ss^-1 (_t,s-_t,s s_t, s)
+    
+
+
+
+Updating the memory matrices _t, _t is relatively cheap, but computing weights (line 6 of algo:online_lstsq) involves matrix inversion, which is computationally expensive. Though _t+1 can be recursively updated using Sherman-Morrison formula <cit.> as done in Least-Squares TD <cit.>, when the feature becomes very high-dimensional to gain expressiveness, it can become inefficient or even impractical.
+
+Fortunately, the incremental updates  and  are highly sparse by Losse, so that we can efficiently update a small subset of weights. As shown in algo:online_sparse_update, we first record the indices where the softly binned random features fall into (line 4), which are used to locate those “activated" entries in the current step and update only a small block of the memory matrices (line 5-6). Most importantly, the matrix inversion for updating the weight subset can be conducted on a much smaller sub-matrix efficiently while ensuring optimality (line 7). The cardinality of the index set s is bounded by the number of non-zero features (κ 2^ρ), giving constant compute cost regardless of the number of data samples. We next derive how our sparse weight update rule solves eq:online_lstsq in a block-wise manner, which yields an optimal fitting for all data including the current one at each update step.
+
+We first re-index the sparse vector such that it is the concatenation of two vectors ϕ() = [ϕ_s(), ϕ_s()], where all zero entries go to the former and the latter is densely real-valued.
+We discard the subscript on time step for notational convenience. 
+Intuitively, the new observation  will only update a subset of weights associated with its non-zero feature entries, which we denote as _s ∈ℝ^K × S, where K is the dimension of ϕ_s(). Then _s∈ℝ^(D-K)× S is the complement weight matrix. Correspondingly, the accumulative memories =^⊤ and =^⊤ can be decomposed as
+
+    = 
+        [ _ss _ss; _ss _ss ],    =
+        [ _s; _s ].
+
+Then the objective in eq:online_lstsq becomes
+
+    _( _F^2 + _F^2 - 2<, >_F ) 
+    ⇔   _[([ _s; _s ]^⊤[ _ss _ss; _ss _ss ][ _s; _s ]) - 2 ([ _s; _s ]^⊤[ _s; _s ])],
+
+where <·, ·>_F denotes the Frobenius inner product. Treating _s as a constant since it is not affected by current data and optimizing _s only gives
+
+    __s((_s^⊤_ss_s) + (_s^⊤_ss_s) + 2(_s^⊤_ss_s) . 
+    
+            - . 2(_s^⊤_s)
+            - 2(_s^⊤_s) ).
+
+The new objective in <ref> is quadratic, so we differentiate with respect to _s and set the derivative to zero to obtain the solution of the sub-matrix
+
+    _s = _ss^-1(_s-_ss_s),
+
+which gives us the sparse update rule in algo:online_sparse_update.
+
+
+Concluding remark.
+So far, we have presented an efficient algorithm that learns world models online without forgetting. In our algorithm, linear models are exploited so that we can achieve no-regret online learning with Follow-The-Leader. To enlarge the model capacity, we devise a high-dimensional nonlinear random feature encoding, Losse, turning linear models into universal approximators <cit.>. Moreover, the sparsity guarantee of Losse permits efficient updates of the shallow but wide model. We name our method . We note that feature sparsity has been utilized to mitigate catastrophic forgetting for decades <cit.>. Our work differs from them in that not only does sparsity help reduce feature interference, but the incremental closed-form solution also guarantees the optimal fitting of all observed data, thus eliminating forgetting. More discussion on feature sparsity can be found in appdix:sparsity. Another related line of research to ours is analytic class-incremental learning <cit.>, which we discuss in appdix:analytic due to space constraints. The implementation details of  can be found in appdix:losse_details.=-1
+
+
+
+
+§ EMPIRICAL RESULTS ON SUPERVISED LEARNING
+
+
+In this section, we will showcase empirical results to validate the expressiveness of Losse (sec:sl_exp_encoding) and the online learning capability of  (sec:sl_exp_pwr), both in supervised learning settings.=-1
+
+
+
+ §.§ Comparing feature representations
+
+
+We compare our locality sensitive sparse encoding with other feature encoding techniques, including Random Fourier Features <cit.>, Random ReLU Features <cit.>, and Random Tile Coding, which combines random projection and Tile Coding <cit.>. We note that in all these methods including ours, random projections are used to construct high-dimensional features to acquire more representation power. However, they have different properties with regards to the sparsity and feature values, as summarized in tab:encoding_comparison. Losse is designed to be sparse and real-valued. Sparse encoding allows for more efficient incremental update (algo:online_sparse_update), while distance-based real values provide better generalization. Although ReLU also produces sparse features, it does not guarantee the sparsity level, which is dependent on the sign of its outputs.
+
+We test different encoding methods on an image denoising task, where the inputs are MNIST <cit.> images with Gaussian noise, and the outputs are clean images. The flattened noisy images are first encoded by different methods to produce feature vectors, on which a linear layer is applied to predict the clean images of the same size. We use mini-batch stochastic gradient descent to optimize the weights of the linear layer until convergence.
+To keep the online update efficiency similar, we keep the same number of non-zero entries for all encoding methods. The mean squared errors on the test set for different patch sizes are reported in tab:encoding_comparison. We observe that Losse achieves the lowest error across all patch sizes, justifying its representational strength over other non-linear feature encoders. When compared with the NN baseline, which is a strong function approximator but not an efficient online learner, linear models with Losse work better when the patch size is 36 or smaller, suggesting its sufficient capacity for problems with a moderate number of dimensions, such as locomotion or robotics <cit.>. See appdix:sl_encoding for more experimental details.
+
+
+
+
+0.52
+
+7.35cm!
+  
+    Sparse     Real-value     1c9     1c16     1c25     1c36     1c49 
+
+          NN     -     -     	0.36   	0.35   	0.34   	0.34   	0.33             
+
+Fourier               0.32                      0.39                       0.67                       1.00                       1.40                   
+
+ReLU          -0.5em         0.35                      0.34                       0.37                       0.39                       0.43                   
+
+Tile Code             0.36                      0.39                       0.51                       0.61                       0.73                   
+
+Losse                  0.28             0.29              0.31              0.34              0.40   
+
+
+  
+  
+
+  tableProperties of different encoding methods and their mean squared errors on the image denoising task on different patch sizes. All numbers are scaled by 10^-1.
+  
+
+0.45
+
+
+
+
+    
+    < g r a p h i c s >
+
+    
+
+    figureMean squared errors on the stream learning task of different correlation levels. Solid lines and shaded areas correspond to the means and stand errors of 30 runs.
+    
+
+
+
+
+
+
+ §.§ Online learning with covariate shift
+
+
+Next, we consider a supervised stream learning setting, where we can precisely control the level of covariate shift in the training data, and test the online learning capability of  against the neural network counterpart. Similar to <cit.>, we create a synthetic data stream with observations sampled from a non-stationary input distribution.
+Specifically, the synthetic data is generated according to a Piecewise Random Walk. At each time step, the observation is sampled from a Gaussian X_t ∼𝒩(S_t, β^2), where β is fixed and S_t drifts every τ steps. The drifting follows a Gaussian first order auto-regressive random walk S_t+1 = (1-c)S_t + Z_t, ∀ t τ≡ 0, where c ∈ (0,1] and Z_t ∼𝒩(0, σ^2) with a fixed σ. For X_t = x_t, the target is defined as y_t = sin(2π x_t^2).
+
+As proven in <cit.>, X_t can share the same equilibrium distribution but possess different levels of temporal correlation if β, c, and σ are properly chosen. It turns out the three scalars can be uniquely determined by a single parameter d ∈ [0, 1), which we call correlation level. When d=0, the generated data recovers i.i.d. property.
+Given the data stream {(x_t, y_t)}_t∈ℕ, we fit our model online and measure the mean squared error at the end of learning on a holdout test set, which contains independent samples across all S_t. As a comparison, we use neural networks to fit online as well as in batch and plot the errors under different correlation levels in fig:prw_results. The results show that our method outperforms neural networks in two aspects. First, when the data is i.i.d. (d=0),  achieves a much lower error than NN-online. This indicates neural networks with gradient descent have low sample efficiency, even on stationary data. Training NNs using batch samples alleviates the issue and reaches a similar performance to ours. Second, our model consistently attains very low error across all correlation levels, showing its capacity of non-forgetting online learning. In contrast, neural networks learned with both batch and online updates incur increasingly high errors when d is large, indicating catastrophic forgetting in the presence of data nonstationarity. More experimental details can be found in appdix:sl_pwr.
+
+
+
+§ EMPIRICAL RESULTS ON REINFORCEMENT LEARNING
+
+In this section, we will demonstrate that world models built with  can be accurately learned online, outperforming several NN-based world model baselines and improving the data efficiency of RL agents.
+We first introduce the settings and baselines in sec:rl_exp_settings, and then present our results in sec:rl_exp_results.
+=-1
+
+
+
+ §.§ Settings and baselines
+
+
+We employ the Dyna MBRL architecture and restrict our study to the model learning part, keeping the base agent's value (and policy) learning untouched. We compare  world models learned online with their NN-based counterparts, using the same model-free base agent. We introduce the baselines below. The algorithm and more experimental details can be found in appdix:rl.
+
+Model-free. The model-free base agent used in Dyna. We use two strong off-policy agents: DQN <cit.> for discrete action space and SAC <cit.> for continuous action space. All other settings below are MBRL coupled with either DQN or SAC.
+
+
+
+Full-replay. We use neural networks to build the world model and train the NNs over all collected data till convergence. Before the training loop starts, the data is split into train and holdout sets with a ratio of 4:1. The loss on the holdout set is measured after each epoch. We stop training if the loss does not improve over 5 consecutive epochs. The NNs are trained continuously without resetting the weights <cit.>. This is the closest setting to FTL for NNs, but with growing computational cost as the data accumulates.
+
+
+
+Online. We train NN-based world models in a stream learning fashion, where only a mini-batch of 256 transitions is kept for training. However, we still update the model for 250 gradient descent steps on each mini-batch, unlike our method which only needs a single pass of the interaction trajectory.
+
+
+
+SI. This is similar to Online, but the NN is trained with Synaptic Intelligence (SI) <cit.>, a regularization-based continual learning (CL) method to overcome catastrophic forgetting. However, there is no explicit task boundary defined in the RL process, thus we adapt SI to treat each training sample as a new task.
+
+
+
+Coreset. This refers to rehearsal-based CL methods <cit.> that keep an important subset of experiences for replay. There are different ways to decide whether to keep or remove a data point. We use Reservoir sampling <cit.>, which uniformly samples a subset of items from a stream of unknown length. Similar to Full-replay, data split and early stopping strategies are adopted for each training epoch.
+
+
+    
+    < g r a p h i c s >
+
+    Learning curves showing normalized episode return. We compare our method with five baselines on (top) discrete control and (bottom) continuous control benchmarks. Solid curves depict the means of multiple runs with different random seeds, while shaded areas represent standard errors.
+    
+
+
+
+
+ §.§ Results
+
+
+The learning curves are presented in fig:main_results, where we compare  with aforementioned baselines on 6 environments. We first revisit the discrete control Gridworld environment, which is used for illustration in fig:forgetting-illustration. This environment is a variant of the one introduced by <cit.> to test Dyna-style planning. The agent is required to navigate from the starting location to the goal position without being blocked by the barrier. A small offset is added on each step to make the state space continuous. In such navigation tasks, intuitively, the world model needs to learn from extremely nonstationary data. When the agent evolves from randomly behaving to nearly optimal, its state visitation changes dramatically, making all NN-based world models completely fail to learn due to catastrophic forgetting, unless experiences are fully replayed (see the first plot in <ref>). The poorly learned models are unable to provide useful planning, leading to almost zero performance. In contrast, a world model based on  can be learned accurately and improves the data efficiency over Model-free. 
+
+In the other two general discrete control tasks, Mountain Car and Acrobot, the data nonstationarity still exists but may be less severe than that in navigation tasks. The results show that  consistently outperforms all baselines and brings sample efficiency improvement.
+
+For continuous control tasks from Gym Mujoco <cit.>, we can observe that Online NN fails to capture the dynamics for all environments, resulting in even worse performance than the Model-free baseline. While SI and Coreset can help reduce forgetting to some extent, their performances vary across tasks and are inferior to Full-replay in all cases. , however, achieves on-par or even better performance than Full-replay, which is a strong baseline that continuously trains a deep neural network on all collected data until convergence to pursue FTL. These positive results verify the strength of  for building an online world model.
+
+R0.48
+    
+
+    0.48
+    
+    < g r a p h i c s >
+
+    
+     Sample and  wall-clock efficiency comparison between world models learned with  and Coreset of different replay sizes.
+    
+    
+    
+
+
+Model update efficiency. Among continual learning methods with neural networks, rehearsal-based ones are closer to the FTL objective and usually demonstrate strong performance <cit.>. It seems that Coreset can offer a good balance between computation cost and non-forgetting performance with a properly set buffer size. We hence ablate Coreset with different replay sizes and compare their performance with . fig:replay_efficiency shows both the sample efficiency and wall-clock efficiency on the Gridworld environment. Coreset with a small replay size leads to poor asymptotic performance while being relatively more efficient. Increasing the replay size indeed contributes to better results at the cost of more computation. In comparison,  updates the model purely online without any replay buffer and achieves the best performance with the best wall-clock efficiency.
+
+
+
+§ LIMITATION AND FUTURE WORK
+
+Currently, we have not validated our method on problems with very high-dimensional state space such as Humanoid, or tasks with image observations. They are expected to be challenging for linear models to directly work on. Extending  to handle such large-scale problems, perhaps using pre-trained models to obtain compact sparse encoding, is a potential avenue for future work.
+
+
+
+§ CONCLUSION
+
+In this work, we investigate the problem of online world model learning using Dyna. We first demonstrate that NN-based world models suffer from catastrophic forgetting when used for MBRL because the data collected in the RL process is innately nonstationary. As a result, re-training over all previous data is adopted by common MBRL methods, which is of low efficiency. Through the lens of online learning, we uncover the implicit connection between NN re-training and FTL, which allows us to formulate online model learning with linear regressors to achieve incremental update. We devise locality sensitive sparse encoding (Losse), a high-dimensional non-linear random feature generator that can be coupled with a linear layer to produce models with greater capacities. We provide a sparsity guarantee for Losse, controlled by two parameters, ρ and λ, which can be adjusted to develop an efficient sparse update algorithm. We test our method in both supervised learning and MBRL settings, with the presence of data nonstationarity. The positive results verify that  is capable of learning accurate world models online, which enhances both the sample and computation efficiency of reinforcement learning.=-1
+
+
+
+
+iclr2024_conference
+
+
+§ ON FEATURE SPARSITY
+
+
+
+Feature sparsity has been pursued to reduce forgetting dating back to <cit.>. The core idea is that catastrophic forgetting occurs due to the overlap of distributed representations in NNs, hence it can be reduced by reducing the overlap. Sparse features are local features with less overlap, so they should alleviate the forgetting issue. Recent works have demonstrated positive results by enforcing sparse hidden features in NNs either by regularization <cit.> or by deterministic activation functions <cit.>.
+However, we emphasize that, in our work, non-forgetting is ensured by FTL and the high-dimensional sparse encoding is mainly for representational capacity and computational efficiency, though it also reduces feature interference as a byproduct.
+
+We first conduct theoretical analysis similar to <cit.> to understand how sparsity contributes to non-forgetting, then present empirical results to show sparsity alone is not sufficient to guarantee non-forgetting.
+
+Assume we are regressing a scalar target given an input vector using squared loss: ℓ(f, , y) = (f_() - y)^2, where f is our predictor with parameters . When a new data sample {_t, y_t} arrives, we want to adjust the parameters  to minimize ℓ(f, _t, y_t) with gradient descent:
+
+    ^' -  = Δ = - α∇_ℓ(f, _t, y_t)
+
+The change of the parameters will lead to the change of the predictor's output, and by the first-order Taylor expansion:
+
+    f_^'() - f_()
+           ≈∇_ f_() ( ^' - )
+       = -α∇_ f_() ∇_ℓ(f, _t, y_t)
+       = -α∇_f ℓ(f, _t, y_t)⟨∇_ f_(), ∇_ f_ (_t)⟩
+
+
+We assume non-zero loss so ∇_f ℓ(f, _t, _t) ≠ 0 and analyze ⟨∇_ f_(), ∇_ f_ (_t) ⟩. For linear models as in our case, f_() = ^⊤ϕ(), thus ⟨∇_ f_(), ∇_ f_ (_t) ⟩ = ⟨ϕ(), ϕ(_t) ⟩. Then we could investigate the following question: after we adjust the parameters (eq:gd) based on the new sample, what's the output difference (eq:output_diff) at any  for  that is similar or dissimilar to _t?=-1
+
+
+    
+  * For  similar to _t, we expect ⟨ϕ(), ϕ(_t) ⟩≠ 0 to yield improvement and generalization. This will hold since a proper feature encoder ϕ(·) should approximately preserve the similarity in the original space.
+
+    
+  * For  dissimilar to _t, we hope ⟨ϕ(), ϕ(_t) ⟩≈ 0 to reduce interference (therefore less forgetting). The claim is that if ϕ(·) produces sparse features, it is highly likely that the inner product is approximately zero, hence meeting our expectation.
+
+
+However, we argue that feature sparsity is not sufficient to mitigate forgetting, because the probability that there is no single overlap between representations is low even if the feature is sparse. In fig:sparsity, we show the mean squared errors for the piecewise random walk stream learning task introduced in sec:sl_exp_pwr. We use our Losse representation with different sparsity levels as features and compare our sparse FTL update with gradient descent update. We can observe that the gradient descent update relying on feature sparsity still suffers from catastrophic forgetting until λ=30, which corresponds to a 9000-dimensional feature with 40 nonzero entries — an extremely high sparsity level. Nevertheless, increasing sparsity indeed helps sparse features to reduce interference when using gradient descent (comparing the absolute values of MSEs across different λ). In contrast,  ensures non-forgetting incrementally by finding the optimal fitting for all experienced samples, even with the presence of feature overlap. Notably, when Losse gets more sparse, we can observe the error for  decreases, verifying our design that the high dimensional sparse feature brings more fitting capacity while maintaining the same computational cost with our sparse update.=-1
+
+
+    
+    < g r a p h i c s >
+
+    Mean squared errors on piecewise random walk stream learning. The results compare the FTL update to the gradient descent update using Losse features with different sparsity levels. Note that gradient descent (GD) update uses a mini-batch of 50 samples for each update, resulting in lower errors than FTL's when the feature dimension gets higher.
+    
+
+
+
+
+§ ANALYTIC CONTINUAL LEARNING
+
+
+Our work is closely related to a paradigm called analytic continual learning, where the closed-form solution, if obtainable, is employed in training a continual learner. A recent line of research explores this topic focusing on class-incremental learning <cit.>. In particular, <cit.> employ a pre-trained neural network to extract feature vectors X_k^(fe) after a process called feature expansion, and then learn the weights of a fully connected layer Ŵ_FCN on the frozen features for class-incremental classification. The weights at round k can be solved analytically in a recursive manner utilizing the Woodbury matrix identity:
+
+    Ŵ_FCN^(k)=[[ Ŵ_FCN^(k-1)-R_k X_k^(fe) ⊤X_k^(fe)Ŵ_FCN^(k-1)R_k X_k^(fe) ⊤Y_k^train ]],
+
+where Y_k^train is the label for class k, and R_k=(∑_i=0^kX_i^(fe) ⊤X_i^(fe)+γI)^-1 is the regularized feature auto-correlation matrix (similar to the inverse of _t=_t^⊤_t in our formulation), which also has a recursive form:
+
+    R_k=R_k-1-R_k-1X_k^(fe) ⊤(I+X_k^(fe)R_k-1X_k^(fe) ⊤_N_k × N_k)^-1X_k^(fe)R_k-1.
+
+Though <cit.> have achieved state-of-the-art class-incremental learning performance, there are a few limitations. First, a deep network must be pre-trained and frozen to serve as an expressive feature encoder, which is simply infeasible in online settings. Second, <ref> involves inverting a matrix whose size grows with the number of samples, limiting its scalability. Third, the learning system requires the knowledge of task boundaries for matrix decomposition, which may not be accessible in many real-world scenarios. In contrast, our work develops an expressive feature encoder that does not rely on pre-training, proposes a constant-time update rule exploiting the feature sparsity, and applies to reinforcement learning where the nonstationarity appears without explicit task boundaries.
+
+
+
+§ SUPERVISED LEARNING DETAILS
+
+
+In this section, we provide more details regarding the supervised learning experiments on image denoising (appdix:sl_encoding) and piecewise random walk (appdix:sl_pwr).
+
+
+
+ §.§ Image denoising
+
+
+We add pixel-wise Gaussian noise with μ=0, σ=0.3 to normalized images from the MNIST dataset <cit.>, and create train and test splits with ratio 9:1. To test the feature representation on different difficulties, we crop patches from the center with different sizes, ranging from 2×2 to 7×7. fig:noisy_mnist shows some sample pairs.
+
+    
+    < g r a p h i c s >
+
+    Sample pairs for the image denoising task.
+    
+
+For different feature encoding methods compared in sec:sl_exp_encoding, we limit the number of non-zero feature entries up to 80 for fair comparison. This means 2-d binning with 20 grids for . The number of bins affects the performance slightly, due to different granularity for generalization. Hence we sweep it over {5, 6, 7, 8, 9}. We observe that the scale of the standard deviation of the Gaussian random projection matrix affects the final performance significantly for random ReLU and random Frouier features, so we select the best one from a sweep over {0.1, 0.3, 0.5, 1, 5, 10}. The linear layer is optimized using Adam <cit.> with a learning rate 0.0001. We repeated experiments for all settings for 5 times and report the mean scores.
+
+
+
+ §.§ Piecewise random walk
+
+
+Recall that observations in the process are sampled from a Gaussian X_t ∼𝒩(S_t, β^2) with {S_t}_t∈ℕ being a Gaussian first order auto-regressive random walk S_t+1=(1-c) S_t+Z_t, where c ∈ (0, 1] and Z_t ∼𝒩(0, σ^2). The equilibrium distribution of {X_t}_t∈ℕ is also a Gaussian with [X_t]=0 and variance ξ^2 = β^2+σ^2/2 c-c^2. We can use a single parameter d ∈ [0, 1), which we call correlation level, to control the variance:
+
+    c     =1-√(1-d), 
+    σ^2     =d^2(B/2)^2, 
+    β^2     =(1-d)(B/2)^2,
+
+where B gives a high probability bound. See <cit.> for detailed derivation.
+
+We visualize sampling trajectories of X_t for B=1 d ∈ [0, 1) in fig:prw_vis.
+
+    
+    < g r a p h i c s >
+
+    Visualization of piecewise random walk sampling trajectories with different correlation levels d.
+    
+
+
+For neural networks trained in sec:sl_exp_pwr, we use 2-layer MLP with 50 hidden units. For NN-Batch, we take 50 samples from each X_t and use mini-batch gradient descent to update the weights. Adam optimizer is used with the best learning rate swept from {5× 10^-6, 1× 10^-5, 5× 10^-5, …, 1×10^-2}. For , we use 2-d binning with 10 bins for each grid and use 10 grids to construct the final feature. We run all experiments for 50 independent seeds and report the means and standard errors.
+
+
+
+§ REINFORCEMENT LEARNING DETAILS
+
+
+
+Learning algorithm. We present the detailed Dyna-style algorithm based on   in [algo:mbrl_online_wm]Algorithm <ref>algo:mbrl_online_wm, where the world models are learned online. For NN-based settings, line 4 of [algo:mbrl_online_wm]Algorithm <ref>algo:mbrl_online_wm is replaced by training a neural network (optionally with replay buffer or other continual learning techniques).
+
+
+Dyna MBRL with 
+[1]
+environment ℳ, agent π, world model f̂, state search control c, model unroll length k, model experiences 𝒟_m
+epoch ∈{1,…,E}
+    interaction ∈{1,…,K}
+        , , ^', r (ℳ, π)
+        Update f̂ with (, , ^', r) (algo:online_sparse_update) incremental model updates
+    
+
+    planning ∈{1,…,N}
+        c uniform state sampling
+        , ^', r̂(f̂, , π, k) short-horizon on-policy unroll
+        𝒟_m  (, , ^', r̂)
+    
+
+    learning ∈{1, …,G}
+        Update DQN or SAC on a batch of model data ℬ∼𝒟_m
+    
+
+
+
+Settings for discrete control tasks. We use κ=30, ρ=2, and λ=10 for , and 3-layer MLPs with 32 hidden units for neural networks. For Coreset we maintain a buffer with size 100, and for SI we use the best ξ and c from a grid search. The DQN parameters are updated using real data with an interval of 4 interactions. In MBRL, 16 planning steps are conducted after each real data update. Both real data updates and planning updates use a mini batch of 32. The learning rate of DQN is swept from {1× 10^-2, 3× 10^-3, 1× 10^-3, …, 1× 10^-5} for all configurations. All world models are updated every 25 environment steps to accelerate experiments. We run all experiments for 30 independent seeds and report the means and standard errors.
+
+Settings for continuous control tasks. We use κ=300, ρ=2, and λ=10 for , and 4-layer MLPs with 400 hidden units for neural networks following <cit.>. Our implementation follows closely the official codebase[<https://github.com/jannerm/mbpo>] of MBPO <cit.>, and also adopts the same hyper-parameters for both MBPO and SAC. The replay size of Coreset is 5000, and the hyper-parameters for SI are chosen from a grid search. All world models are updated every 250 environment steps to accelerate experiments. We run all experiments for 5 independent seeds and report the means and standard errors.
+
+
+
+§ IMPLEMENTATION DETAILS
+
+
+We provide more implementation details of  in this section. Referring to <ref>, the input _t is first pre-processed to be bounded between [-3, 3], and then projected with a matrix containing values sampled from an isotropic Gaussian with μ=0 and Σ = 1/c𝐈, where c is the fan-in dimension, i.e., S+A. This ensures the projected values σ(_t) are bounded with high probability and facilitates a more even bin utilization. In computing the sparse update at line 7 of <ref>, we use (_t,ss + ε)^-1 for some small ε > 0 to ensure its invertibility. We provide Jax-based Python codes in <ref>.
+
+
+
+
+[frame=single,breaklines=true,numbers=left,fontsize=]python./assets/losse.py
+Jax-based Python codes for learning an online linear regressor with .
+
+
+
+

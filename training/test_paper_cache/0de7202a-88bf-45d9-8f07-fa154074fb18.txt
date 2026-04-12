@@ -1,0 +1,1155 @@
+PublishedasaconferencepaperatICLR2025
+miniCTX
+: NEURAL THEOREM PROVING WITH (LONG-)
+CONTEXTS
+JiewenHu ThomasZhu SeanWelleck
+CarnegieMellonUniversity
+ABSTRACT
+Real-worldformaltheoremprovingoftendependsonawealthofcontext,including
+definitions,lemmas,comments,filestructure,andotherinformation. Weintroduce
+miniCTX, whichtestsamodel’sabilitytoproveformalmathematicaltheorems
+that depend on new context that is not seen during training. miniCTX contains
+theoremssourcedfromrealLeanprojectsandtextbooks,eachassociatedwitha
+contextthatcanspantensofthousandsoftokens. Modelsaretaskedwithprovinga
+theoremgivenaccesstocodefromthetheorem’srepository,whichcontainscontext
+thatisneededfortheproof. AsabaselineforminiCTX,wetestedfine-tuningand
+promptingmethodsthatconditiontheoremprovingonprecedingcontext. Both
+approachessubstantiallyoutperformtraditionalmethodsthatrelysolelyonstate
+information. Wefoundthatthisabilitytousecontextisnotcapturedbyprevious
+benchmarkssuchasminiF2F. AlongsideminiCTX,weoffer NTP-TOOLKIT for
+automaticallyextractingandannotatingtheoremprovingdata,makingiteasyto
+addnewprojectsintominiCTXtoensurethatcontextsarenotseenduringtraining.
+miniCTXoffersachallengingandrealisticevaluationofneuraltheoremprovers.1
+1 INTRODUCTION
+Formaltheoremprovingininteractivetheoremprovers(ITPs)providesatestbedforevaluatingthe
+reasoning capabilities of large language models (LLMs). Theorem proving capabilities can then
+directly translate to automation for mathematicians, such as via tools that complete or formalize
+proofs(Welleck&Saha,2023;Songetal.,2024;Welleck,2024;Agrawaletal.,2022). However,
+despitetheirpromise,weseeagapbetweentheevaluationofcurrentlanguagemodel-basedprovers
+andthecomplexityofreal-worldtheoremproving.
+Ourmotivatingobservationisthattheoremsandproofsdependonvariousformsofcontext,such
+asnewly-defineddefinitionsandlemmas. Forinstance,toproveresultsaboutasquare,onemight
+firstformalizeadefinitionofarectangle,provesomeresultsaboutrectangles,thenspecializethem
+toanewly-definedsquare(Kontorovich,2024b)(Figure1). However,existingmethodsfortraining
+and evaluating LLM-based theorem provers often fail to incorporate the full range of contextual
+information available in real-world projects. For example, benchmarks often focus on proving
+standalonecompetitionproblems(e.g.,miniF2F(Zhengetal.,2022))ortheoremsfromalibrarythat
+themodelhastrainedon(e.g.,Mathlib(Hanetal.,2022;Yangetal.,2023)),andstate-of-the-art
+LLM-basedproversaretrainedtoacceptonlyaproofstateasinput,makingthemunawareofnew
+theoremsanddefinitions(Polu&Sutskever,2020;Yingetal.,2024;Xinetal.,2024). Whilesome
+existingwork,includingpremiseselectiontechniques(Jiangetal.,2022;Mikułaetal.,2023;Yang
+etal.,2023)anddatasetslikeCoqGym(Yang&Deng,2019),haveexploredtheoremprovingbasedon
+informationbeyondthecurrentstate,theyoftenfocusonlyonprovidingrelevantpremises—lemmas
+thatcanassistproofconstruction—whichareonlyasubsetoftheavailableinformation.
+Buildingonthesefoundations,weproposeminiCTX:abenchmarkthatseekstoexpandthescopeof
+contextusedintheoremproving. Weextendbeyondtraditionalpremiseselectionexploredinprior
+benchmarks(e.g.,Yangetal.(2023);Yang&Deng(2019))byincorporatingamorecomprehensive
+setofcontextualelements. Thisincludespremises,priorproofs,comments,notation,andstructural
+1Projectpage: https://cmu-l3.github.io/minictx. Pleaserefertoourprojectpageforourdataset
+andevaluationlinks,andfutureupdatesincludingminiCTX-v2.
+1
+PublishedasaconferencepaperatICLR2025
+Table1: Comparisonoftheoremprovingbenchmarksacrossseveralkeyfeatures.
+Benchmark Language Premise FullContext Multi-source TemporalSplit
+miniF2F(Zhengetal.,2022) Multiple ✗ ✗ ✗ ✗
+ProofNet(Azerbayevetal.,2023) Lean ✗ ✓ ✓ ✗
+LeanDojo(Yangetal.,2023) Lean ✓ ✗ ✗ ✗
+LeanStep(Hanetal.,2022) Lean ✓ ✗ ✓ ✗
+CoqGym(Yang&Deng,2019) Coq ✓ ✗ ✓ ✗
+PISA(Jiangetal.,2021) Isabelle ✗ ✗ ✓ ✗
+miniCTX(Ours) Lean ✓ ✓ ✓ ✓
+componentslikeimportsanddeclarations. Bydoingso,miniCTXaimstodrivethedevelopment
+of methods that understand and work with context that occurs in complex, real-world theorem
+provingtasks. WecompareminiCTXwithseveralpopulartheoremprovingdatasetstohighlightits
+uniquecontributionsintermsofcontextualdependencyandreal-worldapplicability(seeTable1).
+Additionally,consideringthecommonuseofpre-trainedlanguagemodelswemitigatepotentialdata
+contaminationbycontinuallyandautomaticallyupdatingminiCTXwithnewLeanprojects,sothat
+evaluatedtheoremsarenotseenduringtraining. Ourkeycontributionsare:
+miniCTXBenchmark: WeintroduceminiCTX,thefirstbenchmarkdesignedspecificallytoevaluate
+theorem proving in real-world settings where proofs depend on in-file definitions, lemmas, and
+contextfromformalprojects. miniCTXpresentsauniquechallengebyrequiringmodelstoreason
+overlongcontextsandhandledependenciesthatariseinreal-worldtheoremprovingtasks.
+NTP-TOOLKIT: TofacilitatetheautomaticupdatingofminiCTX,wedevelopedtheNTP-TOOLKIT,
+whichautomaticallyextractsrelevanttheoremsandcontextsfromLeanprojects. Additionally,we
+provideaLeanREPLwrapperthatenablessimplerevaluationonminiCTX.
+BaselineEvaluations: WeevaluateminiCTXonseveralexistingbaselinemodels,includingdifferent
+fine-tuningandpromptingstrategies,aswellasmethodswithpremiseselection. Wealsoproposefile-
+tuning,astrongbaselinemethodfortrainingmodelsusingfullfilecontexts,whereboththetheorem
+statementsandtheirsurroundingcontextareprovidedduringtraining. Thisapproachestablishesa
+robustbaselineforfutureworkoncontext-dependenttheoremproving.
+Figure1: Manystateoftheartproversaretrainedonastaticdatasetoftheoremsandproofs,then
+evaluatedonstandaloneproblemssuchascompetitionproblems(left). Wearguethatneuralprovers
+must also operate in the realistic context-dependent setting, in which results depend on working
+withnewmathematicalobjectsandtheirfacts,notations,andthestructuralelementsoftheproject
+(imports,variables,etc.) (right).
+2 THEOREM PROVING WITH CONTEXT
+Forlanguagemodel-basedproverstofunctionasusefultoolsinthisreal-worldsetting,theyneed
+tobeabletoworkwithnewinformationsuchasnewdefinitionsorlemmas. Forexample,asystem
+suggesting proofs in the Prime Number Theorem project should be familiar with the project’s
+2
+PublishedasaconferencepaperatICLR2025
+definitionof“square”. Manycurrentlanguagemodel-basedproversaretrainedonastaticsnapshot
+ofdata,andarehenceunawareofanycontextthatwascreatedafterthemodelwastrained(Figure1).
+Theyareoftenevaluatedoneithercontext-lessstandalonecompetitionproblems(Zhengetal.,2022;
+Azerbayevetal.,2023)thatdonotreflectrealisticsettings,orexistingMathlibproofs(Yangetal.,
+2023)whichrisksdatacontamination. Asaresult,itremainsunclearwhetherthesemodelscanwork
+withnewinformation,whichisnecessaryforusingthemasanassistantinarealproofdevelopment,
+andhowtoenablethiscapability.
+Context-dependentproving. Westudycontext-dependenttheoremproving,wherethegoalisfor
+amodeltogenerateproofsy fornewtheoremsx, basedonacontextcthatincludesbackground
+informationsuchasdefinitions,lemmas,ornaturallanguagecomments. Formally,theproblemis
+maximize E E v(x,c,y), (1)
+M (x,c)∼p y∼M(·|x,c)
+where(x,c)∼pdenotesa(theorem,context)pairfromacontextdistributionp,M isamodelthat
+producesaproofy,andvreturns1iftheproofiscorrectand0otherwise.
+Evaluatingcontext-dependentproving. WechooseLean(Moura&Ullrich,2021)astheverifier
+v, becauseofthelargebodyofrecenttheoremsinLeanthatcanbeusedasevaluationdata, and
+theabundanceofprovingmethodsinLeanthatweuseasbaselines. WetreataLeanrepositoryas
+thedistributionp. Eachcontextcisasubsetoftherepository,includingnewdefinitions,lemmas,
+notations,imports,andcommentsthatarerelevanttothetheorem.
+Givenalanguagemodel,wecantestthreekindsofgeneralizationbyensuringthefollowing:
+• Theorem-levelgeneralization: theproofmustnotoccurinthemodel’strainingdata.
+• Context-levelgeneralization: thecodecandproofmustnotoccurinthetrainingdata.
+• Project-levelgeneralization: theentirerepositorymustnotoccurinthetrainingdata.
+For baseline evaluations, we investigate the in-file context case where c is the source code that
+precedesthetheoremxinafile,aswellascross-filecontextwherecincludesbothprecedingcode
+andrelevantpremisesretrievedfromimportedmodulesthroughpremiseselection.
+3 miniCTX: A BENCHMARK FOR THEOREM PROVING WITH CONTEXT
+We develop miniCTX, a Lean 4 theorem proving benchmark of theorems that depend on newly-
+definedlemmas,definitions,andproofsfromwithinaproject. miniCTXiscurrentlybasedon762
+theoremsfromsixprojects:(1)PrimeNumberTheorem(PNT)(Kontorovich,2024a),(2)Polynomial
+Freiman-RuzsaConjectureanditsextensionwithhighcross-filedependency(PFR)(Tao,2023),
+(3) recent results from the standard mathematical library (Mathlib), (4) an introductory text on
+theoremproving(HTPI)(Macbeth,2023),(5)highenergyphysicsformalizationinHepLean(HEP)
+(Tooby-Smith,2024),and(6)scientificcomputingformalizations(SciLean)(Skˇrivan,2021). These
+theoremsareequallysplitinto381validationand381testtheorems. Table2showsanoverviewof
+thedataset. EachtheoreminminiCTXconsistsofthetheoremstatement,precedingfilecontentsup
+tothetheoremstatement,andmetadata,inJSON(see§A.1).
+1. Theoremstatement,
+2. Precedingfilecontentsuptothetheoremstatement,
+3. Metadata,including:
+(a) Filename,
+(b) Projectcommitandversion,
+(c) Commitandtimeatwhichthetheoremanditsfilewasadded,
+(d) Positionofthetheoreminthefileandnumberofpremisesprecedingit,
+(e) Numberofin-filepremisesandcross-filepremisesusedbythestatementorproof,
+(f) Importedmodules(forpremiseselectionsupport),
+(g) Prooflengthandtype.
+Usingourbenchmark,userscaneasilyreconstructthecompletecontextforeachtheorem,including
+bothin-fileandcross-filecontext. Thein-filecontextisprovideddirectlybyprecedingfilecontents,
+whilethecross-filecontextcanbereconstructedusingthemetadata,whichincludesinformationon
+importedmodules. Weopen-sourcethedatasetandevaluationcode.
+3
+PublishedasaconferencepaperatICLR2025
+Table2: ProblemstatisticsinminiF2F(Zhengetal.,2022)andminiCTX.
+Split Problems ContextSize In-FilePremises Repo.Premises ProofSize
+valid+test (tokens) (premises/100tokens) (premises/100tokens) (lines)
+miniF2F 244+244 153* — — 3.0†
+PNT 85+85 10,858 1.87 0.30 3.3
+PFR 51+51 18,059 0.65 1.10 27.2
+PFR 43+43 4,351 0.44 2.75 2.7
+cross
+miniCTX Mathlib 50+50 14,440 — — 6.1
+HTPI 45+45 65,082 2.85 0.00 10.7†
+HEP 61+61 3,585 5.65 4.25 3.1
+SciLean 46+46 6,249 2.08 9.72 1.8
+All 381+381 18,690 1.94 2.63 8.5
+*Onlycountinglibraryimportsanddefinitions. †Excludingtheoremswithoutproofs.
+3.1 miniCTXSOURCES
+PNT. PrimeNumberTheoremAnd (Kontorovich, 2024a) is a project started in January 2024 that
+formalizestheprimenumbertheoreminLeanaswellasrelatedconcepts,suchascounterintegral
+on rectangles in C. We find the files Rectangle.lean and ResidueCalcOnRectangles.lean
+suitable for our purpose of testing context-dependent theorem proving, especially when we use
+precedingfilecontentascontext,aseachfileisself-containedwithintheprojectandcontainsnew
+definitions(rectangles,squares)andmanyinterdependentlemmas. See§A.2foranillustrationof
+suchlemmas.
+PFR.PFR(Tao,2023)isaprojectstartedinNovember2023thatformalizesaproofofthePolynomial
+Freiman–Ruzsa(PFR)conjecture. Weincluded51validationand51testtheoremsfromPFR.We
+findthatproofsoftheoremsinPFRtendtobemuchmoremonolithicandlongerinlengththanthose
+inMathliborotherlibraries. PFRalsodefinescustommathematicalconceptsandnotations(suchas
+Ruzsadistance)andaprooftypicallydependsonmanylemmasinPFRoutsidethecurrentfile.
+PFR . PFR isanextensionofthePFRsplit,whichincludesadditionalproblemstofurther
+crossfile crossfile
+evaluatecross-filedependencies. Toevaluatemodels’performanceonproblemswithextensivecross-
+filedependencies,weadded43testtheoremsfromEntropy.GroupandEntropy.Kernel.Group,
+whichhavethehighestcross-filedependenciesintheproject. Theseproblemscontainthreetimes
+thenumberofcross-filepremisescomparedtoothermathsplits,makingthemastrongcandidatefor
+evaluatingamodel’sabilitytoutilizecross-filepremises. 43validationtheoremsarechosensimilarly.
+Recent Mathlib Commits. Mathlib (Mathlib Community, 2020), is Lean’s largest community-
+maintainedrepository,encompassingawiderangeofmathematicalconcepts,programmingAPIs,
+andcommontactics. Itiscommonlyusedfortrainingtheorem-provingmodelsandisfrequently
+updatedwithnewdefinitions,theorems,andrefactorings. Therefore,toavoiddatacontamination,we
+included50testand50validationtheoremsnewlyaddedtoMathlibsinceMarch2024,byfiltering
+recentMathlibcommitstoonesthatonlyaddnewtheorems. Assumingthatthemodelwastrained
+priortoApril2024,theMathlibsplitguaranteestheevaluationoftheorem-levelgeneralization.
+HTPI.HTPIcontainstheLeancodeforthebookHowtoProveIt(HTPI)(Velleman,2019),which
+explainsasystematicapproachtoconstructingmathematicalproofswithLean. Itcoverstopicslike
+elementarylogicandnumbertheory,andprovingtechniqueslikeinduction.ThefilesinHTPItypically
+startwithbasicdefinitionsandlemmasthatmightbeusedthroughouttheentirefile,followedby
+exercisesandseveralexampleproblems. Therefore,modelscanutilizedefinitions,lemmas,andproof
+structuresfromexampleproblemstosolveexercises,makingitaneffectivebenchmarkfortesting
+context-dependenttheorem-provingmodels.
+HEP.HepLean(Tooby-Smith,2024)isanopen-sourceprojectthatdigitalizesdefinitions,theorems,
+proofs,andcalculationsinhighenergyphysicsusingLean. HepLeanaimstofacilitatediscovery,
+automatenewfindings,verifycorrectness,andprovideeducationaltoolsinphysics. Weselectedfiles
+fromthespaceandtimesection,whichintroducesseveralnewdefinitions,including4DEuclidean
+spacetimemodels. Thesefilescontainhighin-fileandcross-filedependencies,idealforevaluating
+context-dependenttheoremproving. Thissplitrepresentsanareaoutsideofmathematics,further
+expandingthegeneralizationofthebenchmark.
+4
+PublishedasaconferencepaperatICLR2025
+RecentSciLeanCommits. SciLean(Skˇrivan,2021)isanopen-sourceprojectdesignedtoformalize
+concepts in scientific computing using Lean 4. SciLean aims to provide formalized tools and
+frameworksforefficientlyrepresentingandprovingpropertiesofnumericalmethods,differential
+equations,andoptimizationproblems,bridgingappliedmathematicsandcomputerscience. Given
+Scileanhasbeencreatedfor3yearsandaccessedbymultipleprojects,similartoourMathlibsplit,we
+selected46testand46validationtheoremsaddedtoSciLeansinceMarch2024inordertoensurethe
+dataismorelikelyunseenforevaluatingmodels. Thenewlyaddedproblemsaremostlysupplements
+toexistingfiles,sotheyevaluatethemodel’sabilitytoapplyandlearnfrompreviouslemmas.
+3.2 PROBLEMSELECTIONMETHODOLOGY
+TheproblemselectionprocessfordifferentsplitsinminiCTXfollowsthreemaincriteria:(1)ensuring
+newproblemsarelesslikelytohaveappearedintrainingdata,(2)utilizinganautomatedselection
+process,and(3)promotinggeneralization. Dependingonthepropertiesandgoalsofeachsplit,we
+adoptedthreeprimaryapproaches:
+1. Recency-basedselection: ForpopularlibrariessuchasMathlibandSciLean,whichare
+highlylikelytobeusedfortraining,weaimtoselectnewlyaddedtheorems.Thisisachieved
+bysortingtheoremsbasedonthetimestampofwhenthetheoremwasfirstaddedtothe
+project,whichisextractedbyNTP-TOOLKIT. Thishelpsmitigatedatacontamination.
+2. Randomselection: Formorerecentprojects,suchasthePFRsplit,wheretheriskofdata
+contamination is lower, we randomly select proved theorems to ensure a representative
+sampleoftheentireproject. Thisapproachmaintainsgeneralityoftheselectedproblems.
+3. Dependency-based selection: To explicitly evaluate models’ performance in context-
+dependent proving, we selected files based on the in-file and cross-file premise labels
+availableinourbenchmark. ForthePNTsplit,wechosethefilewiththehighestnumber
+ofin-filedependencies,whileforPFR ,weselectedfileswiththehighestcross-file
+crossfile
+dependencies. For HEP, we selected files with a balance of both types. The level of
+dependencyisalsoextractedautomaticallybyNTP-TOOLKIT.
+Althoughhumaninspectionandexpertiseareinvolvedinensuringthattheselectedproblemsare
+validandsufficientlygeneralforevaluatingmodelsacrossdiversesettings,allselectionprocesses
+areultimatelyautomatedbyusingthelabelsextractedthroughourtoolkit. Thisensuresconsistency
+acrossthebenchmarkandscalabilitytofutureupdates.
+3.3 KEYFEATURESANDCHALLENGES
+miniCTXintroducesseveralkeyfeaturesthatdistinguishitfromothertheoremprovingbenchmarks,
+addressingchallengesthathavenotbeentackledbypreviousbenchmarks:
+Real-world theorem proving. Unlike popular benchmarks (e.g., miniF2F (Zheng et al., 2022),
+ProofNet (Azerbayev et al., 2023), FIMO (Liu et al., 2023)) that focus on isolated competition
+problems, real-world research-level theorem proving is heavily dependent on rich mathematical
+contexts. Therefore, miniCTX includes real-world, complex theorems from a variety of ongoing
+Leanprojects,suchasPrimeNumberTheorem(PNT)andPolynomialFreiman–RuzsaConjecture
+(PFR).Theyrigorouslytestamodel’sabilityinreal-worldformalizationprojects. Thisdiversity
+contrastswiththeLeanDojobenchmark(Yangetal.,2023),whichfocusessolelyonMathlib,enabling
+miniCTXtobettertestamodel’sgeneralizationindifferentsettings.
+Contextual evaluation. Proving a theorem often depends on new definitions, lemmas, or other
+contextualinformation,whichamodelmaynothaveseenduringtraining.miniCTXincludestheorems
+alongwiththisnewcontext. Duringevaluation,themodelisexpectedtoleveragetheprovidednew
+contexttohelpprovethetheorem.
+BeyondpreviousdatasetslikeLeanDojo(Yangetal.,2023)andCoqGym(Yang&Deng,2019),
+which include relevant definitions and theorems, miniCTX includes additional useful contextual
+informationthatmaymakesometheoremseasiertoprovecomparedtostandalonetheorems. For
+instance,Leansourcecodecanhavenaturallanguagecommentsthatmayhelpconstrainthespaceof
+possibleproofs.Moreover,someproofswithinafileoftenhaveanalogouspatternsorstructure,which
+5
+PublishedasaconferencepaperatICLR2025
+maymakesubsequenttheoremseasiertoprove(see§A.2). Theseadditionalformsofcontextoccur
+inthereal-worldprocessofformalization,yettheiruseinneuraltheoremprovingisunderexplored.
+Automaticallyupdatingthebenchmark. Mostmodernneuraltheoremproversusealargelanguage
+modelasabackbone. Therefore,itiscrucialtoensurethatevaluationcontentisnotseenduring
+(pre-)training,aproblemnotaddressedbypreviousbenchmarks(see§G).WeplantoupdateminiCTX
+periodicallytoincludetheoremsbeyondacertaincut-offdate(seeourprojectpage). Futureupdates
+willbeautomaticallyextractedfromnewLeanprojectsusingNTP-TOOLKIT(§3.4). SeeFigure2.
+GPT-4o, DeepSeek Future LLMs …
+2023 t r a i n i n g c u t o f f 2024 t r a i n in g c u t o f f 2025
+Lean theorems New Lean theorems New Lean theorems
+miniCTX miniCTX-v2
+Previous benchmarks compiled with new compiled with newer
+compiled with Lean Lean theorems Lean theorems
+theorems
+(Mathlib, miniF2F) Evaluate using Evaluate using
+GPT-4o, DeepSeek future LLMs
+Figure 2: miniCTX is automatically updated with Lean
+projectstostayaheadofLLMtrainingcutoffdates,making
+itasuitablebenchmarkforreal-worldtheoremprovingfor
+pre-trainedmodels. Figure3: State-tacticvs.filetuning.
+3.4 NTP-TOOLKIT: AUTOMATEDDATAEXTRACTIONANDEVALUATION
+WeprovideNTP-TOOLKITthatautomaticallyextractsminiCTXandmetadata. NTP-TOOLKITisalso
+usedtoextractdatafortrainingbaselines,anditprovidesaninteractiveLeanevaluationenvironment.
+Dataextraction. NTP-TOOLKITcontainsageneral-purposedataextractiontoolthatextractsexamples
+from an arbitrary Lean 4 repository and formats them into individual theorems in miniCTX. The
+toolisimplementedinLeanbasedonlean-training-data(Morrison,2023). Specifically,NTP-
+TOOLKITtakesinaconfigurationfilewithsomeLeanrepositoriesspecified.Thenforeachtheoremin
+eachrepository,itoutputsaJSON-formattedentryinminiCTX,includingthefullcontextinformation,
+theoremstatement,andproof. Italsoextractsusefulmetadatathatisusedforautomatedproblem
+selectioninminiCTX(see§3.2),andforourexperimentalanalysis. SeeAppendix§Aand§C.1for
+theformatsprovidedbythedataextraction.
+InteractionviaLeanREPL.InordertoevaluateamodelonminiCTX,amodelneedstoefficiently
+communicategeneratedproofswithLeanandreceivecurrentstateanderrorinformation. Tobetter
+integrate LLMs and Lean, we developed a Python wrapper for the Lean Read-Eval-Print Loop
+(REPL) (Lean Prover Community, 2024). The Lean REPL offers an interactive environment for
+submittingcodetoandreceivingmessagesfromaLeaninstance. WeprovideaPythoninterface
+for(1)submittingbothcompleteLeanproofsandindividualtactics,and(2)receivingandhandling
+feedbackfromLean,suchaserrormessagesorindicatorsthatatacticapplicationisvalidoraproof
+iscomplete. ThisinterfaceenablessimplerevaluationontheminiCTXbenchmark.
+4 EXPERIMENTS
+WeevaluateseveralbaselinesonminiCTX,demonstratingtheimportanceofcontextinreal-world
+theoremproving. Westudyperformancealongvariousaxes,includingpremisedependency,context
+length,difficulty,andthetypeofinformationinthecontext. Ourexperimentsshowthatfile-tuned
+models,whichcanutilizecontextatevaluationtime,improvedrasticallyovertraditionalstate-tactic
+modelsinthecontextdependentsetting. Moreover,wediscoverthatthisreal-worldperformance
+boostcannotbereadilymeasuredbyexistingbenchmarkssuchasminiF2F.Ourinvestigationreveals
+severalopenchallengesthatwediscussin§5.
+Trainingdata.WeranNTP-TOOLKIT’snext-tacticextractionona2023snapshotofMathlib,yielding
+307,049examples. WethenranNTP-TOOLKIT’sinstructiontuningscriptontheseexamples,yielding
+trainingexamplesandforstate-tacticandfile-tuning(see§4.1). Forthefile-tuningexamples,asan
+initialmethodforhandlingthelongLeanfiles,weeithertruncatethemiddleofaninputfilesothat
+thefilecontentsis1024tokens,ortakeonlythepreceding1024tokens,withthestrategyselected
+6
+PublishedasaconferencepaperatICLR2025
+atrandomforeachexample. Weopen-sourceourtrainingdataforbothfile-tuningandstate-tactic
+tuning,splitinto583ktrain,15kdev,and15ktestexamples.
+4.1 BASELINES
+WeselectseveralbaselinesthatweevaluateonminiCTX,asfollows:
+PromptingLLMs. Wefirsttesttheabilityofastate-of-the-artAPI-basedmodel,GPT-4o,togenerate
+thecompleteproofgivenatheoremstatementinLean,withseveralfew-shotexamplesprovidedfor
+guidance. Wegenerate8suchproofsamplesandmeasurepass@8proofrate. Wealsotestwhether
+addingcontextintheformofprecedingfilecontentsorretrievedpremisesimprovestheproofrate.
+State-tacticprompting. Anothercommonapproachtotheoremprovingusinglanguagemodelsis
+toletthemodelgenerateatacticgiventhecurrentproofstate(Hanetal.,2022;Yangetal.,2023;
+Polu&Sutskever,2020;Lampleetal.,2022). Therefore,wetestthestate-tacticpromptingsetting,
+whichpromptsamodelspecializedformathematicaltasks,Llemma-7b(Azerbayevetal.,2024),to
+outputatacticgivenaproofstate. Attesttime,themodelgeneratesonetacticatatime,andweusea
+best-firstsearchtoconstructfullproofs(Hanetal.,2022;Yangetal.,2023;Polu&Sutskever,2020).
+State-tactictuning. Wecanfurtherimprovetacticgenerationbyfine-tuninglanguagemodelson
+human-written (state x , tactic y ) pairs. We follow this state-tactic framework and fine-tune a
+t t
+state-tactic tuned model from DeepSeek-Coder-1.3b (Guo et al., 2024) to input proof states and
+outputtactics,trainedonhuman-writtentacticsinMathlib,themainmathematicallibraryinLean,
+extractedbyNTP-TOOLKIT. Similarly,weusebest-firstsearchattesttime.
+File-tuning. Adrawbacktothesetupsaboveisthattheyonlyconsiderstatic(state,tactic)pairs,and
+donottakeintoaccountnewcontext,includingcomments,definitions,lemmas,andfilestructure,
+encountered during test time. Therefore, we test whether supplying context c, in the form of
+precedingfilecontents,tothemodelimprovesperformance. Similartostate-tactictuning,wefine-
+tuneDeepSeek-Coder-1.3bonhuman-written(statex ,contextc,tacticy )triplestogeneratetactics
+t t
+basedonthecurrentcontextandproofstate,resultinginthefile-tunedmodel(seeFigure3).
+Premiseselection. Whilein-filecontextoffersvaluableinformationtomodels, itstilloverlooks
+externalresourceslikeimportedmodules,whichareoftencrucialinreal-worldinteractivetheorem
+proving. To better simulate a complete context and evaluate on project-level generalization, we
+applypremiseselectiontoextractrelevantpremisesfromimportedfileswithinthesamerepository.
+Specifically,weusethepremiseretrieverprovidedbyLeanDojo (Yangetal.,2023)toidentifythe
+top20mostrelevantdefinitionsorlemmasfromimportedmodulesandappendthemtothein-file
+context. GiventhatthemodelsweareevaluatingaretrainedonMathlib,andtheyexhibitastrong
+ability to apply Mathlib lemmas, we did not include Mathlib in the potential premises to ensure
+that the models gain as much information as possible from the provided context (both infile and
+crossfile). Allpotentialpremisesareautomaticallyextractedusingourtoolkit,ensuringanefficient
+andautomatedprocess.
+Table3: Performancecomparison(%)ofdifferentmodelsonminiF2F-testandminiCTX-test.
+miniF2F miniCTX-test
+Method Test Prime PFR PFR Mathlib HTPI HEP SciLean Avg.
+cross
+GPT-4o(fullproof) 13.52 7.06 1.85 6.98 14.00 13.33 31.15 6.52 11.72
++context — 31.76 5.56 34.88 26.00 17.78 49.18 17.39 27.08
++context+premise — 29.41 7.41 39.53 — 15.56 44.26 21.74 26.82
+State-tacticprompting 28.28 20.00 5.56 0.00 16.00 0.00 31.15 19.57 14.58
+State-tactictuning 32.79 17.65 5.56 0.00 22.00 11.11 52.46 19.57 19.53
+Filetuning 33.61 40.00 5.56 44.19 34.00 15.56 60.66 45.65 35.94
++premise — 42.35 11.11 16.28 — 8.89 50.82 32.61 30.21
+4.2 RESULTS
+Context-dependentmethodsimprovetheoremproving. Table3showsbaselineperformances
+onminiCTX.Weseeadramaticimprovementforthefile-tunedmodel(trainedonfullfilecontext)
+overthestate-tacticmodel(trainedonlyonproofstates)(35.94%vs.19.53%). Similarly,providing
+7
+PublishedasaconferencepaperatICLR2025
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0.0
+Standalone No in-file With in-file
+problems dependency dependency
+(miniF2F) (miniCTX) (miniCTX)
+)%(
+ecnamrofreP
+Performance on theorems by in-file dependency
+State-tactic tuning
+0.6
+File-tuning
+0.5
+0.4
+0.3
+0.2
+0.1
+0.0
+Low dependency High dependency High dependency on High dependency
+on all premises on in-file premises cross-file premises on all premises
+)%(
+ecnamrofreP
+Performance on miniCTX theorems by dependency level
+GPT-4o
+GPT-4o + context
+GPT-4o + context + premise
+Figure4: Modelperformancebydependencyonpremises. ForeachtheoreminminiCTX,werecord
+asmetadatawhetheritshuman-writtenproofdependsonotherdefinitionsortheoremsinthesame
+file(“in-file”)orinotherfiles(“cross-file”),andtesttheperformanceofbaselinesoneachtype.
+theprecedingfilecontext, whichincludesdefinitionsandlemmas, toGPT-4oresultsindramatic
+improvementcomparedtousingjusttheproofstate(27.08%vs.11.72%). Thesefindingshighlight
+theimportanceofprovidingmodelswithrichcontextualinformationbeyondtheimmediateproof
+state,alsodemonstratingthatminiCTXisabletomeasurethisabilityofcontext-dependentproving.
+Premiseselectionimprovesperformanceonhighcross-filedependencysplits. Theresultsin
+Table3indicatethatpremiseselectionhasamixedimpactonmodelperformance. FortheGPT-4o,
+premiseselectionimprovesperformanceonhighcross-filedependencysplits,suchasPFR,PFR ,
+cross
+and SciLean. This suggests that premise selection helps capture the cross-file context, enabling
+GPT-4otomakebetteruseofcross-fileinformation. However, forthefile-tunedmodel, premise
+selectiondoesnotconsistentlyimproveresults,andevenperformsworseonthePFR split,which
+cross
+wasdesignedtoevaluatetheeffectiveuseofcross-filepremises. Thissuggeststhattheretrieved
+premisesdiffersignificantlyfromthein-filecontext. Therefore,developingmethodsthateffectively
+supporttheintegrationofcross-filecontext(e.g.,premiseselection)alongsidein-filecontextremains
+aninterestingopenresearchdirectionforimprovingperformanceontheminiCTXbenchmark.
+EvaluationonminiF2F.WeevaluatebaselinesonminiF2F,astandardbenchmarkbasedoncompe-
+titionproblemsthatdonotrequirecontext. Weuseimportstatementsascontextforthefile-tuned
+model. Thefile-tunedmodelimprovesverylittlebeyondthestate-tacticmodel(33.61%vs.32.79%),
+showingthatthedramaticdifferenceincontext-dependentprovingabilitiesseenonminiCTXcannot
+becapturedbyminiF2F.
+4.3 ANALYSIS
+We analyze the baseline models on miniCTX further along several axes, including the kinds of
+contextualdependencies,thedifficulty,andthecontentmadeavailableinthecontext.
+File-tuningespeciallyhelpsonproblemswithinfiledependencies. WeusetheminiCTXmetadata
+to categorize theorems based on their in-file dependencies. Figure 6 shows the performance of
+state-tactictunedmodelandfile-tunedmodelonproblemswithin-filedependenciescomparedto
+thosewithout. WealsoshowminiF2Fasanadditionalreferencepointforproblemswithoutin-file
+dependencies. Thefile-tunedmodelshowsamarkedimprovementoverthestate-tactictunedmodel,
+especiallyinproblemsthathavedependenciesoncontext. Weconcludethatfile-tuningspecifically
+helpsintherealisticsettingoftheoremprovingwithnewdefinitionsandtheoremsincontext.
+Premise selection helps but may interfere with in-file context. We use miniCTX metadata to
+categorizeproblemsbasedontheircross-filedependencies,evaluatingtheimpactofpremiseselection
+acrosstheentiredataset. AsshowninFigure4,GPT-4obenefitssignificantlyfrompremiseselection
+onproblemswithhighcross-filedependencies,showingimprovedperformancewhenleveraging
+relevantpremisesfromimportedfiles. However,wealsoobservethatpremiseselectioncaninterfere
+within-filecontext,leadingtoinconsistentresults,particularlywhentheavailablein-filecontextis
+relativelyshort. Thissuggeststhataddingcross-filepremisesmaysometimesdisruptthemodel’s
+abilitytofocusonthein-fileinformation. Furtheranalysisofthisinterferenceisincludedin§D.3.
+Thishighlightstheneedformoresophisticatedintegrationstrategiesthatcanbalancebothin-fileand
+cross-filecontextseffectively.
+8
+PublishedasaconferencepaperatICLR2025
+Table4: Ablationstudyondifferentcontextcomponentsfortheoremproving.
+Environment Definitions Lemma Lemma NaturalLanguage File-tuning GPT-4o
+Statement Proof Comments
+✗ ✗ ✗ ✗ ✗ 14.12% 8.24%
+✓ ✗ ✗ ✗ ✗ 25.88% 2.35%
+✓ ✓ ✗ ✗ ✗ 24.71% 9.41%
+✓ ✓ ✓ ✗ ✗ 27.06% 22.35%
+✓ ✓ ✓ ✓ ✗ 32.94% 34.12%
+✓ ✓ ✓ ✗ ✓ 28.24% 23.53%
+✓ ✓ ✓ ✓ ✓ 35.29% 31.76%
+Models can learn from previous proofs in the file context. To determine the contribu-
+tion of different components in the in-file context, we conducted an ablation study on the
+PFR.ForMathlib.Entropy.Basicfile,whichcontainsnumerousco-relatedlemmasandrichnatu-
+rallanguagecomments,makingitanidealcandidatetoinvestigatetheinfluenceofdifferentcontext
+components. Inthisablation, wesystematicallyremovedspecificpartsofthein-filecontextand
+evaluatedthemodel’sabilitytogenerateproofsunderthesemodifiedconditions.AsshowninTable4,
+boththefile-tunedmodelandGPT-4obenefitfromtheinclusionofpreviousproofsinthefilecontext.
+Thisindicatesthatmodelsarecapableoflearningproofstrategiesfromexistingproofsinthefileand
+effectivelyapplyingthemtonewproblems(see§D.4formoreexamples).
+Naturallanguagecommentscontributeincertainsettings. Ourablationalsoexploredtheeffect
+ofnaturallanguagecommentsinthein-filecontext. Thoughtheimpactwasnotdramatic,comments
+writteninnaturallanguagewerefoundtobehelpfulincertainsettings. Inscenarioswhereproofs
+were excluded from the context, adding comments resulted in slight performance gains for both
+models. Forthefile-tunedmodel, thesegainswerefurtheramplifiedwhenproofswereincluded
+alongsidecomments,demonstratingthevalueofcombiningformalcontextwithexplanatorynatural
+language. However,forGPT-4o,thepresenceofcommentswhenproofswereincludedledtoaslight
+decreaseinperformance,suggestingthateffectivecontextselectionmayvarydependingonthemodel
+architectureandunderlyingtrainingcharacteristics.
+File-tuningimprovesacrossalldifficultylevelsandcontextlengths.Finally,Appendix§D.2shows
+performanceonproblemscategorizedbythelengthofthehuman-writtenproof(whenavailable),
+which wetake asa roughproxy ofthe problemdifficulty. Thefile-tunedmodel improvedon all
+threedifficultycategories. Appendix§D.2alsoshowsthatfile-tuninghadimprovedaccuracyacross
+contextlengths,particularlyforproblemswithlongercontexts. Longercontextsmayimplymore
+dependencies,suggestingthattheseproblemscanbenefitmorefromfile-tuning.
+Models rely on common symbolic automation. To demonstrate an additional kind of context-
+dependence,weperformanadditionalanalysisonMath2001(Macbeth,2023),whichisanotherLean
+textbooksetting.2 Inparticular,thetextbookcodedisablespowerfulautomationtacticsincluding
+simp and linarith to promote manual reasoning, akin to traditional textbook exercises. For
+example,Math2001includesnumerousarithmeticproblemsthataretrivialwithautomationtactics
+(e.g.,linarith)butarechallengingformodelstoexplicitlyprovewithstep-by-stepreasoning(e.g.,
+via calc). In Table 6 we evaluate models with the automation disabled, and observe substantial
+performancedrops,confirmingtherelianceonautomationtactics. Wealsofindthatthestate-tactic
+tuned model relies on simp for unseen definitions, making it performing similarly well to the
+file-tunedmodelontheoremsthatonlyrelyonnewdefinitions(§D.6).
+5 DISCUSSION AND FUTURE CHALLENGES
+Inadditiontogeneralimprovementsinperformance,wecommentonsomespecificopenchallenges.
+Makingbetteruseoflong-contexts. Ourfile-tuningmethodsimplytruncatescontextstobewithin
+atokenbudget(1024),whichcandiscardusefulcontextualinformation. Wefoundgainsinproviding
+GPT-4o8,000tokensofcontextcomparedtonotprovidingitcontext,butitsabsoluteperformance
+wasstilllow. Thereareseveralpossiblestrategiesthatcanbeexploredinfuturework,including
+feedingintheentirecontext,retrieval,ormixturesofthetwo.
+2SeeAppendixB.1forfurtherdetailsonMath2001.DuetolicensingwedonotincludeitinminiCTX.
+9
+PublishedasaconferencepaperatICLR2025
+Repository-level context. We focused on evaluating in-file context in this paper. As shown in
+§D.1,manyproblemsrequireusingcontextoutsideofthecurrentfile. Althoughweincorporated
+premiseselectionasameansofleveragingcross-filecontext,ourexperimentsindicatethatitdoesnot
+consistentlyimproveperformance,evenondatasetswithhighcross-filedependencies. Thissuggests
+aneedtofurtherinvestigatehowtobetterintegratepremiseselectionwithin-filecontext. miniCTX
+provides sufficient metadata to reconstruct the entire environment, allowing for comprehensive
+investigationintopremiseselectionandotherpotentialmethodsforleveragingcross-filecontext.
+Challengingproofs. Usingcontextthroughfiletuningdidnotimproveperformanceonthechalleng-
+ingPFRproofs. Moreover,performanceisrelativelylow(19%)onproofsthathadahuman-written
+proofoflongerthanfivelines(see§D.2). Provingthesekindsoftheoremsremainsanopenproblem.
+Workingwithconstraints. AsshowninTable6,modelperformancedropswhentheproofcannot
+use powerful automation tactics. Models have a tendency to invoke these powerful tactics, and
+strugglewithmoreexplicitstep-by-stepproofs. ImprovingperformanceinthissettingofminiCTXis
+aninterestingfuturedirection.
+6 RELATED WORK
+Formaltheoremprovingwithlanguagemodels. GPT-f (Polu&Sutskever,2020)pioneeredthe
+useoflanguagemodelsfortheoremprovingvianexttacticpredictiongiventhecurrentproofstate,a
+techniqueadoptedbymanysubsequentmethods(Jiangetal.,2021;Hanetal.,2022;Lampleetal.,
+2022; Polu et al., 2022; Welleck & Saha, 2023; Azerbayev et al., 2024). ReProver (Yang et al.,
+2023)conditionseachgenerationonretrievedpremises,whileDraft-sketch-prove(Jiangetal.,2023)
+conditionseachgenerationonaninformalproof. Baldur(Firstetal.,2023)fine-tunesamodelwith
+50linesoftheprecedingfilecontentascontext,butunlikefile-tuningtrainsthemodeltogeneratea
+fullproofwithoutproofstates. Morebroadly,machinelearningforformaltheoremprovingisan
+activeresearcharea;seeLuetal.(2023);Lietal.(2024)forsurveys.
+Theorem proving data extraction. Several tools extract training data from interactive theorem
+provers,includingCoqGym(Yang&Deng,2019)forCoq,PISA(Jiangetal.,2021)forIsabelle,
+LeanStep(Hanetal.,2022)forLean3,andLeanDojo(Yangetal.,2023)forLean3and4. Recently,
+lean-training-data(Morrison,2023)providestoolsforextractingproofstatesandotherinfor-
+mationusingLean4metaprogramming,whichweanecdotallyfoundtobeeasiesttomodifyand
+fastestamongLean4dataextractiontools. OurNTP-TOOLKITadds3newtoolsontopofthiscode,
+alongwithapipelineforrunningonanyLeanprojectsandinstructiontuning.
+Theoremprovingbenchmarks.Theoremprovingmethodsaretypicallyevaluatedintwosettings:(1)
+standalonecompetitionproblems(Zhengetal.,2022)ortextbook(Azerbayevetal.,2023)problems;
+(2)holdingouttheoremsfromamathematicallibrarythatthemodelistrainedon,suchasMathlib
+forLean (Hanetal.,2022;Poluetal.,2022;Yangetal.,2023)ortheArchiveofFormalProofsfor
+Isabelle(Jiangetal.,2021;Firstetal.,2023). Thefirstdoesnottesttheuseofcontext,whilethe
+secondtestsonlytheorem-levelgeneralization. miniCTXisdesignedtotesttheuseofcontextaswell
+astheorem-level,context-level,andproject-levelgeneralizationacrossseveralmathematicaldomains.
+Premiseselection. Premiseselectionisanextensivelystudiedclassofmethodsforhandlingcontext
+intheoremproving. Thesemethodsretrieveusefullemmasfrompreviouslyprovedresults,tohelp
+provethecurrenttheorem.Manyrecentpremiseretrieversembedtheoremsandpremisestoacommon
+space,andthentakingasimilaritymeasure(Yangetal.,2023;Mikułaetal.,2023),oruseaclassifier
+todetermineifapremiseisrelevant(Irvingetal.,2016;Hanetal.,2022). Graph2Tac(Blaauwbroek
+etal.,2024)proposesanonlinelearningmethodthatcanlearnfrombothproofsandpremisesina
+newcontext,whichisparticularlyrelevanttoourworksinceittacklesproject-levelgeneralization.
+However,suchmethodscannotcombinewithmoreadvancedpre-training-basedmethodswithout
+riskingdatacontaminationduringevaluation. miniCTXaimstofillthisgapbyourtemporalsplit.
+7 CONCLUSION
+We studied the realistic setting of proving theorems that depend on new information and project
+constraints, and formulated an evaluation framework for testing generalization using real Lean
+projects. WebuiltminiCTX,andfoundthatthepredominantmethodfortrainingneuraltheorem
+proversfailstoenablecontextdependentproving. Ourfiletuningmethodprovidesastrongstarting
+pointforthenewchallengesopenedbyourinvestigationintotheoremprovingwithcontext.
+10
+PublishedasaconferencepaperatICLR2025
+ACKNOWLEDGEMENTS
+Sean Welleck thanks Convergent Research, the Lean FRO, and the OpenAI Researcher Access
+Programfortheirsupport.
+REFERENCES
+AyushAgrawal,SiddharthaGadgil,NavinGoyal,AshvniNarayanan,andAnandTadipatri.Towardsa
+mathematicsformalisationassistantusinglargelanguagemodels.arXivpreprintarXiv:2211.07524,
+2022.
+ZhangirAzerbayev,BartoszPiotrowski,HaileySchoelkopf,EdwardWAyers,DragomirRadev,and
+JeremyAvigad. Proofnet: Autoformalizingandformallyprovingundergraduate-levelmathematics.
+arXivpreprintarXiv:2302.12433,2023.
+ZhangirAzerbayev,HaileySchoelkopf,KeiranPaster,MarcoDosSantos,StephenMarcusMcAleer,
+AlbertQ.Jiang,JiaDeng,StellaBiderman,andSeanWelleck. Llemma: Anopenlanguagemodel
+formathematics. InTheTwelfthInternationalConferenceonLearningRepresentations,2024.
+URLhttps://openreview.net/forum?id=4WnqRR915j.
+LasseBlaauwbroek,MiroslavOlšák,JasonRute,FidelIvanSchaposnikMassolo,JellePiepenbrock,
+andVasilyPestun. Graph2tac: Onlinerepresentationlearningofformalmathconcepts,2024. URL
+https://arxiv.org/abs/2401.02949.
+EmilyFirst,MarkusN.Rabe,TaliaRinger,andYuriyBrun. Baldur: Whole-proofgenerationand
+repairwithlargelanguagemodels,2023.
+DayaGuo,QihaoZhu,DejianYang,ZhendaXie,KaiDong,WentaoZhang,GuantingChen,Xiao
+Bi,Y.Wu,Y.K.Li,FuliLuo,YingfeiXiong,andWenfengLiang. Deepseek-coder: Whenthe
+largelanguagemodelmeetsprogramming–theriseofcodeintelligence,2024.
+JesseMichaelHan,JasonRute,YuhuaiWu,EdwardAyers,andStanislasPolu. Proofartifactco-
+trainingfortheoremprovingwithlanguagemodels. InInternationalConferenceonLearning
+Representations,2022. URLhttps://openreview.net/forum?id=rpxJc9j04U.
+GeoffreyIrving,ChristianSzegedy,AlexanderAAlemi,NiklasEén,FrançoisChollet,andJosef
+Urban. Deepmath-deepsequencemodelsforpremiseselection. Advancesinneuralinformation
+processingsystems,29,2016.
+AlbertQiaochuJiang,WendaLi,JesseHan,andYuhuaiWu. Lisa: Languagemodelsofisabelle
+proofs. https://aitp-conference.org/2021/abstract/paper_17.pdf,2021.
+AlbertQiaochuJiang,WendaLi,SzymonTworkowski,KonradCzechowski,TomaszOdrzygóz´dz´,
+Piotr Miłos´, Yuhuai Wu, and Mateja Jamnik. Thor: Wielding hammers to integrate language
+modelsandautomatedtheoremprovers. AdvancesinNeuralInformationProcessingSystems,35:
+8360–8373,2022.
+AlbertQiaochuJiang,SeanWelleck,JinPengZhou,TimotheeLacroix,JiachengLiu,WendaLi,
+MatejaJamnik,GuillaumeLample,andYuhuaiWu. Draft,sketch,andprove: Guidingformal
+theoremproverswithinformalproofs. InTheEleventhInternationalConferenceonLearning
+Representations,2023. URLhttps://openreview.net/forum?id=SMa9EAovKMC.
+Alex Kontorovich. Prime number theorem and. https://github.com/AlexKontorovich/
+PrimeNumberTheoremAnd,2024a.
+Alex Kontorovich. Prime number theorem and; rectangle.lean. https://github.com/
+AlexKontorovich/PrimeNumberTheoremAnd/blob/main/PrimeNumberTheoremAnd/
+Rectangle.lean,2024b.
+GuillaumeLample,TimotheeLacroix,Marie-AnneLachaux,AurelienRodriguez,AmauryHayat,
+ThibautLavril,GabrielEbner,andXavierMartinet. Hypertreeproofsearchforneuraltheorem
+proving. Advancesinneuralinformationprocessingsystems,35:26337–26349,2022.
+11
+PublishedasaconferencepaperatICLR2025
+LeanProverCommunity. repl. https://github.com/leanprover-community/repl,2024.
+ZhaoyuLi,JialiangSun,LoganMurphy,QidongSu,ZenanLi,XianZhang,KaiyuYang,andXujie
+Si. Asurveyondeeplearningfortheoremproving,2024.
+Chengwu Liu, Jianhao Shen, Huajian Xin, Zhengying Liu, Ye Yuan, Haiming Wang, Wei Ju,
+ChuanyangZheng,YichunYin,LinLi,etal. Fimo: Achallengeformaldatasetforautomated
+theoremproving. arXivpreprintarXiv:2309.04295,2023.
+Pan Lu, Liang Qiu, Wenhao Yu, Sean Welleck, and Kai-Wei Chang. A survey of deep learning
+formathematicalreasoning. InAnnaRogers,JordanBoyd-Graber,andNaoakiOkazaki(eds.),
+Proceedingsofthe61stAnnualMeetingoftheAssociationforComputationalLinguistics(Volume
+1: LongPapers),pp.14605–14631,Toronto,Canada,July2023.AssociationforComputational
+Linguistics. doi: 10.18653/v1/2023.acl-long.817. URL https://aclanthology.org/2023.
+acl-long.817.
+HeatherMacbeth. Themechanicsofproof. https://github.com/hrmacbeth/math2001,2023.
+Mathlib Community. The lean mathematical library. In Proceedings of the 9th ACM SIGPLAN
+InternationalConferenceonCertifiedProgramsandProofs,POPL’20.ACM,January2020. doi:
+10.1145/3372885.3373824. URLhttp://dx.doi.org/10.1145/3372885.3373824.
+Maciej Mikuła, Szymon Antoniak, Szymon Tworkowski, Albert Qiaochu Jiang, Jin Peng Zhou,
+ChristianSzegedy,ŁukaszKucin´ski,PiotrMiłos´,andYuhuaiWu. Magnushammer: Atransformer-
+basedapproachtopremiseselection. arXivpreprintarXiv:2303.04488,2023.
+KimMorrison. lean-training-data. https://github.com/semorrison/lean-training-data,
+2023.
+LeonardodeMouraandSebastianUllrich. Thelean4theoremproverandprogramminglanguage. In
+AutomatedDeduction–CADE28: 28thInternationalConferenceonAutomatedDeduction,Virtual
+Event,July12–15,2021,Proceedings28,pp.625–635.Springer,2021.
+StanislasPoluandIlyaSutskever. Generativelanguagemodelingforautomatedtheoremproving,
+2020.
+Stanislas Polu, Jesse Michael Han, Kunhao Zheng, Mantas Baksys, Igor Babuschkin, and Ilya
+Sutskever. Formalmathematicsstatementcurriculumlearning,2022.
+TomášSkˇrivan. Scientificcomputinginlean. https://github.com/lecopivo/SciLean,2021.
+PeiyangSong,KaiyuYang,andAnimaAnandkumar. Towardslargelanguagemodelsascopilotsfor
+theoremprovinginLean. arXivpreprintarXiv: Arxiv-2404.12534,2024.
+TerenceTao. Pfr. https://github.com/teorth/pfr,2023.
+JosephTooby-Smith. Heplean: Digitalisinghighenergyphysics. arXivpreprintarXiv:2405.08863,
+2024.
+DanielJ.Velleman. HowtoProveIt: AStructuredApproach. CambridgeUniversityPress,3edition,
+2019.
+SeanWelleck. Llmlean. https://github.com/cmu-l3/llmlean,2024.
+Sean Welleck and Rahul Saha. Llmstep: Llm proofstep suggestions in lean. arXiv preprint
+arXiv:2310.18457,2023.
+Huajian Xin, Z. Z. Ren, Junxiao Song, Zhihong Shao, Wanjia Zhao, Haocheng Wang, Bo Liu,
+Liyue Zhang, Xuan Lu, Qiushi Du, Wenjun Gao, Qihao Zhu, Dejian Yang, Zhibin Gou, Z. F.
+Wu,FuliLuo,andChongRuan. Deepseek-prover-v1.5: Harnessingproofassistantfeedbackfor
+reinforcementlearningandmonte-carlotreesearch. arXivpreprintarXiv:2408.08152,2024. URL
+https://arxiv.org/abs/2408.08152.
+KaiyuYangandJiaDeng. Learningtoprovetheoremsviainteractingwithproofassistants,2019.
+12
+PublishedasaconferencepaperatICLR2025
+KaiyuYang,AidanSwope,AlexGu,RahulChalamala,PeiyangSong,ShixingYu,SaadGodil,Ryan
+Prenger,andAnimaAnandkumar. LeanDojo:Theoremprovingwithretrieval-augmentedlanguage
+models. InNeuralInformationProcessingSystems(NeurIPS),2023.
+HuaiyuanYing,ShuoZhang,LinyangLi,ZhejianZhou,YunfanShao,ZhaoyeFei,YichuanMa,
+JiaweiHong,KuikunLiu,ZiyiWang,etal. Internlm-math: Openmathlargelanguagemodels
+towardverifiablereasoning. arXivpreprintarXiv:2402.06332,2024.
+KunhaoZheng, JesseMichaelHan, andStanislasPolu. miniF2F:across-systembenchmarkfor
+formalolympiad-levelmathematics. InInternationalConferenceonLearningRepresentations,
+2022. URLhttps://openreview.net/forum?id=9ZPegFuFTFv.
+13
+PublishedasaconferencepaperatICLR2025
+Appendix
+A miniCTX EXAMPLES
+HerewegivesomeexamplesoftheminiCTXanditssourcestoillustratetheformatofthedataand
+howandwhywecollectcertaintheorems.
+A.1 EXAMPLEENTRY
+An entry in the miniCTX dataset consists of the theorem statement, preceding file contents, and
+metadatainformation. Forexample,giventhefollowingtheorems_eq_pow_twoincontext:
+import Mathlib.Data.Real.Basic
+/-!
+# Square function
+We define the squaring function `s : R → R` to be `s x := x * x`.
+-/
+def s (x : R) : R := x * x
+lemma s_eq_pow_two {x : R} : s x = x ^ 2 := by
+rw [s, pow_two]
+14
+PublishedasaconferencepaperatICLR2025
+WecollectitsdataintominiCTX,formattedinJSONasfollows:
+{
+# Preceding file content
+"srcContext": "import␣Mathlib.Data.Real.Basic\\n\\n/-!\\n#␣Square␣function\\nWe␣
+define␣the␣squaring␣function␣`s␣:␣\\u211d␣\\u2192␣\\u211d`␣to␣be␣`s␣x␣:=␣x␣*␣
+x`.\\n-/\\n\\ndef␣s␣(x␣:␣\\u211d)␣:␣\\u211d␣:=␣x␣*␣x\\n\\n",
+# Theorem statement
+"theoremStatement": "lemma␣s_eq_pow_two␣{x␣:␣\\u211d}␣:␣s␣x␣=␣x␣^␣2",
+# Fully qualified theorem name
+"theoremName": "s_eq_pow_two",
+# Temporal metadata
+"fileCreated": "(git␣commit)",
+"theoremCreated": "(git␣commit)",
+# Source metadata
+"file": "MyProject/Square.lean",
+"module": "MyProject.Square",
+"positionMetadata": {
+# Line number the theorem is on
+"lineInFile": 10,
+# Number of tokens before the theorem
+"tokenPositionInFile": 152,
+# Number of premises (definitions, theorems) before the theorem
+"theoremPositionInFile": 1
+},
+# Dependency metadata
+"dependencyMetadata": {
+# Number of definitions or lemmas defined in this file that the theorem uses
+"inFilePremises": true,
+"numInFilePremises": 1,
+# Number of definitions or lemmas defined in this repository that the theorem
+uses (including in-file ones)
+"repositoryPremises": true
+"numRepositoryPremises": 1,
+# Number of total premises (in file, repository, or otherwise)
+"numPremises": 2,
+# Modules imported in the current file
+"importedModules": ["Mathlib.Data.Real.Basic", ...]
+},
+# Proof metadata
+"proofMetadata": {
+"hasProof": true,
+"proof": "by\n␣␣rw␣[s,␣pow_two]",
+"proofType": "tactic",
+"proofLengthLines": 2,
+"proofLengthTokens": 20
+}
+}
+Inadditionaltoindividualentries,wealsorecordtheversion(gitcommit)oftherepository.
+A.2 PRIMENUMBERTHEOREMEXAMPLE
+WecollecttheoremsfromtheRectangle.leanfileinPrimeNumberTheoremAnd. Thefollowing
+excerpt from Rectangle.lean demonstrates the scenario that often arises in a theorem proving
+environmentwherecontextiscriticaltoproducingaproof:
+import Mathlib.Analysis.Complex.CauchyIntegral
+import Mathlib.Analysis.Complex.Convex
+15
+PublishedasaconferencepaperatICLR2025
+open Complex Set Topology
+open scoped Interval
+variable {z w : C} {c : R}
+/-%%
+\begin{definition}\label{Rectangle}\lean{Rectangle}\leanok
+A Rectangle has corners $z$ and $w \in \C$.
+\end{definition}
+%%-/
+/-- A `Rectangle` has corners `z` and `w`. -/
+def Rectangle (z w : C) : Set C := [[z.re, w.re]] ×C [[z.im, w.im]]
+namespace Rectangle
+lemma symm : Rectangle z w = Rectangle w z := by
+simp [Rectangle, uIcc_comm]
+lemma symm_re : Rectangle (w.re + z.im * I) (z.re + w.im * I) = Rectangle z w := by
+simp [Rectangle, uIcc_comm]
+Whenprovingthefinallemmasymm_re,amodelcanbenefitmuchfromtheprecedingfilecontents,
+whichinclude(1)theexistingimportsfromMathlib,variabledeclarations,andopennamespaces
+thatprovideasyntacticcontextforthistheorem,(2)thenewdefinitionRectangleinthecontext,
+whichthemodelhasnotseenintraining,(3)naturallanguageandLaTeXdocumentationofthefile
+andRectangledefinition,(4)theanalogous(inthiscaseidentical)proofoftheprecedingtheorem
+symm.WedemonstratethatperformanceonRectangle.leanisindeedmuchhigherwhenpreceding
+filecontentsaregivenascontexttoamodel.
+ForfuturedataaddedtominiCTXthatspecificallytesttheprecedingfilecontentsascontext,wewill
+ensureitisstandalonelikeRectangle.lean,i.e.itdoesnotimportanyotherunseenfilesfromthe
+samerepository,sotheprecedingfilecontentsalreadycontainallimportantinformationrelevantto
+theproof.
+B ADDITIONAL DATASETS
+InadditiontoproblemsinminiCTX,wealsoevaluatedotherdatasetsthatarenotincludeddueto
+copyrightreasons.
+B.1 MATH2001
+Math2001(Macbeth,2023)containstheLeancodeforthebookTheMechanicsofProof byHeather
+Macbeth,anintroductorytextonmathematicaltheoremprovingwithaccompanyingLeancode. Each
+chapterofTheMechanicsofProofcoversanintroductorytopicandwalksthroughhowtowrite
+theassociatedmathematicsinLean,alongwithexercises. Thetopicsincludeproofsbycalculation,
+proofswithstructure,parityanddivisibility,logic,induction,numbertheory,functions,sets,and
+relations. AuniqueaspectofMath2001isthatitdisablescommonLeanautomationforpedagogical
+purposes. Forexample,astudentmustwriteoutanequalityproofindetail,witheachstepjustified. It
+alsodefinesnewtacticsanddefinitionsseparatefromthecommonLeanlibraries. Typicallyafilein
+thetextbookwillshowexamplesofsuchproofs,followedbyexercisesforastudenttocomplete. We
+canviewthisasaformofcontextualadaptation: amodelmustprovethetheoremaccordingtothe
+constraintsofthetextbook. Math2001has41filesthatincludeexamplesandexercises. Weselected1
+to2theoremsfromeachfile(dependingonthelengthofthefile),foratotalof50theorems. Ofthese,
+31havenoproofintheMath2001repository,hencetestingtheorem-levelgeneralization.
+Context-awaremodelssurpassstate-basedmodels Table5showstheperformancecomparison
+ofdifferentmodels. BoththeGPT-4omodel,whichincludescontextintheinput,andthefile-tuned
+16
+PublishedasaconferencepaperatICLR2025
+Models Math2001
+GPT-4o(fullproof) 11.76%
+GPT-4o(+context) 43.13%
+State-tacticprompting 31.37%
+State-tactictuning 27.45%
+Filetuning 41.18%
+Table5: PerformancecomparisonofdifferentmodelsonMath2001.
+Automation File(%) State-tactic(%)
+Enabled 41.18 11.76
+Disabled 27.45 7.84
+Table6: PerformanceontheMath2001splitwithandwithoutaccesstostandardautomation.
+modelperformsignificantlybetterthantheothermodels.Thisdemonstratestheimportanceofcontext
+informationincontext-dependenttextbook-styleproblems.
+Modelsrelyoncommonsymbolicautomation. TheMath2001splitoriginallydisablespowerful
+automationtacticsincludingsimpandnlinarithtopromotemanualreasoning,akintotraditional
+textbook exercises. In Table 6 we evaluate models with the automation disabled, and observe
+substantialperformancedrops,confirmingaheavyrelianceofcurrentmodelsontheseautomation
+tactics. Anexaminationofthetrainingcorpusfurtherrevealedageneraldependencyonautomated
+tacticswithinrealLeanprojects,indicatingthatourmodelshavelearnedtorelyonthesetactics.
+C NTP-TOOLKIT AND FILE-TUNING DETAILS
+C.1 DATAEXTRACTION
+NTP-TOOLKITcontainsageneral-purposedataextractiontoolthatextractsexamplesfromanarbitrary
+Lean4repositoryandformatsthemintoexamplesthatcanbeusedtocompileminiCTX,aswell
+as for language-model fine-tuning. The tool is implemented in Lean based on Kim Morrison’s
+lean-training-data.
+Specifically,NTP-TOOLKITtakesinaconfigurationfilewithoneormoreLeanrepositoriesspecified.
+Eachrepositoryistransformedintonext-tacticandfullproof examplesstoredinJSONLinesfiles.
+Thenext-tacticdataissuitableformakingfile-tuningexamplesoftheform(context,state,next-tactic):
+{
+"state": # tactic state ,
+"nextTactic": # pretty-printed next tactic,
+"srcUpToTactic": # source code in the file up to the tactic invocation,
+"decl": # declaration without proof (e.g., statement of a theorem),
+"declUpToTactic": # source code in the declaration up to the tactic invocation,
+"declId": # unique identifier of the declaration
+}
+Thefullproofdataissuitableformakingevaluationexamplesoftheform(context,theorem,proof):
+{
+"srcUpToDecl": # source code in the file up to the declaration,
+"decl": # declaration without proof (e.g., statement of a theorem),
+"declId": # unique identifier of the declaration,
+"proof": # proof
+}
+Fullproofdataisalsosuitablefortrainingamodeltodirectlygenerateafullproof,andNTP-TOOLKIT
+alsoprovidesLeansourcewithproofstatesinterleaved,bothofwhichwedonotexploreinthiswork.
+17
+PublishedasaconferencepaperatICLR2025
+C.2 INPUT-OUTPUTFORMATTING.
+Belowweshowtheinputsandoutputsforfile-tuningandstate-tactictuning. Inthepaperwereferto
+thenaturallanguagedescriptionatthebeginningoftheinputasan“instruction”,andrefertoasetof
+inputsandoutputsasdescribedbelowas“instruction-tuningdata”.
+C.2.1 FILETUNING.
+Givenanexamplecontainingastate,next-tactic,andprecedingfilecontents(srcUpToTactic),the
+dataisformattedas:
+Input:
+/- You are proving a theorem in Lean 4.
+You are given the following information:
+- The file contents up to the current tactic, inside [CTX]...[/CTX]
+- The current proof state, inside [STATE]...[/STATE]
+Your task is to generate the next tactic in the proof.
+Put the next tactic inside [TAC]...[/TAC]
+-/
+[CTX]
+{srcUpToTactic}
+[/CTX]
+[STATE]
+{state}
+[/STATE]
+[TAC]
+Output:
+{nextTactic}
+[/TAC]
+C.2.2 STATE-TACTICTUNING.
+Givenanexamplecontainingastateandnext-tactic,thedataisformattedas:
+Input:
+/- You are proving a theorem in Lean 4.
+You are given the following information:
+- The current proof state, inside [STATE]...[/STATE]
+Your task is to generate the next tactic in the proof.
+Put the next tactic inside [TAC]...[/TAC]
+-/
+[STATE]
+{state}
+[/STATE]
+[TAC]
+Output:
+18
+PublishedasaconferencepaperatICLR2025
+{nextTactic}
+[/TAC]
+C.2.3 GPT-4OPROMPT
+Forfullproofgenerationtaskwithonlytheoremstatement,weusethefollowingprompt:
+YourtaskistogeneratecompleteproofsforproblemsstatedinLean4. Youmayuseany
+tactics available in Mathlib, but no additional context, definitions, or theorems from the
+problem’s file will be provided. Focus on crafting proofs using general knowledge and
+techniquesapplicableinLean4. Herearesomeexamples:
+lemma deriv_scale {f : CS (n + 1) E} : (f.scale R).deriv = R−1 ·
+f.deriv.scale R := by
+ext v ; by_cases hR : R = 0 <;> simp [hR, scale]
+· simp [deriv, smul] ; exact deriv_const _ _
+· exact ((f.hasDerivAt (R−1 · v)).scomp v (by simpa using (hasDerivAt_id
+v).const_smul R−1)).deriv
+theorem mul_dvd_mul_left (a : α) (h : b | c) : a * b | a * c := by
+obtain ⟨d, rfl⟩ := h
+use d
+rw [mul_assoc]
+/- Now here is your exercise. There is no need to restate the problem. If
+needed, think through the proof using comments. -/
+{theorem statement}
+19
+PublishedasaconferencepaperatICLR2025
+Forfullproofgenerationtaskwithadditionalinfilecontext,weusethefollowingprompt:
+YourtaskistogeneratecompleteproofsforproblemsstatedinLean4. Foreachproblem,you
+willbeprovidedwiththecontextfromthefileinwhichthetheoremisstated. Thiscontext
+includes useful external libraries, along with important definitions and theorems that are
+relevanttotheproof. Youareencouragedtouseanytactics,definitions,lemmas,ortheorems
+definedwithinthiscontexttoconstructyourproof. Pleasepaycarefulattentiontoindentation
+andformattingtoensurethattheproofadherestoLean4syntaxstandards. Herearesome
+examples:
+#Context:
+import Mathlib.Analysis.Calculus.Deriv.Support
+import Mathlib.Analysis.Distribution.SchwartzSpace
+import Mathlib.Order.Filter.ZeroAndBoundedAtFilter
+open Real Complex MeasureTheory Filter Topology BoundedContinuousFunction
+SchwartzMap BigOperators
+variable {E : Type*} [NormedAddCommGroup E] [NormedSpace R E] {{n : N}}
+@[ext] structure CS (n : N) (E : Type*) [NormedAddCommGroup E] [NormedSpace
+R E] where
+toFun : R → E
+h1 : ContDiff R n toFun
+h2 : HasCompactSupport toFun
+noncomputable def scale (g : CS n E) (R : R) : CS n E := by
+by_cases h : R = 0
+· exact ⟨0, contDiff_const, by simp [HasCompactSupport, tsupport]⟩
+· refine ⟨fun x => funscale g R x, ?_, ?_⟩
+· exact g.h1.comp (contDiff_const.smul contDiff_id)
+· exact g.h2.comp_smul (inv_ne_zero h)
+/- Truncated -/
+/- Now here is your exercise. There is no need to restate the problem. If
+needed, think through the proof using comments. -/
+#Context:
+{}
+#Problem:
+{}
+{theorem statement}
+20
+PublishedasaconferencepaperatICLR2025
+D ADDITIONAL RESULTS AND ANALYSIS
+We present additional analysis on the composition of miniCTX and additional quantitative and
+qualitativeevaluationofperformanceonminiCTX.AlltestsinthissectionaredoneonminiCTX-test.
+D.1 DEPENDENCYDISTRIBUTION
+100
+80
+60
+40
+20
+0
+Depends on Depends on Depends on Depends on
+in-file definitions in-file theorems in-repo. definitions in-repo. theorems
+)%(
+smeroeht
+fo
+egatnecreP
+Proportion of different dependencies
+Figure5: Percentageofdifferentdependenciesinthehuman-writtenproofoftheoremsinminiCTX.
+D.2 PERFORMANCEBYPROOFLENGTHANDCONTEXTLENGTH
+40
+30
+20
+10
+0
+Standalone No in-file Definition Theorem All dependencies
+problems (miniF2F)dependency dependency dependency
+)%(
+ecnamrofreP
+Performance on theorems by dependency type
+State-tactic tuning
+File-tuning
+Figure6: Performancebydependencytype. ForeachtheoreminminiCTX,werecordasmetadata
+whetheritshuman-writtenproofdependsonotherdefinitionsortheoremsinthesamefile,andtest
+theperformanceofbaselinesoneachtype. File-tunedmodelssubstantiallyoutperformstate-tactic
+tunedmodelsontheoremswithdefinitionand/ortheoremdependencies.
+D.3 INTERFERENCEBETWEENIN-FILECONTEXTANDRETRIEVEDPREMISES
+Inourexperiments,weattemptedtosupplybothin-filecontext(intheformofprecedingcode)and
+premisecontext(intheformofretrievedpremises)toGPT-4oforprovingatheorem. InFigure8,we
+presentananalysisoftheimpactofthelengthofretrievedpremisesontheresultingproofsuccess
+rate.
+Longerretrievedpremiseshurtperformance. Theresultsindicatethatproblemswithalower
+premise-to-contextlengthratiotendtohavehighersuccessrates. Specifically,successfulproblems
+oftenfeaturerelativelyshorterpremisesasproportionofthefullcontextlength. Thissuggeststhat
+modelsarebetterabletoutilizeandfocusonrelevantin-filecontextwhenthecross-filepremises
+areproportionallysmaller. Conversely,whenthelengthofthepremisesbecomesrelativelylarge
+21
+PublishedasaconferencepaperatICLR2025
+60
+40
+20
+0
+2 25 > 5
+Proof length (lines)
+)%(
+ecnamrofreP
+Performance by proof length
+State-tactic tuning
+File-tuning
+60
+40
+20
+0
+3000 30008000 > 8000
+In-file context (tokens)
+)%(
+ecnamrofreP
+Performance by in-file context length
+State-tactic tuning
+File-tuning
+Figure7: Performanceoftwobaselinesondifferentdifficultylevelsandcontextlengths,asmeasured
+bythelengthofhuman-writtenproofinlinesandthesizeoftheprecedingfilecontentsintokens.
+File-tuningsubstantiallyimprovestheorem-provingabilitiesacrossallcases,butespeciallywhenthe
+theoremiseasierandthecontextislonger.
+comparedtothefullcontext,itmayoverwhelmordistractthemodel,reducingitsabilitytoeffec-
+tivelyutilizethein-fileinformation. Thisfindinghighlightstheimportanceofensuringabalanced
+integrationofpremiseswiththein-filecontexttomaintainmodelfocusandimproveproofgeneration
+performance.
+Performance by size of retrieved premises
+Success
+Failure
+0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8
+Total size of retrieved premises, as proportion of prompt
+Figure8: ImpactoflengthofretrievedpremisesonGPT-4omodelperformance. Ahigherpremise-
+to-contextlengthratioiscorrelatedwithlowersuccessrates,suggestingthattoomuchpremisein
+contextoverwhelmsthemodel.
+D.4 EXAMPLEOFLEARNINGPROOFSFROMCONTEXT
+Thefile-tunedmodelisabletoutilizetheproofsinthecontext. Hereisanexampleofthemodel
+makingminimalmodificationtotheproofsfromthecontext:
+Input:
+...
+theorem Set.left_not_mem_uIoo {a b : R} : a ∈/ Set.uIoo a b :=
+fun ⟨h1, h2⟩ (cid:55)→ (left_lt_sup.mp h2) (le_of_not_le (inf_lt_left.mp h1))
+theorem Set.right_not_mem_uIoo {a b : R} : b ∈/ Set.uIoo a b := by
+Output:
+22
+PublishedasaconferencepaperatICLR2025
+rintro ⟨h1, h2⟩
+exact (right_lt_sup.mp h2) (le_of_not_le (inf_lt_right.mp h1))
+D.5 EXAMPLEOFUSINGTHEOREMSFROMCONTEXT
+Thefile-tunedmodelisabletoutilizethestatedtheoremsinthecontext. Hereisanexampleofthe
+modelusingthepreviouslydefinedtheoremintheproof:
+Input:
+...
+lemma RectSubRect {x x x x y y y y : R} (x _le_x : x ≤ x )
+0 1 2 3 0 1 2 3 0 1 0 1
+(x _le_x : x ≤ x )
+1 2 1 2
+(x _le_x : x ≤ x ) (y _le_y : y ≤ y ) (y _le_y : y ≤ y ) (y _le_y
+2 3 2 3 0 1 0 1 1 2 1 2 2 3
+: y ≤ y ) :
+2 3
+Rectangle (x + y * I) (x + y * I) ⊆ Rectangle (x + y * I) (x + y *
+1 1 2 2 0 0 3 3
+I) := by
+rw [rect_subset_iff, mem_Rect, mem_Rect]
+refine ⟨⟨?_, ?_, ?_, ?_⟩, ?_, ?_, ?_, ?_⟩
+all_goals simpa using by linarith
+lemma RectSubRect' {z z z z : C} (x _le_x : z .re ≤ z .re) (x _le_x :
+0 1 2 3 0 1 0 1 1 2
+z .re ≤ z .re)
+1 2
+(x _le_x : z .re ≤ z .re) (y _le_y : z .im ≤ z .im) (y _le_y : z .im ≤
+2 3 2 3 0 1 0 1 1 2 1
+z .im)
+2
+(y _le_y : z .im ≤ z .im) :
+2 3 2 3
+Rectangle z z ⊆ Rectangle z z := by
+1 2 0 3
+Output:
+simpa using RectSubRect x _le_x x _le_x x _le_x y _le_y y _le_y
+0 1 1 2 2 3 0 1 1 2
+y _le_y
+2 3
+D.6 EXAMPLEOFUSINGUNSEENDEFINITIONS
+Thestate-tactictunedmodelisabletoutilizetheunseendefinitionsthatappearintheproofstate. In
+thefollowingexampleSet.uIooisanewlydefineddefinition,whichisneverseenforstate-tactic
+tunedmodel:
+Input:
+23
+PublishedasaconferencepaperatICLR2025
+theorem uIoo_of_le {α : Type*} [Lattice α] {a b : α} (h : a ≤ b) : Set.uIoo
+a b = Ioo a b := by
+[STATE]
+1 goal
+zw: C
+c: R
+α: Type u_1
+inst: Lattice α
+ab: α
+h: a ≤ b
+⊢ uIoo a b = Ioo a b
+[/STATE]
+Output:
+simp [uIoo, h]
+Thisleadsthestate-tactictunedmodeltoperformsimilarlywellasthefile-tunedmodelonproblems
+thatonlyrelyonnewdefinitions,andnotnewtheorems(seeFigure6).
+E DATASET HOSTING AND MAINTENANCE
+miniCTXisreleasedonHuggingFace: l3lab/miniCTX,distributedundertheApache2.0license.
+DataextractiontoolNTP-TOOLKITisreleasedonGitHub: cmu-l3/ntp-toolkit,undertheMIT
+license. We note that the underlying data for the individual splits of miniCTX are also released
+undertheApache2.0license. Weincludethelicensinginformationinthedatasetrepository. We
+plan to regularly update and maintain the dataset to include examples from new projects. For
+information about future updates such as miniCTX-v2, please refer to our project page: https:
+//cmu-l3.github.io/minictx.
+F NTP-TOOLKIT GUIDELINE
+WeintroducedNTP-TOOLKITin§3.4. WiththeNTP-TOOLKIT,userscanextractandannotatenew
+theoremsandproofsfromanyvalidLeanproject, inminiCTXformat. Theextracteddatacanbe
+usedeitherasupdatestominiCTX,orastrainingdata(forwhichwealsoprovideinstructiontuning
+utilities). WealsodevelopalightweightevaluationframeworkforeasyevaluationonminiCTX.
+F.1 PRELIMINARY
+The evaluation code relies heavily on the Lean REPL (Lean Prover Community, 2024), which
+operateswithintheprojectenvironment. Therefore, itisessentialthattheprojectbuildswithout
+anyerrors. Additionally,theversionofLeanusedintheprojectshouldmatchtheversionsupported
+bytheREPL.WhiletheLeanREPLsupportsversions≥4.3.0,forthebestexperiencewithdata
+extractionandevaluation,werecommendevaluatingprojectsthatuseLeanversion4.7.0orhigher
+(allminiCTXtheoremsarein4.7.0). WeplantocontinuouslyupdateNTP-TOOLKITtosupportnewer
+versions.
+F.2 USINGTHENTP-TOOLKIT
+TheNTP-TOOLKITisdesignedtoeasilyextractandannotatetheoremprovingdatafromLeanprojects,
+bysimplyprovidingtheprojectURL.Tousethe NTP-TOOLKIT fordataextraction,followthese
+steps:
+24
+PublishedasaconferencepaperatICLR2025
+1. Installation: ClonetheNTP-TOOLKITrepositoryfromGitHubtoyourlocalmachine. Cur-
+rently, to use NTP-TOOLKIT for Lean version 4.7, switch to the lean-v4.7.0 branch;
+for4.8.0orabove,usethemainbranch. Ensurethatyouhavetherequireddependencies
+installed,aslistedintherepository’sREADMEfile.
+2. Configuration: SupplyGitHubURL,commithash,androotmodulesofyourLeanproject
+inaJSONconfigurationfile. Makesurethatyourprojectisusingacompatibleversionof
+Lean. NTP-TOOLKITwillextractdatafromallmodulesimportedbytherootmodules.
+3. Data extraction: Run the data extraction script provided by the toolkit. Specify the
+--full_proof_training_dataand--premisesoptionstoextractminiCTX-styledata,
+which will be stored in an minictx.jsonl output file. Specify the --declarations
+option to additionally extract the premises in each module, for premise retrieval. The
+full_proof_training_dataoutputscanbeadditionallyusedforfinetuning(assuming
+theextracteddataisdatedbeforethecurrenttemporalsplitofminiCTX).
+Fordetailedcommandsandadditionaloptions,pleaserefertotheREADMEfileintheNTP-TOOLKIT
+repository.
+F.3 miniCTXEVALUATION
+WeprovideacomprehensiveevaluationpipelineintheminiCTX-evalrepository,supportingboth
+tactic-predictionandfull-proofgenerationtasks. UsersshouldplacetheextractedJSONLfilefrom
+theNTP-TOOLKITintothedatafolder. Torunanevaluationtask,executethetaskscriptbyspecifying
+thedatasetpath,thecorrespondingprojectpath,andthepathtotheLeanREPL.Thissetupensures
+thattheevaluationisconductedwithinthecorrectenvironmentandwiththenecessarydatainputs.
+G DATA CONTAMINATION IN EXISTING BENCHMARKS
+One of the contributions of miniCTX is the temporal split: using NTP-TOOLKIT, miniCTX only
+includestheoremscreatedafteracertaincut-offdate. ThisensuresLLMstrainedbeforethisdate
+havenotseenproblemsinminiCTX.Weclaimedthatexistingbenchmarksfacesignificantrisksof
+datacontamination,andhereweprovidesomeevidencetothisclaim.
+Withregardstocontamination,existingbenchmarkscanbelargelycategorizedaseitherextracted
+fromastandardmathematicallibrary(e.g.Mathlib),orcuratedascompetition-styleproblems. For
+theformercategory,evaluationbenchmarksincludeMathlibtestproblemsextractedbyLeanDojo
+(Yangetal.,2023)orPACT(Hanetal.,2022),aswellasdatasetslikeCoqGym(Yang&Deng,2019)
+andPISA(Jiangetal.,2021)inotherformallanguages. Theyareinherentlyatriskofcontamination,
+becausetheyarestaticallysourcedfromprojectsonGitHub,manyofwhichhaveexistedforyears
+(e.g.Mathlibhasexistedsince2017). Ontheotherhand,virtuallyallmodernlanguagemodelsare
+pre-trainedonpublicGitHubcode,andhavethereforeseentheproofs. Thispartiallyinvalidatesany
+evaluationresultsusingthesebenchmarks.
+Ontheotherhand,wehaveempiricallyfoundmanysolutionsofdatasetslikeminiF2F(Zhengetal.,
+2022)online. TheoriginalrepositoryofminiF2Falreadycontainsfullsolutionsto72ofthe244
+test problems (in Lean 3, which is directly translatable to Lean 4)3. Moreover, of the remaining
+problems, 12 IMO problems have full solutions in Mathlib4 and Compfiles (a catalog of Lean
+proofsofcompetitionproblems)5,atthetimeofwriting. Intotal,atleast84ofthe244problemsin
+miniF2F-test,including12ofthe19IMOproblems,havefullsolutionsonGitHub. Thismaybean
+inherentissueofsmallcompetition-stylebenchmarks,asthetheorem-provingcommunityitselfhas
+significantinterestinformalizingcompetitionproblemsandsolutions. Thescarcityofproblemsfrom
+competitionslikeIMOeachyear,aswellasthebiastoonlyformalizingsomecategories(geometry
+problemsareoftennotformalizedduetodifficulty)alsocontributetothisissue. Whethertemporal
+splitandothermitigationmethodscanbeappliedtocompetition-stylebenchmarksmayalsobean
+interestingfuturedirectionofresearch.
+3https://github.com/openai/miniF2F
+4https://github.com/leanprover-community/mathlib4/tree/master/Archive/Imo
+5https://github.com/dwrensha/compfiles
+25

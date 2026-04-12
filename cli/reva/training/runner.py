@@ -1,4 +1,4 @@
-"""Run a reviewer agent against the paper set via Claude Code CLI."""
+"""Run a reviewer agent against the paper set via a CLI backend (claude or gemini)."""
 
 from __future__ import annotations
 
@@ -14,8 +14,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-# Default model for training runs
-DEFAULT_MODEL = "claude-sonnet-4-6"
+# Default model per backend
+DEFAULT_MODEL: dict[str, str] = {
+    "claude-code": "claude-sonnet-4-6",
+    "gemini-cli": "gemini-2.5-pro",
+}
+BACKEND_CHOICES = ("claude-code", "gemini-cli")
 
 # Max chars of full_text included per paper to avoid exceeding context limits
 MAX_TEXT_CHARS = 8_000
@@ -57,26 +61,28 @@ def run_agent(
     system_prompt: str,
     papers: list[dict],
     *,
-    model: str = DEFAULT_MODEL,
+    model: str | None = None,
+    backend: str = "claude-code",
     max_retries: int = 3,
     client: Any = None,
 ) -> list[ScoreEntry]:
     """Run one agent against all papers, returning exactly 10 scored entries.
 
-    Uses the Claude Code CLI (``claude -p``) which handles authentication
-    automatically. The system prompt is written to a temporary CLAUDE.md file.
-
     Args:
         system_prompt: The compiled agent system prompt.
         papers: List of agent-visible paper dicts (id, title, abstract,
                 domains, pdf_url, full_text).
-        model: Model identifier passed to ``claude --model``.
+        model: Model identifier (defaults to the backend's default model).
+        backend: "claude-code" or "gemini-cli".
         max_retries: Number of parse/validation retries before giving up.
         client: Unused (kept for test-mock compatibility).
 
     Returns:
         List of exactly 10 ScoreEntry objects, or empty list on failure.
     """
+    if model is None:
+        model = DEFAULT_MODEL.get(backend, DEFAULT_MODEL["claude-code"])
+
     papers_block = _format_papers_block(papers)
     user_message = _SCORE_INSTRUCTION.format(
         n_papers=len(papers),
@@ -85,22 +91,24 @@ def run_agent(
 
     valid_ids = {p["id"] for p in papers}
 
+    _call = _call_claude if backend == "claude-code" else _call_gemini
+
     for attempt in range(1, max_retries + 1):
         try:
-            text = _call_claude(system_prompt, user_message, model)
+            text = _call(system_prompt, user_message, model)
             entries = _parse_and_validate(text, valid_ids)
             if entries is not None:
                 return entries
             logger.warning("Attempt %d/%d: invalid response, retrying", attempt, max_retries)
         except Exception as exc:
-            logger.warning("Attempt %d/%d: claude error: %s", attempt, max_retries, exc)
+            logger.warning("Attempt %d/%d: %s error: %s", attempt, max_retries, backend, exc)
 
     logger.error("All %d attempts failed — returning empty result", max_retries)
     return []
 
 
 # ---------------------------------------------------------------------------
-# Claude Code CLI invocation
+# Backend CLI invocations
 # ---------------------------------------------------------------------------
 
 
@@ -114,13 +122,6 @@ def _call_claude(system_prompt: str, user_message: str, model: str) -> str:
         # Write user message to a file (avoids shell ARG_MAX limits)
         msg_file = Path(tmpdir) / "user_message.txt"
         msg_file.write_text(user_message, encoding="utf-8")
-
-        cmd = [
-            "claude",
-            "-p", f"$(cat {msg_file})",
-            "--model", model,
-            "--output-format", "text",
-        ]
 
         # Use shell=True so $(cat ...) is expanded
         shell_cmd = " ".join([
@@ -141,6 +142,38 @@ def _call_claude(system_prompt: str, user_message: str, model: str) -> str:
 
         if result.returncode != 0:
             raise RuntimeError(f"claude exited {result.returncode}: {result.stderr[:500]}")
+
+        return result.stdout.strip()
+
+
+def _call_gemini(system_prompt: str, user_message: str, model: str) -> str:
+    """Invoke ``gemini -p`` in a temp directory with GEMINI.md as system prompt."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Gemini CLI reads GEMINI.md as system context automatically
+        gemini_md = Path(tmpdir) / "GEMINI.md"
+        gemini_md.write_text(system_prompt, encoding="utf-8")
+
+        # Write user message to a file (avoids shell ARG_MAX limits)
+        msg_file = Path(tmpdir) / "user_message.txt"
+        msg_file.write_text(user_message, encoding="utf-8")
+
+        shell_cmd = " ".join([
+            "gemini",
+            "-p", f'"$(cat {msg_file})"',
+            "--model", model,
+        ])
+
+        result = subprocess.run(
+            shell_cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            cwd=tmpdir,
+            timeout=300,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"gemini exited {result.returncode}: {result.stderr[:500]}")
 
         return result.stdout.strip()
 

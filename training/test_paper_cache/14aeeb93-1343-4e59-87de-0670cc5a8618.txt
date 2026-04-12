@@ -1,0 +1,1653 @@
+HiMAE: Hierarchical Masked Autoencoders
+Discover Resolution-Specific Structure in
+Wearable Time Series
+SimonA.Lee*,1,2,CyrusTanade1,HaoZhou1,JuhyeonLee1,MeghaThukral1,MinjiHan1,RachelChoi1,MdSazzad
+HissainKhan1,BaiyingLu1,MigyeongGwak1,MehrabBinMorshed1,ViswamNathan1,MdMahbuburRahman1,
+LiZhu1,SubramaniamVenkatraman1andSharanyaArcotDesai1
+*WorkdoneduringAIResidency,1DigitalHealthTeam,SamsungResearchAmerica,2DepartmentofComputationalMedicine,
+UniversityofCaliforniaLos,Angeles
+Wearablesensorsprovideabundantphysiologicaltimeseries,yettheprinciplesgoverningtheirpredictive
+utilityremainunclear. Wehypothesizethattemporalresolutionisafundamentalaxisofrepresentation
+learning,withdifferentclinicalandbehavioraloutcomesrelyingonstructureatdistinctscales. Totest
+this resolution hypothesis, we introduce HiMAE (Hierarchical Masked Autoencoder), a self-supervised
+frameworkthatcombinesmaskedautoencodingwithahierarchicalconvolutionalencoder–decoder.HiMAE
+producesmulti-resolutionembeddingsthatenablesystematicevaluationofwhichtemporalscalescarry
+predictivesignal,transformingresolutionfromahyperparameterintoaprobeforinterpretability.Across
+classification,regression,andgenerativebenchmarks,HiMAEconsistentlyoutperformsstate-of-the-art
+foundation models that collapse scale, while being orders of magnitude smaller. HiMAE is an efficient
+representationlearnercompactenoughtorunentirelyon-watch,achievingsub-millisecondinferenceon
+smartwatch-classCPUsfortrueedgeinference.Together,thesecontributionspositionHiMAEasbothan
+efficientselfsupervisedlearningmethodandadiscoverytoolforscale-sensitivestructureinwearable
+health.
+Keywords: WearableSSLMethod,On-deviceInference,Inductivebiases
+Correspondingauthor(s):simonlee711@g.ucla.edu/s.lee5@partner.samsung.com
+© 2025SamsungResearchAmerica.Allrightsreserved
+5202
+tcO
+82
+]GL.sc[
+1v58752.0152:viXra
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+1. Introduction
+Wearablesensorshaveemergedasaprimarymodalityforcontinuoushealthmonitoring,provid-
+ingaccesstorichphysiologicalandbehavioralsignalsinfree-livingsettings(Erturketal.,2025).
+Despitetheirubiquity,theutilityofwearablesignalsformachinelearninginhealthcareremains
+poorlyunderstood. Unlikeimages(Dosovitskiyetal.,2021;Petsiuketal.,2018;Simonyanetal.,
+2014;Zhouetal.,2015)ortext(Arrasetal.,2017;Brownetal.,2020;Lietal.,2016;Sundararajan
+etal.,2017),physiologicaltimeseriesrarelyadmitobviousvisualcuesthatmapcleanlytoclinical
+outcomes,leavingopenfundamentalquestionsaboutwhichfeaturescarrypredictivevalue. A
+particularly unresolved issue concerns temporal resolution: should models operate at a single
+universalresolution,ordodifferenthealthoutcomesdependonresolution-specificstructure?
+Clinicallyactionableeventscanariseonsecond-leveltimescales,requiringrepresentationsthat
+bothcapturefine-grainedtemporalpatternsandsupportreal-timeinferenceunderthecomputa-
+tionalconstraintsofwearabledevices. Wehypothesizethatresolutionisnotanuisanceparameter
+butafundamentalaxisofphysiologicalrepresentationlearning. Werefertothisastheresolution
+hypothesis,whichpositsthattemporalgranularitygovernspredictiveperformanceinclinicaland
+behavioraltasks. Inthisframing,“resolution”denotestheeffectivetemporalcontextoverwhich
+representationsareformed—fromfine-scalewaveformmorphologytocoarse-scaledynamics
+spanningthewholesequence.
+From an algorithmic perspective, much of the field defaults to transformer-based architec-
+tures(Vaswanietal.,2017),implicitlyassumingthatflexibilityandcapacityoutweighinductivebias.
+Yetwearablesignals,whilelonginsequencelength,areoftengeneratedbyafewlatentprocesses
+drivenbybiologicalmechanismsandcapturedthroughonlyahandfulofsensormodalities. Inthis
+sensetheyarelow-dimensionalandhighlystructured. Thisraisesthepossibilitythattransformers
+maynotonlyoverfitbutalsoobscureresolution-specificstructure,ratherthanexposeit. Bycon-
+trast,hierarchicalconvolutionalbiasesofferanaturalmechanismforaligningarchitectureswith
+theresolutionhypothesis,capturingbothlocaldetailandlong-rangedependenciesinaprincipled
+way. Thismotivatesare-examinationofarchitecturaldesignchoicesforself-supervisedlearning
+(SSL)onphysiologicaltimeseries.
+In this work, we address these challenges by introducing HiMAE (Hierarchical Masked Au-
+toencoder),aself-supervisedpretrainingframeworkforwearabletimeseriesthatdirectlyop-
+erationalizestheresolutionhypothesis(Figure1). HiMAEcombinesthemaskedautoencoding
+paradigmwith1Dphysiologicalsignalsbycouplingpatch-maskingobjectives(Wangetal.,2023)
+withaU-Net–inspiredencoder–decoder(Ronnebergeretal.,2015). Crucially,HiMAEproduces
+multi-resolutionembeddings,witheachlevelofthehierarchycorrespondingtoadistincttemporal
+granularity. Thisdesignenablessystematicinterrogationofwhichresolutionscarrypredictivesig-
+nal,whilesimultaneouslyyieldinglightweight,efficientrepresentations. Beyonditsarchitectural
+advantages,HiMAEallowsustobenchmarktheresolutionhypothesisacross14classificationand
+regressiontasks. Ourresultsrevealresolution-specificstructureinwearablesignalsthatisnot
+readilyidentifiablebyhumanexperts,offeringnewinsightsintobothrepresentationlearningand
+theinterpretabilityofphysiologicaltimeseriesinthetimedomain. Ourcontributionsarethreefold:
+•
+WeintroduceHiMAE,ahierarchical,scalable,andcomputationallyefficientselfsupervised
+learningframeworkthatachievesstate-of-the-artperformanceacrossgenerative,classifica-
+tion,andregressionbenchmarks.
+•
+WeleverageHiMAE’s(U-Net’s)multi-resolutionembeddingstoprobehowtemporalscales
+affectdifferentdownstreamtasks,leadingtodiscoveriesabouthumanphysiology.
+•
+HiMAE’scompactnessenableson-deviceinference(onsmartwatches),whichtoourknowl-
+edgeisthefirstofitskind.
+2
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+1 Input 2 Masking 3 Reconstruction
+4 Evaluation 5 Downstream Tasks
+1 redocnE 2 redocnE 3 redocnE 1 redoceD 2 redoceD 3 redoceD
+U-Net + Masked Auto Encoders
+EAMiH
+dleiF
+evitpeceR
+tnereffiD
+selacS
+Generative Task
+Resolution Embeddings Linear Probes * Metrics
+L1 1
+Sleep Staging
+Classification Task
+L2 2 Abnormal Labs
+Cardiovascular
+L3 3 Conditions Regression Task
+* Trains different linear probes for different shape
+embedding vectors.
+Figure1|HiMAEpre-trainingandevaluationpipeline. (1)Physiologicalsequencesaresplitinto
+temporalpatches. (2)Selectedpatchesaremaskedrandomlyorcontiguously. (3)AU-Net–style
+CNNencoder–decoderreconstructsmissingvalues,withlossappliedonlytomaskedregions. (4)
+Multi-resolutionembeddingsfeedlinearprobesforclassificationandregressionbenchmarking.
+(5)Threecategorizedtask-listsareevaluated.
+2. Related Work
+2.1. Self-SupervisedPretrainingObjectivesforWearableSignals
+Wearabledevicesequippedwithphotoplethysmography(PPG),electrocardiography(ECG),and
+accelerometrygeneratelong,multi-channeltimeseriesencodingdiversephysiologicalandbehav-
+ioralphenomena,includingcardiovasculardynamics(Castanedaetal.,2018),activitypatterns(Xu
+et al., 2025; Yuan et al., 2024), sleep cycles (Li et al., 2021; Logacjov et al., 2025; Thapa et al.,
+2024),andotherlatentprocesses. Thesedatastreamsareabundant,andpredominantlyunla-
+beled,makingthemwellsuitedforlarge-scaleself-supervisedlearning(Bommasanietal.,2021;
+Kaplanetal.,2020;Liangetal.,2024;Zhouetal.,2024).
+SSL has become the dominant paradigm for wearable time-series representation learning,
+given the scarcity of labeled data and the ubiquity of unlabeled signals in free-living settings
+(Lee and Akamatsu, 2025). Among SSL strategies, masked autoencoding has emerged as a
+centralapproach,inspiredbyitssuccessinvision(Heetal.,2022;Vaidetal.,2023)andlanguage
+modeling(Devlinetal.,2019). Themethodrandomlyoccludespatchesofthesignalandtasksthe
+modelwithreconstructingthem,encouragingrepresentationsthatcapturelatentphysiological
+structureandtemporalregularities(Kongetal.,2023;Zhangetal.,2022a). Recentlarge-scale
+efforts, most notably Google’s LSM series (Narayanswamy et al., 2024; Xu et al., 2025), rely
+heavilyonmaskedautoencoding,establishingitasapretrainingstandardformulti-modalwearable
+datasets. Yetdespiteitseffectivenessforlocalpatternrecovery,vanillamaskedautoencoding
+often struggles to capture multi-resolution features unless coupled with explicitly hierarchical
+3
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+architectures.
+Inparallel,contrastivelearningenforcesinvariancebypullingsemanticallysimilarsamplesto-
+getherinlatentspacewhilepushingdissimilaronesapart(Jaiswaletal.,2020;SchmittandKuljanin,
+2008). Thecentralchallengeforwearablesisdefiningpositiveandnegativepairswithoutlabels.
+Onesolutionisparticipant-levelcontrastivetraining,wheresamplesfromthesameindividualare
+positivesandsamplesfromdifferentindividualsarenegatives,anapproachadoptedinApple’s
+ECGandPPGfoundationmodels(Abbaspourazadetal.,2023)andcloselyrelatedtotheSimCLR
+framework(Chenetal.,2020b). Otherdomain-specificinnovationsdefinepairsthroughphysio-
+logicalpriors: PaPaGeileveragesPPGmorphology(Pillaietal.,2024),whileSleepFMextendsthe
+paradigmacrossEEG,ECG,andEMGtoenforcecross-modalconsistency(Thapaetal.,2024).
+Additionalembedding-levelregularizers,suchasdifferentialentropyconstraints(Abbaspourazad
+etal.,2023;Jingetal.,2021),furtherenrichlearnedrepresentations. However,contrastivemeth-
+odsarehighlysensitivetoaugmentationheuristics(whicharerarelyphysilogicallymeaningful),
+computationallyintensive,andlimitedininterpretability,providinglittleinsightintowhichtemporal
+structuresarepreserved.
+HiMAEdepartsfrombothflatmaskedandcontrastiveapproachesintwoways. First,instead
+ofrelyingonasingle-scalereconstructionoraugmentationheuristics,HiMAEcouplesmasked
+autoencoding with a hierarchical encoder–decoder that integrates information across resolu-
+tions,treatingtemporalscaleasanexplicitdimensionofrepresentation. Second,byextracting
+embeddingsatmultiplescalesandprobingthemindependently,HiMAEtransformsSSLfroma
+pretrainingmechanismintoadiscoverytool: itdirectlytestswhichtemporalresolutionscarry
+predictivesignalfordownstreamtasks. Indoingso,HiMAEpreservestheefficiencyofmasked
+autoencodingwhileintroducinginterpretabilityabsentincontrastiveorflatmaskedobjectives.
+2.2. Multi-scaleLearning
+Theemphasisonresolutionawarenessconnectsnaturallytomulti-scalelearning,wheremodeling
+temporalsignalsacrossmultiplegranularitieshasemergedasapowerfulinductivebias. Invision,
+multi-scalearchitecturessuchaspyramidalCNNsandhierarchicalattentionenablemodelsto
+integratefine-scaleedgeswithcoarsesemanticstructures,substantiallyimprovingrecognition
+andgenerationin2D(Kusupatietal.,2024;Liuetal.,2024,2021a;Wangetal.,2016;Yangetal.,
+2016)and3D(Ghadaietal.,2019;Heetal.,2017;Zhangetal.,2022b).
+Intimeseries,multi-scalemethodsarefewerbutincreasinglyinfluential. N-HiTS(Challuetal.,
+2022)improveslong-horizonforecastingbyallocatingcapacityacrossfrequenciesviahierarchical
+interpolation. Pyraformer(Liuetal.,2022)leveragespyramidalattentiontocapturedependencies
+over a tree of scales, while Scaleformer (Shabani et al., 2023) introduces iterative refinement
+acrossresolutions. Pathformer(Chenetal.,2024)furtheradaptspathwaysdynamicallytomatch
+input-specifictemporaldynamics. Together,theseapproacheshighlightthattemporalsignals
+are inherently hierarchical and that resolution carries predictive structure rather than being a
+nuisancevariable.
+Priormulti-scalemethodstypicallyrelyonfixedhierarchiesortask-specificrefinementstages
+(e.g.,forforecasting),whichconstrainstheirgenerality. WhileHiMAEalsoinheritsinductivebiases
+from convolutional design choices (e.g., step size, padding, kernel width), these parameters
+definereceptivefieldsratherthandictatewhichscalesaresalient. Bycouplingself-supervised
+reconstructionwiththesefields,HiMAEinducesahierarchyoftemporalembeddingsthatcanbe
+probedindependently.
+4
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+3. Methods
+3.1. HierarchicalMaskedAutoencoders(HiMAE)
+HiMAEcombinesmaskedautoencoding(Baldi,2012;Heetal.,2022)with1-Dphysiologicaltime
+seriesbycouplingapatch-maskingobjectivewithaU-Net–styleconvolutionalencoder–decoder
+(Ronneberger et al., 2015). Given an input sequence 𝑥 ∈ R𝐶×𝐿, we partition it into 𝑁 = 𝐿/𝑃
+non-overlapping patches of length 𝑃. A binary mask 𝑚 ∈ 0,1𝑁 is sampled from a Bernoulli
+distributionwithparameter𝑟,indicatingthemaskingratio. Maskedindicesareselecteduniformly
+atrandomwithoutreplacement,expandedtomatchtemporalresolutionas𝑚′ ∈ 0,1𝐿,andapplied
+tothesequence,yielding𝑥˜ = 𝑥⊙(1−𝑚′). Thismaskingprocedureremovessubstantialcontext,
+forcingthemodeltoinferhigher-orderdependencies. Inadditiontorandommasking,wealso
+employcontiguousmasking,inwhichadjacentpatchesareremovedtomimicsensordropout
+similartorecentprotocolsshowingbenefits(Xuetal.,2025). Bothregimesareinterleavedduring
+pretrainingtopromoterobustnessacrossreconstructionsettings.
+Theencoder𝑓 𝜃 isahierarchical1DCNNcomposedofresidualconvolutionalblockswithstride-2
+convolutions that downsample the temporal resolution by half at each stage, expanding the
+receptive field so that deeper layers capture long-range dependencies while shallow layers
+retain local detail. Each residual block consists of two convolutions with kernel size 5, batch
+normalization(IoffeandSzegedy,2015),andGELUactivations(HendrycksandGimpel,2023),
+alongwithaprojectionshortcutwheninputandoutputdimensionsdiffer. Thedecoder𝑔 𝜑 mirrors
+thisstructurewithtransposedconvolutionsforupsamplingandincorporatesskipconnectionsfrom
+encoderlayers,concatenatingintermediatefeaturestorestorefine-grainedtemporalstructure.
+Allconvolutionsarestandard1Doperationsdefinedovertemporalwindows,andstridinghandles
+subsampling directly. Intermediate activations use GELU, while the final layer applies a tanh
+nonlinearity so that outputs 𝑥ˆ ∈ R𝐶×𝐿 are bounded in [−1,1], matching the normalized input
+range.
+Wedeliberatelyadoptaconvolu-
+tional U-Net backbone rather than
+Wearable Foundation Models
+a transformer-based encoder for
+tworeasons. First,physiologicalsig-
+nalsexhibitstronglocaldependen-
+Multi-modal
+ciesgovernedbymorphology(e.g.,
+LSM-Small LSM-Base
+PPGwaveformshape,ECGpeaks), (7M) (110M)
+which are naturally modeled by fi- SimCLR
+HiMAE-Small (5M)
+nite receptive fields. Convolutions (307k)
+Unimodal
+(O’Shea and Nash, 2015) encode
+HiMAE-Base PaPaGei-S
+thislocalitydirectly,whereastrans- (1.2M) (5.7M)
+formersmustsimulateitthroughre-
+stricted attention, often at higher
+100k 1M 100M params
+parameter cost. Second, multi-
+resolution structure is intrinsic to Figure2|HiMAEislightweightcomparedtoothermethods
+physiology(e.g.,heartbeatsunfold proposedintheliterature.
+over milliseconds, rhythms span
+seconds). AhierarchicalCNNwithskipconnectionsprovidesanarchitecturalbiastowardsuch
+nestedtimescales,aligningdirectlywiththeresolutionhypothesisandbeingordersofmagnitude
+smallerthanotherproposedfoundationmodelsinthisspace(SeeFigure2forcomparison). In
+contrast,transformersemphasizeglobalmixing,whichmayobscureresolution-specificstructure
+whileconsumingsubstantiallymorecompute(Table7). ThisrationalemotivatesHiMAE’sdesign
+5
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+asnotonlyefficientbutalsoinductivelyalignedwiththetemporalstatisticsofwearablesignals.
+Multi-resolution embeddings extracted from different levels of the hierarchy are probed in-
+dependently,withdistinctlinearclassifierstrainedperresolution(AlainandBengio,2018). This
+designenablesustosystematicallyevaluatewhichtemporalgranularitycarriespredictivesignal
+for downstream tasks, rather than collapsing embeddings into a single latent space. Finally,
+choicesofpatchlength𝑃 andkernelsizewereguidedbyablations(AppendixSectionG.1),which
+confirmedthat𝑃 = 5andkernelsize5yieldthebestbalancebetweenlocalfidelityandreceptive
+fieldexpansionwhenallotherhyperparameterswerefixed.
+Trainingminimizesamaskedreconstructionlossrestrictedtooccludedregions: ℒ (𝜃,𝜑) =
+MSE
+‖(𝑥^−𝑥)⊙𝑚′‖2
+2, where 𝑚′ ensures that gradients are only computed on masked segments. This
+∑︀𝐿 𝑚′
+𝑡=1 𝑡
+objectiveestimates𝑝(𝑥 ℳ |𝑥 𝒪 ),withℳand𝒪 denotingmaskedandobservedindices,preventing
+trivialcopyingofvisibleinputsandpromotingtemporallycoherent,multi-scalerepresentations.
+3.2. PretrainingandEvaluationProtocol
+PPGSequencesweresampledat𝑓
+𝑠
+= 100Hzoverfixedwindowsof𝑇 = 10s(𝐿 = 1000timesteps).
+10 second windows were selected due to clinically actionable events occurring in these time
+scales(ECGiscollectedat10sintervalsinclinicalsettings(Elgendi,2012;Shuaietal.,2016))and
+dueto ourinterest inreal-time monitoringon edgedevices. Eachsignal wasdivided intonon-
+overlappingpatchesoflength𝑃 = 5(200patchestotal),andamaskingratio𝑟 = 0.8wasapplied
+withpatternsresampledpersequenceanditerationtomitigateoverfitting(weempiricallytested
+this masking ratio in Appendix Section G.1 with similar observations made in (Narayanswamy
+etal.,2024)). Theencoderarchitectureemployedchannelwidths[16,32,64,128],mirroredinthe
+decoder. Optimization was performed with AdamW (Loshchilov and Hutter, 2019) (lr = 10−3,
+weightdecay= 10−3)usingawarmup–cosineschedule(10%linearwarmupstepsfollowedby
+cosinedecay). Modelstrainedupto100kstepswithbatchsize2048andearlystoppingtriggered
+after3epochswithoutimprovementsimilartotheprotocolsfoundin(Narayanswamyetal.). Data
+splitsfolloweda90/10(train/validation)protocolacrosssubjects,ensuringnoidentityoverlap
+between pretraining and validation. Pretraining converged within 12 hours when distributing
+trainingacross4TeslaT4GPUsusingPyTorchlightning(Paszkeetal.,2019).
+3.3. PretrainingDatasets
+We construct our pretraining corpus from approximately 80,000 hours of wearable green PPG
+signals,drawnfromsevenlarge-scalefreeworldstudiesconductedatSamsungResearchand
+their subsidary branches. These datasets include recordings from 47,644 participants across
+sevendistinctwearabledevices,capturingbroaddemographic,behavioral,andhardwarevari-
+abilityinanoisyenvironment(SeeAppendixSectionCforethicsconsiderations). Althoughour
+modelingframeworkismodality-agnosticandcanextendtootherphysiologicalsignalssuchas
+electrocardiograms (see Appendix G.2), we focus here on PPG due to its prevalence and the
+scaleofavailabledata(welackthesameorderofmagnitudeofECGcomparedtoPPGbecause
+ECG is not passively collected). To ensure reliability, we apply a standardized preprocessing
+pipeline that retains only high-quality segments, filtering by a Signal Quality Index (SQI). The
+retainedsignalsarefurtherrefinedusingabandpassfilterof0.5–8Hz(ChristianoandFitzgerald,
+2003),consistentacrossallpretrainingandevaluationstudies,toisolatephysiologicallyrelevant
+dynamics. Finally,signalsarenormalizedtotherange[−1,1]tomatchtheoutputrangeofthe
+tanhactivationfunctionusedinourmodels.
+6
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+4. Experimental Design
+We follow the evaluation protocol of Narayanswamy et al. (2024) and extend it into a unified
+benchmarksuitespanninggenerative,classification(andregressiontasksinAppendixG.6),along
+with ablations to quantify how key architectural components interact with scaling. Across all
+experiments, our goal is not only to assess HiMAE’s efficiency and transferability, but also to
+testtheresolutionhypothesis: whetherpredictivesignalconcentratesatspecificlevelsofthe
+hierarchicalembeddings. FurtheranalysisandresultsaredisplayedinfullinAppendixSectionG.
+Modelscalingandgenerativereconstruction:
+WefirststudyHiMAE’sscalingpropertiesbymeasuringhowreconstructionperformancevaries
+as a function of dataset size, number of participants, model capacity, and training compute
+capacity(batchsize). Foreachaxis,wesystematicallysubsampleorexpandtherelevantresource
+whileholdingothersfixed,enablingustoisolateitscontributiontorepresentationquality. Scaling
+is assessed through mean squared error on masked reconstruction, which provides a direct
+measureofhowmodelcapacityanddataavailabilitygovernlossreduction. Wealsosqueezein
+ablationsinthisexperimenttoassesshowremovingskipconnections,andremovingthehierarchal
+designaffectscaling.
+Tocomplementthisaggregateview,wealsoevaluategenerativeperformanceunderthree
+increasinglychallengingreconstructionregimesdefinedintheLSMpapers(Narayanswamyetal.;
+Xu et al., 2025): (i) random imputation, where patches are masked at random uniformly; (ii)
+temporalinterpolation,wherecontiguousspansareremovedtosimulatesensordropout;and(iii)
+temporalextrapolation,wherefuturespansareoccludedandpredictionsmustrelysolelyonpast
+context. Wecomputethemeansquarederror(MSE)fortheseevaluations.
+Classification:
+To assess downstream transferability and adaptability, we benchmark HiMAE on 12 binary
+classificationtasksdrawnfromlabeleddatasetsfullydisjointfromourpretrainingsources. We
+organize these into three groups: cardiovascular outcomes, sleep staging, and abnormal lab-
+oratoryprediction. Cardiovascularoutcomes,providethemostestablishedbenchmarks,with
+well-documentedlinksbetweenPPGandclinicalendpoints(Shabaanetal.,2020). Theseinclude
+hypertensiondetection,estimatingbloodpressure(bloodpressureregressionpushedtoAppendix
+15duetopoorperformanceacrossallmodels),andarrhythmia-relatedeventssuchasPremature
+VentricularContractions(PVCs),typicallyidentifiedviaelectrocardiograms(ECGs). Sleepstaging
+is another task we include which is of high interest, given the demand for wearables to track
+fine-grainedsleepstatesdespitethetemporalandphysiologicalcomplexityofthetask(Birrer
+etal.,2024;Imtiaz,2021;Thapaetal.,2024). Laboratorypredictions,ontheotherhand,serves
+asadiscoverysetting,testingwhetherPPGcontainssufficientbiomarkerinformationtoseparate
+abnormalfromhealthylabs—anopenquestioncomparedtopatient-recordbenchmarkswhere
+such signals are more explicit (Arnrich et al., 2024; Kolo et al., 2024; McDermott et al., 2025).
+Together, these canonical and exploratory tasks form a spectrum that enables a comprehen-
+siveevaluationofrepresentationqualityacrossdiversedigitalhealthapplications. Alltasksare
+describedingreaterdetailinAppendixSectionE.
+WecompareHiMAEagainststate-of-the-artSSLmethodsadaptedtothe1Dsettingforarchi-
+tecturalcomparability(MoredetailsonbaselinesinAppendixSectionF).Specifically,weinclude
+SimCLR(Chenetal.,2020b),DINO(Caronetal.,2021),MaskedSiameseNetworks(MSN)(Assran
+etal.,2022),andahierarchalSwin-Transformer(Liuetal.,2021b)asself-supervisedbaselines,
+alongwiththeLargeSignalModel(LSM)(Narayanswamyetal.,2024)andPaPaGei(Pillaietal.,
+7
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure 3 | HiMAE exhibits superior scaling across axes. Mean squared error decreases most
+rapidlyforHiMAEasdata,participants,modelsize,andcomputescale. Ablationswithoutskip
+connectionsconfirmthatboththehierarchicaldesignandskippathwaysarehelpfulforgenerative
+pefromance. Greylinesindicatemultiplerunswhereascoloredlinesareaverageperformance.
+2024) as established wearable foundation models. All models are evaluated under standard
+linear probing, in which the encoder is frozen and a linear classifier is trained on the resulting
+representationstomeasureAUROCasthemainmetrictomeasurediscriminativeabilities. For
+allarchitecturesweusethefullsequenceembeddingacrossthetemporaldimension,without
+collapsingtoasinglesummarytoken,toensurethatdownstreamprobeshaveaccesstoresolution-
+specificinformation. Thissetupallowsustotestwhetherpretrainingyieldsrepresentationsthat
+aresimultaneouslytransferableacrosstasks.
+ResolutionHypothesis:
+HiMAEproducesembeddingsatmultipletemporalscales,andweprobeeachscaleindepen-
+dentlywithlinearclassifiers. Thisallowsustotestwhetherpredictiveinformationisconcentrated
+atfine,intermediate,orcoarseresolutionsdependingontheclinicalendpoint. Inthisway,the
+classificationtasksservenotonlyasbenchmarksfortransferlearning,butalsoascontrolledtests
+oftheresolutionhypothesis(ReceptivefieldlengthsaredescribedinSectionD.1).
+5. Results
+5.1. ScalingandGenerativeBenchmark
+Scaling:
+WefirstexaminethescalingbehaviorinFigure3ofHiMAErelativetobaselinesacrossdata,
+participants,modelparameters,andcomputecapacity(batchsize). Theoverallscalingtrends
+followconventionalexpectations,errordecreasesmonotonicallywithadditionaldata,participants,
+orcompute.However,scalingwithmodelparametersrevealsainterestinginsight.HiMAEachieves
+substantiallylowerlossatsmallerparametercapacities,whileLSMsonlybegintoclosethegap
+oncescaledtoordersofmagnitudemoreparameters(wechoseLSMparametercountbased
+ontheiroriginalpaper(Narayanswamyetal.,2024)). Thisdifferencereflectsaninductivebias.
+Transformer-basedLSMs,whichassumeglobalreceptivefields,appeartorequireconsiderably
+larger model capacity before capturing the local dynamics of the data (Further Mathematical
+Intuition is described in Appendix Section ??). In contrast, HiMAE’s hierarchical convolutional
+structureexploitsspatialandtemporallocalityefficiently,yieldingsuperiorperformanceatmodest
+scales. Thisobservationreinforcestheimportanceofarchitecturalpriorsinlow-capacityregimes.
+8
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure 4 | Performance on generative benchmarks. Mean squared error and 𝑅2 for random
+imputation,temporalinterpolation,andtemporalextrapolationatvaryingmissingnesslevels. Bold
+outlineindicatesbestperformingmodel.
+Generative:
+Turningtogenerativebenchmarks,HiMAEconsistentlyoutperformsallbaselinesacrossrandom
+imputation,temporalinterpolation,andtemporalextrapolationtasks(Figure4). Intermsofmean
+squarederror,HiMAEachievesthelowestreconstructionerrorineverysetting,includingcases
+withheavymissingness. Thisadvantagepersistswhenevaluatedwith𝑅2,wherethemean-fill
+baselineservesasthereference. Byachievingpositive𝑅2scoreseveninchallengingextrapolation
+scenarios, HiMAE demonstrates reconstruction ability beyond naive heuristics (e.g., mean fill,
+nearestneighbor, orlinearinterpolation). Together, theseresultsestablishHiMAEasastrong
+generativemodelformissingdataproblems,withadvantagesthatpersistacrossscalingregimes
+andinputcorruptionpatterns.
+Ablations:
+AblationsinFigures3and4furtherhighlightsthecontributionsofhierarchicaldesignandskip
+connectionsinHiMAE.Removingeithercomponentresultsinincreasederror,indicatingthatboth
+arecrucialforeffectiverepresentationlearning. Nevertheless,evenwithoutthesearchitectural
+elements,HiMAEvariantsremaincompetitivewithlargerLSMmodel,underscoringtherobustness
+oftheapproach. Moreimportantly,thefullmodelexhibitsimprovedgeneralizationacrossscaling
+axes(AppendixSectionG.4),suggestingthatthecombinationofhierarchyandskipconnections
+facilitatesbettertransferasdataandcomputegrow.
+5.2. ClassificationBenchmarking
+InFigure 5,HiMAEconsistentlysecuresthemajorityofwins,frequentlyoutperformingormatching
+modelsthatareconsiderablylarger. Thisisparticularlystrikinggiventhatpriorworkhastypically
+reliedonheavyarchitecturestoreachsimilarlevelsofperformance,highlightingHiMAE’sability
+tocaptureabroadspectrumofphysiologicalfeatureswithacompactdesign. Theseoutcomes
+9
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure5|AUROCacrossdownstreamtasks. Highlightedshapesindicatebestperformingmodel.
+HiMAEmatchesoroutperformsfoundationmodelbaselineswithfarfewerparameters.
+emphasizethemodel’srobustnesswhenappliedtostructured,temporallydependentproblems
+thatdemandsensitivitytosubtlevariationsinwearablesignals.
+Takentogether,theseresultspositionHiMAEasthemostconsistentlystrongperformeracross
+the benchmark suite. In cases where HiMAE does not place first it is only ∼1-2% behind the
+winningmodel. Crucially,thislevelofperformanceisachievedwithasubstantiallysmallermodel
+than competing approaches, demonstrating a favorable tradeoff between efficiency and pre-
+dictivepower. Ratherthanexcellingonlyinisolatedcases,HiMAEdeliversbroad,cross-domain
+competitiveness,suggestingthatcompactmodels,whendesignedwiththerightinductivebiases,
+canrivalorevensurpassfarlargerarchitectures.
+5.3. ResolutionSpecificClinicalInterpretability
+Theresolutionhypothesispredictsthatdifferenthealthoutcomesdependondistincttemporal
+granularities. To test this, we analyze performance across HiMAE layers, where each layer
+corresponds to a progressively coarser resolution. Figure 6 reveals clear resolution-specific
+structure: individualdownstreamtasksachievemaximalAUROCatdifferentlayers,highlighted
+bytheredboundaries.
+This layer-task alignment underscores two key insights. First, temporal resolution is not a
+nuisanceparameterbutanaxisofpredictivestructure:differentoutcomesarebestrepresentedat
+differentscales(weshowthatcollapsinganencoderdecoderstillhasconcordantresultsshowing
+thatourhierarchalmodelisnotanartifactinAppendixSectionG.5). Second, HiMAEnaturally
+exposesthisheterogeneity,functioningasadiscoverytoolforidentifyingthemostinformative
+resolutionpertask. Thiscomplementsconventionalinterpretabilitymethods(Amannetal.,2022;
+Lee et al., 2025; Xu et al., 2023) by shifting the focus from which features drive predictions
+towhichresolutionsmatter. Indoingso,HiMAEoperationalizestheresolutionhypothesisand
+providesinsightstotaskswheretheresolutionneededisnotentirelyclear.
+5.4. CaseStudies
+CaseStudy1: On-DeviceBenchmarking
+10
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+HiMAE Layers Discover Resolution-Specific Structure Across Downstream Tasks
+reyaL
+&
+ledoM
+EAMiH
+Corresponding Receptive
+Cardiovascular Blood-related labs Electrolytes Sleep Staging
+Field Resolutions
+HiMAE-L1 0.58 0.62 0.73 0.70 0.52 0.68 0.55 0.70 0.63 0.56 0.66 0.56
+HiMAE-L2 0.57 0.62 0.72 0.66 0.56 0.65 0.59 0.72 0.64 0.58 0.69 0.57
+HiMAE-L3 0.60 0.64 0.77 0.65 0.53 0.65 0.59 0.82 0.66 0.59 0.72 0.58
+HiMAE-L4
+0.65 0.65 0.80 0.68 0.52 0.66 0.63 0.83 0.66 0.59 0.71 0.58
+HiMAE-L5
+0.62 0.65 0.80 0.70 0.52 0.66 0.59 0.82 0.66 0.59 0.70 0.58
+Downstream Tasks
+noisnetrepyH )baL( noisnetrepyH )eerF( noitceteD
+CVP
+C1A nibolgomeH steletalP muidoS muissatoP ekaW thgiL peeD MER
+Figure6|HiMAEdiscoverstask-specificstructuresfordownstreamtasks. AUROCacrosslayers
+showsthattasksrelyondistincttemporalscales,highlightingHiMAEasatoolfordiscoveringthe
+mostinformativeresolutioninclinicalmachinelearning.
+AcentralnoveltyofHiMAEisthat
+it is, to our knowledge, the first
+SSL method compact enough to
+run entirely on-watch, rather than
+onphone-classhardware. Weeval-
+uate on-device PVC detection on
+smartwatch-classCPUssampledat
+100Hz(Figure7). HiMAEisexcep-
+tionally lightweight (1.2M parame-
+ters, 0.0647 gFLOPs, 4.8 MB) and
+achieves0.99mslatencypersam-
+ple,equivalenttoprocessing≈1,010
+Model Params(↓) FLOPs(↓) Memory(↓) On-deviceLat.(↓)
+samples/s or ≈2.8 hours of signal
+HiMAE 1.2M 0.0647gFLOPs 4.8MB 0.99ms
+perminuteofwalltime. Bycontrast Efficient-NetB-1 7.8M 0.70gFLOPs 31.1MB 1.42ms
+Swin-Transformer 110.6M 11.89gFLOPs 423.8MB 2.95ms
+itshowsmassiveperformancegains LSM-Base 110.6M 15.94gFLOPs 441.3MB 3.36ms
+againsttransformerbaselines,Swin-
+Transformer(110Mparameters,11.9
+Figure7|Modelefficiencyandon-deviceinference: Sam-
+gFLOPs, 423 MB) and LSM-Base
+pleon-devicedetectionsonSamsungWatch8device.Size,
+(110M, 15.9 gFLOPs, 441 MB). Hi-
+computecost,memoryfootprint,andCPUlatency(msper
+MAE also outperforms optimized
+sample,batchsize2048)measuredovera10ssequence
+models like Efficient-Net B1 (Tan
+at100Hz.
+andLe,2020)providingcontextto
+thelatencyandcompactnessofour
+model. HiMAEisthus∼3–4×moreefficientcomparedtotransformerswhilefittingfullyon-watch
+(withoutquantization(Jacobetal.,2017)),enablingcontinuous,privateinferenceatthepointof
+signalcollection. Thisprototypeisstrictlyforresearchandisnotdeployedcommercially.
+11
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+CaseStudy2: HiMAEisadaptableinfewshotsettings
+0.90
+0.85
+0.80
+0.75
+0.70
+0 256 512 10242048 all
+Shots
+CUA
+A central challenge in the wear-
+abledomainisthatlabelsarescarce Few Shot Learning Performance
+acrosstasks. Modelsthatcanadapt
+quicklyfromgenericpretrainingto PVC Hypertension (Lab)
+0.9
+specificdetectiontaskswithlimited
+supervisionarethereforeessential. 0.8
+Figure 8 illustrates this setting: Hi-
+0.7
+MAE provides strong representa-
+tionsthatcanbeadaptedtodiverse 0.6
+taskssuchasPVCdetectionorhy-
+0.5
+pertension monitoring with only a
+HiMAE HiMAE
+handful of labeled examples as re- LSM LSM
+Swin Transformer 0.4 Swin Transformer
+flectedbytheshapeofthelearning 0 256 512 10242048 all
+curvesonthefew-shotlearningex- Shots
+periments. By reducing the super-
+Figure8|Few-shotadaptation. HiMAEadaptsefficiently
+visionrequiredtoreachhighperfor-
+to new wearable tasks under sparse labels indicated by
+mance, HiMAE enables new tasks
+curveshapeovertransformerbaselines.
+tobesupportedon-devicewithout
+theprohibitivecostoflargecurated
+datasetswhichhelpbolsteritspracticalutility.
+6. Discussion
+Summary
+HiMAEadvanceswearableselfsupervisedmethodsalongthreedimensions: (i)itsflexiblearchi-
+tectureisexpresslydesignedformulti-resolutionmapping,enablingseamlessadaptationacross
+heterogeneoustasks,(ii)byaligningtask-dependentresolutionswithmodelrepresentations,it
+not only optimizes predictive performance but also offers a window into the temporal organi-
+zationofphysiologicalbiomarkers,and(iii)bydesignofthecompactness,itachievesthefirst
+demonstrationoftrueon-watchinference,runningentirelywithinsmartwatch-classconstraints
+whilematchingorsurpassingperformanceonfarlargermodels. TheseresultspositionHiMAE
+asanefficientrepresentationlearnerbutalsoasaframeworkforinterrogatingwhichtemporal
+resolutionscarrysignal.
+Resolutionasastructuralprior
+Ourfindingsvalidatetheresolutionhypothesisandsuggestashiftinhowrepresentationlearning
+onwearablesshouldbeconceptualized. Thisreframingimpliesthatrepresentationlearningfor
+physiologicalsignalsshouldexpose,ratherthancollapse,scale-specificembeddings. Thelayer-
+wiseAUROCprofilesinFigure 6showthatpredictiveperformancepeaksatdifferentlevelsofthe
+hierarchydependingonthetask,withfine-scaleembeddingscapturingshort-livedphysiological
+eventsandcoarse-scaleembeddingscapturingslowerbehavioralphenomena. Byrevealingthis
+heterogeneity,HiMAEprovidesempiricalevidencethatresolution-specificrepresentationsare
+essentialforwearablehealthmodeling.
+From‘‘on-device’’to‘‘on-watch.’’
+HiMAE demonstrates that convolutional hierarchies can reduce model size by two orders
+ofmagnituderelativetotransformer-basedLSMs,enablingthefirstinstanceoftrueon-watch
+12
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+inference. Thismovesthedeploymentfrontierfromphone-classtowatch-classprocessors,where
+inferenceoccursexactlyatthepointofsensing. Beyondefficiency,thisshifthasconsequences
+forprivacy(dataneverleavethedevice)andforclinicalviability(continuousreal-timemonitoring
+becomesfeasible).
+LimitationsandFutureWorks
+While we focus on PPG, the principles underlying HiMAE generalize to multimodal settings.
+Physiologicalsignalsareinherentlymulti-scaleacrossmodalities(e.g.,ECGbeats,accelerometer
+motioncycles,EEGrhythms),andresolution-awarearchitecturescouldexposecomplementary
+temporalsignaturesacrossthem. Anotherlimitationofourworkiswedon’thandlesequences
+beyond 10 second windows which could unlock another breadth of tasks. Future works also
+warrants a clinical validation to the discoveries made by HiMAE which could be of significant
+interesttothehealthcommunity.
+Acknowledgments
+TheAlgorithmsTeamthanksthemanycontributorswhohelpedbringthisprojectfromconception
+tocompletion. Wearegratefultotheresearchersandengineerswhocuratedthedatasetsand
+designedthemethodology,thedesignerswhoconceptualizedtheUI/UXandapplicationinterface,
+andthedeveloperswhobroughttheapptolife.
+References
+M.Abadi,P.Barham,J.Chen,Z.Chen,A.Davis,J.Dean,M.Devin,S.Ghemawat,G.Irving,M.Isard,
+M.Kudlur,J.Levenberg,R.Monga,S.Moore,D.G.Murray,B.Steiner,P.Tucker,V.Vasudevan,
+P. Warden, M. Wicke, Y. Yu, and X. Zheng. Tensorflow: a system for large-scale machine
+learning. InProceedingsofthe12thUSENIXConferenceonOperatingSystemsDesignand
+Implementation,OSDI’16,page265–283,USA,2016.USENIXAssociation.ISBN9781931971331.
+S.Abbaspourazad,O.Elachqar,A.C.Miller,S.Emrani,U.Nallasamy,andI.Shapiro. Large-scale
+trainingoffoundationmodelsforwearablebiosignals. arXivpreprintarXiv:2312.05409,2023.
+G.AlainandY.Bengio. Understandingintermediatelayersusinglinearclassifierprobes, 2018.
+URLhttps://arxiv.org/abs/1610.01644.
+J.Amann,D.Vetter,S.N.Blomberg,H.C.Christensen,M.Coffee,S.Gerke,T.K.Gilbert,T.Hagen-
+dorff,S.Holm,M.Livne,etal. Toexplainornottoexplain?—artificialintelligenceexplainability
+inclinicaldecisionsupportsystems. PLOSDigitalHealth,1(2):e0000016,2022.
+U.An,M.Jeong,S.A.Lee,A.Gorla,Y.Yang,andS.Sankararaman. Raptor: Scalabletrain-free
+embeddingsfor3dmedicalvolumesleveragingpretrained2dfoundationmodels. arXivpreprint
+arXiv:2507.08254,2025.
+B.Arnrich,E.Choi,J.A.Fries,M.B.McDermott,J.Oh,T.Pollard,N.Shah,E.Steinberg,M.Wornow,
+andR.vandeWater. Medicaleventdatastandard(meds): Facilitatingmachinelearningfor
+health. InICLR2024WorkshoponLearningfromTimeSeriesForHealth,pages03--08,2024.
+L.Arras,G.Montavon,K.-R.Müller,andW.Samek.Explainingrecurrentneuralnetworkpredictions
+insentimentanalysis,2017. URLhttps://arxiv.org/abs/1706.07206.
+13
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+M. Assran, M. Caron, I. Misra, P. Bojanowski, F. Bordes, P. Vincent, A. Joulin, M. Rabbat, and
+N.Ballas. Maskedsiamesenetworksforlabel-efficientlearning. InEuropeanconferenceon
+computervision,pages456--473.Springer,2022.
+P.Baldi. Autoencoders,unsupervisedlearning,anddeeparchitectures. InProceedingsofICML
+workshoponunsupervisedandtransferlearning,pages37--49.JMLRWorkshopandConference
+Proceedings,2012.
+E. M. Bender, T. Gebru, A. McMillan-Major, and S. Shmitchell. On the dangers of stochastic
+parrots: Canlanguagemodelsbetoobig? InProceedingsofthe2021ACMConferenceon
+Fairness,Accountability,andTransparency,FAccT’21,page610–623,NewYork,NY,USA,2021.
+AssociationforComputingMachinery. ISBN9781450383097. doi: 10.1145/3442188.3445922.
+URLhttps://doi.org/10.1145/3442188.3445922.
+V.Birrer,M.Elgendi,O.Lambercy,andC.Menon. Evaluatingreliabilityinwearabledevicesfor
+sleepstaging. NPJDigitalMedicine,7(1):74,2024.
+R. Bommasani, D. A. Hudson, E. Adeli, R. Altman, S. Arora, S. von Arx, M. S. Bernstein, J. Bohg,
+A. Bosselut, E. Brunskill, et al. On the opportunities and risks of foundation models. arXiv
+preprintarXiv:2108.07258,2021.
+L.Bouza,A.Bugeau,andL.Lannelongue. Howtoestimatecarbonfootprintwhentrainingdeep
+learningmodels? aguideandreview. EnvironmentalResearchCommunications,5(11):115014,
+Nov. 2023. ISSN 2515-7620. doi: 10.1088/2515-7620/acf81b. URL http://dx.doi.org/10.
+1088/2515-7620/acf81b.
+J.Bradbury,R.Frostig,P.Hawkins,M.J.Johnson,C.Leary,D.Maclaurin,G.Necula,A.Paszke,
+J. VanderPlas, S. Wanderman-Milne, and Q. Zhang. JAX: composable transformations of
+Python+NumPyprograms,2018. URLhttp://github.com/jax-ml/jax.
+T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, P. Dhariwal, A. Neelakantan, P. Shyam,
+G.Sastry,A.Askell,etal.Languagemodelsarefew-shotlearners.Advancesinneuralinformation
+processingsystems,33:1877--1901,2020.
+E.BuberandD.Banu. Performanceanalysisandcpuvsgpucomparisonfordeeplearning. In
+20186thInternationalConferenceonControlEngineering&InformationTechnology(CEIT),
+pages1--6.IEEE,2018.
+S.Butterworthetal. Onthetheoryoffilteramplifiers. WirelessEngineer,7(6):536--541,1930.
+M.Caron,H.Touvron,I.Misra,H.Jégou,J.Mairal,P.Bojanowski,andA.Joulin.Emergingproperties
+inself-supervisedvisiontransformers,2021. URLhttps://arxiv.org/abs/2104.14294.
+D.Castaneda,A.Esparza,M.Ghamari,C.Soltanpur,andH.Nazeran. Areviewonwearablepho-
+toplethysmographysensorsandtheirpotentialfutureapplicationsinhealthcare. International
+journalofbiosensors&bioelectronics,4(4):195,2018.
+Y.-M.Cha,G.K.Lee,K.W.Klarich,andM.Grogan. Prematureventricularcontraction-induced
+cardiomyopathy: a treatable condition. Circulation: Arrhythmia and Electrophysiology, 5(1):
+229--236,2012.
+C.Challu,K.G.Olivares,B.N.Oreshkin,F.Garza,M.Mergenthaler-Canseco,andA.Dubrawski.
+N-hits: Neuralhierarchicalinterpolationfortimeseriesforecasting,2022. URLhttps://arxiv.
+org/abs/2201.12886.
+14
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+I.Y.Chen,E.Pierson,S.Rose,S.Joshi,K.Ferryman,andM.Ghassemi. Ethicalmachinelearningin
+healthcare. Annualreviewofbiomedicaldatascience,4(1):123--144,2021.
+P. Chen, Y. Zhang, Y. Cheng, Y. Shu, Y. Wang, Q. Wen, B. Yang, and C. Guo. Pathformer:
+Multi-scale transformers with adaptive pathways for time series forecasting. arXiv preprint
+arXiv:2402.05956,2024.
+T. Chen, S. Kornblith, M. Norouzi, and G. Hinton. A simple framework for contrastive learning
+ofvisualrepresentations. InInternationalconferenceonmachinelearning,pages1597--1607.
+PmLR,2020a.
+T.Chen,S.Kornblith,M.Norouzi,andG.Hinton. Asimpleframeworkforcontrastivelearningof
+visualrepresentations,2020b. URLhttps://arxiv.org/abs/2002.05709.
+L.J.ChristianoandT.J.Fitzgerald. Thebandpassfilter. Internationaleconomicreview,44(2):
+435--465,2003.
+J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova. BERT: Pre-training of deep bidirectional
+transformers for language understanding. In J. Burstein, C. Doran, and T. Solorio, editors,
+Proceedings of the 2019 Conference of the North American Chapter of the Association for
+ComputationalLinguistics: HumanLanguageTechnologies,Volume1(LongandShortPapers),
+pages4171--4186,Minneapolis,Minnesota,June2019.AssociationforComputationalLinguistics.
+doi: 10.18653/v1/N19-1423. URLhttps://aclanthology.org/N19-1423/.
+A. Dosovitskiy, L. Beyer, A. Kolesnikov, D. Weissenborn, X. Zhai, T. Unterthiner, M. Dehghani,
+M.Minderer,G.Heigold,S.Gelly,J.Uszkoreit,andN.Houlsby. Animageisworth16x16words:
+Transformersforimagerecognitionatscale,2021. URLhttps://arxiv.org/abs/2010.11929.
+M.Elgendi. Ontheanalysisoffingertipphotoplethysmogramsignals. Currentcardiologyreviews,
+8(1):14--25,2012.
+E.Erturk,F.Kamran,S.Abbaspourazad,S.Jewell,H.Sharma,Y.Li,S.Williamson,N.J.Foti,and
+J.Futoma. Beyondsensordata: Foundationmodelsofbehavioraldatafromwearablesimprove
+healthpredictions. arXivpreprintarXiv:2507.00191,2025.
+C.FitzGeraldandS.Hurst. Implicitbiasinhealthcareprofessionals: asystematicreview. BMC
+medicalethics,18(1):19,2017.
+S.Ghadai,X.YeowLee,A.Balu,S.Sarkar,andA.Krishnamurthy. Multi-level3dcnnforlearning
+multi-scalespatialfeatures. InProceedingsoftheIEEE/CVFconferenceoncomputervision
+andpatternrecognitionworkshops,pages0--0,2019.
+T.D.Giles,B.C.Berk,H.R.Black,J.N.Cohn,J.B.Kostis,J.L.IzzoJr,andM.A.Weber. Expanding
+the definition and classification of hypertension. The Journal of Clinical Hypertension, 7(9):
+505--512,2005.
+T.D.Giles,B.J.Materson,J.N.Cohn,andJ.B.Kostis. Definitionandclassificationofhypertension:
+anupdate. Thejournalofclinicalhypertension,11(11):611--614,2009.
+A.L.Goldberger,L.A.Amaral,L.Glass,J.M.Hausdorff,P.C.Ivanov,R.G.Mark,J.E.Mietus,G.B.
+Moody,C.-K.Peng,andH.E.Stanley. Physiobank,physiotoolkit,andphysionet: components
+ofanewresearchresourceforcomplexphysiologicsignals. circulation,101(23):e215--e220,
+2000.
+15
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+A. Hannun, J. Digani, A. Katharopoulos, and R. Collobert. MLX: Efficient and flexible machine
+learningonapplesilicon,2023. URLhttps://github.com/ml-explore.
+K. He, X. Zhang, S. Ren, and J. Sun. Deep residual learning for image recognition, 2015. URL
+https://arxiv.org/abs/1512.03385.
+K.He,X.Chen,S.Xie,Y.Li,P.Dollár,andR.Girshick. Maskedautoencodersarescalablevision
+learners.InProceedingsoftheIEEE/CVFconferenceoncomputervisionandpatternrecognition,
+pages16000--16009,2022.
+M.He,B.Li,andH.Chen. Multi-scale3ddeepconvolutionalneuralnetworkforhyperspectral
+imageclassification. In2017IEEEInternationalConferenceonImageProcessing(ICIP),pages
+3904--3908.IEEE,2017.
+Y.He,F.Huang,X.Jiang,Y.Nie,M.Wang,J.Wang,andH.Chen. Foundationmodelforadvanc-
+ing healthcare: challenges, opportunities and future directions. IEEE Reviews in Biomedical
+Engineering,2024.
+D.HendrycksandK.Gimpel. Gaussianerrorlinearunits(gelus),2023. URLhttps://arxiv.org/
+abs/1606.08415.
+S.A.Imtiaz. Asystematicreviewofsensingtechnologiesforwearablesleepstaging. Sensors,21
+(5):1562,2021.
+S.IoffeandC.Szegedy. Batchnormalization: Acceleratingdeepnetworktrainingbyreducing
+internalcovariateshift,2015. URLhttps://arxiv.org/abs/1502.03167.
+B.Jacob,S.Kligys,B.Chen,M.Zhu,M.Tang,A.Howard,H.Adam,andD.Kalenichenko. Quanti-
+zationandtrainingofneuralnetworksforefficientinteger-arithmetic-onlyinference,2017. URL
+https://arxiv.org/abs/1712.05877.
+A. Jaiswal, A. R. Babu, M. Z. Zadeh, D. Banerjee, and F. Makedon. A survey on contrastive
+self-supervisedlearning. Technologies,9(1):2,2020.
+L. Jing, P. Vincent, Y. LeCun, and Y. Tian. Understanding dimensional collapse in contrastive
+self-supervised learning. arXiv, 2021. doi: 10.48550/arxiv.2110.09348. URL https://arxiv.
+org/abs/2110.09348.
+J.Kaplan,S.McCandlish,T.Henighan,T.B.Brown,B.Chess,R.Child,S.Gray,A.Radford,J.Wu,
+andD.Amodei. Scalinglawsforneurallanguagemodels. arXivpreprintarXiv:2001.08361,2020.
+Y.KayaandH.Pehlivan. Classificationofprematureventricularcontractioninecg. International
+JournalofAdvancedComputerScienceandApplications,6(7),2015.
+A.Kolo,C.Pang,E.Choi,E.Steinberg,H.Jeong,J.Gallifant,J.A.Fries,J.N.Chiang,J.Oh,J.Xu,etal.
+Medsdecentralized,extensiblevalidation(meds-dev)benchmark: Establishingreproducibility
+andcomparabilityinmlforhealth. MachineLearningForHealthConfernce,2024.
+L. Kong, M. Q. Ma, G. Chen, E. P. Xing, Y. Chi, L.-P. Morency, and K. Zhang. Understanding
+maskedautoencodersviahierarchicallatentvariablemodels. InProceedingsoftheIEEE/CVF
+ConferenceonComputerVisionandPatternRecognition,pages7918--7928,2023.
+A. Kusupati, G. Bhatt, A. Rege, M. Wallingford, A. Sinha, V. Ramanujan, W. Howard-Snyder,
+K.Chen,S.Kakade,P.Jain,andA.Farhadi. Matryoshkarepresentationlearning,2024. URL
+https://arxiv.org/abs/2205.13147.
+16
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+S. A. Lee and K. Akamatsu. Foundation models for physiological signals: Opportunities and
+challenges. 2025.
+S.A.LeeandT.Lindsey. Canlargelanguagemodelsabstractmedicalcodedlanguage? arXiv
+preprintarXiv:2403.10822,2024.
+S. A. Lee, C. Tanade, H. Zhou, J. Lee, M. Thukral, B. Lu, and S. A. Desai. Towards on-device
+foundationmodelsforrawwearablesignals. InNeurIPS2025WorkshoponLearningfromTime
+SeriesforHealth.
+S.A.Lee,J.Lee,andJ.N.Chiang. Feet: Aframeworkforevaluatingembeddingtechniques. arXiv
+preprintarXiv:2411.01322,2024.
+S.A.Lee,S.Jain,A.Chen,K.Ono,A.Biswas,Á.Rudas,J.Fang,andJ.N.Chiang. Clinicaldecision
+supportusingpseudo-notesfrommultiplestreamsofehrdata. npjDigitalMedicine,8(1):394,
+2025.
+J.Li,X.Chen,E.Hovy,andD.Jurafsky. VisualizingandunderstandingneuralmodelsinNLP. In
+K.Knight,A.Nenkova,andO.Rambow,editors,Proceedingsofthe2016Conferenceofthe
+NorthAmericanChapteroftheAssociationforComputationalLinguistics: HumanLanguage
+Technologies,pages681--691,SanDiego,California,June2016.AssociationforComputational
+Linguistics. doi: 10.18653/v1/N16-1082. URLhttps://aclanthology.org/N16-1082/.
+Q.Li,Q.Li,A.S.Cakmak,G.DaPoian,D.L.Bliwise,V.Vaccarino,A.J.Shah,andG.D.Clifford.
+Transfer learning from ecg to ppg for improved sleep staging from wrist-worn wearables.
+Physiologicalmeasurement,42(4):044004,2021.
+Y.Liang,H.Wen,Y.Nie,Y.Jiang,M.Jin,D.Song,S.Pan,andQ.Wen. Foundationmodelsfortime
+seriesanalysis: Atutorialandsurvey. InProceedingsofthe30thACMSIGKDDconferenceon
+knowledgediscoveryanddatamining,pages6555--6565,2024.
+A.-L.Ligozat,J.Lefevre,A.Bugeau,andJ.Combaz. Unravelingthehiddenenvironmentalimpacts
+ofaisolutionsforenvironmentlifecycleassessmentofaisolutions. Sustainability,14(9):5172,
+Apr. 2022. ISSN 2071-1050. doi: 10.3390/su14095172. URL http://dx.doi.org/10.3390/
+su14095172.
+Y.Lin,Z.B.Yu,andS.Lee. Acasestudyexploringthecurrentlandscapeofsyntheticmedical
+recordgenerationwithcommercialllms. arXivpreprintarXiv:2504.14657,2025.
+S.Liu,H.Yu,C.Liao,J.Li,W.Lin,A.X.Liu,andS.Dustdar. Pyraformer: Low-complexitypyramidal
+attentionforlong-rangetimeseriesmodelingandforecasting. InInternationalConferenceon
+LearningRepresentations,2022. URLhttps://openreview.net/forum?id=0EXmFzUn5I.
+Y. Liu, Y.-H. Wu, G. Sun, L. Zhang, A. Chhatkuli, and L. Van Gool. Vision transformers with
+hierarchicalattention. Machineintelligenceresearch,21(4):670--683,2024.
+Z.Liu,Y.Lin,Y.Cao,H.Hu,Y.Wei,Z.Zhang,S.Lin,andB.Guo.Swintransformer:Hierarchicalvision
+transformerusingshiftedwindows. InProceedingsoftheIEEE/CVFinternationalconference
+oncomputervision,pages10012--10022,2021a.
+Z.Liu,Y.Lin,Y.Cao,H.Hu,Y.Wei,Z.Zhang,S.Lin,andB.Guo. Swintransformer: Hierarchical
+visiontransformerusingshiftedwindows,2021b. URLhttps://arxiv.org/abs/2103.14030.
+A.Logacjov,K.Bach,andP.J.Mork. Long-termself-supervisedlearningforaccelerometer-based
+sleep--wakerecognition. EngineeringApplicationsofArtificialIntelligence,141:109758,2025.
+17
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+I.LoshchilovandF.Hutter. Decoupledweightdecayregularization,2017. URLhttps://arxiv.
+org/abs/1711.05101.
+I.LoshchilovandF.Hutter. Decoupledweightdecayregularization,2019. URLhttps://arxiv.
+org/abs/1711.05101.
+J.Luo,K.Ying,andJ.Bai. Savitzky--golaysmoothinganddifferentiationfilterforevennumber
+data. Signalprocessing,85(7):1429--1434,2005.
+M.D.McCradden,S.Joshi,J.A.Anderson,M.Mazwi,A.Goldenberg,andR.ZlotnikShaul. Patient
+safetyandqualityimprovement:Ethicalprinciplesforaregulatoryapproachtobiasinhealthcare
+machinelearning. JournaloftheAmericanMedicalInformaticsAssociation,27(12):2024--2027,
+2020.
+M.B.McDermott,J.Xu,T.S.Bergamaschi,H.Jeong,S.A.Lee,N.Oufattole,P.Rockenschaub,
+K.Stankeviči¯ute˙,E.Steinberg,J.Sun,etal. Meds: Buildingmodelsandtoolsinareproducible
+health ai ecosystem. In Proceedings of the 31st ACM SIGKDD Conference on Knowledge
+DiscoveryandDataMiningV.2,pages6243--6244,2025.
+S.Mehta,N.Kwatra,M.Jain,andD.McDuff.Examiningthechallengesofbloodpressureestimation
+viaphotoplethysmogram. ScientificReports,14(1):18318,2024.
+G. Narayanswamy, X. Liu, K. Ayush, Y. Yang, X. Xu, J. Garrison, S. A. Tailor, J. Sunshine, Y. Liu,
+T.Althoff,etal.Scalingwearablefoundationmodels.InTheThirteenthInternationalConference
+onLearningRepresentations.
+G.Narayanswamy,X.Liu,K.Ayush,Y.Yang,X.Xu,S.Liao,J.Garrison,S.Tailor,J.Sunshine,Y.Liu,
+etal. Scalingwearablefoundationmodels. arXivpreprintarXiv:2410.13638,2024.
+K.OnoandS.A.Lee. Textserializationandtheirrelationshipwiththeconventionalparadigmsof
+tabularmachinelearning. arXivpreprintarXiv:2406.13846,2024.
+K. O’Shea and R. Nash. An introduction to convolutional neural networks, 2015. URL https:
+//arxiv.org/abs/1511.08458.
+A.Paszke,S.Gross,F.Massa,A.Lerer,J.Bradbury,G.Chanan,T.Killeen,Z.Lin,N.Gimelshein,
+L. Antiga, A. Desmaison, A. Köpf, E. Yang, Z. DeVito, M. Raison, A. Tejani, S. Chilamkurthy,
+B.Steiner,L.Fang,J.Bai,andS.Chintala. Pytorch: Animperativestyle,high-performancedeep
+learninglibrary,2019. URLhttps://arxiv.org/abs/1912.01703.
+I.Perez-Pozuelo,D.Spathis,J.Gifford-Moore,J.Morley,andJ.Cowls. Digitalphenotypingand
+sensitive health data: Implications for data governance. Journal of the American Medical
+InformaticsAssociation,28(9):2002--2008,2021.
+V.Petsiuk,A.Das,andK.Saenko. Rise: Randomizedinputsamplingforexplanationofblack-box
+models,2018. URLhttps://arxiv.org/abs/1806.07421.
+A.Pillai,D.Spathis,F.Kawsar,andM.Malekzadeh. Papagei: Openfoundationmodelsforoptical
+physiologicalsignals. arXivpreprintarXiv:2410.20542,2024.
+A.Pillai,D.Spathis,F.Kawsar,andM.Malekzadeh. Papagei: Openfoundationmodelsforoptical
+physiologicalsignals,2025. URLhttps://arxiv.org/abs/2410.20542.
+O. Ronneberger, P. Fischer, and T. Brox. U-net: Convolutional networks for biomedical image
+segmentation. InInternationalConferenceonMedicalimagecomputingandcomputer-assisted
+intervention,pages234--241.Springer,2015.
+18
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+N.SchmittandG.Kuljanin. Measurementinvariance: Reviewofpracticeandimplications. Human
+resourcemanagementreview,18(4):210--222,2008.
+F.Schrumpf,P.Frenzel,C.Aust,G.Osterhoff,andM.Fuchs. Assessmentofnon-invasiveblood
+pressure prediction from ppg and rppg signals using deep learning. Sensors, 21(18):6022,
+2021a.
+F. Schrumpf, P. Frenzel, C. Aust, G. Osterhoff, and M. Fuchs. Assessment of deep learning
+basedbloodpressurepredictionfromppgandrppgsignals. InProceedingsoftheIEEE/CVF
+conferenceoncomputervisionandpatternrecognition,pages3820--3830,2021b.
+M.Shabaan,K.Arshid,M.Yaqub,F.Jinchao,M.S.Zia,G.R.Bojja,M.Iftikhar,U.Ghani,L.S.Ambati,
+andR.Munir. Survey: smartphone-basedassessmentofcardiovasculardiseasesusingecgand
+ppganalysis. BMCmedicalinformaticsanddecisionmaking,20(1):177,2020.
+M. A. Shabani, A. H. Abdi, L. Meng, and T. Sylvain. Scaleformer: Iterative multi-scale refining
+transformersfortimeseriesforecasting. InTheEleventhInternationalConferenceonLearning
+Representations,2023. URLhttps://openreview.net/forum?id=sCrnllCtjoE.
+W.Shuai,X.-x.Wang,K.Hong,Q.Peng,J.-x.Li,P.Li,J.Chen,X.-s.Cheng,andH.Su. Is10-second
+electrocardiogramrecordingenoughforaccuratelyestimatingheartrateinatrialfibrillation.
+Internationaljournalofcardiology,215:175--178,2016.
+G.Simonneau,N.Galiè,L.J.Rubin,D.Langleben,W.Seeger,G.Domenighetti,S.Gibbs,D.Lebrec,
+R.Speich,M.Beghetti,etal. Clinicalclassificationofpulmonaryhypertension. Journalofthe
+AmericanCollegeofCardiology,43(12S):S5--S12,2004.
+G.Simonneau,I.M.Robbins,M.Beghetti,R.N.Channick,M.Delcroix,C.P.Denton,C.G.Elliott,S.P.
+Gaine,M.T.Gladwin,Z.-C.Jing,etal. Updatedclinicalclassificationofpulmonaryhypertension.
+JournaloftheAmericancollegeofcardiology,54(1_Supplement_S):S43--S54,2009.
+G. Simonneau, M. A. Gatzoulis, I. Adatia, D. Celermajer, C. Denton, A. Ghofrani, M. A.
+Gomez Sanchez, R. Krishna Kumar, M. Landzberg, R. F. Machado, et al. Updated clinical
+classificationofpulmonaryhypertension. JournaloftheAmericanCollegeofCardiology,62
+(25S):D34--D41,2013.
+G.Simonneau,D.Montani,D.S.Celermajer,C.P.Denton,M.A.Gatzoulis,M.Krowka,P.G.Williams,
+and R. Souza. Haemodynamic definitions and updated clinical classification of pulmonary
+hypertension. Europeanrespiratoryjournal,53(1),2019.
+K.Simonyan,A.Vedaldi,andA.Zisserman. Deepinsideconvolutionalnetworks: Visualisingimage
+classificationmodelsandsaliencymaps,2014. URLhttps://arxiv.org/abs/1312.6034.
+M.Sundararajan,A.Taly,andQ.Yan. Axiomaticattributionfordeepnetworks. InInternational
+conferenceonmachinelearning,pages3319--3328.PMLR,2017.
+M. Tan and Q. V. Le. Efficientnet: Rethinking model scaling for convolutional neural networks,
+2020. URLhttps://arxiv.org/abs/1905.11946.
+B.A.Teplitzky,M.McRoberts,andH.Ghanbari. Deeplearningforcomprehensiveecgannotation.
+Heartrhythm,17(5):881--888,2020.
+R.Thapa,B.He,M.R.Kjaer,H.M.Iv,G.Ganjoo,E.Mignot,andJ.Zou. Sleepfm: Multi-modalrep-
+resentationlearningforsleepacrossbrainactivity,ecgandrespiratorysignals. InInternational
+ConferenceonMachineLearning,pages48019--48037.PMLR,2024.
+19
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+A.Thieme,A.Nori,M.Ghassemi,R.Bommasani,T.O.Andersen,andE.Luger. Foundationmodels
+inhealthcare: Opportunities,risks&strategiesforward. InExtendedabstractsofthe2023CHI
+conferenceonhumanfactorsincomputingsystems,pages1--4,2023.
+M. Thukral, C. Tanade, S. A. Lee, J. Lee, and S. A. Desai. Wavelet-based masked multiscale
+reconstructionforppgfoundationmodels. InNeurIPS2025WorkshoponLearningfromTime
+SeriesforHealth.
+A.Vaid,J.Jiang,A.Sawant,S.Lerakis,E.Argulian,Y.Ahuja,J.Lampert,A.Charney,H.Greenspan,
+J.Narula,etal. Afoundationalvisiontransformerimprovesdiagnosticperformanceforelectro-
+cardiograms. NPJDigitalMedicine,6(1):108,2023.
+A.Vaswani,N.Shazeer,N.Parmar,J.Uszkoreit,L.Jones,A.N.Gomez,Ł.Kaiser,andI.Polosukhin.
+Attentionisallyouneed. Advancesinneuralinformationprocessingsystems,30,2017.
+H.Wang,K.Song,J.Fan,Y.Wang,J.Xie,andZ.Zhang. Hardpatchesminingformaskedimage
+modeling,2023. URLhttps://arxiv.org/abs/2304.05919.
+K.Wang,J.Yang,A.Shetty,andJ.Dunn. Dreamt: Datasetforreal-timesleepstageestimation
+using multisensor wearable technology. PhysioNet https://doi. org/10.13026/62AN-CB28,
+2024.
+P.Wang,Y.Cao,C.Shen,L.Liu,andH.T.Shen. Temporalpyramidpooling-basedconvolutional
+neuralnetwork foraction recognition. IEEETransactionson Circuitsand SystemsforVideo
+Technology,27(12):2613--2622,2016.
+L.Wesolowski,B.Acun,V.Andrei,A.Aziz,G.Dankel,C.Gregg,X.Meng,C.Meurillon,D.Sheahan,
+L.Tian,etal. Datacenter-scaleanalysisandoptimizationofgpumachinelearningworkloads.
+IEEEMicro,41(5):101--112,2021.
+M.Wornow,Y.Xu,R.Thapa,B.Patel,E.Steinberg,S.Fleming,M.A.Pfeffer,J.Fries,andN.H.
+Shah. Theshakyfoundationsoflargelanguagemodelsandfoundationmodelsforelectronic
+healthrecords. npjdigitalmedicine,6(1):135,2023.
+M.A.Xu,G.Narayanswamy,K.Ayush,D.Spathis,S.Liao,S.A.Tailor,A.Metwally,A.A.Heydari,
+Y. Zhang, J. Garrison, et al. Lsm-2: Learning from incomplete wearable sensor data. arXiv
+preprintarXiv:2506.05321,2025.
+Q.Xu,W.Xie,B.Liao,C.Hu,L.Qin,Z.Yang,H.Xiong,Y.Lyu,Y.Zhou,andA.Luo. Interpretabilityof
+clinicaldecisionsupportsystemsbasedonartificialintelligencefromtechnologicalandmedical
+perspective: Asystematicreview. Journalofhealthcareengineering,2023(1):9919269,2023.
+Z. Yang, D. Yang, C. Dyer, X. He, A. Smola, and E. Hovy. Hierarchical attention networks for
+documentclassification. InProceedingsofthe2016conferenceoftheNorthAmericanchapter
+oftheassociationforcomputationallinguistics: humanlanguagetechnologies,pages1480--
+1489,2016.
+H.Yuan,S.Chan,A.P.Creagh,C.Tong,A.Acquah,D.A.Clifton,andA.Doherty. Self-supervised
+learningforhumanactivityrecognitionusing700,000person-daysofwearabledata. NPJdigital
+medicine,7(1):91,2024.
+Q. Zhang, Y. Wang, and Y. Wang. How mask matters: Towards theoretical understandings of
+maskedautoencoders. AdvancesinNeuralInformationProcessingSystems,35:27127--27139,
+2022a.
+20
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+R.Zhang,Z.Guo,P.Gao,R.Fang,B.Zhao,D.Wang,Y.Qiao,andH.Li. Point-m2ae: multi-scale
+maskedautoencodersforhierarchicalpointcloudpre-training. Advancesinneuralinformation
+processingsystems,35:27061--27074,2022b.
+B.Zhou,A.Khosla,A.Lapedriza,A.Oliva,andA.Torralba.Learningdeepfeaturesfordiscriminative
+localization,2015. URLhttps://arxiv.org/abs/1512.04150.
+C.Zhou,Q.Li,C.Li,J.Yu,Y.Liu,G.Wang,K.Zhang,C.Ji,Q.Yan,L.He,etal. Acomprehensive
+surveyonpretrainedfoundationmodels: Ahistoryfromberttochatgpt. InternationalJournal
+ofMachineLearningandCybernetics,pages1--65,2024.
+21
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+A. Author Contribution
+Weattributepropercredittothefollowingauthorsfortheircontributionsinthisproject.
+Table1|Overviewofauthorcontributions.
+Author Concept ExperimentDesign Coding Analysis Writing Visualization ProjectMgmt. Discussion Resources
+SimonA.Lee ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓
+CyrusTanade ✓ ✓ ✓ ✓ ✓ ✓
+HaoZhou ✓ ✓ ✓ ✓
+JuhyeonLee ✓ ✓ ✓ ✓
+MeghaThurkal ✓ ✓ ✓
+MinjiHan ✓ ✓ ✓
+RachelChoi ✓ ✓ ✓
+MdSazzadHissainKhan ✓ ✓ ✓ ✓
+BaiyingLiu ✓ ✓
+KeumSanChun ✓ ✓
+MigyeokGwak ✓ ✓
+MehrabBinMorshed ✓
+ViswamNathan ✓
+MahbuburRahman ✓ ✓
+LiZhu ✓
+SubramaniamVenkatraman ✓ ✓ ✓
+SharanyaDesai ✓ ✓ ✓ ✓ ✓
+B. Frequently Asked Questions
+Whatarethemainconclusionsfromthiswork?
+Ourcontributionsaretwofoldandinterdependent: first,weintroduceacompactconvolutional
+model whoseinductive bias drives bothefficiency and robustness; second, we showthat this
+compactnessenablesthefirstsmartwatch-leveldeploymentofPPGinferencewithoutreliance
+onphoneprocessors. Eachcontributionreinforcestheother—compactinductivedesigniswhat
+makeson-devicedeploymentfeasible,andon-devicefeasibilityhighlightsthepracticalimpact
+ofourdesign. Wedemonstratethatconvolutionalarchitecturesindeedbenefitfrominductive
+biasesthatremainadvantageousforPPGsignals. Onourpre-trainingdata,ourmodelconsistently
+outperformsalternativebaselines. Scalingexperimentsacrossmodelsizesfurtherrevealthat
+while brute-force scaling of generic architectures is possible, it is less effective: our model
+achieves stronger performance and scales more gracefully owing to better initialization and
+inductivestructure.
+Isyourpre-trainingdatasetlargeenough?
+Our pre-training corpus was collected internally and is of comparable scale to recent pub-
+lic benchmarks such as PaPaGei and Apple’s datasets. In terms of magnitude, we position
+our dataset as PaPaGei(Pillaietal.,2025) < Ours < Apple(Abbaspourazadetal.,2023) <
+Google(Narayanswamyetal.,2024). Thus, while not the largest available, our dataset size is
+sufficientlylargetovalidatetheapproachandlieswithintherangeofacceptedpracticeforself
+supervisedlearningwearablemodels.
+Whydoyoumodelat10-secondwindows?
+Wedeliberatelyadopt10swindowssampledat100Hztobalancephysiologicalcoveragewith
+on-devicefeasibility. Manyclinicallyactionableevents,suchasarrhythmicbeatsorpremature
+ventricularcontractions,unfoldontheorderofsecondsandrequirerapiddetectiontoenable
+22
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+continuousmonitoringandreal-timefeedback. Shorterwindowswouldimpairthemodel’sability
+tocapturemeaningfultemporalcontext,whilemuchlongerwindowswouldhinderlow-latency
+inferenceonwatch-classhardware. Byconstrainingthereceptivefieldto10s,HiMAEpreserves
+second-levelresolutionwhileremainingefficientenoughtoprocesssignalscontinuouslyunder
+the hardware limits of edge devices. Additionally, 10-second window are a standard protocol
+thatareadoptedintheclinicalsettingwhereECGforexampleiscollectedandinterpretedat10
+secondsegments(Shuaietal.,2016).
+Whataretheadvantagesofsmallermodels?
+Fromaresearchperspective,smallermodelsfosterinclusivitybyreducingrelianceonbrute-
+forcescalingoftransformer-basedarchitecturesthatonlyindustry-scalelabscanrealisticallyaf-
+ford. Fromadeploymentstandpoint,compactmodelsenableon-deviceinferenceonconstrained
+hardwaresuchaswearables. Thisdualbenefit(lowerresearchbarriersandwiderdeployment
+potential)underscorestheimportanceofinvestigatingarchitecturesthatremaincompetitiveat
+modestscale.
+Howlargeistoolargetodeployonasmartwatch?
+Inprinciple,modelsuptoapproximately50MBcanbestoredandexecutedonmodernsmart
+watchesorlargermodelscanbequantized(Jacobetal.,2017). Inpractice,however,latencyand
+energyconsiderationssuggestthatmodelsexceedingroughly10MBmayalreadyhinderreal-time
+inferenceandlimitcommercialviability. Additionallyquantizationdoesnotdoduedilligencetothe
+originalmodelandsomelevelofthemodel’sperformanceislost. Whilesmartphonesrelaxthese
+constraints,ourcontributionhighlightsthattheproposedmodelremainssufficientlycompactto
+fitwithinthecomputationalandstoragebudgetsofwearabledevicessuchaswatches,thereby
+supportingdirecton-devicedeployment.
+CanPPGpredictabnormallaboratoryresults?
+Whileexploratoryandnotclinicallyactionable,thesefindingshighlighttheroleofAInotonlyas
+apredictivetoolbutalsoasameansofdiscoveryinbiomedicalscience. Weinvestigatewhether
+photoplethysmography(PPG)signalsencodelatentbiomarkersthatdistinguish‘‘normal’’from
+‘‘abnormal’’labvalues. Usinglightweightclassifiersonfrozenembeddingswithstricttemporal
+alignment, we probe whether learned PPG representations capture physiological signatures
+correlated with out-of-range labs. Preliminary evidence suggests discriminative signal above
+chance,pointingtothepossibilitythatAIcansurfacehiddenbiomarkersandrevealnewaspects
+ofhumanphysiology.
+23
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+C. Ethics Considerations
+C.1. DataPrivacyandConsent
+Wearablesignalscapturesensitivephysiologicalandbehavioralinformation(Erturketal.,2025).
+Ourstudyreliesonbothpubliclyavailableandproprietary(company-owned)datasetsthathave
+beencarefullyvetted. Thesedatasetsincludetransparentdisclosureofdatausage,explicitopt-in
+mechanisms,andtheoptionforparticipantstowithdraw(Perez-Pozueloetal.,2021). Acrossthe
+sevendatasetsusedinthisstudy,weobtainedwrittenconsent—viapaperordigitalwaivers—that
+clearlyinformedparticipantsthattheirdatamaybeusedforcommercialresearchpurposes.
+C.2. BiasandRepresentativeness
+Physiologicalsignalsvaryacrossage,gender,ethnicity,healthstatus,andsocioeconomiccontext,
+yet most existing datasets underrepresent key populations (Chen et al., 2021; FitzGerald and
+Hurst, 2017; McCradden et al., 2020). Such underrepresentation risks embedding biases into
+foundationmodels,leadingtoinequitableperformanceindownstreamapplications. Mitigation
+requires deliberate corpus curation, bias auditing, and systematic evaluation across diverse
+cohorts. Inthisstudy,wesoughttomitigatebiasbyincorporatingapre-trainingcorpusdrawn
+fromawiderangeofwearabledevices,collectedacrossmultipleregionsoftheworldandover
+manyyears. However,patient-specificdemographicinformationisnotavailable. Wedonotethat
+ourdatawascollectedacross4countriesincluding,USA,Brazil,Bangladesh,andSouthKorea.
+C.3. ClinicalImplications
+Wearablefoundationmodelsarenotsubstitutesformedicaljudgment. Theirpredictionsrequire
+regulatoryapprovalandclinicalvalidationbeforeintegrationintohealthcarepractice. Without
+safeguards,modelmisinterpretationcouldleadtomisdiagnosisorinappropriatetreatment. De-
+velopmentshouldinvolveclinicalcollaborators,real-worldevaluations,andexplicitpositioningof
+modelsasdecision-supportratherthandiagnosticsystems. Inourgroup,ongoingcollaborations
+aimtoevaluatewhereourfoundationmodelperformswellandhowitmayassistinformingclinical
+insights. Weemphasizethatnodefinitiveclinicalconclusionsshouldbedrawnfromthiswork.
+C.4. EnvironmentalImpact
+Traininggenerativemodelsentailssubstantialcomputationalandenvironmentalcosts(Bender
+et al., 2021; Bouza et al., 2023; Ligozat et al., 2022). To minimize our footprint, we limited
+redundantruns,andreusedcheckpointstoavoidunnecessaryGPUusage. Allexperimentswere
+conducted on datacenter GPUs with efficient cooling systems and renewable energy credits
+to reduce carbon intensity. We emphasize that transparent reporting of compute usage and
+boundingresourceallocationarenecessarystepstowardsustainablemachinelearningresearch.
+24
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+D. Reproducibility Statement
+Table2|HiMAEarchitecturecomponents.
+Encoder--Decoder
+Layer OutputShape EncoderConvBlock
+Input [B,1,𝑇] DecoderSkipBlock
+EncoderConvBlock(1→16) [B,16,𝑇/2] Layer
+EncoderConvBlock(16→32) [B,32,𝑇/4]
+Conv1d(𝑘=5,s=2,p=2) Layer
+EncoderConvBlock(32→64) [B,64,𝑇/8] ConvTranspose1d(𝑘=5,s=2,p=2,op=1)
+BatchNorm
+EncoderConvBlock(64→128) [B,128,𝑇/16] Concatskipconnection
+GELU Conv1d(𝑘=5,s=1,p=2)
+EncoderConvBlock(128→256) [B,256,𝑇/32] BatchNorm
+DecoderSkipBlock(256→128) [B,128,𝑇/16] C
+Ba
+o
+t
+n
+c
+v
+h
+1
+N
+d
+o
+(
+r
+𝑘
+m
+=5,s=1,p=2) G
+Co
+E
+n
+L
+v
+U
+1d(𝑘=5,s=1,p=2)
+DecoderSkipBlock(128→64) [B,64,𝑇/8] BatchNorm
+Conv1d(𝑘=1,s=2)+BN GELU
+DecoderSkipBlock(64→32) [B,32,𝑇/4]
+GELU
+DecoderSkipBlock(32→16) [B,16,𝑇/2]
+FinalDeconv(16→1) [B,1,𝑇]
+Tanh [B,1,𝑇]
+Duetorestrictionsarounddatalicensingandindustrypolicies,weareunabletoreleasethefull
+sourcecodeassociatedwithHiMAE.Tomitigatethislimitation,weprovidecompletedetailsof
+themodelarchitecture,layerconfigurations,andhyperparametersinTable2. Thisincludesall
+encoder,decoder,andskipconnectionblocks,alongwithkernelsizes,strides,padding,activation
+functions,andnormalizationlayers. Together,thesedescriptionsaresufficienttore-implement
+themodelfaithfullyinanymoderndeeplearningframework(Abadietal.,2016;Bradburyetal.,
+2018;Hannunetal.,2023;Paszkeetal.,2019). Inaddition,wereportalltrainingsettings(e.g.,
+optimizer,learningrateschedule,andbatchsize)intheAppendixSectionFtofurthersupport
+reproducibility. Our goal is to ensure that, while the exact implementation cannot be shared,
+independentresearcherscanreplicatethemethodologyandvalidatethefindingspresentedin
+thiswork.
+D.1. TemporalResolutionandReceptiveField
+Table 3 | Temporal resolution and cumulative receptive field through the encoder. 𝑇 denotes
+theinputlengthinsamples. 𝑅 ℓ isthereceptivefieldafterlayerℓand𝐽 ℓ theeffectiveinputstride
+(“jump”).
+Layer Kernel𝑘 Stride𝑠 Outputlength 𝑅 ℓ /𝐽 ℓ
+Enc1-conv1 5 2 𝑇/2 5/2
+Enc1-conv2 5 1 𝑇/2 13/2
+Enc2-conv1 5 2 𝑇/4 21/4
+Enc2-conv2 5 1 𝑇/4 37/4
+Enc3-conv1 5 2 𝑇/8 53/8
+Enc3-conv2 5 1 𝑇/8 85/8
+Enc4-conv1 5 2 𝑇/16 117/16
+Enc4-conv2 5 1 𝑇/16 181/16
+Enc5-conv1 5 2 𝑇/32 245/32
+Enc5-conv2 5 1 𝑇/32 373/32
+25
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+E. Datasets
+E.1. Aquistionandapproval
+Alldataanalyzedinthisstudywerecollectedunderinformedconsent,withparticipantsexplicitly
+agreeingfortheirwearable-derivedsignalstobeusedinhealth-relatedresearch. Theconsent
+languagestatedthatdatacouldbeusedfordevelopingnewhealthfeaturesandalgorithmsand
+forinclusioninscientificpublications. Inparticular,participantswereinformedthathealthand
+wellnessdatasuchassteps,heartrate,sleep,andphotoplethysmography(PPG)signalscould
+contributetofindingsaimedatadvancinggeneralknowledgeofhealthandscience. Nodataused
+inthisstudyincludedpersonallyidentifyinginformationsuchasnamesoremailaddresses. We
+attachaportionoftheprotocolsdefinedinouruserdataagreementsbelow:
+Theuseofthesede-identifieddatafordatausagewasreviewedandclassifiedasexempt. In
+addition,becausethesupportingrecordsconstitutecasehistoriesanddocumentexposureto
+devices,wecompliedwiththerecordkeepingrequirementsin21CFR§812.140(a)(3),including
+obtainingwrittendigitalconsentanddatedinformation. Participantscouldwithdrawatanytime;
+such withdrawals were documented in the case history, and data collected up to the point of
+withdrawal were retained and used for the investigation in accordance with the consent and
+applicableregulations.
+Fordownstream evaluations, we reliedon acombination ofinstitutional reviewboard (IRB)-
+approveddatasetsandpubliclyavailableresources. Forinstance,thePVCdetectiontaskused
+paired PPG and ECG recordings to derive annotations of premature ventricular contractions,
+withECG-basedlabelsverifiedbothalgorithmicallyandmanually. Thehypertensionclassification
+tasks were drawn from the My Heart Lab Study collected in a lab Setting (ID NCT04314947)
+and My BP Lab (Clinical Trials ID 19-27169) studies collected in a free-world settting, both of
+whichcollectedwrist-basedPPGalongsidereferencebloodpressuremeasurementsunderIRB-
+approvedprotocols. SleepstagingwasevaluatedusingtheDREAMTdataset,whichcombines
+PPGwithgold-standardpolysomnographyannotationsinindividualswithandwithoutdiagnosed
+sleepdisorders. Finally,arangeofabnormallabtestpredictiontaskswerederivedfromtheTulane
+University dataset (ID 20242033), linking PPG from Samsung devices with clinical laboratory
+valuesforbiomarkers(MoredetailsinAppendixSectionE).
+Across all studies, participants consented to data collection through mobile platforms that
+supported eligibility screening and enrollment, provided full informed consent, and enabled
+seamlessintegrationofSamsungdevicesforcontinuoussignalacquisition. Whereappropriate,
+participantsalsoreportedmedicalhistoriesorcompletedquestionnairesthroughtheseplatforms.
+Alldatawerede-identifiedandstoredinaccordancewiththeapprovedstudyprotocols,ensuring
+compliancewithethicalandregulatorystandards.
+This layered consent and governance framework ensures that the data underpinning our
+pretrainingandevaluationtasksarebothethicallysourcedandscientificallyrobust,supportingthe
+broadergoalofadvancinghealthmonitoringthroughconsumerwearablessuchastheREDACTED
+Watch.
+E.2. Pre-trainingandGenerativeDatasets
+E.2.1. DeviceDistribution
+The distribution of participants and data availability highlights both the diversity of collection
+devicesandtheheterogeneityofstudycontributions(Figure9). Atthedevicelevel,participation
+26
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure9|TotalParticipantsbyDevice. Thefiguredisplaysabarchartillustratingthedistribution
+ofparticipantsacrossdifferentwearabledevicesusedinthestudy. They-axisisonalogarithmic
+scaletobettershowthewiderangeinthenumberofparticipants
+is primarily sourced from Galaxy Watch Active 2, Galaxy Watch 3, Galaxy Watch Active, each
+contributingalotofparticipants,whileoldermodelssuchastheGalaxyGearS3arerepresented
+by fewer users. This heterogeneity in devices provide us with a realistic and diverse set of
+raw wearable signals that can help us build generalizable foundation models. The presence
+ofentrieslabeledas“NA”furtherreflectsthemixtureofcollectiondevicesandtheoccasional
+incompletenessofmetadata. Wenotethatthedevicesusedinourstudyareprovidedbytwo
+distributorslimitingitsgeneralizabilityandcausingpotentialbiasesduetonothavingaccessto
+otherconsumerwearabledevices.
+E.2.2. ParticipantCounts
+In terms of study based segmentation, the dataset contains a handful of large-scale cohort
+studies,leadingtodiverserepresentation(Figure10). Effortsweremadetoensurerepresentation
+acrossstudiesofvaryingsizes. Thisunderscoresthenecessityofleveragingthevastscaleof
+high-volumecohortswhilesimultaneouslypreservingtheheterogeneityintroducedbysmaller
+studies,sincebothdimensionsareessentialforbuildingfoundationmodelsthattrulycapturethe
+variabilityandcomplexityofone-dimensionalPPGsignalmodeling. Ourdatawascollectedacross
+4countries(USA,SouthKorea,Brazil,Bangladesh)thoughmostpeoplespecificdemographic
+informationismissing.
+E.2.3. Pre-processingpipeline
+Weoperateonfixed-lengthwindows(10s)ofrawPPGsampledatdevice-specificrates𝑓 𝑠. Each
+window is standardized via per-window z-scoring, 𝑥˜ 𝑡 = (𝑥 𝑡 −𝜇)/𝜎, to remove level and scale
+27
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure10|SegmentCountbyStudy. Thisbarchartshowsthenumberofdatasegmentscollected
+for each study, with the y-axis on a logarithmic scale to account for the large differences in
+segmentcounts.
+effectsthatconfoundmorphology-basedqualitymetrics. Tosuppressgrossamplitudeartifacts
+(e.g., motion bursts), we compute the skewness of |𝑥˜|, denoted 𝛾 = skew(|𝑥˜|). Windows with
+heavy-tailedamplitudedistributions(𝛾 > 2)undergoaniterativetrimmingprocedurethatdiscards
+high-percentileexcursionsandrecomputes𝛾 untilthedistributionregularizesoraconservative
+floorisreached. Thisstageintentionallytradesrecallforprecision: iftrimmingfailstoregularize
+thedistribution,thewindowisrejected.
+Forwindowsthatpassamplitudechecks,weimposearegularitypriorusingthesampleauto-
+∑︀
+correlation𝑟[𝑘] = 𝑡 𝑥˜ 𝑡 𝑥˜ 𝑡+𝑘. Welocatezero-crossingsof𝑟[𝑘]neartheoriginandcomputethe
+dispersionofconsecutiveintervals,𝜎 zc = std(∆𝑘)/𝑓 𝑠. Physiologicallyplausiblepulsatilesignals
+exhibitnear-periodicstructure;wethereforerequireasmalltimingdispersiontoproceed. Thiscri-
+terionrejectssegmentswhoseperiodicityisunstable,asignatureofmotionorsensordecoupling,
+andeliminatesshortordegeneratetracesbyenforcingaminimumnumberofintervals.
+Surviving windows are band-limited with a low-order Butterworth filter to the cardiac band
+[0.1,2]Hz,whichremovesdriftandhigh-frequencynoisewithoutdistortingpulsemorphology.
+We then quantify morphology via template matching against a canonical PPG waveform. Let
+𝑞
+𝑡
+∈ [0,1]denotetheper-samplesimilarityscore. Wedefineastringentacceptancemask𝑚
+𝑡
+=
+1{𝑞 𝑡 > 𝜏} with 𝜏 ∈ {0.90,0.95} depending on whether the amplitude distribution was already
+regular(𝛾 ≤ 2). Twocomplementarystatisticssummarizequality: a“coverage”term𝑝 =
+𝑇
+1 ∑︀
+𝑡
+𝑚 𝑡,
+measuring the fraction of the window that is confidently PPG-like, and an “agreement” term
+𝑎 = max(1, 1 ∑︀
+𝑡
+𝑚𝑡) ∑︀ 𝑡 𝑞 𝑡 𝑚 𝑡,measuringhowwellacceptedsamplesmatchthetemplate. Topenalize
+windowsthathavehighagreementonvanishingcoverage(orviceversa),weaggregatewiththe
+harmonicmean𝐻(𝑎,𝑝) = 2𝑎𝑝 ,yieldingacontinuoussignal-qualityindex. Asmalladditiveterm
+𝑎+𝑝
+28
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+encodeswhethertheamplitudedistributionwasregularatentry,prioritizingwindowsthatnever
+requiredtrimming. Windowsthatfailanyupstreamgate(amplituderegularization, periodicity
+stability,ortemplateevaluation)areassignednullqualityandexcludedfromdownstreamtraining.
+Atcorpusscale,weapplythisscoringinparallelandretainonlywindowswithhighcomposite
+quality. The resulting pretraining set emphasizes clean, consistent, periodic, and band-pass
+filteredsignalsharmonizingacrossdevicesandsamplingrates,reducingtheprevalenceofmotion
+artifactsandnon-physiologicsegmentswithoutrelyingonpatient-leveldemographicsorlabels.
+E.3. DownstreamEvaluationData
+WeevaluateHiMAEacrossdiversedownstreamtaskstoassessthegeneralityofwearablePPG
+representations. RatherthanassumingafixedmappingbetweenPPGandoutcomes,weexploit
+HiMAE’sabilitytolearnhierarchicaltemporalfeaturesandadaptivelyresolvesignalsegmentsat
+scalesmostinformativeforprediction. Thisdesignallowsustoprobetherepresentationalvalue
+ofopticalphysiologicalsignalsacrossclinicallyandbehaviorallyrelevantapplications.
+E.3.1. PVCDetection
+Table4|Stratified80/20Train/TestsplitsforPVCtasks(withper-tasktotals).
+Task Split Negative Positive Total
+train 369987(91.8%) 32832(8.2%) 402819
+PVCDetection test 69880(89.7%) 8019(10.3%) 77899
+totals 439767(91.4%) 40950(8.6%) 480717
+PrematureVentricularContractions(PVCs)(NumberBreakdownsinTable4)areabnormalbeats
+arisingintheventricles(Chaetal.,2012;KayaandPehlivan,2015). WeusepairedPPG–ECGdata,
+withECGannotationsgeneratedusingBeatLogic(Teplitzkyetal.,2020)andmanuallyverified.
+PPGinputsare10snon-overlappingwristsegments,pre-processedwithaSavitzky–Golayfilter
+(Luoetal.,2005),a0.5–4.0Hzbandpass,normalizationto[−1,1],andexclusionofsegmentswith
+motionartifactsordisruptions> 1s. ThistaskevaluateswhetherubiquitousPPGcanapproximate
+arrhythmiadetectiontypicallyrestrictedtoECG.
+E.3.2. HypertensionClassification
+Table5|Stratified80/20Train/TestsplitsforHypertensiontaskscollectedinalaboratorysetting.
+Task Split Negative Positive Total
+train 2964(86.7%) 454(13.3%) 3418
+HypertensionClassification(Lab) test 631(76.7%) 192(23.3%) 823
+totals 3595(84.8%) 646(15.2%) 4241
+Hypertensionclassification(NumberBreakdownsinTables5,6)reliesoncuff-basedreferences
+(Gilesetal.,2005,2009;Simonneauetal.,2004,2009,2013,2019). Subjectswithin±8mmHg
+of the diagnostic cutoff are excluded to reduce label noise, with remaining individuals labeled
+hypertensiveornormotensive. Each10sPPGsegmentundergoesSavitzky–Golaysmoothing,
+0.5–4.0Hzbandpassfiltering,normalizationto[−1,1],andartifactremoval. UnlikePVCdetection,
+29
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Table6|Stratified80/20Train/TestsplitsforHypertensiontaskscollectedinafree-worldsetting.
+Task Split Negative Positive Total
+train 3959(58.5%) 2812(41.5%) 6771
+HypertensionClassification(FreeWorld) test 1042(58.8%) 731(41.2%) 1773
+totals 5001(58.5%) 3543(41.5%) 8544
+which is event-based, this task leverages PPG morphology and temporal dynamics to reflect
+vascularstate. Theseevaluationscontainbothhypertensiondatacollectedinanaturalisticfree
+worldenvironmentandwithinacontrolledlabenvironmentforboththehypertensiveandblood
+pressureregressiontasks.
+E.3.3. SleepStaging
+Table7|Stratified80/20Train/TestsplitsforDREAMTDatasetSleepStaging.
+Task Split Wake Light Deep REM Total
+train 44829(23.9%) 115932(61.8%) 6696(3.6%) 20214(10.8%) 187671
+SleepStaging(4-class) test 11298(23.6%) 30153(63.1%) 1416(3.0%) 4881(10.2%) 47748
+totals 56127(23.8%) 146085(61.9%) 8112(3.4%) 25095(10.6%) 235419
+Sleepstaging(NumberBreakdownsinTables7)isevaluatedontheDREAMTdataset(Wang
+etal.,2024)hostedonPhysioNet(Goldbergeretal.,2000),whichincludesovernightwristband
+datawithsimultaneousPSG.AnnotationsfollowAASMstandardsintowake,REM,NREM1,NREM2,
+andNREM3,excludingmissingandpreparationsegments. PPGisbandpassfiltered(0.5–12Hz)
+(Butterworthetal.,1930),segmentedinto10swindows,andnormalizedtozeromeanandunit
+variance. Performanceismeasuredwithfive-foldsubject-independentcross-validation. Thistask
+examineswhetherPPGencodestemporalpatternssufficientforsleepstageclassification. We
+notethatsleepstaginghascanonicallybeendesignedbyleveragingthewholesleepcyclebut
+weareassessingtheabilitytomonitorrealtimesleepstagingfrommuchshorterPPGsegments.
+E.3.4. AbnormalLabTests
+For abnormal lab test prediction (Number Breakdowns in Tables 8), we use Samsung Watch
+PPGcollectedatTulaneUniversitypairedwithclinicallaboratoryresults. Eachtestisframedas
+a binary classification task: outcomes are labeled negative if within the 25th percentile of lab
+valuesandthepositivelabelsareanythingabovethe75thpercentile. Allotherlabelsareexcluded.
+Preprocessing matches other tasks. Targets include A1C, hemoglobin, hematocrit, platelets,
+potassium,sodium,andWBC,eachselectedforestablishedclinicalrelevance. Thistaskextends
+evaluationbeyondcardiovascularandbehavioralendpointstosystemicmarkersofmetabolic,
+renal,andhematologichealth. WenotethatitisunclearwhetherPPGcanpredictabnormalfrom
+healthylabvaluesbasedonthePPGalone. Despitethis,Tulaneuniveristypresentsuswithan
+opportunitytodiscoverifPPGsignalcanprovidedigitalsignaturesmakingthisanexploratory
+taskinourbenchmark.
+ClinicalRelevanceofLabTestsEachlabtestusedforthisanalysisprovidescriticalinformation
+aboutapatient’shealthstatus. Theirinclusioninthisstudyisbasedontheirestablishedrolein
+diagnosingormonitoringchronicconditionsandacutehealthissues.
+30
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Table8|Stratified80/20Train/TestsplitsforTulaneAbnormalLabstasks(withper-tasktotals).
+Task Split Negative Positive Total
+train 255(31.6%) 553(68.4%) 808
+A1C test 64(31.7%) 138(68.3%) 202
+totals 319 691 1010
+train 1271(77.0%) 380(23.0%) 1651
+Hematocrit test 305(77.0%) 91(23.0%) 396
+totals 1576 471 2047
+train 867(81.2%) 201(18.8%) 1068
+Hemoglobin test 208(81.3%) 48(18.8%) 256
+totals 1075 249 1324
+train 622(35.5%) 1129(64.5%) 1751
+Platelets test 143(35.7%) 258(64.3%) 401
+totals 765 1387 2152
+train 731(33.1%) 1476(66.9%) 2207
+Potassium test 167(33.1%) 338(66.9%) 505
+totals 898 1814 2712
+train 203(17.6%) 951(82.4%) 1154
+Sodium test 48(17.7%) 223(82.3%) 271
+totals 251 1174 1425
+train 247(18.6%) 1082(81.4%) 1329
+WBC test 62(18.7%) 270(81.3%) 332
+totals 309 1352 1661
+•
+A1C (Glycated Hemoglobin): Measures average blood glucose levels over the past 2--3
+months. Itistheprimarydiagnostictoolfordiabetesandakeyindicatorformanaginglong-
+termbloodsugarcontrol. ElevatedA1Clevelsarelinkedtoincreasedriskofcardiovascular
+disease,kidneydamage,andothercomplications.
+•
+Hemoglobin: Oxygen-carryingproteininredbloodcells. Lowlevelsindicateanemia,while
+elevatedlevelsmaysuggestpolycythemiavera.
+•
+Hematocrit: Percentage of blood volume occupied by red blood cells. Used alongside
+hemoglobintoassessanemiaorpolycythemia.
+•
+Platelets: Criticalforclotting. Lowcount(thrombocytopenia)increasesbleedingrisk;high
+count(thrombocytosis)increasesclotrisk.
+• Potassium: Essential electrolyte for nerve and muscle function. Both hypokalemia (<3.5
+mEq/L)andhyperkalemia(>5.0mEq/L)cantriggercardiacarrhythmias.
+•
+Sodium: Regulatesfluidbalanceandbloodpressure. Abnormalitiescanindicatedehydration,
+renaldisease,orendocrinedisorders.
+• WBC(WhiteBloodCells):Immunesystemcells. Leukocytosis(>11×109/L)indicatesinfection,
+inflammation,orhematologicdisease.
+31
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+F. Baselines and Model Configuration
+Self Supervised methods have become a dominant paradigm for health to study a variety of
+applications(Anetal.,2025;Heetal.,2024;LeeandLindsey,2024;Leeetal.,2024;Linetal.,
+2025;OnoandLee,2024;Thiemeetal.,2023;Thukraletal.;Wornowetal.,2023). Foundation
+modelsforone-dimensionalsignalsarepredominantlyrepurposedfromarchitecturesdesigned
+forvision,withadaptationsthatreinterprettemporalstructureasaflattenedanalogueofspatial
+correlation. Inthissectionwedescribeourbaselinemodelsandconfigurations
+F.1. Baselines
+LSM(Narayanswamyetal.,2024)introducesalarge-scalefoundationmodeltrainedonmultimodal
+wearablesensordata. Theapproachadoptsavisiontransformerarchitecturetrainedviamasked
+autoencoding with random masking. The model is designed as a general-purpose foundation,
+transferringeffectivelyacrossarangeofdownstreamtasksinphysiologicalsensingandhuman
+activityrecognition. Inourwork,wedonotreplicatethefullmultimodaldesign;instead,weadapt
+andconstrainthemodeltoaunimodalsetting.
+Swin-Transformer(Liuetal.,2021a)isahierarchicalTransformerthatformsmulti-scalerep-
+resentationsbyrestrictingself-attentiontonon-overlappingwindowsandalternatingpartitions
+withashifted-windowscheme,whichenablescross-windowcommunicationwhilekeepingcom-
+putationnear-linearinsequencelength. Weusethisbaselineasthisisadirectcomparisonand
+counterpart to our proposed hierarchical HiMAE model. For wearable sensing, we adopt a 1D
+adaptationthattokenizestemporalpatchesandapplieswindowedattentionalongtime,capturing
+bothfine-grainedwaveformmorphologyandlonger-rangedependencies.
+MaskedSiameseNetworks(MSN)(Assranetal.,2022)learnlabel-efficientrepresentations
+by combining masked signal modeling with Siamese-style contrastive objectives. Instead of
+relying on class labels, MSN masks portions of the input and enforces consistency between
+augmentedviews. Architecturally,itemploysaVisionTransformerencodersharedacrossviews,
+whileleveragingapredictornetworktostabilizetraining. Thekeyideaistocoupleself-distillation
+withmaskedreconstructiontoreducesamplecomplexity.
+DINO(Caronetal.,2021)isaself-supervisedframeworkthatleveragesknowledgedistillation
+withoutlabels. Usingateacher-studentsetup,thestudentnetworkistrainedtomatchtheoutput
+distributionoftheteacherunderdifferentdataaugmentations. Bothnetworksare1D-ViTs,and
+themethodinducescluster-likeemergentpropertiesinthelearnedembeddingspace,enabling
+strongtransferperformancewithoutexplicitcontrastivepairsorhandcraftedpretexttasks.
+SimCLR(Chenetal.,2020b)establishescontrastivelearningasacompetitiveself-supervised
+paradigm. Thecoreideaistomaximizeagreementbetweenaugmentedviewsofthesamesignal
+inalatentspacewhilepushingapartrepresentationsofdifferentimages. Thisisimplemented
+using a ResNET encoder (He et al., 2015), a projection head, and a contrastive loss (NT-Xent
+(Chenetal.,2020a)).
+PaPaGei(Pillaietal.,2024)isadomain-specificfoundationmodeldesignedforopticalphysiolog-
+icalsensing,particularlyphotoplethysmography(PPG).ItadaptsResNET-styleCNNarchitectures
+tolearnrobust,generalizablerepresentationsfromlarge-scaleopticalphysiologicaldatasets. Pa-
+PaGeireleasesbothmodelweightsanddatasetstosupportreproducibilityandbroaderadoption
+inphysiologicalsignalanalysis. Inourwork,weusedtheirsourcecodetobenchmarktheirmethod
+bypre-trainingonourvolumeofdatatoensurefaircomparison.
+32
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+F.2. HyperparametersforHiMAEandBaselines
+Toensureafaircomparisonacrossmodels,wealignedthetrainingsetupascloselyaspossibleto
+theoriginalimplementationswhilemaintainingconsistencyinoptimizerchoiceandscheduling. All
+themethodstrainedfromscratch(HiMAE,LSM,Swin-Transformer,MSN,DINO,SimCLR)were
+trained under identical optimization regimes, while PaPaGei follows its released open source
+trainingprotocol. Table9summarizesthekeyhyperparametersforallmodels.
+Table9|HyperparameterConfigurationsforDifferentModels
+Configuration HiMAE LSM Swin-Transformer MSN DINO SimCLR PaPaGei
+TrainingSteps 100000 15000
+WarmupSteps 2500 ---
+Optimizer AdamW(LoshchilovandHutter(2017))
+Opt.momentum[𝛽 1 ,𝛽 2] [0.9,0.95] [0.9,0.95] [0.9,0.95] [0.9,0.99] [0.9,0.99] [0.9,0.99] ---
+Baselearningrate 0.001 0.005 0.005 0.001 0.004 0.001 0.0001
+Batchsize 2048 256
+Weightdecay 0.0001 ---
+Gradientclipping 1.0 1.0 1.0 3.0 3.0 3.0 ---
+Dropout 0.0 ---
+Learningrateschedule LinearWarmup&CosineDecay ---
+LossFunction MeanSquaredError CrossEntropy ContrastiveLoss
+Dataresolution 1(signal)-100Hz(SamplingRate)×10(seconds)
+Augmentation Flip,Time-Warping,Noise
+33
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+G. Additional Results
+G.1. ModelConfigurationsAblations
+WeconductedacomprehensiveablationstudyofHiMAEona100Hzdatasetcomprisingten
+millionsegments(roughly30khours). Theexperimentssystematicallyvariedarchitectureand
+hyperparameterstounderstandtheireffectonreconstructionquality(Extrapolationtaskfromour
+generativebenchmarkintableswhereitisnotexplicitlystatedaspreviouslydonein(Narayan-
+swamyetal.,2024)),withmultipleindependenttrainingrunsaveragedtoreducevariancefrom
+stochasticinitializationanddatasampling. Unlessotherwisenoted,alltrainingemployedAdamW
+withalearningrateof3×10−4,cosinedecayscheduling,andabatchsizeof512.
+Architecture.
+WeevaluatedHiMAEalongsideCNNbaselinesacrossincreasingnetworkdepths,definedby
+the sequence of hidden channel dimensions [16,32,64], [16,32,64,128], and [16,32,64,128,256].
+Table 10 lists the parameter counts, showing a modest growth for HiMAE compared to CNN
+baselines, with the skip-connected HiMAE exhibiting slightly higher capacity than its no-skip
+variant.
+Table10|ModelParameters(inKorM)
+Model HiMAE-tiny HiMAE-small HiMAE-Base
+Depth [16,32,64] [16,32,64,128] [16,32,64,128,256]
+CNN 26.2K 108K 437K
+HiMAE-noskip 66.1K 271K 1.10M
+HiMAE 75.3K 309K 1.25M
+Theimpactofnetworkdepthonmeanabsoluteerror(MAE)andmeansquarederror(MSE)is
+summarizedinTable11. IncreasingdepthconsistentlyreducedbothMAEandMSEforHiMAE,
+withthedeepestconfigurationyieldingthelowestreconstructionerror. Skipconnectionswere
+critical,asHiMAEconsistentlyoutperformeditsno-skipvariantacrossalldepths.
+Table11|MAEandMSEforDifferentNetworkDepths
+Model HiMAE-tiny HiMAE-small HiMAE-Base
+[16,32,64] [16,32,64,128] [16,32,64,128,256]
+Depth
+MAE↓ MSE↓ MAE↓ MSE↓ MAE↓ MSE↓
+CNN 0.4052 0.2345 0.4177 0.2491 0.4008 0.2315
+HiMAE-noskip 0.4031 0.2365 0.4006 0.2465 0.3975 0.2339
+HiMAE 0.4008 0.2309 0.3892 0.2232 0.3827 0.2210
+PatchSize.
+Wevariedthespatial-temporalpatchsizesover1,5,10,and20. TheresultsinTable12indicate
+that5providedthebesttrade-offbetweenlocalresolutionandgenerativeperformance. Smaller
+patchesincreasedflexibilitybutslightlydegradedperformanceduetoreducedreceptivefield
+pertoken,whileoverlylargepatchescausedlossoffine-grainedstructure.
+ConvolutionKernelSize.
+Kernelsizewasvariedover{1,5,10,20}. Table13showsthat5yieldedthelowesterrorsacross
+34
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Table12|ModelPerformanceforDifferentPatchSizes
+1 5 10 20
+Model
+MAE↓ MSE↓ MAE↓ MSE↓ MAE↓ MSE↓ MAE↓ MSE↓
+CNN 0.4140 0.2391 0.4008 0.2315 0.4122 0.2449 0.4274 0.2613
+HiMAE-noskip 0.4069 0.2398 0.3976 0.2339 0.4037 0.2462 0.4195 0.2629
+HiMAE 0.3899 0.2268 0.3827 0.2210 0.3861 0.2312 0.4039 0.2479
+allmodels,suggestingmoderatereceptivefieldsmatchthetemporalandspatialscalesofour
+data. Verysmallkernelsrestrictedcontextaggregation,whileverylargekernelsoversmoothed
+latentfeatures.
+Table13|ModelPerformanceAcrossConvolutionKernelSizes
+1 5 10 20
+Model
+MAE↓ MSE↓ MAE↓ MSE↓ MAE↓ MSE↓ MAE↓ MSE↓
+CNN 0.4162 0.2413 0.4010 0.2309 0.4103 0.2418 0.4241 0.2576
+HiMAE-noskip 0.4090 0.2427 0.3959 0.2331 0.4032 0.2440 0.4208 0.2591
+HiMAE 0.3921 0.2283 0.3821 0.2206 0.3885 0.2316 0.4047 0.2485
+Stride.
+Weevaluatedstridevaluesof2,4,and8(Table14).Smallerstridesyieldedthebestperformance,
+particularlyforHiMAE,bypreservinghightemporalresolutioninearlyfeaturemaps. Performance
+degradedmonotonicallywithstrideincreases.
+Table14|ModelPerformanceAcrossStrideValues
+2 4 8
+Model
+MAE↓ MSE↓ MAE↓ MSE↓ MAE↓ MSE↓
+CNN 0.4016 0.2312 0.4139 0.2445 0.4318 0.2678
+HiMAE-noskip 0.3976 0.2334 0.4098 0.2471 0.4272 0.2702
+HiMAE 0.3829 0.2209 0.3928 0.2325 0.4103 0.2504
+MaskingRatio.
+Finally,weexploredtheeffectofvaryingthelatentmaskingratiointhemaskedautoencoding
+objective for generative tasks, with ratios from 0.5 to 0.9. As shown in Table 15, interpolation
+andextrapolationbothimprovedwhenincreasingtheratioupto0.8,afterwhichperformance
+degradedforinterpolationandcollapsedforextrapolation.
+FinalSelection.
+ThesecontrolledexperimentsinformedthefinalHiMAEconfiguration: thedeepestarchitecture
+[16,32,64,128,256]withskipconnections,patchsize5,kernelsize5,stride2,andamaskingratio
+of0.8,whichjointlyachievedthebesttrade-offbetweenreconstructionfidelityandparameter
+efficiency.
+35
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Table15|MAEandMSEforHiMAEAcrossDifferentMaskingRatiosEvaluatedonGenerative
+Tasks
+TemporalInterpolation TemporalExtrapolation
+HiMAEMaskingRatio
+MAE↓ MSE↓ MAE↓ MSE↓
+0.5 0.3972 0.2292 0.4077 0.2519
+0.6 0.3889 0.2223 0.3975 0.2294
+0.7 0.3848 0.2207 0.3963 0.2278
+0.8 0.3796 0.2183 0.3879 0.2217
+0.9 0.3818 0.2219 0.2881 0.2216
+G.2. ECGPre-training
+HiMAE attains the lowest masked-
+Table 16 | Masked-reconstruction loss on ECG
+reconstruction error on ECG (Table 16),
+maskedautoencodingtask.
+indicatingthatitshierarchicalmaskingand
+reconstructioninductivebiasescapturere-
+Model MSE(↓)
+constructioncapacitybeyondPPG.LSM-1
+(ViT) is a close second, while the ablated HiMAE 0.148
+HiMAE and CNN trail, reinforcing that the LSM-1(ViT) 0.162
+full HiMAE design transfers effectively to HiMAE(noskip) 0.184
+theECGdomain. CNN 0.207
+36
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+G.3. Visualizationofreconstructions
+WeprovidesamplereconstructionsonbothECG(Figure11)andPPG(Figure12)signalshowcasing
+thatourframeworkworksacrosssignalmodalities. Inourwork,welimitouranalysistoPPG,since
+ECG is not passively collected and obtaining paired PPG and ECG data was not attainable at
+scale.
+Figure11|ECGReconstructions: ECGSampleReconstructionsforHiMAE&LSM
+37
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure12|PPGReconstructions: PPGSampleReconstructionsforHiMAE&LSM
+38
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+G.4. ScalingResultsforGenerativeTasks
+Scalinganalysis. We evaluate HiMAE’s reconstruction error under participant, recording hour,
+batchsize,andmodelsizescaling,followingtheregimesofNarayanswamyetal.(2024);Xuetal.
+(2025): randomimputation,temporalinterpolation,andtemporalextrapolation(Figure13). Across
+allsettingsHiMAEfollowscleanscalinglawtrends(Kaplanetal.,2020)andmaintainsamargin
+overLSM-1(ViT)andCNNbaselines.
+The most pronounced effect is model size. At small capacities HiMAE achieves lower error
+thanmuchlargertransformerbaselines,highlightingtheadvantageofhierarchicalinductivebias
+oversheerparametercount. LSM-1onlybeginstoclosethegapatordersofmagnitudemore
+parameters. ThetransformercouldsurpassourHiMAEmodelwhengivenalargercapacitybut
+thisagainhighlightstheeffectivenessoftheinductivebiasthatweareconveying. Participant,
+hour,andbatchsizescalingfollowcanonicalpatterns. Moreparticipantsandlongerrecordings
+steadilyreduceerror,withHiMAEcontinuingtoimprovewherebaselinessaturate,especiallyon
+interpolationandextrapolation.
+Ablationsconfirmthemechanism: removingskipconnectionsorcollapsingthehierarchytoa
+singlescaleuniformlydegradesperformance, withgapswideningasdataormodelsizegrow.
+Taskdifficultyfollowstheexpectedorder(imputation<interpolation<extrapolation),withthe
+largestrelativegapsinextrapolation,wherehierarchicalstructureeffectivelylengthensusable
+context. Overall,HiMAEreacheslowererroratsmallerscales,showingthatefficiencyderives
+frominductivebiasratherthanbruteforcecapacity.
+G.5. HierarchalConcordance
+Layerconcordanceacrossdepths.Wefurtherassessthestabilityoftheresolutionhypothesisby
+comparingHiMAEtrainedwithfourversusfiveencoder–decoderstages(Figure14). Theresulting
+heatmapsrevealthatthealignmentbetweendownstreamtasksandtemporalresolutionsislargely
+preserved across depths. Cardiovascular endpoints such as PVC detection and hypertension
+consistentlyachievetheirbestperformanceatfinerlayers,whilebloodrelatedlabsbenefitsfrom
+coarserlayers. Althoughminorfluctuationsappearinintermediatelevels,theoverallhierarchyof
+predictiveresolutionsisconcordant. Thissuggeststhattheresolution–taskmappinguncovered
+byHiMAEisnotanartifactofarchitecturaldepth,butarobustpropertyoftherepresentations
+themselves.
+G.6. Regression
+Continuousregressionofbloodpressurefromwearablesignalsrepresentsacanonicalbenchmark
+forphysiologicalmonitoring,yetthetaskremainshighlychallenging(Mehtaetal.,2024;Schrumpf
+etal.,2021a,b). Theobjectiveistorecoversystolicanddiastolicpressuresdirectlyfromsensor
+data,asettingwhereaccuracydemandsareclinicallystringentbutinputsignalsarenoisyand
+weaklycorrelatedwiththetarget(Figure 15). Onthediastolictask,allapproachesconvergeto
+errorsontheorderof10mmHgacrossboththelabinducedandfree-worlddatasets.AllFoundation
+Modelsyieldsimilarperformance,withHiMAEandLSM-1providingmarginalimprovementsbut
+nodecisiveadvantage. Thesystolictaskexhibitsasimilarprofile. Acrossdatasets,performance
+saturatesaterrorsslightlyaround10mmHg,withself-supervisedapproachesagainclustered
+closelytogether. Despitethisperformance,ourmodeldoesachievethelowestmeanabsolute
+error across 2 out of the 4 comparisons showing that the model design does achieve better
+performanceunderthemajorityofscenarios. However,despitemethodologicaladvances,the
+achievableerrorfloorhasyettoapproachclinicallyusefullevels(Mehtaetal.,2024).
+39
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure13|ScalingExperimentsonGenerativeTasks: Evaluationonthethreegenerativetasks.
+HiMAEconsistenlyoutperformsallmodelatourscaleofdata
+40
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure14|HiMAElayerconcordanceacrossencoderdepths. Heatmapscomparedownstream
+AUROC when probing HiMAE at 4 layers (top) versus 5 layers (bottom). Despite the removal
+ofanencoder–decoderstage,theresolution–taskalignmentremainshighlyconcordant: tasks
+suchasPVCdetectionandhypertensionconsistentlypeakatsimilarlayers,whilesleepstaging
+benefitsfromcoarserrepresentations. Minordeviationsappearinintermediatelayers,butthe
+overallhierarchyofpredictiveresolutionsispreserved,indicatingrobustnessoftheresolution
+hypothesistoarchitecturaldepth.
+41
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure15|Performanceonregressionbenchmarks. Meanabsoluteerror(↓)forregressingsystolic
+anddiastolicbloodpressure.
+42
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Figure 16 | Bland–Altman plot before and after fine-tuning on blood pressure regression. The
+plotsillustratetheagreementbetweenpredictedandreferencebloodpressurevalues,withmean
+bias(solidline)and95%limitsofagreement(dashedlines). Fine-tuningsubstantiallyreduces
+systematicbiasandnarrowsthelimitsofagreement,indicatingimprovedcalibrationandreliability
+ofHiMAE-derivedrepresentationsforregression.
+G.7. FinetuningImprovesRegressionPerformance
+Fine-tuningsubstantiallyimprovestheregressionbehaviorofourbloodpressureestimators,as
+evidencedbytheBland–AltmanplotsinFigure16. Priortofine-tuning,bothsystolicanddiastolic
+predictionsexhibitlargevarianceandsystematicdeviations,withwidelimitsofagreementandbias
+patternsthatsuggestpoorcalibration. Afterfine-tuning,theerrordistributionscontractmarkedly:
+varianceisreduced,biasesapproachzero,andthelimitsofagreementnarrowconsiderably. These
+shiftsindicatethatfine-tuningnotonlyenhancespointpredictionaccuracybutalsoimproves
+the overall reliability of the regression component, yielding estimates that are more clinically
+consistent with reference values. Despite this improvement, the model also indicates errors
+exceeding +/- 20mmHg which again highlight a limitation in these approaches to do well on
+estimatingbloodpressure.
+43
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+G.8. TSNEplotsonlinearprobesandfine-tuned
+Figure17|t-SNEVisualizationofRepresentationsBeforeandAfterFine-tuning. Tworepresenta-
+tivetasksareshown:prematureventricularcontraction(top)andhypertensiondetection(bottom).
+Eachpaneldisplaysa2Dt-SNEprojectionofHiMAEembeddingscoloredbyclasslabel. Before
+fine-tuning,theclustersfornormalandabnormalcasesoverlapsubstantially. Afterfine-tuning,the
+separationbetweenclassesbecomesmorepronounced,indicatingthattask-specificsupervision
+sharpensdecisionboundariesinthelearnedrepresentationspace.
+t-SNEanalysis. Figure17visualizesembeddingsusingt-SNEbeforeandafterfine-tuning. Prior
+tofine-tuning,normalandabnormalsamplesformlargelyoverlappingclusters,indicatingthat
+pretrainingalonedoesnotfullyseparatetask-specificstructure. Afterfine-tuning,separationbe-
+tweenclassesbecomesmoredistinct,particularlyforPVCdetection,suggestingthatlightweight
+task-specific adaptation sharpens decision boundaries while preserving the efficiency of the
+pretrainedHiMAErepresentations. ThisconfirmsthatHiMAEprovidesastronginitializationthat
+benefitsfromminimalsupervisedrefinement.
+44
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+H. On-device Experiments
+Model Params FLOPs Memory
+HiMAE 1.2M 0.0647gFLOPS 4.8MB
+Efficient-Net 7.8M 0.70gFLOPS 31.1MB
+Swin-Transformer 110.6M 11.89gFLOPS 423.8MB
+LSM-Base 110.6M 15.94gFLOPS 441.3MB
+Table17|HiMAEislightweightandefficient: Modelsizeandcomputecostcomparisonbetween
+HiMAEandLSM.FLOPsmeasuredperforwardpassona10ssequenceat100Hz.
+H.1. InferenceEfficency
+WebenchmarkedtheinferenceefficiencyofourproposedHiMAEagainstthetransformerbaseline
+(LSM-Base),measuringthreeaspects: modelfootprintandcomputationalcomplexityinterms
+ofparameters,memory,andFLOPsper10-secondinputwindowat100Hz(Table17);latency,
+definedasmeanper-sampleforward-passtimeatbatchsize1;andthroughput,definedasthe
+maximumnumberofsamplesprocessedpersecond(Table18). Allexperimentswererunona
+SamsungWatchSeries8. Benchmarkswererunon-device,usingExynosW1000CPUs. Wealso
+tested on a T4 GPU for potential mobile device deployment; although the T4 is a datacenter
+GPU,modernmobileprocessorsliketheQualcommAdreno750foundoncommercialphones
+areoptimizedforhigh-performanceMLandcandelivercomparableefficiency(BuberandBanu,
+2018;Wesolowskietal.,2021),underscoringthepracticalityofon-devicedeployment.
+Results
+Model GPULat. GPUThr. CPULat. CPUThr.
+Despitebeingmorethantwo
+ordersofmagnitudesmallerin HiMAE 0.039ms 25.8k/s 0.99ms 1.2k/s
+parameter count, the HiMAE Efficient-Net 0.082ms 12.2k/s 1.42ms 0.704k/s
+consistently outperforms the Swin-Transformer 0.704ms 1.42k/s 2.95ms 0.456k/s
+LSM-Base 0.80ms 1.24k/s 3.36ms 0.298k/s
+transformer baseline across
+all efficiency metrics. Be-
+Table 18 | Inference Performance: Latency (ms per sample,
+tween Efficient-Net (Tan and
+batchsize2048)andthroughput(samples/sec)measuredover
+Le,2020),itremainsmarginally
+10swindows.
+better which is encouraging
+due to the optimizations de-
+signedinthismodel.
+Modelfootprint:
+HiMAEreducesparametersfrom110Mto0.31M(∼ 355×fewer),FLOPsfrom15.94Gto0.0647G
+(∼ 246×fewer),andmemoryfrom441.3MBto3.6MB(∼ 123×smaller). Thesereductionshighlight
+thatcomputationalsavingsscalewiththecompactnessofthemodel,withoutlossofrepresenta-
+tionalcapacityforthetask.
+Latency:
+HiMAEachievessubstantiallyfasterper-sampleinference. OnGPU,latencydropsfrom0.80ms
+to0.039ms(∼ 20×faster),whileonCPUitfallsfrom3.93msto0.99ms(∼ 4×faster). Thereduc-
+tioninlatencyfollowsdirectlyfromthesmallercomputationalfootprint,reflectingaconsistent
+efficiencyadvantage.
+Throughput:
+45
+HiMAE:HierarchicalMaskedAutoencodersDiscoverResolution-SpecificStructureinWearableTimeSeries
+Theseimprovementstranslateintohigherthroughputacrosshardware. OnGPU,throughput
+increasesfrom1.24kto25.8ksamples/s(∼ 21×higher),whileCPUthroughputrisesfrom0.255k
+to1.2ksamples/s(∼ 5×higher). Theseresultsconfirmthatcomputationalgainsextendbeyond
+memoryandFLOPs,yieldingend-to-endspeedupsatinferencetime.
+Insummary,HiMAEachievesafavorabletradeoffbetweencompactnessandefficiency,provid-
+inglowerFLOPs,smallermemoryfootprint,andfasterinferencedespiteitsreducedmodelsize.
+ItalsooutperformsEfficient-NetB1whichwasspeciallydesignedandoptimizedforperformance
+andcompactnessgivingacomparisonandcontexttoourmodelsperformance.
+46

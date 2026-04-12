@@ -1,0 +1,3242 @@
+PublishedasaconferencepaperatICLR2025
+ShEPhERD: DIFFUSING SHAPE, ELECTROSTATICS, AND
+PHARMACOPHORES FOR BIOISOSTERIC DRUG DESIGN
+KeirAdams∗,KentoAbeywardane∗,JennaFromer,&ConnorW.Coley
+MassachusettsInstituteofTechnology,Cambridge,MA02139,USA
+{keir,kento,jfromer,ccoley}@mit.edu
+ABSTRACT
+Engineering molecules to exhibit precise 3D intermolecular interactions with
+their environment forms the basis of chemical design. In ligand-based drug de-
+sign, bioisosteric analogues of known bioactive hits are often identified by vir-
+tually screening chemical libraries with shape, electrostatic, and pharmacophore
+similarity scoring functions. We instead hypothesize that a generative model
+which learns the joint distribution over 3D molecular structures and their inter-
+action profiles may facilitate 3D interaction-aware chemical design. We specif-
+ically design ShEPhERD1, an SE(3)-equivariant diffusion model which jointly
+diffuses/denoises 3D molecular graphs and representations of their shapes, elec-
+trostatic potential surfaces, and (directional) pharmacophores to/from Gaussian
+noise. Inspiredbytraditionalliganddiscovery,wecompose3Dsimilarityscoring
+functionstoassessShEPhERD’sabilitytoconditionallygeneratenovelmolecules
+withdesiredinteractionprofiles. WedemonstrateShEPhERD’spotentialforim-
+pact via exemplary drug design tasks including natural product ligand hopping,
+protein-blindbioactivehitdiversification,andbioisostericfragmentmerging.
+1 INTRODUCTION
+Designing new molecules to attain specific functions via physicochemical interactions with their
+environmentisafoundationaltaskacrossthechemicalsciences. Forinstance,early-stagedrugdis-
+covery often involves tuning the 3D shape, electrostatic potential (ESP) surface, and non-covalent
+interactions of small-molecule ligands to promote selective binding to a protein target (Bissantz
+etal.,2010;Hugginsetal.,2012). Homogeneouscatalystdesignrequiresdevelopingorganometal-
+lic,organic,orevenpeptidiccatalyststhatstabilizereactivetransitionstatesviaspecificnoncovalent
+interactions(Raynaletal.,2014;Fanourakisetal.,2020;Knowles&Jacobsen,2010;Wheeleretal.,
+2016; Toste et al., 2017; Metrano & Miller, 2018). Supramolecular chemistry similarly optimizes
+host-guest interactions for applications across photoresponsive materials design, biomedicine, and
+structure-directedzeolitesynthesis(Quetal.,2015;Stoffelen&Huskens,2016;Cormaetal.,2004).
+Thisessentialchallengeofdesigningmoleculeswithtargeted3Dinteractionsmanifestsacrossmyr-
+iadtasksinligand-baseddrugdesign. Inmedicinalchemistry,bioisostericscaffoldhoppingaimsto
+swap-outsubstructureswithinalargermoleculewhilepreservingbioactivity(Langdonetal.,2010).
+Often,theswappedscaffoldssharebiochemically-relevantfeaturessuchaselectrostaticsorpharma-
+cophores,whichdescribebothnon-directional(hydrophobic,ionic)anddirectional(hydrogenbond
+acceptor/donor,aromaticπ-π,halogenbonding)non-covalentinteractions. Whenscaffoldhopping
+extends to entire ligands, “ligand hopping” can help identify synthesizable analogues of complex
+natural products that mimic their 3D biochemical interactions (Grisoni et al., 2018). In hit expan-
+sion,ligandhoppingisalsousedtodiversifyknownbioactivehitsbyproposingalternativeactives,
+ranging from topologically-similar “me-too” compounds to distinctly new chemotypes (Schneider
+et al., 2006; Wermuth, 2006). Notably, ligand hopping does not require knowledge of the protein
+target. Lastly, bioisosteric scaffold hopping extends beyond altering individual molecules; Wills
+etal.(2024)used“bioisostericfragmentmerging”toreplaceasetoffragmentsthatindependently
+bindaproteinwithoneligandthatcapturesthefragments’aggregate3Dbindinginteractions.
+∗Theseauthorscontributedequally
+1ShEPhERD:Shape,Electrostatics,andPharmacophoreExplicitRepresentationDiffusion
+1
+PublishedasaconferencepaperatICLR2025
+Figure 1: We introduce ShEPhERD, a diffusion model that jointly generates 3D molecules and
+theirshapes,electrostatics,andpharmacophores. Byexplicitlymodeling3Dmolecularinteractions,
+ShEPhERDcanbeappliedacrossmyriadchallengingligand-baseddrugdesigntasksincludingnat-
+uralproductligandhopping,bioactivehitdiversification,andbioisostericfragmentmerging.
+Here,weconsiderthreearchetypaltasksinbioisostericdrugdesign: 3Dsimilarity-constrainedlig-
+andhopping,protein-blindbioactivehitdiversification,andbioisostericfragmentmerging(Fig.1).
+Theunifyingthemeacrossthesetasksisidentifyingnewmolecularstructureswhicharechemically
+dissimilarfromknownmatterintermsoftheirmoleculargraphs,butwhicharehighlysimilarwith
+respect to their 3D intermolecular interaction profiles. To find such bioisosteric analogues, tradi-
+tionaldesigncampaignswillvirtuallyscreenchemicallibrarieswith3Dsimilarityscoringfunctions
+toquerymolecules’3Dshape,electrostatic,and/orpharmacophoresimilaritywithrespecttoaref-
+erencemolecule(Oprea&Matter,2004;Rushetal.,2005;Zavodszkyetal.,2009;Sandersetal.,
+2012). However,similarity-basedvirtualscreeninghasacutedrawbacks: itcannotexplorebeyond
+known chemical libraries, it is inefficient by virtue of being undirected, and it can be quite slow
+whenmultiplegeometriesofconformationally-flexiblemoleculesmustbescored.
+We instead develop a broadly applicable generative modeling framework that enables efficient 3D
+bioisostericmoleculardesign. Wearemotivatedbymultipleobservations: (1)Aselaboratedabove,
+ligand-baseddrugdiscoveryrequiresdesigningnovelmolecularstructuresthatformspecific3Din-
+teractions. (2) Harris et al. (2023) have found that 3D generative models for structure-based drug
+designstruggletogenerateligandsthatformbiochemicalinteractions(e.g., hydrogenbonds)with
+theprotein,despitetrainingonprotein-ligandcomplexes. Thissuggeststheneedfornewstrategies
+which explicitly model molecular interactions. (3) Numerous chemical design scenarios beyond
+drugdesignrequireengineeringthephysicochemicalinteractionsofsmallmolecules. But,suchset-
+tingsareoftendata-restricted,necessitatingzero/few-shotgenerativeapproaches. Toaddressthese
+challenges,weintroduceShEPhERD,a3Dgenerativemodelwhichlearnstherelationshipbetween
+the3Dchemicalstructuresofsmallmoleculesandtheirshapes,electrostatics,andpharmacophores
+(henceforthcollectivelycalled“interactionprofiles”)incontext-freeenvironments. Specifically:
+• Wedefineexplicitpointcloud-basedrepresentationsofmolecularshapes,ESPsurfaces,andphar-
+macophoresthatareamenabletosymmetry-preservingSE(3)-equivariantdiffusionmodeling.
+• Weformulateajointdenoisingdiffusionprobabilisticmodel(DDPM)thatlearnsthejointdistribu-
+tionover3Dmolecules(atomtypes,bondtypes,coordinates)andtheir3Dshapes,ESPsurfaces,
+andpharmacophores.Inadditiontodiffusing/denoisingattributedpointcloudsforshapeandelec-
+trostatics,wenativelymodelthedirectionalityofpharmacophoresbydiffusing/denoisingvectors
+ontheunitsphere. Wesamplefromspecificinteraction-conditioneddistributionsviainpainting.
+• Inspired by virtual screening, we craft shape, electrostatic, and pharmacophore similarity func-
+tionstoscore(1)theself-consistencyofjointlygeneratedmoleculesandinteractionprofiles,and
+(2) the similarity between conditionally generated molecules and target interaction profiles. We
+show that ShEPhERD can generate diverse 3D molecular structures with substantially enriched
+interaction-similaritytotargetprofiles,evenupongeometricrelaxationwithsemi-empiricalDFT.
+• Aftertrainingondrug-likedatasets,wedemonstrateinsilicothatShEPhERDcanfacilelydesign
+small-moleculemimicsofnaturalproductsvialigandhopping,diversifybioactivehitswhilepre-
+servingprotein-bindingmodes,andmergefragmentsintobioisostericligands,allout-of-the-box.
+We anticipate that ShEPhERD will prove immediately useful for ligand-based drug design cam-
+paignsthatrequirethedenovodesignofnewmoleculeswithprecise3Dinteractions. However,we
+stressShEPhERD’sgeneralapplicabilitytootherareasofinteraction-awaremoleculardesign,such
+asorganocatalystdesign. WeespeciallyenvisionthatShEPhERDwillbeextendedtomodelother
+structuralcharacteristicsbeyondtheshape,electrostatic,andpharmacophoreprofilestreatedhere.
+2
+PublishedasaconferencepaperatICLR2025
+2 RELATED WORK
+3Dsimilarityscoringforligand-baseddrugdesign. Ligand-baseddrugdesigncommonlyapplies
+shape,electrostatic,and/orpharmacophoresimilarityscoringfunctionstoscreenformoleculeswith
+similar3Dinteractionsasaknownbioactivemolecule(Fiedleretal.,2019;Rushetal.,2005;Jack-
+sonetal.,2022). Shapesimilarityfunctionstypicallyuseatom-centeredGaussianstocomputethe
+volumetricoverlapbetweenactiveandquerymolecules(Grant&Pickup,1995;Grantetal.,1996).
+Manymethodsadditionallyattributescalar(e.g.,charge)orcategorical(e.g.,pharmacophoretype)
+features to these Gaussians in order to score electrostatic (Good et al., 1992; Bolcato et al., 2022;
+OpenEye,CadenceMolecularSciences,2024)orpharmacophoresimilarity(Sprague,1995;Dixon
+etal.,2006;Taminauetal.,2008;Wahl,2024). Tobettercaptureintermolecularinteractions,other
+methodsquantifytheCoulombicorpharmacophoric“potential”feltbyachemicalprobeatpoints
+nearthemolecule’ssurface(Cheeserightetal.,2006;Vainioetal.,2009;Clevesetal.,2019). We
+similarlyusesurfacerepresentationsofmolecularshapeandelectrostaticinteractions,butcombine
+thiswithvolumetricpoint-cloudandvectorrepresentationsofpharmacophorestomodeldirectional
+interactions such as hydrogen bonding and non-covalent π-effects (Wahl, 2024). Notably, we de-
+velopourown3Dsimilarityscoringfunctionswhichnativelyoperateonourchosenrepresentations.
+Symmetry-preserving generation of molecules in 3D. Many generative models for small
+molecules have been developed to sample chemical space (Go´mez-Bombarelli et al., 2018; Segler
+etal.,2018;Jinetal.,2018;Vignacetal.,2022;Bilodeauetal.,2022;Anstine&Isayev,2023). Our
+workismostrelatedto3Dapproacheswhichdirectlygeneratemoleculesinspecificconformations.
+Theseworksusuallypreservetranslationalandrotationalsymmetriesofatomisticsystemsbygen-
+eratingstructureswithE(3)-orSE(3)-invariantinternalcoordinates(Gebaueretal.,2022;Luo&Ji,
+2022; Roney et al., 2022), or more recently, by generating Euclidean coordinates with equivariant
+networks(Vignacetal.,2023;Pengetal.,2023;Irwinetal.,2024). Wegeneratemolecularstruc-
+tureswithanequivariantDDPM(Hoetal.,2020;Hoogeboometal.,2022),astrategythathasseen
+use in protein-conditioned ligand and linker design (Igashov et al., 2024; Schneuing et al., 2022).
+Besides molecular structures, we jointly diffuse/denoise explicit representations of the molecule’s
+shape,ESPsurface,andpharmacophoreswiththeirvectordirections.Todoso,weemployspherical
+harmonics-based SE(3)-equivariant Euclidean Neural Networks (E3NNs) (Geiger & Smidt, 2022)
+toencode/decodecoordinates,vectors,andscalarfeaturesacrossourheterogeneousrepresentations.
+3D interaction-aware molecular generation. Prior works have partially explored shape- and
+pharmacophore-awaremoleculargenerativedesign.Multiplemethodsgenerateeither(1D)SMILES
+or(2D)moleculargraphsconditionedon3Drepresentationsoftargetshapesand/orpharmacophores
+(Skalicetal.,2019;Imrieetal.,2021;Zhuetal.,2023;Xieetal.,2024),oruse3Dsimilarityscores
+tofine-tuneunconditionalgenerativemodels(Papadopoulosetal.,2021;Neeseretal.,2023),which
+weincludeasabaseline(App.A.1). Sincethesegenerativemodelsdonotdirectlypredict3Dstruc-
+tures,theyrequireconformergenerationasapost-processingstep.Ontheotherhand,Adams&Co-
+ley(2022)foundthatgeneratingstructuresnativelyin3Dyieldsmorechemicallydiversemolecules
+with higher 3D shape-similarity compared to a competing shape-conditioned 1D approach. Mul-
+tiple other methods have since been developed for shape-conditioned 3D generation (Chen et al.,
+2023; Lin et al., 2024; Le et al., 2024). Regarding pharmacophores, Ziv et al. (2024) applied a
+pretrainedDDPMtoinpaint3DmoleculesgivenfixedNandOatoms,constrainedtobehydrogen
+bonddonorsandacceptors, respectively. Yet, theyneglectotherHBD/HBAdefinitionsandignore
+important non-covalent interactions like aromatic π-π interactions, hydrophobic effects, and halo-
+genbonding. Electrostatics-awaremoleculargenerationhasbeenconsideredonlybyBolcatoetal.
+(2022),viaexchangingpre-enumeratedchemicalfragmentswithsimilarelectrostatics. But,theydo
+notconditionallygenerate3DmoleculesgivenaglobalESPsurface. Ourworkunifiesandextends
+priorworkoninteraction-aware3Dgenerativedesignbycomprehensivelymodelingshape,electro-
+statics,andarbitrarypharmacophores(includingtheirdirectionality)inasinglegeneralframework.
+3Dgenerativestructure-baseddrugdesign(SBDD).Tangentialtoourworkaremodelsthatgen-
+erateligandsinsideaproteinpocketbytrainingonprotein-ligandcomplexeswith(Leeetal.,2024;
+Sakoetal.,2024;Zhungetal.,2024;Wangetal.,2022;Huangetal.,2024)orwithout(Pengetal.,
+2022;Schneuingetal.,2022;Guanetal.,2023)explicitencodingsoftheirinteractions. Incontrast,
+we consider context-free molecular design. By modeling the interaction profiles of ligands only,
+ShEPhERDismoregeneralthan(yetstillapplicableto)SBDD.Wealsoretainthefreedomtotrain
+onarbitrarychemicalspacesthatmaybelarger,denser,ormorediversethantheligandsinthePDB.
+3
+PublishedasaconferencepaperatICLR2025
+Figure2:(Top)Visualizationofour3Dpoint-cloudsimilarityscoringfunctions,whichevaluatesur-
+face/shape, electrostatic, andpharmacophoresimilarityviaweightedGaussianoverlaps. (Middle)
+ShEPhERD’sdenoisingnetworkarchitecture,whichusesSE(3)-equivariantneuralnetworksto(1)
+embednoisyinput3Dmoleculesandtheirinteractionprofilesintoscalarandvectornodefeatures,
+(2) jointly interact the node features, and (3) denoise the input states. (Bottom) ShEPhERD uses
+inpaintingtosamplechemicallydiverse3Dmoleculesthatexhibitdesiredinteractionprofiles.
+3 METHODOLOGY
+Weseektosamplechemicallydiversemolecularstructuresfrom3Dsimilarity-constrainedchemical
+space, where the constraints are defined by the 3D shape, electrostatics, and/or pharmacophores
+(“interaction profiles”) of a reference 3D molecular system. To do so, we develop ShEPhERD, a
+DDPMthatlearnsthejointdistributionover3Dmoleculargraphsandtheirinteractionprofiles. At
+inference, we sample from specific interaction-conditioned distributions over 3D chemical space
+via inpainting. Below, we formally define our chosen representations for 3D molecules and their
+interactionprofiles,andalsodefinethe3Dsimilarityscoringfunctionsusedinourevaluations. We
+thendetailourjointDDPMandsamplingprotocols. Fig.2visualizesouroverallmethodology.
+3.1 DEFININGREPRESENTATIONSOFMOLECULESANDTHEIRINTERACTIONPROFILES
+3D molecular graph. We define an organic molecule with n atoms in a specific conformation
+1
+as a 3D molecular graph x
+1
+= (a,f,C,B) where a ∈ {H,C,O,...}n1 lists the atom types (N
+a
+options);f ∈{−2,−1,0,1,2}n1specifiestheformalchargeofeachatom;C ∈Rn1×3specifiesthe
+atomiccoordinates;andB ∈ {0,1,2,3,1.5}n1×n1 istheadjacencymatrixspecifyingthecovalent
+bond order between pairs of atoms. For modeling purposes, the categorical variables a,f,B are
+representedasone-hotcontinuousfeaturessothata∈Rn1×Na,f ∈Rn1×5,andB ∈Rn1×n1×5.
+Shape. We define the shape x
+2
+= S
+2
+∈ Rn2×3 as a point cloud with n
+2
+points sampled from
+the solvent-accessible surface of x . n is fixed regardless of n . We use surface points to better
+1 2 1
+decoupletheshaperepresentationfromthemolecule’sexactcoordinatesor2Dgraph(App.A.5).
+4
+PublishedasaconferencepaperatICLR2025
+Electrostaticpotential(ESP)surface.WerepresenttheESPsurfacex =(S ,v)bytheCoulom-
+3 3
+bicpotentialateachpointinasurfacepointcloudS
+3
+∈Rn3×3,withv ∈Rn3. Wecomputevfrom
+theper-atompartialchargesofx ,whicharecomputedviasemi-empiricalDFT(App.A.5).
+1
+Pharmacophores. The set of n pharmacophores are represented as x = (p,P,V) where
+4 4
+p ∈ Rn4×Np isamatrixofone-hotencodingsoftheN
+p
+pharmacophoretypes; P ∈ Rn4×3 isthe
+pharmacophores’coordinates; andV ∈ {S2,0}n4 containstherelativeunitorzerovectorsspeci-
+fyingthedirectionalityofeachpharmacophore. Thedirectionalpharmacophoresincludehydrogen
+bond acceptors (HBA) and donors (HBD), aromatic rings, and halogen-carbon bonds. Direction-
+lesspharmacophores(V[k]=0)includehydrophobes,anions,cations,andzincbinders. App.A.5
+detailshowweextractpharmacophoresfromamoleculebyadaptingknownSMARTSpatterns.
+3.2 SHAPE,ELECTROSTATIC,ANDPHARMACOPHORESIMILARITYSCORINGFUNCTIONS
+Toformulateourscoringfunctions,wefirstdefineapointcloudQ ∈ RnQ×3 whereeachpointr
+k
+isassignedanisotropicGaussianinR3(Grant&Pickup,1995;Grantetal.,1996). Wemeasurethe
+Tanimoto similarity sim ∈ [0,1] between two point clouds Q and Q using first order Gaus-
+A B
+sian overlap O A,B = (cid:80) a∈QA (cid:80) b∈QB w a,b ( 2 π α )3 2 exp(−α 2 ∥r a −r b ∥2) and sim∗(Q A ,Q B ) =
+OA,B whereαisaGaussianwidthandw isaweightingfactor. Notethat3Dsimilar-
+OA,A+OB,B−OA,B a,b
+itiesaresensitivetoSE(3)transformationsofQ withrespecttoQ .Wecharacterizethesimilarity
+A B
+at their optimal alignment by sim(Q ,Q ) = max sim∗(RQT +t,Q ) where R ∈ SO(3)
+A B R,t A B
+andt∈T(3). Wealignusingautomaticdifferentiation. Notethatn neednotequaln .
+QA QB
+Shapescoring. ThevolumetricsimilaritybetweentwoatomicpointcloudsC andC isdefined
+A B
+as sim∗ (C ,C ) with w = 2.7 and α = 0.81 (Adams & Coley, 2022). We newly define
+vol A B a,b
+the surface similarity between two surfaces S and S as sim∗ (S ,S ) with w = 1, and
+A B surf A B a,b
+α=Ψ(n ). Here,Ψisafunctionfittedtosim∗ dependingonthechoiceofn (App.A.6).
+2 vol 2
+Electrostatic scoring. We define the similarity between two electrostatic potential surfaces x
+3,A
+andx assim∗ (x ,x )withw =exp(−∥vA[a]−vB[b]∥2 ),α=Ψ(n ),andλ= 0.3 .
+3,B ESP 3,A 3,B a,b λ 3 (4πϵ0)2
+ϵ isthepermittivityofvacuumwithunitse2(eV·A˚)−1. InspiredbyHodgkin&Richards(1987)
+0
+and Good (1992), we use the difference between electrostatic potentials to increase sensitivity to
+theirrespectivemagnitudes(i.e.,ratherthansimplycomparingsigns).
+Pharmacophorescoring. Wedefinethesimilaritybetweentwosetsofpharmacophoresx and
+4,A
+x withsim∗ (x ,x ) = (cid:80) m∈M OA,B;m . Here,Misthesetofallphar-
+4,B pharm 4,A 4,B (cid:80)
+m∈M
+OA,A;m+OB,B;m−OA,B;m
+macophoretypes(|M| = N ). w = 1ifmisnon-directional,orascalingofvectorcosinesim-
+p a,b
+ilarityw a,b;m = V[a]⊤ m V 3 [b]m+2 ifmisdirectional(Wahl,2024). α m = Ω(m)whereΩmapseach
+pharmacophoretypetoaGaussianwidth(App.A.6). WetaketheabsolutevalueofV[a]⊤V[b]
+m m
+foraromaticgroupsasweassumetheirπinteractioneffectsaresymmetricacrosstheirplane.
+3.3 JOINTDIFFUSIONOFMOLECULESANDTHEIRINTERACTIONPROFILESWITHShEPhERD
+ShEPhERD follows the DDPM paradigm (Ho et al., 2020; Sohl-Dickstein et al., 2015) to decom-
+pose the joint distribution over the tuple X = (x ,x ,x ,x ) as P (X) := P(X(0)) =
+1 2 3 4 data
+P(X(T)) (cid:81)T P(X(t−1)|X(t)),whereP isthedatadistribution,P(X(T))is(roughly)aGaus-
+t=1 data
+sianprior,andP(X(t−1)|X(t))areMarkovtransitiondistributionslearntbyaneuralnetwork. This
+network is trained to reverse a forward-noising process P(X(t)|X(t−1)) = N(α X(t−1),σ2I)
+t t
+whichgraduallycorruptsdataXintoGaussiannoiseX(T)accordingtoavariancepreservingnoise
+(cid:112)
+schedulegivenbyσ2 andα = 1−σ2 fort=1,...,T. SeeHoetal.(2020)forpreliminarieson
+t t t
+DDPMs. Here,wedescribetheforwardandreverseprocessesofShEPhERD’sjointDDPM.
+Forwardnoisingprocesses. WefollowHoogeboometal.(2022)toforward-noisethe3Dmolecule
+x
+1
+= (a,f,C,B). Fora ∈ Rn1×Na,weuseGaussiannoisingwherea(t) = α
+t
+a(t−1)+σ
+t
+ϵfor
+ϵ ∼ N(0,I). Theprocessesforf andB aresimilar,butwesymmetrizetheupper/lowertriangles
+ofB(t). WeapplyisotropicnoisetoC ∈ Rn1×3, butcenterthenoiseat0toensuretranslational
+invariance: C(t) =α
+t
+C(t−1)+σ
+t
+(ϵ−
+n
+1
+1
+(cid:80)n
+k=
+1
+1
+ϵ[k])forϵ[k]∼N(0,I
+3
+)andϵ∈Rn1×3.
+5
+PublishedasaconferencepaperatICLR2025
+Forthemolecularshapex
+2
+= S
+2
+∈ Rn2×3,wealsoforward-noisewithisotropicGaussiannoise:
+S(t) = α S(t−1) +σ ϵ for ϵ ∼ N(0,I). We do not subtract the noise’s center of mass (COM),
+2 t 2 t
+though;thisensuresthatthemodelcanlearntodenoisex suchthatitiscenteredwithrespecttox .
+2 1
+FortheESPsurfacex
+3
+= (S
+3
+,v),weforward-noisethesurfaceS
+3
+∈ Rn3×3 inthesamemanner
+asS
+2
+. Weforward-noisev
+3
+∈Rn3 inthetypicalway: v(t) =α
+t
+v(t−1)+σ
+t
+ϵforϵ∼N(0,I).
+For the pharmacophores x = (p,P,V), we forward-noise their types p just like the atom types
+4
+a, and their positions P just like the shape S
+2
+. Diffusing the vector directions V ∈ {S2,0}n4 is
+complicatedsincesomepharmacophoresaredirectionless. Tounifytheirtreatment,weinterpretthe
+pharmacophorevectorsasEuclideanpointsinR3(e.g.,onlynoiselessvectorshavenorm1.0or0.0).
+Wethenforward-noisethevectorslikeanypointcloud: V(t) =α V(t−1)+σ ϵforϵ∼N(0,I).
+t t
+Whereastheaboveprocessesdescribethesingle-stepforwardtransitiondistributions,notethatwe
+can efficiently sample noised structures given any time horizon. For instance, we may directly
+samplea(t) =α a(0)+σ ϵforϵ∼N(0,I),whereα = (cid:81)t α andσ = (cid:112) 1−α2.
+t t t s=1 s t t
+Reversedenoisingprocess.StartingfromanyX(t)(buttypicallypurenoiseX(T) ∼N(0,I)),the
+DDPMiterativelydenoisesX(t) bystochasticallyinterpolatingtowardsapredictedcleanstructure
+Xˆ(t) ≈ X(0) ∼ P (X(0)|X(t))resemblingtruesamplesfromthedatadistribution. Wefollow
+data
+the DDPM formulation where rather than predicting X(0) directly, the network predicts the true
+noise ϵˆ(t) ≈ ϵ that, when applied to data X(0), yields X(t) = α X(0) +σ ϵ. In this case, the
+t t
+single-stepdenoisingupdatecanbederivedas:X(t−1) = 1 X(t)− σ t 2 ϵˆ(t)+σtσt−1ϵ′,wherethe
+αt αtσt σt
+additionalnoiseϵ′ ∼N(0,I)(settoϵ′ =0fort=1)makeseachdenoisingstepstochastic.
+ShEPhERD employs a single denoising network η that is trained to jointly predict the noises
+ϵˆ(t),ϵˆ(t),ϵˆ(t),ϵˆ(t) = η(x(t),x(t),x(t),x(t),t) , where ϵˆ(t) = (ϵˆ(t),ϵˆ(t),ϵˆ(t),ϵˆ(t)), ϵˆ(t) = (ϵˆ(t)),
+1 2 3 4 1 2 3 4 1 a f C B 2 S2
+ϵˆ(t) = (ϵˆ(t),ϵˆ(t)),andϵˆ(t) = (ϵˆ(t),ϵˆ(t),ϵˆ(t)). Atinference,wejointlyapplythedenoisingupdates
+3 S3 v 4 p P V
+toobtainX(t−1). Whencomputingx(t−1),weremovetheCOMfromϵˆ(t)andtheextranoiseϵ′ .
+1 C C
+TheforwardandreverseprocessesofourjointDDPMaredesignedtobestraightforwardtomake
+ShEPhERDflexible: Onemayfreelyadjusttheexactrepresentationsoftheshape,electrostatics,or
+pharmacophores as long as they can be represented as a point-cloud with one-hot, scalar, and/or
+vector attributes. One can also directly model specific marginal distributions (e.g., P(x ,x ),
+1 2
+P(x ,x ),orP(x ,x ))bysimplymodelingasubsetofthevariables{x ,x ,x }.Finally,ShEP-
+1 3 1 4 2 3 4
+hERDcanbeeasilyextendedtomodelotherstructuralfeaturesorinteractionprofilesbeyondthose
+consideredherebydefiningtheirexplicitstructuralrepresentationsandforward/reverseprocesses.
+Denoisingnetworkdesign. WedesignShEPhERD’sdenoisingnetworkηtosatisfythreecriteria:
+• Symmetry-preserving: The noise predictions ϵˆ(t),ϵˆ(t),ϵˆ(t),ϵˆ(t) are T(3)-invariant and SO(3)-
+1 2 3 4
+equivariantwithrespecttoglobalSE(3)-transformationsofX(t)inorderto(1)efficientlypreserve
+molecularsymmetries,and(2)ensurex(t),x(t),x(t),andx(t)remainalignedduringdenoising.
+1 2 3 4
+• Expressive: ηcapturesbothlocalandglobalrelationshipsbetweenx(t),x(t),x(t),andx(t).
+1 2 3 4
+• General: To promote applications across chemical design, η accommodates other definitions of
+shape/electrostatics/pharmacophoresandpermitsincorporatingotherstructuralinteractions,too.
+To achieve these criteria, we design η to have three components: (1) a set of embedding modules
+whichequivariantlyencodetheheterogeneousx intoauniformsetsoflatentl=0(scalar)andl=1
+i
+(vector) node representations; (2) a joint module which locally and globally interacts these latent
+noderepresentations;and(3)asetofdenoisingmoduleswhichpredictϵˆ foreachx .
+i i
+TheembeddingmodulesuseSE(3)-equivariantE3NNs(wechoosetouseexpressiveEquiformerV2
+modules (Liao et al., 2023)) to individually encode the 3D structures of x(t),x(t),x(t), and x(t)
+1 2 3 4
+into latent codes (z
+i
+(t),z˜
+i
+(t)) = ϕ
+i
+(x(
+i
+t),t) ∀ i ∈ [1,2,3,4]. Here, z
+i
+∈ Rni×d are invariant
+scalar representations of each node (e.g., atom, point, or pharmacophore), and z˜
+i
+∈ Rni×3×d
+are equivariant vector representations of each node. To make each system x sensitive to rela-
+i
+tivetranslationswithrespecttox(t), wealsoincludeavirtualnodethatispositionedatthecenter
+1
+ofmassofx(t),andwhichremainsunnoised. Priorto3DmessagepassingwiththeE3NNs,scalar
+1
+6
+PublishedasaconferencepaperatICLR2025
+atom/point/pharmacophorefeatures(e.g.,a(t),f(t),v(t),p(t))areembeddedintol=0nodefeatures,
+andvectorfeatures(e.g.,V(t))aredirectlyassignedasl=1nodefeatures. Thepairwisebondrep-
+resentationsB(t)forx(t)arealsoembeddedasl=0edgeattributes. Finally,foreachϕ ,weembed
+1 i
+sinusoidalpositionalencodingsofthetimesteptandaddthesetoallthel=0nodeembeddings.
+Thejointmoduleconsistsoftwostepstolocallyandgloballyinteractthejointlatentvariables:
+(1)Wecollatethecoordinatesofx(t),x(t),x(t),andx(t) toformaheterogeneous3Dgraphwhere
+1 2 3 4
+thenodesareattributedwiththeircorrespondinglatentfeatures(z(t),z˜(t))∀i∈[1,2,3,4].Wethen
+i i
+encodethisheterogeneous3DgraphwithanotherE3NN(EquiformerV2)moduleϕlocal andresid-
+joint
+(cid:16) (cid:17)
+uallyupdatethenodes’latentfeatures: (z(t),z˜(t))+=ϕlocal (x(t),z(t),z˜(t))∀i∈[1,2,3,4] .
+i i joint i i i
+(2)Wesum-pooltheupdatedl=1nodefeaturesacrosseachsub-graph,concatenate,andthenembed
+withanequivariantfeed-forwardnetworkϕglobal toobtainagloball=1codedescribingtheoverall
+joint
+(cid:16) (cid:104)(cid:16) (cid:17) (cid:105)(cid:17)
+system: z˜(t) = ϕglobal Cat (cid:80)ni z˜(t)[k] ∀i∈[1,2,3,4] . We then apply equivariant
+joint joint k=1 i
+tensorproductsbetweenz˜(t) ∈Rd×3andanl=0embeddingoft. Thisyieldsl=0andl=1global
+joint
+latentfeatures(z(t) ,z˜(t) ),whichareresiduallyaddedtothenoderepresentations(z(t),z˜(t)).
+joint joint i i
+Thedenoisingmodulespredictthenoisesϵˆ fromthenode-levelfeatures(z(t),z˜(t)). Forx ,x ,
+i i i 2 3
+and x , the scalar noises (ϵˆ(t), ϵˆ(t)) are predicted from the corresponding (l=0) z(t) codes using
+4 v p i
+multi-layerperceptrons(MLPs),whereasthevectornoises(ϵˆ(t),ϵˆ(t),ϵˆ(t),ϵˆ(t))arepredictedfrom
+S2 S3 P V
+the (l=1) z˜(t) codes using equivariant feed-forward networks (“E3NN-style” coordinate predic-
+i
+tions). Forx ,ϵˆ(t) andϵˆ(t) arepredictedfromz(t) withsimpleMLPs. ϵˆ(t) ispredictedfrompairs
+1 a f 1 B
+(z(t)[k],z(t)[j])usingapermutation-invariantMLP(App.A.7.1). ϵˆ(t)ispredictedfrom(z(t),z˜(t))
+1 1 C 1 1
+usingE3NN-styleandEGNN-style(Satorrasetal.,2021)coordinatepredictions(App.A.7.1).
+Training. WetrainthedenoisingnetworkηwithunweightedL2regressionlossesl =||ϵˆ −ϵ ||2
+i i i
+betweenthepredictedandtruenoises. Importantly,ourframeworkpermitsustotrainmodelswhich
+directly learn certain marginal distributions. In our experiments, we train models to learn P(x ),
+1
+P(x ,x ), P(x ,x ), P(x ,x ), and P(x ,x ,x ). Note that since x defines an (attributed)
+1 2 1 3 1 4 1 3 4 3
+surface S , jointly modeling (x ,x ) is redundant; x implicitly models x . App. A.7 provides
+3 2 3 3 2
+detailsontrainingprotocols,choiceofnoiseschedules,featurescaling,andmodelhyperparameters.
+Sampling. Forunconditionalgeneration,wefirstsampleX(T) fromisotropicGaussiannoise,and
+then denoise for T steps to sample X(0). We then argmax a(0), f(0), B(0), and p(0) to obtain
+discrete atom/bond/pharm. types, and round each V(0)[k] to have norm 1.0 or 0.0. To help break
+the spherical symmetry of X(t) at early time steps, we strategically add extra noise to the reverse
+process(App.A.8).Forconditionalgeneration,weuseinpainting(Lugmayretal.,2022;Schneuing
+etal.,2022)tosamplex(0) conditionedontargetinteractionprofiles. Namely,wefirstsimulatethe
+1
+forward-noising of the target profiles (x∗,x∗,x∗) → (x∗,x∗,x∗)(t) ∀ t ∈ [1,T]. Then, during
+2 3 4 2 3 4
+thereversedenoisingprocess,wereplacetheShEPhERD-denoised(x(t),x(t),x(t))withthenoisy
+2 3 4
+target(x∗,x∗,x∗)(t). LikeothermoleculeDDPMs,wemustspecifyn andn foreachsample.
+2 3 4 1 4
+4 EXPERIMENTS
+WetrainandevaluateShEPhERDusingtwonewdatasets. Ourfirstdataset(ShEPhERD-GDB17)
+contains2.8Mmoleculessampledfrommedicinally-relevantsubsetsofGDB17(Ruddigkeitetal.,
+2012;Awaleetal.,2019;Bu¨hlmann&Reymond,2020).Eachmoleculecontains≤17non-hydrogen
+atoms with element types in {H, C, N, O, S, F, Cl, Br, I}, and includes one conformation opti-
+mizedwithGFN2-xTBinthegasphase(Bannwarthetal.,2019). Ourseconddataset(ShEPhERD-
+MOSES-aq) contains 1.6M drug-like molecules from MOSES (Polykovskiy et al., 2020) with up
+to 27 non-hydrogen atoms. Each molecule contains one conformation optimized with GFN2-xTB
+in implicit water. In all experiments, hydrogens are treated explicitly. Whereas we use ShEP-
+hERD-GDB17toevaluateShEPhERDinstraightforwardunconditionalandconditionalgeneration
+7
+PublishedasaconferencepaperatICLR2025
+Figure3: (Left)Self-consistencyofjointlygenerated3Dmoleculesandtheirshapes,ESPsurfaces,
+orpharmacophores,asassessedvia3Dsimilaritybetweenthegeneratedvs. trueinteractionprofiles
+ofthegeneratedmolecules. ShapeandESPconsistencyareboundedduetorandomnessinsurface
+sampling. (Right) Distributions of 3D interaction similarities between ShEPhERD-generated or
+dataset-sampled 3D molecules (post-relaxation and realignment) and 100 target molecules from
+ShEPhERD-GDB17,includingthetop-1scoresgiven20samplespertarget. ShEPhERDgenerates
+3Dmoleculeswithlowgraphsimilaritytothetargetmolecule,andwhichhavestablegeometriesas
+measuredbyheavy-atomRMSDuponxTB-relaxation.Alsoshownaretop-scoringsamplesoverlaid
+ontheirtargetprofiles(surfacesareupsampledforvisualization),labeledwith3Dsimilarityscores.
+settings,weuseShEPhERD-MOSES-aqtochallengeShEPhERDtodesigndrug-likeanaloguesof
+naturalproducts,todiversifybioactivehits,andtomergefragmentsfromafragmentscreen.
+Unconditional joint generation. We first evaluate ShEPhERD’s ability to jointly generate 3D
+molecules and their interaction profiles in a self-consistent way. Namely, a well-trained model
+thatlearnsthejointdistributionshouldgenerateinteractionprofile(s)thatmatchthetrueinteraction
+profile(s)ofthegeneratedmolecule. Fig.3reportsdistributionsofthe3Dsimilaritybetweengen-
+erated and true interaction profiles across 1000 samples (with n ∈ [11,60], n ∼ P (n |n ))
+1 4 data 4 1
+frommodelstrainedonShEPhERD-GDB17tolearnP(x ,x ),P(x ,x ),orP(x ,x ).2 When
+1 2 1 3 1 4
+we compare against the (optimally aligned) similarities sim , sim , and sim between the
+surf ESP pharm
+trueprofilesofthegeneratedmoleculesandthoseofrandommoleculesfromthedataset, wecon-
+firmthatShEPhERD’sgeneratedprofileshavesubstantiallyenrichedsimilaritiestothetrueprofiles
+inallcases. Interestingly, ShEPhERDismoreself-consistentwhengeneratingshapesorESPsur-
+faces than when generating pharmacophores. We partially attribute this performance disparity to
+the discrete nature of the pharmacophore representations and the requirement of specifying n ;
+4
+ShEPhERD occasionally generates molecules that have more true pharmacophores than generated
+pharmacophores,asdemonstratedbythesamplesshowninFig.3(i.e.,somehavemissingHBAs).
+Interaction-conditioned generation. We now evaluate ShEPhERD’s ability to sample from
+interaction-conditioned chemical space. To do so, we reuse the same P(x ,x ), P(x ,x ), and
+1 2 1 3
+P(x ,x )modelstrainedonShEPhERD-GDB17,butuseinpaintingtosamplefromtheinteraction-
+1 4
+conditioneddistributionsP(x |x ),P(x |x ),andP(x |x ). Specifically,weextractthetruein-
+1 2 1 3 1 4
+teractionprofilesfrom100randomtargetmolecules(heldoutfromtraining),anduseShEPhERDto
+inpaintnew3Dmolecularstructuresgiventhesetargetprofiles. Aftergenerating20structuresper
+targetprofileanddiscarding(withoutreplacement)anyinvalidstructures(App.A.3)orthosewith
+2WecomputethetrueprofilesofgeneratedmoleculesaftertheyarerelaxedwithxTBandrealignedtothe
+unrelaxedstructuresbyminimizingheavy-atomRMSD;thisavoidsoptimisticallyscoringgeneratedmolecules
+that are highly strained. Nonetheless, the average RMSD upon relaxation is <0.1 A˚ for all unconditional
+modelstrainedonShEPhERD-GDB17.App.A.4reportssuchunconditionalmetrics(validity,novelty,etc.).
+8
+PublishedasaconferencepaperatICLR2025
+Figure 4: (Left) Examples of ShEPhERD-generated analogues of natural product targets, labeled
+bySAscore,ESPsimilarity,andpharmacophoresimilaritytothetarget. Similaritiesarecomputed
+afterxTB-relaxationandESP-optimalrealignment. (Right)DistributionsofVinascoresfor≤500
+samplesfromShEPhERDwhenconditioningontheboundorlowest-energyposeofco-crystalPDB
+ligandsacross7proteins. WecompareagainsttheVinascoresof10Kvirtuallyscreenedmolecules
+fromShEPhERD-MOSES-aq. For5mo4and7l11,weshowtop-scoringShEPhERD-generatedlig-
+ands(conditionedonlow-energyposes),andoverlayaselectionfromtheirtop-10dockedposeson
+thePDBligands. (Bottom)ShEPhERD’sbioisostericfragmentmergingworkflow. Weextractthe
+ESPsurface and pharmacophoresof 13fragments froma fragmentscreen, andshow ShEPhERD-
+generatedligandswithlowSAscoreandhigh3Dsimilaritiestothefragments’interactionprofiles.
+2Dgraphsimilarities>0.3tothetargetmolecule, werelaxthegeneratedstructureswithxTBand
+computetheiroptimally-realigned3Dsimilaritiestothetarget. Fig.3plotsthedistributionsof3D
+similarityscoresbetweenallvalid(sample,target)pairsaswellasthetop-1scoresamongstthe20
+samples per target. We compare against analogous similarity distributions for randomly sampled
+moleculesfromthedataset. Overall,ShEPhERDgeneratesstructureswithverylowgraphsimilarity
+(≥94% of valid samples have graph similarity <0.2) but significantly enriched 3D similarities to
+thetarget,forallversionsofthemodel. Qualitatively,ShEPhERDcangeneratemolecularstructures
+thatsatisfyverydetailedtargetinteractions,includingmultipledirectionalpharmacophores(Fig.3).
+Natural product ligand hopping. Numerous clinically-approved drugs have structures derived
+from natural products due to their rich skeletal complexity, high 3D character, and wide range of
+pharmacophoresthatimpartuniquelyselectivebiologicalfunction.But,thestructuralcomplexityof
+naturalproductslimitstheirsynthetictractability.Assuch,designingsynthetically-accessiblesmall-
+moleculeanaloguesofnaturalproductsthatmimictheirprecise3Dinteractionsisapreeminenttask
+inscaffold/ligandhopping. Toimitatethistask,weselectthreecomplexnaturalproductsfromCO-
+CONUT (Sorokina et al., 2021), including two large macrocycles and a fused ring system with 9
+stereocenters. WethenapplyShEPhERD(trainedtolearnP(x ,x ,x )onShEPhERD-MOSES-
+1 3 4
+aq)togeneratedrug-likemoleculesconditionedjointlyontheESPsurfaceandpharmacophoresof
+thelowest-energyconformerofeachnaturalproduct,againviainpainting. Weemphasizethatthese
+natural products are out-of-distribution compared to the drug-like molecules contained in ShEP-
+9
+PublishedasaconferencepaperatICLR2025
+hERD-MOSES-aq. Upongenerating2500samplesfromtheconditionaldistributionP(x |x ,x )
+1 3 4
+for each natural product, ShEPhERD identifies small-molecule mimics that attain high ESP and
+pharmacophore similarity to the natural products (Fig. 4), despite having much simpler chemical
+structuresasassessedviaSAscore(Ertl&Schuffenhauer,2009). Crucially,ShEPhERDgenerates
+molecules with higher 3D similarity compared to 2500 molecules sampled from the dataset, and
+comparedto10KmoleculesoptimizedbyREINVENT(Blaschkeetal.,2020)(App.A.1).
+Bioactivehitdiversification. Whereasstucture-baseddrugdesignaimstodesignhigh-affinitylig-
+ands given the structure of the protein target, ligand-based drug design attempts to develop and
+optimizebioactivehitcompoundsintheabsenceofproteininformation. Acommontaskinligand-
+baseddrugdesignisdiversifyingthechemicalstructuresofpreviouslyidentifiedbioactivehits(i.e.,
+fromaphenotypicexperimentalscreen)throughinteraction-preservingscaffoldhopping,oftenasa
+meanstoreducetoxicity,increasesynthesizability,orevadepatentrestrictions. Wesimulatebioac-
+tive hit diversification by using ShEPhERD to generate analogues of 7 experimental ligands from
+thePDB.Toevaluatetheirlikelihoodofretainingbioactivity,weuseAutodockVina(Trott&Olson,
+2010;Eberhardtetal.,2021)todockthegeneratedligandstotheirrespectiveproteins,treatingthe
+Vina docking scores as a weak surrogate for bioactivity. To best imitate ligand-based design, we
+condition ShEPhERD on the ESP surface and pharmacophores of the lowest-energy conformer of
+eachPDBligand,ratherthantheirboundposes(wealsosimulatethisscenarioforcomparison). We
+thenuseinpaintingtogenerate500samplesfromP(x |x ,x ), anddockthevalidsamples. Fig.
+1 3 4
+4 shows the distributions of Vina scores for ShEPhERD-generated analogues, compared against a
+dockingscreenof10KrandomcompoundsfromShEPhERD-MOSES-aq.Despitehavingnoexplicit
+knowledge of the protein targets, ShEPhERD enriches Vina scores in multiple cases. For the top-
+scoring generated ligands for 5mo4 and 7l11, ShEPhERD generates substantial scaffold hops that
+yielddiverse2Dgraphstructuresrelativetotheexperimentalligands. Nevertheless,upondocking,
+thegeneratedmoleculesstillexploreposesthatcloselyalignwiththeexperimentalcrystalposes.
+Bioisostericfragmentmerging.Fragmentscreeningseekstoidentifyprotein-ligandbindingmodes
+byanalyzinghowsmallchemicalfragmentsbindtoaproteinofinterest. Clustersofprotein-bound
+fragment hits can then be analyzed to design high-affinity ligands. Multiple methods have been
+developed to link fragment hits into a single ligand containing the original fragments and the new
+linker. Recently, Wills et al. (2024) showed that merging (not linking) the fragments to form a
+bioisosteric ligand (which may not contain the exact fragment hits) can diversify ligand hypothe-
+ses while preserving the fragments’ important binding interactions. While ShEPhERD could link
+fragments, ShEPhERD is uniquely suited to bioisosteric fragment merging as it can condition on
+aggregatefragmentinteractions. WeuseShEPhERDtomergeasetof13fragmentsexperimentally
+identifiedtobindtotheantiviraltargetEV-D683Cprotease(Lithgoetal.,2024;Willsetal.,2024).
+Weextractn = 27pharmacophoresbyclusteringcommonmotifsandselectinginteractionsiden-
+4
+tifiedbyFragalysis(DiamondLightSource,2024)(App.A.2). WealsocomputeanaggregateESP
+surfacebysamplingpointsfromthesurfaceoftheoverlaidfragmentsandaveragingthefragments’
+ESP contributions at each point. We then condition ShEPhERD on these profiles to sample 1000
+structures(n ∈ [50,89])fromP(x |x ,x )viainpainting. Fig.4showssampleswithSA≤ 4.0
+1 1 3 4
+that score in the top-10 by combined ESP and pharmacophore similarity. Visually, ShEPhERD
+generatesstructuresthatalignwelltothefragmentsandpreservemanyoftheirbindinginteractions,
+eventhoughn andn aresignificantlyout-of-distributionfromShEPhERD-MOSES-aq(App.A.9).
+1 4
+5 CONCLUSION
+We introduced ShEPhERD, a new 3D molecular generative model that facilitates interaction-
+aware chemical design by learning the joint distribution over 3D molecular structures and their
+shapes,electrostatics,andpharmacophores.Empirically,ShEPhERDcansamplechemicallydiverse
+moleculeswithhighlyenrichedinteraction-similaritytotargetstructures,asassessedviacustom3D
+similarity scoring functions. In bioisosteric drug design, ShEPhERD can design small-molecule
+mimicsofcomplexnaturalproducts,diversifybioactivehitswhileenrichingdockingscoresdespite
+havingnoknowledgeoftheprotein,andmergefragmentsfromexperimentalfragmentscreensinto
+bioisostericligands. WeanticipatethatfutureworkwillcreativelyextendShEPhERDtootherareas
+ofinteraction-awarechemicaldesignsuchasstructure-baseddrugdesignandorganocatalystdesign.
+10
+PublishedasaconferencepaperatICLR2025
+REPRODUCIBILITYSTATEMENT
+Our main text and appendices provide all critical details necessary to understand and reproduce
+our work, including our training and sampling protocols. To ensure reproducibility, we make
+our datasets and all training, inference, and evaluation code available on Github at https:
+//github.com/coleygroup/shepherd and https://github.com/coleygroup/
+shepherd-score.
+ACKNOWLEDGMENTS
+TheauthorswouldliketothankWenhaoGaoforsupportwithSynFormer. Thisresearchwassup-
+portedbytheOfficeofNavalResearchundergrantnumberONRN00014-21-1-2195. Thismaterial
+is based upon work supported by the National Science Foundation Graduate Research Fellowship
+underGrantNo. 2141064. TheauthorsacknowledgetheMITSuperCloudandLincolnLaboratory
+Supercomputing Center for providing HPC resources that have contributed to the research results
+reportedwithinthispaper.
+REFERENCES
+Keir Adams and Connor W Coley. Equivariant shape-conditioned generation of 3d molecules for
+ligand-baseddrugdesign. arXivpreprintarXiv:2210.04893,2022.
+DylanMAnstineandOlexandrIsayev. Generativemodelsasanemergingparadigminthechemical
+sciences. JournaloftheAmericanChemicalSociety,145(16):8736–8750,2023.
+MahendraAwale,FintonSirockin,NikolausStiefl,andJean-LouisReymond. Medicinalchemistry
+awaredatabasegdbmedchem. Molecularinformatics,38(8-9):1900031,2019.
+Christoph Bannwarth, Sebastian Ehlert, and Stefan Grimme. Gfn2-xtb—an accurate and broadly
+parametrizedself-consistenttight-bindingquantumchemicalmethodwithmultipoleelectrostatics
+anddensity-dependentdispersioncontributions. Journalofchemicaltheoryandcomputation,15
+(3):1652–1671,2019.
+Francois Berenger and Koji Tsuda. 3d-sensitive encoding of pharmacophore features. Journal of
+ChemicalInformationandModeling,63(8):2360–2369,2023.
+HelenMBerman,JohnWestbrook,ZukangFeng,GaryGilliland,TalapadyNBhat,HelgeWeissig,
+IlyaNShindyalov, andPhilipEBourne. Theproteindatabank. Nucleicacidsresearch, 28(1):
+235–242,2000.
+Camille Bilodeau, Wengong Jin, Tommi Jaakkola, Regina Barzilay, and Klavs F Jensen. Gener-
+ative models for molecular discovery: Recent advances and challenges. Wiley Interdisciplinary
+Reviews: ComputationalMolecularScience,12(5):e1608,2022.
+CaterinaBissantz,BerndKuhn,andMartinStahl. Amedicinalchemist’sguidetomolecularinter-
+actions. Journalofmedicinalchemistry,53(14):5061–5084,2010.
+ThomasBlaschke,JosepAru´s-Pous,HongmingChen,ChristianMargreitter,ChristianTyrchan,Ola
+Engkvist,KostasPapadopoulos,andAtanasPatronov. REINVENT2.0: AnAIToolfordeNovo
+Drug Design. Journal of Chemical Information and Modeling, 60(12):5918–5922, December
+2020. ISSN1549-9596,1549-960X.
+GiovanniBolcato,EstherHeid,andJonasBostro¨m. Onthevalueofusing3dshapeandelectrostatic
+similaritiesindeepgenerativemethods. JournalofChemicalInformationandModeling,62(6):
+1388–1398,2022.
+SvenBu¨hlmannandJean-LouisReymond. Chembl-likenessscoreanddatabasegdbchembl. Fron-
+tiersinchemistry,8:46,2020.
+TimCheeseright,MarkMackey,SallyRose,andAndyVinter.Molecularfieldextremaasdescriptors
+ofbiologicalactivity: definitionandvalidation. Journalofchemicalinformationandmodeling,
+46(2):665–676,2006.
+11
+PublishedasaconferencepaperatICLR2025
+ZiqiChen,BoPeng,SrinivasanParthasarathy,andXiaNing. Shape-conditioned3dmoleculegen-
+erationviaequivariantdiffusionmodels. arXivpreprintarXiv:2308.11890,2023.
+AnnECleves,StephenRJohnson,andAjayNJain. Electrostatic-fieldandsurface-shapesimilarity
+forvirtualscreeningandposeprediction. Journalofcomputer-aidedmoleculardesign, 33(10):
+865–886,2019.
+AvelinoCorma,FernandoRey,JordiRius,MariaJSabater,andSusanaValencia. Supramolecular
+self-assembledmoleculesasorganicdirectingagentforsynthesisofzeolites. Nature,431(7006):
+287–290,2004.
+S.W. Cowan-Jacob. Abl1 kinase (t334i d382n) in complex with asciminib and nilotinib. Protein
+DataBank,2016. PDBID:5mo4.
+M.G.Deshmukh,J.A.Ippolito,E.A.Stone,W.L.Jorgensen,andK.S.Anderson. Crystalstructure
+of the sars-cov-2(2019-ncov) main protease in complex with compound 5. Protein Data Bank,
+2020. PDBID:7l11.
+DiamondLightSource. Fragalysis, 2024. URLhttps://fragalysis.diamond.ac.uk/.
+AccessedonSeptember15,2024.
+Steven L Dixon, Alexander M Smondyrev, Eric H Knoll, Shashidhar N Rao, David E Shaw, and
+RichardAFriesner. Phase: anewengineforpharmacophoreperception,3dqsarmodeldevelop-
+ment,and3ddatabasescreening: 1.methodologyandpreliminaryresults. Journalofcomputer-
+aidedmoleculardesign,20:647–671,2006.
+YuDong,XiaodiQiu,NeilShaw,YueyangXu,YunaSun,XuemeiLi,JunLi,andZiheRao.Molecu-
+larbasisfortheinhibitionofβ-hydroxyacyl-acpdehydratasehadabcomplexfrommycobacterium
+tuberculosisbyflavonoidinhibitors. Protein&cell,6(7):504–517,2015.
+Jerome Eberhardt, Diogo Santos-Martins, Andreas F Tillack, and Stefano Forli. Autodock vina
+1.2. 0: New docking methods, expanded force field, and python bindings. Journal of chemical
+informationandmodeling,61(8):3891–3898,2021.
+Peter Ertl and Ansgar Schuffenhauer. Estimation of synthetic accessibility score of drug-like
+molecules based on molecular complexity and fragment contributions. Journal of cheminfor-
+matics,1:1–11,2009.
+AlexanderFanourakis,PhilipJDocherty,PadonChuentragool,andRobertJPhipps. Recentdevel-
+opmentsinenantioselectivetransitionmetalcatalysisfeaturingattractivenoncovalentinteractions
+betweenligandandsubstrate. ACScatalysis,10(18):10672–10714,2020.
+Lorna R Fiedler, Kathryn Chapman, Min Xie, Evie Maifoshie, Micaela Jenkins, Pelin Arabacilar
+Golforoush, MohamedBellahcene, MichelaNoseda, Do¨rteFaust, AshleyJarvis, etal. Map4k4
+inhibitionpromotessurvivalofhumanstemcell-derivedcardiomyocytesandreducesinfarctsize
+invivo. CellStemCell,24(4):579–591,2019.
+forlilab. Meeko, n.d. URL https://github.com/forlilab/Meeko. Available at
+https://github.com/forlilab/Meeko.
+WenhaoGao,TianfanFu,JimengSun,andConnorW.Coley. SampleEfficiencyMatters:ABench-
+mark for Practical Molecular Optimization. In Thirty-sixth Conference on Neural Information
+ProcessingSystemsDatasetsandBenchmarksTrack,June2022.
+Wenhao Gao, Shitong Luo, and Connor W Coley. Generative artificial intelligence for navigating
+synthesizablechemicalspace. arXivpreprintarXiv:2410.03494,2024.
+NiklasWAGebauer,MichaelGastegger,StefaanSPHessmann,Klaus-RobertMu¨ller,andKristofT
+Schu¨tt. Inverse design of 3d molecular structures with conditional generative neural networks.
+Naturecommunications,13(1):973,2022.
+MarioGeigerandTessSmidt. e3nn: Euclideanneuralnetworks. arXivpreprintarXiv:2207.09453,
+2022.
+12
+PublishedasaconferencepaperatICLR2025
+Rafael Go´mez-Bombarelli, Jennifer N Wei, David Duvenaud, Jose´ Miguel Herna´ndez-Lobato,
+Benjam´ınSa´nchez-Lengeling, DennisSheberla, JorgeAguilera-Iparraguirre, TimothyDHirzel,
+RyanPAdams,andAla´nAspuru-Guzik. Automaticchemicaldesignusingadata-drivencontin-
+uousrepresentationofmolecules. ACScentralscience,4(2):268–276,2018.
+AC Good. The calculation of molecular similarity: Alternative formulas, data manipulation and
+graphicaldisplay. JournalofMolecularGraphics,10(3):144–151,1992.
+Andrew C Good, Edward E Hodgkin, and W Graham Richards. Utilization of gaussian functions
+fortherapidevaluationofmolecularsimilarity. JournalofChemicalInformationandComputer
+Sciences,32(3):188–191,1992.
+JAndrewGrantandBTPickup.Agaussiandescriptionofmolecularshape.TheJournalofPhysical
+Chemistry,99(11):3503–3510,1995.
+JAndrewGrant,MariaAGallardo,andBarryTPickup.Afastmethodofmolecularshapecompari-
+son:Asimpleapplicationofagaussiandescriptionofmolecularshape. Journalofcomputational
+chemistry,17(14):1653–1666,1996.
+Francesca Grisoni, Daniel Merk, Viviana Consonni, Jan A Hiss, Sara Giani Tagliabue, Roberto
+Todeschini,andGisbertSchneider. Scaffoldhoppingfromnaturalproductstosyntheticmimetics
+byholisticmolecularsimilarity. CommunicationsChemistry,1(1):44,2018.
+Jiaqi Guan, Wesley Wei Qian, Xingang Peng, Yufeng Su, Jian Peng, and Jianzhu Ma. 3d equiv-
+ariant diffusion for target-aware molecule generation and affinity prediction. arXiv preprint
+arXiv:2303.03543,2023.
+CharlesHarris,KieranDidi,ArianRJamasb,ChaitanyaKJoshi,SimonVMathis,PietroLio,and
+TomBlundell. Benchmarkinggeneratedposes: Howrationalisstructure-baseddrugdesignwith
+generativemodels? arXivpreprintarXiv:2308.07413,2023.
+JonathanHo,AjayJain,andPieterAbbeel. Denoisingdiffusionprobabilisticmodels. Advancesin
+neuralinformationprocessingsystems,33:6840–6851,2020.
+EdwardEHodgkinandWGrahamRichards. Molecularsimilaritybasedonelectrostaticpotential
+andelectricfield. InternationalJournalofQuantumChemistry,32(S14):105–110,1987.
+EmielHoogeboom,VıctorGarciaSatorras,Cle´mentVignac,andMaxWelling. Equivariantdiffu-
+sionformoleculegenerationin3d. InInternationalconferenceonmachinelearning,pp.8867–
+8887.PMLR,2022.
+KexinHuang,TianfanFu,WenhaoGao,YueZhao,YusufRoohani,JureLeskovec,ConnorWCo-
+ley,CaoXiao,JimengSun,andMarinkaZitnik. Therapeuticsdatacommons: Machinelearning
+datasetsandtasksfordrugdiscoveryanddevelopment. ProceedingsofNeuralInformationPro-
+cessingSystems,NeurIPSDatasetsandBenchmarks,2021.
+ZhilinHuang,LingYang,XiangxinZhou,ZhilongZhang,WentaoZhang,XiawuZheng,JieChen,
+Yu Wang, CUI Bin, and Wenming Yang. Protein-ligand interaction prior for binding-aware 3d
+molecule diffusion models. In The Twelfth International Conference on Learning Representa-
+tions,2024.
+DavidJHuggins,WoodySherman,andBruceTidor. Rationalapproachestoimprovingselectivity
+indrugdesign. Journalofmedicinalchemistry,55(4):1424–1444,2012.
+Ilia Igashov, Hannes Sta¨rk, Cle´ment Vignac, Arne Schneuing, Victor Garcia Satorras, Pascal
+Frossard,MaxWelling,MichaelBronstein,andBrunoCorreia. Equivariant3d-conditionaldiffu-
+sionmodelformolecularlinkerdesign. NatureMachineIntelligence,pp.1–11,2024.
+Fergus Imrie, Thomas E Hadfield, Anthony R Bradley, and Charlotte M Deane. Deep generative
+designwith3dpharmacophoricconstraints. Chemicalscience,12(43):14577–14589,2021.
+RossIrwin,AlessandroTibo,Jon-PaulJanet,andSimonOlsson. Efficient3dmoleculargeneration
+withflowmatchingandscaleoptimaltransport. arXivpreprintarXiv:2406.07266,2024.
+13
+PublishedasaconferencepaperatICLR2025
+V.-P.Jaakola,M.T.Griffith,M.A.Hanson,V.Cherezov,E.Y.T.Chien,J.R.Lane,A.P.Ijzerman,and
+R.C.Stevens. The2.6acrystalstructureofahumana2aadenosinereceptorboundtozm241385.
+ProteinDataBank,2008a. PDBID:3eml.
+Veli-PekkaJaakola,MarkTGriffith,MichaelAHanson,VadimCherezov,EllenYTChien,JRobert
+Lane, Adriaan P Ijzerman, and Raymond C Stevens. The 2.6 angstrom crystal structure of a
+humana2aadenosinereceptorboundtoanantagonist. Science,322(5905):1211–1217,2008b.
+Victoria Jackson, Linda Jordan, Ryan N Burgin, Oliver JS McGaw, Calum W Muir, and Victor
+Ceban. Applicationofmolecular-modeling,scaffold-hopping,andbioisostericapproachestothe
+discovery of new heterocyclic picolinamides. Journal of Agricultural and Food Chemistry, 70
+(36):11031–11041,2022.
+Wengong Jin, Regina Barzilay, and Tommi Jaakkola. Junction tree variational autoencoder for
+molecular graph generation. In International conference on machine learning, pp. 2323–2332.
+PMLR,2018.
+RobertRKnowlesandEricNJacobsen.Attractivenoncovalentinteractionsinasymmetriccatalysis:
+Linksbetweenenzymesandsmallmoleculecatalysts. ProceedingsoftheNationalAcademyof
+Sciences,107(48):20678–20685,2010.
+David Ryan Koes and Carlos J Camacho. Pharmer: efficient and exact pharmacophore search.
+Journalofchemicalinformationandmodeling,51(6):1307–1314,2011.
+AlinaKutlushina,AigulKhakimova,TimurMadzhidov,andPavelPolishchuk. Ligand-basedphar-
+macophoremodelingusingnovel3dpharmacophoresignatures. Molecules,23(12):3094,2018.
+GregLandrumetal. Rdkit: Open-sourcecheminformatics,2006a.
+Gregory A Landrum, Julie E Penzotti, and Santosh Putta. Feature-map vectors: a new class of
+informativedescriptorsforcomputationaldrugdiscovery. Journalofcomputer-aidedmolecular
+design,20:751–762,2006b.
+SarahRLangdon,PeterErtl,andNathanBrown. Bioisostericreplacementandscaffoldhoppingin
+leadgenerationandoptimization. Molecularinformatics,29(5):366–385,2010.
+TuanLe,JulianCremer,Djork-Arne´Clevert,andKristofTSchu¨tt. Latent-guidedequivariantdiffu-
+sionforcontrolledstructure-baseddenovoligandgeneration. InICML’24WorkshopMLforLife
+andMaterialScience: FromTheorytoIndustryApplications,2024.
+Joongwon Lee, Wonho Zhung, and Woo Youn Kim. Ncidiff: Non-covalent interaction-generative
+diffusionmodelforimprovingreliabilityof3dmoleculegenerationinsideproteinpocket. arXiv
+preprintarXiv:2405.16861,2024.
+J.Li,Y.Dong,andZ.H.Rao. Crystalstructureof(3r)-hydroxyacyl-acpdehydratasehadabhetero-
+dimer from mycobacterium tuberculosis complexed with 2’,4,4’-trihydroxychalcone. Protein
+DataBank,2014. PDBID:4rlu.
+Yi-LunLiao,BrandonWood,AbhishekDas,andTessSmidt. Equiformerv2: Improvedequivariant
+transformerforscalingtohigher-degreerepresentations. arXivpreprintarXiv:2306.12059,2023.
+Fang-YuLinandAlexanderDMacKerellJr. Dohalogen–hydrogenbonddonorinteractionsdom-
+inatethefavorablecontributionofhalogenstoligand–proteinbinding? TheJournalofPhysical
+ChemistryB,121(28):6813–6821,2017.
+JieLin,MingyuanXu,andHongmingChen. Diff-shape: Anovelconstraineddiffusionmodelfor
+shapebaseddenovodrugdesign. ChemRxiv,2024. doi: 10.26434/chemrxiv-2024-km0h1.
+Ryan M Lithgo, Charlie WE Tomlinson, Michael Fairhead, Max Winokan, Warren Thompson,
+Conor Wild, Jasmin Aschenbrenner, Blake Balcomb, Peter G Marples, Anu V Chandran, et al.
+Crystallographicfragmentscreenofenterovirusd683cproteaseanditerativedesignoflead-like
+compoundsusingstructure-guidedexpansions. bioRxiv,pp.2024–04,2024.
+14
+PublishedasaconferencepaperatICLR2025
+AndreasLugmayr,MartinDanelljan,AndresRomero,FisherYu,RaduTimofte,andLucVanGool.
+Repaint: Inpainting using denoising diffusion probabilistic models. In Proceedings of the
+IEEE/CVFconferenceoncomputervisionandpatternrecognition,pp.11461–11471,2022.
+YouzhiLuoandShuiwangJi. Anautoregressiveflowmodelfor3dmoleculargeometrygeneration
+fromscratch. InInternationalconferenceonlearningrepresentations(ICLR),2022.
+Elaine C Meng, Thomas D Goddard, Eric F Pettersen, Greg S Couch, Zach J Pearson, John H
+Morris,andThomasEFerrin.UCSFChimeraX:Toolsforstructurebuildingandanalysis.Protein
+Science,32(11):e4792,2023.
+AnthonyJMetranoandScottJMiller.Peptide-basedcatalystsreachtheouterspherethroughremote
+desymmetrizationandatroposelectivity. AccountsofChemicalResearch,52(1):199–215,2018.
+B. Nagar, W. Bornmann, T. Schindler, B. Clarkson, and J. Kuriyan. Crystal structure of the c-abl
+kinasedomainincomplexwithsti-571. ProteinDataBank,2001. PDBID:1iep.
+Bhushan Nagar, William G Bornmann, Patricia Pellicena, Thomas Schindler, Darren R Veach,
+W Todd Miller, Bayard Clarkson, and John Kuriyan. Crystal structures of the kinase domain
+ofc-ablincomplexwiththesmallmoleculeinhibitorspd173955andimatinib(sti-571). Cancer
+research,62(15):4236–4243,2002.
+Maruti Naik, Anandkumar Raichurkar, Balachandra S Bandodkar, Begur V Varun, Shantika Bhat,
+Rajesh Kalkhambkar, Kannan Murugan, Rani Menon, Jyothi Bhat, Beena Paul, et al. Struc-
+ture guided lead generation for m. tuberculosis thymidylate kinase (mtb tmk): discovery of 3-
+cyanopyridoneand1,6-naphthyridin-2-oneaspotentinhibitors. Journalofmedicinalchemistry,
+58(2):753–766,2015.
+RebeccaMNeeser,MehmetAkdel,DanielKovtun,andLucaNaef. Reinforcementlearning-driven
+linker design via fast attention-based point cloud alignment. arXiv preprint arXiv:2306.08166,
+2023.
+AlexanderQuinnNicholandPrafullaDhariwal. Improveddenoisingdiffusionprobabilisticmodels.
+InInternationalconferenceonmachinelearning,pp.8162–8171.PMLR,2021.
+OpenEye, Cadence Molecular Sciences. EON 3.0.0.0. http://www.eyesopen.com, 2024.
+SantaFe,NM.
+TudorIOpreaandHansMatter. Integratingvirtualscreeninginleaddiscovery. Currentopinionin
+chemicalbiology,8(4):349–358,2004.
+Alaa MA Osman and Alya A Arabi. Average electron density: A quantitative tool for evaluating
+non-classicalbioisosteresofamides. ACSomega,9(11):13172–13182,2024.
+Kostas Papadopoulos, Kathryn A Giblin, Jon Paul Janet, Atanas Patronov, and Ola Engkvist. De
+novodesignwithdeepgenerativemodelsbasedon3dsimilarityscoring.Bioorganic&Medicinal
+Chemistry,44:116308,2021.
+Xingang Peng, Shitong Luo, Jiaqi Guan, Qi Xie, Jian Peng, and Jianzhu Ma. Pocket2mol: Effi-
+cientmolecularsamplingbasedon3dproteinpockets. InInternationalConferenceonMachine
+Learning,pp.17644–17655.PMLR,2022.
+XingangPeng,JiaqiGuan,QiangLiu,andJianzhuMa. Moldiff: Addressingtheatom-bondincon-
+sistencyproblemin3dmoleculediffusiongeneration. arXivpreprintarXiv:2305.07508,2023.
+PeterPolitzer,JaneSMurray,andTimothyClark. Halogenbondingandotherσ-holeinteractions:
+Aperspective. PhysicalChemistryChemicalPhysics,15(27):11178–11189,2013.
+Daniil Polykovskiy, Alexander Zhebrak, Benjamin Sanchez-Lengeling, Sergey Golovanov, Oktai
+Tatanov, Stanislav Belyaev, Rauf Kurbanov, Aleksey Artamonov, Vladimir Aladinskiy, Mark
+Veselov,etal.Molecularsets(moses):abenchmarkingplatformformoleculargenerationmodels.
+Frontiersinpharmacology,11:565644,2020.
+15
+PublishedasaconferencepaperatICLR2025
+Da-HuiQu,Qiao-ChunWang,Qi-WeiZhang,XiangMa,andHeTian. Photoresponsivehost–guest
+functionalsystems. Chemicalreviews,115(15):7543–7588,2015.
+MatthieuRaynal,PabloBallester,AntonVidal-Ferran,andPietWNMvanLeeuwen. Supramolecu-
+larcatalysis.part1: non-covalentinteractionsasatoolforbuildingandmodifyinghomogeneous
+catalysts. ChemicalSocietyReviews,43(5):1660–1733,2014.
+J.A.Read, S.Hussein, H.Gingell, andJ.Tucker. Mtbtmkincomplexwithcompound8. Protein
+DataBank,2014. PDBID:4unn.
+JamesPRoney,PaulMaragakis,PeterSkopp,andDavidEShaw. Generatingrealistic3dmolecules
+withanequivariantconditionallikelihoodmodel. 2022.
+LarsRuddigkeit,RuudVanDeursen,LorenzCBlum,andJean-LouisReymond.Enumerationof166
+billion organic small molecules in the chemical universe database gdb-17. Journal of chemical
+informationandmodeling,52(11):2864–2875,2012.
+ThomasSRush,JAndrewGrant,LidiaMosyak,andAnthonyNicholls. Ashape-based3-dscaffold
+hoppingmethodanditsapplicationtoabacterialprotein-proteininteraction.Journalofmedicinal
+chemistry,48(5):1489–1495,2005.
+Masami Sako, NOBUAKI YASUO, and Masakazu Sekijima. Diffint: A pharmacophore-aware
+diffusionmodelforstructure-baseddrugdesignwithexplicithydrogenbondinteractionguidance.
+ChemRxiv,2024. doi: 10.26434/chemrxiv-2024-23fbj.
+MarijnPASanders, Arme´nioJMBarbosa, BarbaraZarzycka, GerryAFNicolaes, JanPGKlomp,
+JacobDeVlieg, andAlbertoDelRio. Comparativeanalysisofpharmacophorescreeningtools.
+Journalofchemicalinformationandmodeling,52(6):1607–1620,2012.
+Vıctor Garcia Satorras, Emiel Hoogeboom, and Max Welling. E (n) equivariant graph neural net-
+works. InInternationalconferenceonmachinelearning,pp.9323–9332.PMLR,2021.
+GisbertSchneider,PetraSchneider,andSteffenRenner. Scaffold-hopping: howfarcanyoujump?
+QSAR&CombinatorialScience,25(12):1162–1171,2006.
+Arne Schneuing, Yuanqi Du, Charles Harris, Arian Jamasb, Ilia Igashov, Weitao Du, Tom Blun-
+dell,PietroLio´,CarlaGomes,MaxWelling,etal. Structure-baseddrugdesignwithequivariant
+diffusionmodels. arXivpreprintarXiv:2210.13695,2022.
+Marwin HS Segler, Thierry Kogej, Christian Tyrchan, and Mark P Waller. Generating focused
+moleculelibrariesfordrugdiscoverywithrecurrentneuralnetworks. ACScentralscience,4(1):
+120–131,2018.
+Miha Skalic, Jose´ Jime´nez, Davide Sabbadin, and Gianni De Fabritiis. Shape-based generative
+modelingfordenovodrugdesign. Journalofchemicalinformationandmodeling,59(3):1205–
+1214,2019.
+JaschaSohl-Dickstein,EricWeiss,NiruMaheswaranathan,andSuryaGanguli. Deepunsupervised
+learning using nonequilibrium thermodynamics. In International conference on machine learn-
+ing,pp.2256–2265.PMLR,2015.
+MariaSorokina,PeterMerseburger,KohulanRajan,MehmetAzizYirik,andChristophSteinbeck.
+Coconut online: collection of open natural products database. Journal of Cheminformatics, 13
+(1):2,2021.
+PW Sprague. Automated chemical hypothesis generation and database searching with catalyst.
+PerspectivesinDrugDiscoveryandDesign,3,1995.
+TeagueSterlingandJohnJ.Irwin. Zinc15–liganddiscoveryforeveryone. JournalofChemical
+InformationandModeling,55(11):2324–2337,2015. doi: 10.1021/acs.jcim.5b00559.
+Carmen Stoffelen and Jurriaan Huskens. Soft supramolecular nanoparticles by noncovalent and
+host–guestinteractions. Small,12(1):96–119,2016.
+16
+PublishedasaconferencepaperatICLR2025
+JonatanTaminau,GertThijs,andHansDeWinter.Pharao:pharmacophorealignmentandoptimiza-
+tion. JournalofMolecularGraphicsandModelling,27(2):161–169,2008.
+FDeanToste,MatthewSSigman,andScottJMiller.Pursuitofnoncovalentinteractionsforstrategic
+site-selectivecatalysis. Accountsofchemicalresearch,50(3):609–615,2017.
+OlegTrottandArthurJOlson. Autodockvina: improvingthespeedandaccuracyofdockingwith
+a new scoring function, efficient optimization, and multithreading. Journal of computational
+chemistry,31(2):455–461,2010.
+MikkoJVainio,JSanteriPuranen,andMarkSJohnson. Shaep: molecularoverlaybasedonshape
+andelectrostaticpotential,2009.
+Clement Vignac, Igor Krawczuk, Antoine Siraudin, Bohan Wang, Volkan Cevher, and Pas-
+cal Frossard. Digress: Discrete denoising diffusion for graph generation. arXiv preprint
+arXiv:2209.14734,2022.
+Clement Vignac, Nagham Osman, Laura Toni, and Pascal Frossard. Midi: Mixed graph and 3d
+denoisingdiffusionformoleculegeneration. InJointEuropeanConferenceonMachineLearning
+andKnowledgeDiscoveryinDatabases,pp.560–576.Springer,2023.
+D.Wacker,G.Fenalti,M.A.Brown,V.Katritch,R.Abagyan,V.Cherezov,andR.C.Stevens.Crystal
+structureofthehumanbeta2adrenergicreceptorincomplexwiththeinverseagonistici118,551.
+ProteinDataBank,2010a. PDBID:3ny8.
+Daniel Wacker, Gustavo Fenalti, Monica A Brown, Vsevolod Katritch, Ruben Abagyan, Vadim
+Cherezov, and Raymond C Stevens. Conserved binding mode of human β2 adrenergic recep-
+tor inverse agonists and antagonist revealed by x-ray crystallography. Journal of the American
+ChemicalSociety,132(33):11443–11445,2010b.
+JoelWahl. Phesa: Anopen-sourcetoolforpharmacophore-enhancedshapealignment. Journalof
+ChemicalInformationandModeling,2024.
+Mingyang Wang, Chang-Yu Hsieh, Jike Wang, Dong Wang, Gaoqi Weng, Chao Shen, Xiaojun
+Yao, Zhitong Bing, Honglin Li, Dongsheng Cao, et al. Relation: A deep generative model for
+structure-baseddenovodrugdesign. JournalofMedicinalChemistry,65(13):9478–9492,2022.
+JosephLWatson,DavidJuergens,NathanielRBennett,BrianLTrippe,JasonYim,HelenEEise-
+nach,WoodyAhern,AndrewJBorst,RobertJRagotte,LukasFMilles,etal. Denovodesignof
+proteinstructureandfunctionwithrfdiffusion. Nature,620(7976):1089–1100,2023.
+Camille G Wermuth. Similarity in drugs: reflections on analogue design. Drug Discovery Today,
+11(7-8):348–354,2006.
+StevenEWheeler, TrevorJSeguin, YanfeiGuan, andAnaliseCDoney. Noncovalentinteractions
+inorganocatalysisandtheprospectofcomputationalcatalystdesign. AccountsofChemicalRe-
+search,49(5):1061–1069,2016.
+StephanieWills,RubenSanchez-Garcia,StephenDRoughley,AndyMerritt,RoderickEHubbard,
+FrankvonDelft,andCharlotteMDeane. Expandingthescopeofacataloguesearchtobioisos-
+tericfragmentmergesusingagraphdatabaseapproach. bioRxiv,pp.2024–08,2024.
+AndrewAWylie,JosephSchoepfer,WolfgangJahnke,SandraWCowan-Jacob,AliceLoo,Pascal
+Furet, Andreas L Marzinzik, Xavier Pelle, Jerry Donovan, Wenjing Zhu, et al. The allosteric
+inhibitorabl001enablesdualtargetingofbcr–abl1. Nature,543(7647):733–737,2017.
+Weixin Xie, Jianhang Zhang, Qin Xie, Chaojun Gong, Youjun Xu, Luhua Lai, and Jianfeng Pei.
+Acceleratingdiscoveryofnovelandbioactiveligandswithpharmacophore-informedgenerative
+models. arXivpreprintarXiv:2401.01059,2024.
+MariaIZavodszky,AnjaliRohatgi,JeffreyRVanVoorst,HonggaoYan,andLeslieAKuhn.Scoring
+ligand similarity in structure-based virtual screening. Journal of Molecular Recognition, 22(4):
+280–292,2009.
+17
+PublishedasaconferencepaperatICLR2025
+Chun-HuiZhang,ElizabethAStone,MayaDeshmukh,JosephAIppolito,MohammadMGhahre-
+manpour,JulianTirado-Rives,KrasimirASpasov,ShuoZhang,YukaTakeo,ShalleyNKudalkar,
+etal. Potentnoncovalentinhibitorsofthemainproteaseofsars-cov-2frommolecularsculpting
+ofthedrugperampanelguidedbyfreeenergyperturbationcalculations. ACScentralscience, 7
+(3):467–475,2021.
+KangyuZheng,YingzhouLu,ZaixiZhang,ZhongweiWan,YaoMa,MarinkaZitnik,andTianfan
+Fu. Structure-based drug design benchmark: Do 3d methods really dominate? arXiv preprint
+arXiv:2406.03403,2024.
+Qian-YiZhou,JaesikPark,andVladlenKoltun. Open3D:Amodernlibraryfor3Ddataprocessing.
+arXiv:1801.09847,2018.
+HuiminZhu,RenyiZhou,DongshengCao,JingTang,andMinLi. Apharmacophore-guideddeep
+learningapproachforbioactivemoleculargeneration.NatureCommunications,14(1):6234,2023.
+Wonho Zhung, Hyeongwoo Kim, and Woo Youn Kim. 3d molecular generative framework for
+interaction-guideddrugdesign. NatureCommunications,15(1):2688,2024.
+Yael Ziv, Brian Marsden, and Charlotte Deane. Molsnapper: Conditioning diffusion for structure
+baseddrugdesign. bioRxiv,pp.2024–03,2024.
+18
+PublishedasaconferencepaperatICLR2025
+A APPENDIX
+CONTENTS
+1 Introduction 1
+2 RelatedWork 3
+3 Methodology 4
+3.1 Definingrepresentationsofmoleculesandtheirinteractionprofiles . . . . . . . . . 4
+3.2 Shape,electrostatic,andpharmacophoresimilarityscoringfunctions . . . . . . . . 5
+3.3 JointdiffusionofmoleculesandtheirinteractionprofileswithShEPhERD . . . . . 5
+4 Experiments 7
+5 Conclusion 10
+A Appendix 19
+A.1 Comparing ShEPhERD to REINVENT and virtual screening for natural product
+ligandhopping . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+A.1.1 REINVENTconvergence. . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+A.2 Additionaldetailsonexperiments . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+A.2.1 UnconditionaljointgenerationonShEPhERD-GDB17 . . . . . . . . . . . 23
+A.2.2 ConditionalgenerationonShEPhERD-GDB17 . . . . . . . . . . . . . . . 23
+A.2.3 Naturalproductligandhopping . . . . . . . . . . . . . . . . . . . . . . . 23
+A.2.4 Bioactivehitdiversification . . . . . . . . . . . . . . . . . . . . . . . . . 24
+A.2.5 Bioisostericfragmentmerging . . . . . . . . . . . . . . . . . . . . . . . . 28
+A.3 Definingandanalyzingvalidityofgenerated3Dmolecules . . . . . . . . . . . . . 30
+A.4 Unconditionalandconditionalgenerationmetrics . . . . . . . . . . . . . . . . . . 36
+A.5 Calculatinginteractionprofilesfrom3Dmolecularstructures . . . . . . . . . . . . 38
+A.5.1 Shapes/surfaces . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38
+A.5.2 Electrostaticpotentialsurfaces . . . . . . . . . . . . . . . . . . . . . . . . 38
+A.5.3 Pharmacophores . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38
+A.6 Parameterizationof3Dsimilarityscoringfunctions . . . . . . . . . . . . . . . . . 39
+A.6.1 Shapesimilarityscoringfunction . . . . . . . . . . . . . . . . . . . . . . 41
+A.6.2 ESPsurfacesimilarityscoringfunction . . . . . . . . . . . . . . . . . . . 42
+A.6.3 Pharmacophoresimilarityscoringfunction . . . . . . . . . . . . . . . . . 42
+A.7 Additionaldetailsonmodeldesign,trainingprotocols,andsampling . . . . . . . . 43
+A.7.1 FurtherdetailsonShEPhERD’sdenoisingmodules . . . . . . . . . . . . . 43
+A.7.2 Trainingandsamplingprocedures . . . . . . . . . . . . . . . . . . . . . . 45
+A.7.3 Modelhyperparameters . . . . . . . . . . . . . . . . . . . . . . . . . . . 50
+19
+PublishedasaconferencepaperatICLR2025
+A.8 Symmetrybreakinginunconditionalgeneration . . . . . . . . . . . . . . . . . . . 52
+A.9 Characterizingtheneedforout-of-distributionperformance . . . . . . . . . . . . . 53
+A.10 Additionalexamplesofgeneratedmolecules . . . . . . . . . . . . . . . . . . . . . 55
+A.11 Trainingandinferenceresources . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+A.12 AdditionalExperimentsandComparisonstoRelatedWork . . . . . . . . . . . . . 59
+A.12.1 ComparisontoSQUIDforshape-conditionedgeneration . . . . . . . . . . 59
+A.12.2 Comparisonsagainststructure-baseddrugdesignmodelsthatexplicitlyen-
+codetheproteinpocket . . . . . . . . . . . . . . . . . . . . . . . . . . . . 59
+A.12.3 ComparisonsagainstinpaintingwithDiffSBDD. . . . . . . . . . . . . . . 61
+A.12.4 ComparisonsagainstSynFormeronnaturalproductligandhopping . . . . 61
+A.1 COMPARINGShEPhERDTOREINVENTANDVIRTUALSCREENINGFORNATURAL
+PRODUCTLIGANDHOPPING
+REINVENT,astate-of-the-artbaselineforgenerativemoleculardesignandoptimization,appliesa
+reinforcementlearningpolicytoiterativelyupdateaSMILESrecursiveneuralnetwork(RNN)with
+a provided reward function (Blaschke et al., 2020). We applied REINVENT to the three natural
+product ligand hopping tasks defined in section 4, using a combination of our ESP and pharma-
+cophore 3D similarity scoring functions (section 3.2) as REINVENT’s reward function. We fol-
+lowedtheREINVENTimplementationinthePracticalMolecularOptimization(PMO)benchmark
+(Gaoetal.,2022). REINVENTwaspretrainedontheZINCdatabase(Sterling&Irwin,2015)and
+wasdeployedwithabatchsizeof64,σ =500,anexperiencereplayof24,andanoraclebudgetof
+10,000. TrainingwasperformedusinganAdamoptimizerwithalearningrateof5×10−4. Any
+SMILESwhichfailedduringpharmacophorescoringwereassignedascoreof0.
+SinceREINVENTgeneratesmoleculesina1DSMILESrepresentation, wegenerateupto5con-
+formersforeachSMILESinordertoapplyour3Dsimilarityscoringfunctionsastherewardfunc-
+tion. TheproceduretocomputetherewardforasinglegeneratedSMILESisasfollows: 1)embed
+5 conformers with RDKit’s EmbedMultipleConfs function, which uses ETKDG; 2) optimize
+eachconformerwithMMFF94foramaximumof200steps;3)clustertheconformerswithButina
+clusteringusinganRMSDthresholdof0.1A˚;4)relaxeachremainingconformerwithxTBinim-
+plicit water; 5) extract the ESP surface x with n = 400 and pharmacophore profile x of each
+3 3 4
+relaxedconformer;6)aligneachconformertothetargetnaturalproductbyoptimizingour3DESP
+scoringfunction;7)calculatetheESPandpharmacophoresimilarityscoresoftheESP-alignedcon-
+formers; 8) add the ESP and pharmacophore similarity scores to obtain one combined score per
+conformer;and9)takethemaximumscoreacrosstheconformersasthereward.
+Fig. 5 compares the distributions of ESP and pharmacophore similarity for samples obtained
+by (1) using ShEPhERD (trained on ShEPhERD-MOSES-aq) to sample 2500 molecules from
+P(x |x ,x )viainpainting;(2)virtuallyscreening(VS)2500random3DmoleculesfromShEP-
+1 3 4
+hERD-MOSES-aq;and(3)optimizingREINVENTwithanoracle/samplingbudgetof10,000. Note
+thatREINVENTwaspretrainedonZINC,andShEPhERD’strainingset(MOSES-aq)isasmallsub-
+setofZINC.Each3DmoleculegeneratedbyShEPhERDwasrelaxedwithxTBpriortorealigning
+therelaxedstructuretothenaturalproduct(viamaximizingESPsimilarity)andscoringtheESPand
+pharamcophoresimilarityofthealignedpose. 3DmoleculessampledfromShEPhERD-MOSES-aq
+(which are already xTB-relaxed) were directly aligned to the natural product in the same manner.
+Samples from REINVENT were scored using the procedure outlined in the preceding paragraph.
+For both ShEPhERD and REINVENT, we only compare valid samples that have SA scores lower
+than 4.5. This means that although we initially obtain 2500 and 10000 samples from ShEPhERD
+and REINVENT, respectively, we only compare ∼500 samples from ShEPhERD against ∼9000
+samplesfromREINVENT,foreachcasestudy. Despitethefewernumberofsamples,ShEPhERD
+stillfindsmoleculesbeneaththeSA-scorethresholdthatscorehigherthanmoleculesoptimizedby
+REINVENT, for all three natural products. Both ShEPhERD and REINVENT find much better
+moleculesthanthoseobtainedbyrandomlysamplingfromthedataset.
+20
+PublishedasaconferencepaperatICLR2025
+Figure5:Distributionsof3DESPandpharmacophoresimilaritytoeachofthreenaturalproducttar-
+getsforsmall-moleculessampledviaShEPhERD,REINVENT,orvirtualscreening(VS).Similarity
+scores arecomputed after optimizingthe molecular geometrywith xTB andaligning the structure
+tothenaturalproductbymaximizingESPsimilarity. ForShEPhERDandREINVENT,onlyvalid
+samples with SA score < 4.5 are included. Also visualized are examples of top-scoring samples
+generatedbyShEPhERDandREINVENT.
+WealsoemphasizethatunlikeREINVENT,ShEPhERDisnottrainedtodirectlyoptimize3Dsim-
+ilarity scores to each natural product. Indeed, we use the same ShEPhERD model with the same
+weights for each natural product target. Nor does ShEPhERD employ any inference optimization
+strategies beyond conditional generation via inpainting. Hence, although ShEPhERD is already
+quite capable out-of-the-box, we expect ShEPhERD to be able to find even better small-molecule
+mimics by combining inpainting with other inference-time optimization strategies. For instance,
+onecoulduseageneticalgorithmwhichiterativelymutatesandevolvesthebest-scoringsamplesby
+partialforward-noisingandsubsequentdenoising.
+A.1.1 REINVENTCONVERGENCE
+We plot the average score of each REINVENT batch vs. the iteration number for each natural
+product target in Fig. 6. For the first natural product, REINVENT appears converged. For the
+second, REINVENTappearsclosetoconverged. Forthethirdnaturalproduct, REINVENTcould
+likely find better scoring molecules if trained for longer. We emphasize that we could also run
+ShEPhERDforlonger,too.AlthoughREINVENTmaynotnecessarilybeconvergedforeachnatural
+product, wefollowthePMObenchmark(Gaoetal.,2022)andlimitthenumberoforaclecallsto
+10,000. In practice, even allowing for just 10,000 REINVENT samples required multiple days
+of computation per target because of the expensive conformer sampling, xTB optimization, and
+alignmentwithourscoringfunctions. WealsonotethatincontrasttoREINVENT,ShEPhERDis
+notspecificallytrainedtooptimizesimilarityforanynaturalproduct(orforanyparticularmolecule).
+Fig. 6alsoplotsSAscoredistributionsforbothREINVENT-andShEPhERD-generatedmolecules.
+21
+PublishedasaconferencepaperatICLR2025
+Natural product (1) Natural product (2) Natural product (3)
+Figure6: (Top)Theaveragescore(ESP+pharmacophore3Dsimilarity)acrossabatchforeachiter-
+ationoftheoptimizationforREINVENT.Onlynaturalproduct(1)seemstohavefullyconverged.
+Alloptimizationswereconcludedat10,000oraclecalls. (Bottom)ThedistributionsofSAscorefor
+REINVENTandShEPhERDformoleculeswithSAscore<4.5.
+22
+PublishedasaconferencepaperatICLR2025
+A.2 ADDITIONALDETAILSONEXPERIMENTS
+A.2.1 UNCONDITIONALJOINTGENERATIONONShEPhERD-GDB17
+Wedefineself-consistencyasthe3DsimilaritybetweentheShEPhERD’sgeneratedinteractionpro-
+file (i.e., x , x , or x ) and the true interaction extracted from the generated molecule x after
+2 3 4 1
+xTBrelaxationandalignmenttotheunrelaxedposeviaminimizingheavyatomRMSD.Wealign
+via heavy-atom RMSD (rather than aligning with the scoring functions) for our self-consistency
+evaluations in order to preserve the natively generated pose of x as much as possible. Since the
+1
+P(x ,x ) and P(x ,x ) models employ n ,n = 75, all self-consistency similarity evaluations
+1 2 1 3 2 3
+also use 75 surface points when extracting surface and ESP interaction profiles from the (xTB-
+relaxedandRMSD-aligned)generatedstructures. Notethatthisdiffersfromourotherexperiments
+involvingconditionalgeneration,whichemployn ,n =400forsimilarityscoring.
+2 3
+For each valid ShEPhERD-generated molecule, the lower bound of self-consistency is calculated
+by(globally)aligningasampledmoleculefromShEPhERD-GDB17tothetrueinteractionprofile.
+Sincesurfacesamplingisstochastic(App.A.5),theself-similaritybetweentwosurfacesextracted
+from the same x may not equal 1.0. Hence, we compare the self-consistency of ShEPhERD’s
+1
+jointlygeneratedsamplestoupperboundsforthesurfaceandESPmodels,calculatedastheexpec-
+tationoftheself-similaritybetweenrepeatedextractionsofthesameprofilefromthesamex . We
+1
+estimatetheseupperboundsbyresamplingthetrueprofilesforeachofthexTB-relaxedgenerated
+molecules5timesandcomputingtheaveragesimilaritybetweentheresampledprofiles. Theupper
+boundforpharmacophoreself-consistencyis1.0sincepharmacophoreextractionisdeterministic.
+A.2.2 CONDITIONALGENERATIONONShEPhERD-GDB17
+We use our 3D similarity scoring functions to evaluate the conditional ShEPhERD models. For
+eachShEPhERD-generatedsamplethatisvalidafterxTBrelaxation,wescorethesimilarityofthe
+relaxedmoleculetothetargetinteractionprofileafteroptimalalignmentusingtherelevantscoring
+function. For surface and ESP similarity, we use n ,n = 400 to lessen the effect of stochastic
+2 3
+surfacesamplingonthescores–weonlynoticesmalldeviationsinscores(generally<0.03)dueto
+stochasticity(Fig.19),whichshouldbeconsideredwhencomparinganytwosimilarityscores. As
+a baseline, we also sample 20 molecules from the ShEPhERD-GDB17 dataset for each target and
+scoretheirsimilarityafteroptimallyaligningthesampledmoleculestothetargetinteractionprofile.
+A.2.3 NATURALPRODUCTLIGANDHOPPING
+We selected the three natural products in Fig. 4 by manually searching the COCONUT database
+(https://coconut.naturalproducts.net/)fornaturalproductwithcomplexstructures
+that are meaningfully out of distribution compared to ShEPhERD-MOSES-aq in terms of their
+molecular size, 3D conformation, number of pharmacophores, and/or stereochemistry. Notably,
+allselectednaturalproductshaveSAscoresexceeding6.0andhaveintricate3Dshapes.
+Each natural product underwent an extensive conformer search and optimization to identify the
+lowest-energyconformerasevaluatedwithxTBinimplicitwater. Upto1000conformersofeach
+naturalproductwereinitiallyenumeratedwithRDKitbeforeundergoinggeometryrelaxationwith
+xTB.Weextractedtheinteractionprofilesofthelowest-energyconformerfollowingApp.A.5.
+For each natural product, we sampled 2500 structures from P(x |x∗,x∗) by inpainting, where
+1 3 4
+(x∗,x∗) are the ESP and pharmacophore interaction profiles of the natural product. We use the
+3 4
+versionofShEPhERDtrainedtolearnP(x ,x ,x )onShEPhERD-MOSES-aq.Weusedn =75,
+1 3 4 3
+specified n based on the target x∗, and swept over 25 values of n in the range [36,80] to force
+4 4 1
+ShEPhERD to generate both small and larger molecules, even though smaller molecules are less
+likelytooccupytheentirevolumeofthetargetnaturalproduct(andhencelesslikelytoscorewell).
+Wesampled100structuresforeachchoiceofn . Forthevalidsamples,werelaxedthegenerated
+1
+3DmolecularconformationwithxTB,andrealignedtherelaxedstructuretothenaturalproductby
+optimizingourESPsimilarityscoringfunctionafterresamplingx forbothstructuresatn =400.
+3 3
+We used ESP-based alignment instead of pharmacophore-based alignment as ESP surfaces better
+capturethe3Dshapesofthemolecules,andbecauseESP-basedalignmentsaremorerobust. Given
+the ESP-aligned relaxed structure, we scored its ESP and pharmacophore similarity to the natural
+product. WeconsiderbothscoresinourevaluationsandcomparisonstoREINVENT(App.A.1).
+23
+PublishedasaconferencepaperatICLR2025
+A.2.4 BIOACTIVEHITDIVERSIFICATION
+We used the same PDB co-crystal structures as used in (Zheng et al., 2024) and use the prepared
+receptorfiles.pdbqtAutoDockVinafilesprovidedbyTherapeuticDataCommons(TDC)(Huang
+etal.,2021). Thesetargetsare1iep(Nagaretal.,2001;2002),3eml(Jaakolaetal.,2008a;b),3ny8
+(Wacker et al., 2010a;b), 4rlu (Li et al., 2014; Dong et al., 2015), 4unn (Read et al., 2014; Naik
+et al., 2015), 5mo4 (Cowan-Jacob, 2016; Wylie et al., 2017), and 7l11 (Deshmukh et al., 2020;
+Zhang et al., 2021). We use the corresponding co-crystal ligands: STI, ZMA, JRZ, HCC, QZZ,
+Nilotinib(NIL),andXF1.
+For each experimental ligand, the lowest-energy conformer was identified by initially embedding
+1000 conformers with RDKit and relaxing each with xTB in implicit water. Then we extract the
+interactionprofilesofthelowestenergyconformerfollowingApp.A.5. Weusethecrystalstructure
+posefromthePDB(Bermanetal.,2000)toalsoextracttheinteractionprofilesandobtainthe“PDB
+pose”conformation. WeaddedhydrogenstothesePDBposesusingRDKit’sAddHsfunctionwith
+addCoords=True, butdidnot relaxthestructureswithxTB.TheESPsurfaceswerecomputed
+fromthepartialchargesofthenativeconformation(withaddedhydrogens)usingasinglepointxTB
+calculationinimplicitwater.
+For the two poses of each experimental ligand, we generate 500 samples from P(x |x∗,x∗) by
+1 3 4
+inpainting, where (x∗,x∗) are the ESP and pharmacophore interaction profiles of the ligand. We
+3 4
+usetheShEPhERDmodelthatwastrainedtolearnP(x ,x ,x )onShEPhERD-MOSES-aq. Ina
+1 3 4
+similarmannertothenaturalproducts, weusedn = 75andspecifiedn basedonthetargetx∗.
+3 4 4
+We swept over 25 values of n in the range [n∗ −12,n∗ +12] where n∗ is the total number of
+1 1 1 1
+atomsinthePDBligand. Wegenerate20structuresforeachchoiceofn . Forvalidsamples, we
+1
+extractSMILESstrings. Differentfromtheotherexperiments,wedonotusexTBforrelaxationas
+wesimplydockthevalidmoleculesfromaSMILESrepresentation.
+Toevaluatevalidsamples,weimplementanadaptedversionoftheVina smilesclassfromthe
+TDC oracles. For each SMILES, we 1) embed a conformer with RDKit ETKDG with a random
+seedof123456789;2)optimizewithMMFF94for200steps;3)preparetheconformerfordocking
+withMeeko(forlilab,n.d.);4)dockthemoleculewithAutodockVinav1.2.5(Trott&Olson,2010;
+Eberhardtetal.,2021)usingarandomseedof987654321andexhaustivenessof32;and5)obtaina
+Vinascoreinkcal/mol,whichweuseasa(poor)proxyforbindingaffinity.
+Fig. 7 showcases examples for the 5mo4 and 7l11 docking targets. For each target, we show the
+PDBligandinitscrystalstructurepose,thetop-scoringredockedpose,anditsensembleoftop-10
+scoring poses. We then visualize the top scoring pose of three top-scoring ShEPhERD-generated
+ligands, overlaid on the best docking pose of the PDB ligand. Although the top-scoring docked
+poseoftheShEPhERD-generatedligandsmaynotalignperfectlywiththetop-scoringposeofthe
+PDBligand, itisevidentthatthegeneratedligandsexploreposesthatengageinthesamebinding
+interactionsasPDBligandswhenwecomparetheirensemblesofdockedposes.Moreover,asFig.4
+illustrates,ineachcasewecanidentifyadockedposeforeachoftheShEPhERD-generatedligands
+thatcloselyalignswiththetopposeofthePDBligand.
+Fig. 8showsthedistributionsofthetop-10VinadockingscoresforShEPhERD-generatedligands
+comparedtothetop-10dockingscoresobtainedbyvirtuallyscreening10KmoleculesfromShEP-
+hERD-MOSES-aq. Despitehavingnoknowledgeoftheproteinpocketandonlygenerating<500
+(valid) ligands per target, ShEPhERD enriches the top-1 Vina score relative to the redocked PDB
+ligand for all 7 targets, 3/7 targets relative to the docking screen when conditioning on the lowest
+energy conformer, and 5/7 targets relative to the docking screen when conditioning on the PDB
+ligand’s bound pose. Note that conditioning on the PDB ligand’s bound pose indirectly leaks in-
+formationabouttheproteinpocket. Weemphasizethatforthe2/7cases(3ny8and4rlu)wherethe
+dockingscreenoutperforms(intermsoftop-1Vinascore)theShEPhERD-generatedligandswhen
+conditioning on the PDB ligand’s bound pose, the Vina docking score of the PDB ligand is rela-
+tively low (<9 kcal/mol). Since we use ShEPhERD to diversify the PDB ligand while preserving
+its3Dinteractions–notoptimizedockingscore–wedonotnecessarilyexpectShEPhERDtofind
+higher-scoringligandscomparedtoanunbiaseddockingscreenwhichcanexplorelargerregionsof
+chemicalspace.
+ToinvestigatethepotentialofusingShEPhERDtooptimizedockingscore,wealsoconditionShEP-
+hERDonthelowestenergyconformeranddockedposeofthebestscoringcompoundfromthe10K
+24
+PublishedasaconferencepaperatICLR2025
+Figure 7: (Left) The true binding pose of the experimental ligand extracted from the PDB (pink)
+overlaid on the top-scoring re-docked pose (light blue). (Middle) Ensemble of the top-10 docked
+posesfortheexperimentalligand,rankedbyVinadockingscore. (Right)Top-1Vina-scoringpose
+for each of the three select ShEPhERD samples highlighted in Fig. 4 (green-grey), overlaid on
+the top-scoring re-docked pose for the experimental ligand (light blue). The top and bottom rows
+showresultsfor5mo4’sand7l11’sexperimentalco-crystalligands,respectively.Althoughthetop-1
+dockedposefortheShEPhERD-generatedligandsmaynotperfectlyalignwiththetopscoringpose
+of the experimental ligand, the ensembles of their docked poses do closely match, indicating that
+theexperimentalligandsandtheShEPhERD-diversifiedanaloguesexplorecommonbindingmodes.
+Wenotethattrueexperimentalbindingposesoftendonotmatchthetop-1dockedposessimulated
+fromdockingprogramslikeAutoDockVina,andhenceweshowtheensemblesofdockedposesto
+accountforthisuncertainty.
+dockingscreen. ResultsareshowninFig. 9. Withthisstrategy,ShEPhERDgeneratesnewligands
+withhighertop-1Vinascoresfor5/7targetsrelativetothebestscoring compoundsfromthe10K
+dockingscreen(whichservedastheconditioninginformationtoShEPhERD).Notably,ShEPhERD
+drasticallyimprovesVinascoresonthe3ny8targetcomparedtowhenconditioningontheexperi-
+mentalPDBligand,shiftingthemeanofthetop-10scoresfrom−9.96to−11.70kcal/mol(Fig. 8).
+ThisPDBligandscorespoorly(theworstamongallPDBligands).Anotherinterestingphenomenon
+isthatneitherthe10KscreenedmoleculesnortheShEPhERD-generatedmolecules(conditionedon
+thebestfromthescreen)managetosurpassthedockingscoreof7l11’sexperimentalPDBligand.
+However,ShEPhERDdoesimprovethisdockingscorewhendirectlyconditioningonthe7l11PDB
+ligand(Fig. 8),highlightingShEPhERD’sflexibilityinstructure-baseddrugdesign.
+25
+PublishedasaconferencepaperatICLR2025
+8.5
+9.0
+9.5
+10.0
+10.5
+11.0
+11.5
+12.0
+1iep 3eml 3ny8 4rlu 4unn 5mo4 7l11
+Target
+)lom/lack(
+erocS
+aniV
+ShEPhERD -- bound pose
+ShEPhERD -- lowest energy
+10k docking screen
+Redocked PDB ligand
+Figure8: Thedistributionsofthetop-10scoringShEPhERD-generatedsampleswhenconditioning
+onthePDBligand’slowestenergyconformer(teal)orboundpose(lightblue),forallproteintargets.
+We compare to the distributions for the top-10 scoring compounds from the 10K docking screen
+(red). TheVinascoreoftheredockedPDBligandisdenotedbythedottedline. Notethatineach
+case, only 500 molecules were generated by ShEPhERD – in contrast to the 10K sampled in the
+virtualscreen. Furthermore,weonlydockedthe<500samplesforwhichwecouldextractavalid
+SMILESstringfromthegenerated3Dconformation.
+Figure9: DockingresultsforShEPhERD-generatedmoleculeswhenconditioningonthebestscor-
+ingligandfromthe10Kdockingscreen. Weshowresultswhenconditioningonthelowestenergy
+conformer(teal)ortopdockingpose(lightblue)ofthetop-scoringscreenedligand. Wealsoshow
+theoriginal10Kdockingscreen(red),thescoresoftheredockedPDBligands(bluedottedline),and
+thescoresoftheconditioningmolecule(orangedottedline). ThetopplotshowsthefullVinascore
+distributions,whilethebottomplotonlyshowsthedistributionsforthetop-10scoringcompounds.
+26
+PublishedasaconferencepaperatICLR2025
+Figure 10: The individually visualized docking poses for each sampled molecule for PDB targets
+5mo4and7l11fromFig. 4.
+27
+PublishedasaconferencepaperatICLR2025
+A.2.5 BIOISOSTERICFRAGMENTMERGING
+WedemonstrateShEPhERD’snativecapacityforbioisostericfragmentmergingontheantiviraltar-
+get EV-D68 3C protease. Starting from the 25 fragments hits in the catalytic pocket identified by
+Willsetal.(2024), wedownselected13fragmentsthatstillspantheP1, P2, andP3regionsofthe
+activesitethroughvisualinspectionusingFragalysis(DiamondLightSource,2024)andChimeraX
+(Meng et al., 2023). Specifically, we removed fragments that did not have common interactions,
+thatsignificantlydeviatedfromthefragmentensemble’saggregateshape, oraddednoextrainfor-
+mation. Thefinallistoffragmentswere: x0147 0A,x1071 0A,x1083 0A,x1084 0A,x1140 0A,
+x1163 0A,x1498 0A,x1537 0A,x1594 0A,x1919 0A,x2021 0A,x2099 0A,andx2135 0A.
+Foreachfragment,weaddedhydrogensusingRDKit’sAddHsfunctionwithaddCoords=True.
+Wethengeneratedanaggregateshaperepresentationbysamplingfromasurfacewithaproberadius
+of0.6. WecomputepartialchargeswithanxTBsinglepointcalculationinimplicitwaterforeach
+fragmentseparately. Then,wecomputetheESPateachofthesurfacepointsforeachfragment,and
+averagetheESPcontributionsateachpoint. SeeApp.A.5formoredetails.
+Extractionofthepharmacophoreswasamanualtaskbasedonselectingthosethatinteractedwith
+thepocket(asdetectedbyFragalysisandChimeraX).Aftermanualdownselection,pharmacophores
+ofthesametypeunderwentclusteringiftherewereatleasttwowithinathresholddistance. These
+threshold distances were 1.0 A˚ for HBAs, 2.0 A˚ for HBDs, 1.5 A˚ for aromatic groups, and 2.0 A˚
+for hydrophobes. These were somewhat arbitrary cutoffs that yielded reasonable pharmacophore
+hypothesesuponvisualinspection. Table1liststhefinal27selectedpharmacophores.
+Table1:The27pharmacophoresusedtoconditionShEPhERDforthebioisostericfragmentmerging
+demonstration. Only hydrogen bond acceptors (HBA), hydrogen bond donors (HBD), aromatic
+groups,andhydrophobesarecontainedinthese27pharmacophores.
+Type Coordinates(P) Vector(V)
+HBA (-7.5155,-3.7035,-9.0635) (0.1900,0.7041,-0.6842)
+(-6.7175,-4.8185,-8.8258) (0.8205,-0.2287,-0.5240)
+(-2.3550,-7.3310,-0.0453) (0.7719,0.4600,-0.4388)
+(-6.5197,-4.3363,-4.1827) (0.5106,0.7063,-0.4905)
+(-6.9450,-6.9160,-5.0510) (-0.1783,-0.4378,-0.8812)
+(-3.2780,-7.2170,2.2860) (-0.7287,0.6270,-0.2755)
+(-5.7270,-2.3950,-0.6220) (0.4491,-0.6321,0.6316)
+(-1.9580,-8.8820,3.3910) (0.7956,-0.5564,-0.2396)
+(-5.0980,-6.4300,-1.5740) (0.4851,0.6853,-0.5432)
+(-5.8830,-1.1980,0.0490) (0.4090,-0.3130,0.8572)
+(-5.6690,0.0200,-2.0780) (0.5578,0.5389,-0.6312)
+HBD (-9.4350,-2.6960,-8.2680) (0.1103,0.6563,-0.7464)
+(-3.2780,-7.2170,2.2860) (0.7506,0.2245,0.6214)
+(-1.9580,-8.8820,3.3910) (-0.2298,0.1607,0.9599)
+(-6.9480,-2.0740,-1.9750) (-0.3293,0.3106,-0.8917)
+Aromatic (-7.6710,-4.5475,-8.2231) (-0.5639,-0.4342,-0.7025)
+(-11.6032,-2.0268,-6.4003) (0.3775,0.9134,-0.1523)
+(-4.6030,-8.0915,-1.0500) (0.4302,-0.8132,-0.3919)
+(-9.5312,-4.0857,-7.3044) (-0.5073,-0.3479,-0.7884)
+Hydrophobe (-7.6710,-4.5475,-8.2231) (0.0,0.0,0.0)
+(-11.6032,-2.0268,-6.4003) (0.0,0.0,0.0)
+(-4.6030,-8.0915,-1.0500) (0.0,0.0,0.0)
+(-9.5312,-4.0857,-7.3044) (0.0,0.0,0.0)
+(-5.6776,-0.4634,-1.0174) (0.0,0.0,0.0)
+(-6.9299,-5.4087,-1.1730) (0.0,0.0,0.0)
+(-6.7990,-4.5530,-3.9980) (0.0,0.0,0.0)
+(-7.9010,0.1820,-0.7890) (0.0,0.0,0.0)
+28
+PublishedasaconferencepaperatICLR2025
+UsingtheextractedESP(x )andpharmacophore(x )interactionprofiles,weusedtheversionof
+3 4
+ShEPhERD trained to learn P(x ,x ,x ) on ShEPhERD-MOSES-aq to generate 1000 structures
+1 3 4
+fromP(x |x ,x )viainpainting. Weusedn = 75,specifiedn = 27,andsweptover40values
+1 3 4 3 4
+of n in the range [50,89] at 25 samples each. For the valid samples, we relaxed the generated
+1
+3DmolecularconformationwithxTB,andrealignedtherelaxedstructuretothenaturalproductby
+optimizingourESPsimilarityscoringfunctionafterresamplingx forbothstructuresatn =400.
+3 3
+We used ESP-based alignment instead of pharmacophore-based alignment as ESP surfaces better
+capture 3D shapes, and because ESP-based alignments are more robust. Given the ESP-aligned
+relaxed structure, we compute the ESP and pharmacophore similarity scores. Fig. 11 visualizes
+four ShEPhERD-generated samples with neutral charge and SA≤ 4.0 that were in the top-10 by
+combinedESPandpharmacophoresimilarityscores.
+Figure 11: Examples of four top-scoring ShEPhERD-generated ligands obtained via bioisosteric
+fragmentmerging. ShownarethexTB-relaxedstructuresofthegenerated3Dmoleculesafterbeing
+realigned to the fragments’ ESP and pharmacophore interaction profiles. Alignment is performed
+byoptimizingESPsimilarity. Theligandsareoverlaidonthetargetinteractionprofiles. Thetarget
+ESPsurfacehasbeenupsampledforvisualization.
+29
+PublishedasaconferencepaperatICLR2025
+A.3 DEFININGANDANALYZINGVALIDITYOFGENERATED3DMOLECULES
+Table 2: Global validity reported as percentages for 1000 unconditional and 2000 conditional
+samples from various ShEPhERD models trained on ShEPhERD-GDB17. Here, “Validity” is the
+percentage of valid molecules (see definition below); “Validity xTB” is the percentage of valid
+moleculesafterxTBoptimization;“Graphconsis.”isthepercentageofsampleswheretheatomcon-
+nectivityremainsthesamegiventhatthemoleculesarevalidbothpre-andpost-xTB-optimization;
+and“Validneutral”isthepercentageofvalidsamplesthathavemolecularcharge=0.
+UnconditionalGeneration
+Samples P(x ,x ) P(x ,x ) P(x ,x )
+1 2 1 3 1 4
+Validity(%) 96.2 92.7 73.7
+ValidityxTB(%) 96.3 93.0 73.7
+Graphconsis. (%) 99.1 99.5 98.4
+Validneutral(%) 84.1 93.2 89.7
+ConditionalGeneration
+Samples P(x |x ) P(x |x ) P(x |x )
+1 2 1 3 1 4
+Validity(%) 96.0 91.9 80.7
+ValidityxTB(%) 96.2 92.9 79.9
+Graphconsis. (%) 97.4 92.8 93.8
+Validneutral(%) 84.2 82.5 72.6
+Definingvalidity.Wedefinevalidityasthefractionofmoleculesthatcanconvertedfromtheatomic
+point cloud (a,C) (i.e., element types and coordinates)3 to an RDKit Mol object via RDKit’s in-
+ternal xyz2mol functionality that satisfy valencies as well as other constraints enumerated below.
+Empirically,wefindthatthismethodofextractingmoleculesfromxyz-formattedstructuresissim-
+ple,convenient,andquitereliablewhen(1)explicithydrogensareincludedinthe3Dstructure,(2)
+the3Dmoleculargeometryisofhighquality,and(3)theoverallchargeofthemoleculeisknown.
+In particular, RDKit is used to (1) generate a Mol object from (a,C) formatted as an .xyz file;
+(2) determine bonds via a rule-based algorithm based on interatomic distances; (3) sanitize the
+molecule; (4)ensurethattherearenoradicalelectrons(whicharen’tincludedinourdatasets); (5)
+checkthatstructureisnotfragmented;and(6)checkthattherearenomorethansixatomicformal
+charges that are non-zero (which usually indicates that a valid resonance structure of an aromatic
+ringcouldnotbedetermined). Inanefforttohandlechargedmolecules,werunthisprocedurefor
+molecularchargesinthisorder: [0,+1,-1,+2,-2]andbreaktheloopifextractionofamoleculeis
+successful. Finally,anxTBsinglepointcalculationisruntoobtainpartialcharges. Themolecular
+charge is specifically used to determine the bonds, to sanitize the molecule, and to run the single
+pointcalculation. Thesampledx isdeterminedinvalidifanyoftheaforementionedstepsfails.
+1
+We point out that in some cases, generated molecules may fail our stringent validity checks due
+to having imperfect molecular geometries (e.g., a bond length is slightly out of distribution). To
+considerthesecasesandtomeasureanotionofdistancefromthetrainingdistribution,weperforman
+xTBlocalgeometryoptimizationwiththegenerated(a,C)(formattedasan.xyzfile)andrepeat
+thevaliditychecks. Ifthenativelygeneratedstructurewasdeterminedinvalidpre-optimization,the
+xTBoptimizationisperformedwithaneutraloverallcharge; otherwisethesamechargewasused
+aswasdetermineduponinitialmoleculeextractionwithRDKit.
+If both the pre- and post-optimized samples are valid, we check if the graphs are consistent by
+matching their SMILES strings. If consistent, we also compute the strain energy and heavy-atom
+RMSDbetweentherelaxedandunrelaxedconformations.
+3AlthoughShEPhERDgeneratesformalchargesf andthebondsB,weignoretheseoutputswhenextract-
+ingamoleculefromx . Wearguethatthevalidityofagenerated3Dmolecularstructureshoulddependonly
+1
+onthegenerated3Dstructure,notonajointlygenerated2Dgraph.Hence,weusethediffusionprocessesover
+f andB primarilyasawaytohelpregularizethediffusionprocessesoveraandC. Moreover,bydefining
+validityonlywithrespecttotheelementtypesandcoordinates,ourvaliditychecksmaybeappliedtoother3D
+moleculargenerativemodelswhichdonotgeneratethe2Dmoleculargraph.
+30
+PublishedasaconferencepaperatICLR2025
+Analyzing validity. Metrics of validity for unconditional and conditional across all samples from
+ShEPhERD-GDB17arepresentedinTable2.Thereisatrendofrelativelyhighvalidity(≥96%)for
+thejointgenerationofx andx ,slightlylowervalidity(91-93%)forthejointgenerationofx and
+1 2 1
+x ,andasignificantdecreaseforthejointgenerationofx andx . Wehypothesizethatthelower
+3 1 4
+validityofthepharmacophore-basedmodelsisbecauseofthediscretenatureofthepharmacophore
+interactionprofilerelativetothesurfaceorESP-attributedsurface. Notably,validityimprovesinthe
+pharmacophore-conditionedsamplingschemecomparedtotheunconditionalsetting. Constraining
+thesamplingspacebyspecifyingthepharmacophoresduringinpaintingmaybeaneasiertaskasit
+forcesthemodeltoformcertaingroups/substructures. Specifyingthepharmacophoresbasedona
+targetprofilealsoavoidsrelyingonShEPhERD’sjointly-generatedx (whichmayhaveerrors)to
+4
+guidethedenoisingofx .Onewaytoimprovejointpharmacophoregenerationmaybetointroduce
+1
+a noise schedule that denoises the pharmacophores earlier than (a,C), as a means to implicitly
+conditionthedenoisingofthe3Dmoleculesonlessnoisypharmacophorerepresentations.
+Graphconsistencyishighformostmodelswhichimpliesthat(1)theinter-atomicgeometryofvalid
+structures are within the bounds for the the bond-determining rules, and (2) the generated confor-
+mationsarepreciseenoughthatrelaxationwithxTBisstable. Thefractionofvalidmoleculeswith
+neutralchargerangesfrom84.1%−93.2%forunconditionalsamplesand72.6%−84.5%forthe
+conditional samples. This is somewhat surprising because the training distribution only contains
+neutral species. We attribute this behavior to the presence of zwitterions (neutral molecules that
+contain balanced atoms/groups of opposite charge) in the training sets; the model has learned to
+generatedchargedsubstructures,buthasn’tbeentrainedlongenoughtolearntoneutralizetheover-
+allmoleculeeverytime. Encouragingly, thereisahigherrateofgeneratingneutralspeciesforthe
+P(x ,x )andP(x ,x )modelsrelativetotheP(x ,x )model, whichperhapsimpliesthatus-
+1 3 1 4 1 2
+ingrepresentationsthatimplicitlyencodeinformationaboutthechargeimprovesthemodel’sability
+to learn the correct distribution of molecular charge. In contrast, the conditional P(x |x ) and
+1 3
+P(x |x ) models perform worse than P(x |x ) model in terms of generating neutral molecules.
+1 4 1 2
+This may be because the model learns to associate certain ESP or pharmacophoric criteria with
+the presence of charged groups (e.g., carboxylate anions yield negative ESP surfaces), and hence
+introduceschargedgroupsmoreoftenwhilefailingtoneutralizetheoverallmolecule.
+Fig.12detailshowvalidityisimpactedbytheselectionofthenumberofatoms(n )foruncondi-
+1
+tionallygeneratedsamples(toprow)andconditionallygeneratedsamples(bottomrow)frommodels
+trained on ShEPhERD-GDB17. In both unconditional and conditional settings, versions of ShEP-
+hERDthatjointlymodelshapeorelectrostaticsattainhighvalidityrateswhenthenumberofatoms
+is in-distribution of the training set (Fig. 23). On the other hand, the pharmacophore models gen-
+erally generate more invalid structures as the number of atoms increase. We hypothesize that this
+isrelatedtothedifficultyofmodelingdiscretepharmacophoresandsatisfyingall(jointly-generated
+or conditional) pharmacophore criteria as the generated molecules become larger and hence more
+complex. Weemphasizethatinallcases,ShEPhERDshowsthecapacitytoextrapolateintounseen
+chemicalspace(e.g.,n exceedingtheboundsofthetrainingdatasets),albeitatlowervalidityrates.
+1
+Table3andFigures13-14showthestrainenergyandheavy-atomRMSDofShEPhERD-generated
+molecular structures compared to their xTB-relaxed geometries. Note that RMSDs are computed
+after realigning (by minimizing RMSD) the relaxed geometry to the unrelaxed geometry. Mean
+strain energies remain relatively low for the model trained on ShEPhERD-GDB17 (mean strain
+energies <10 kcal/mol). Indeed, these strain energies are typically lower than the strain energies
+of molecules with MMFF94-optimized geometries that have their heavy-atom RMSD and strain
+energies measured after relaxing the MMFF94 geometries with xTB. However, the high standard
+deviations in the strain energy distributions indicate that there are still many generated molecules
+that are highly strained (up to nearly 1000 kcal/mol). Nevertheless, almost all of the RMSD’s are
+<1A˚ which implies that the generated molecules are close to the true xTB geometry. Indeed, the
+unconditionally-generated samples for models trained on ShPhERD-GDB17 have average heavy-
+atom RMSDs below 0.08 A˚. We note that slightly distorted atomic positions can vastly increase
+strainenergy,whichmakesstrainenergyanunforgiving(butstilluseful)measureofabsolutegeo-
+metricquality. WenoticeasimilartrendtovaliditywheresamplesfromP(x ,x )modelperform
+1 2
+thebestintermsofstrainenergywhilesamplesfromP(x ,x )modelperformtheworst,though
+1 4
+theRMSD’sarequitelowacrossalltheunconditionalmodels.
+ThemodelstrainedonShEPhERD-MOSES-aqperformworseintermsofboththestrainenergyand
+RMSD metrics (Table 3), though the trends with respect to n are similar (Fig. 14). We note that
+1
+31
+PublishedasaconferencepaperatICLR2025
+the molecules in ShEPhERD-MOSES-aq are generally larger than those in ShEPhERD-GDB17.
+For instance, the largest molecules in MOSES have 27 non-hydrogen atoms, whereas the largest
+molecules in GDB17 have 17 non-hydrogen atoms. ShEPhERD-MOSES-aq also contains fewer
+trainingexamplesthanShEPhERD-GDB17;weexpecttheperformanceofmodelstrainedonShEP-
+hERD-MOSES-aqwillimprovewithfurthertrainingonlargerdrug-likedatasets.
+100
+80
+60
+40
+20
+0
+20 40 60
+Number of Atoms
+)%(
+ytidilaV
+P(x1,x2) P(x1,x3) P(x1,x4)
+Before xTB optimization
+After xTB optimization
+20 40 60 20 40 60
+Number of Atoms Number of Atoms
+100
+80
+60
+40
+20
+0
+20 40 60
+Number of Atoms
+)%(
+ytidilaV
+P(x1|x2) P(x1|x3) P(x1|x4)
+Before xTB optimization
+After xTB optimization
+20 40 60 20 40 60
+Number of Atoms Number of Atoms
+Figure12: Validityasafunctionofthenumberofgeneratedatoms(n )for3Dmoleculesx gen-
+1 1
+erated by various ShEPhERD models trained on ShEPhERD-GDB17 in (Top Row) unconditional
+or (Bottom Row) conditional settings. Blue circles and orange triangles indicate the validity of
+generatedmolecularstructuresbeforeandafterxTBoptimization,respectively.
+Table3: TheoverallmeanandstandarddeviationofstrainenergiesandRMSDsforunconditional
+samples from versions of ShEPhERD trained on ShEPhERD-GDB17 and ShEPhERD-MOSES-aq
+(Fig. 30). We compute the metrics from the valid samples amongst 1000 total samples from each
+model. Thecolumn“MMFF94”isabaselinethatsubsamples1000moleculesfromeachrespective
+dataset,generatesanMMFF94-levelconformerforeachmolecule,andmeasuresthestrainenergy
+andheavy-atomRMSDuponxTBrelaxation. MoleculesarerelaxedwithxTBinthegasphasefor
+ShEPhERD-GDB17,andinimplicitwaterforShEPhERD-MOSES-aq.
+ShEPhERD-GDB17
+P(x ,x ) P(x ,x ) P(x ,x ) MMFF94
+1 2 1 3 1 4
+StrainEnergy 2.81 5.80 5.87 7.34
+(kcal/mol) ±5.32 ±73.17 ±47.36 ±9.20
+RMSD 0.084 0.081 0.089 0.193
+(A˚) ±0.133 ±0.144 ±0.155 ±0.184
+ShEPhERD-MOSES-aq
+P(x ,x ,x ) MMFF94
+1 3 4
+StrainEnergy 17.43 7.99
+(kcal/mol) ±124.02 ±3.26
+RMSD 0.273 0.337
+(A˚) ±0.292 ±0.274
+32
+PublishedasaconferencepaperatICLR2025
+101
+100
+10 1
+ygrene
+niartS
+)lom/lack(
+P(x 1,x 2)
+100
+10 1
+10 2
+)Å(
+DSMR
+102
+100
+ygrene
+niartS
+)lom/lack(
+P(x 1,x 3)
+100
+10 1
+10 2
+)Å(
+DSMR
+102
+100
+628406284
+122344556
+1-7-3-9-5-1-7-3-9-
+112234455
+Number of atoms
+ygrene
+niartS
+)lom/lack(
+P(x 1,x 4)
+100
+10 1
+10 2
+628406284
+122344556
+1-7-3-9-5-1-7-3-9-
+112234455
+Number of atoms
+)Å(
+DSMR
+Figure13: Strainenergyandheavy-atomRMSDforsamplesunconditionallygeneratedbyvarious
+modelstrainedShEPhERD-GDB17. Theboxplotsarebinnedbythenumberofatoms. Thoughthe
+strainenergiescanbehigh,theRMSDsarequitelow. SummarystatisticsarereportedinTable3.
+103
+102
+101
+100
+628406284
+233455667
+1-7-3-9-5-1-7-3-9-
+223345566
+Number of atoms
+ygrene
+niartS
+)lom/lack(
+P(x 1,x 3,x 4)
+100
+10 1
+10 2
+628406284
+233455667
+1-7-3-9-5-1-7-3-9-
+223345566
+Number of atoms
+)Å(
+DSMR
+Figure 14: Strain energy and heavy-atom RMSD for valid samples (amongst 1000 total samples)
+unconditionally generated by ShEPhERD trained to learn P(x ,x ,x ) on ShEPhERD-MOSES-
+1 3 4
+aq. Theboxplotsarebinnedbythenumberofatoms. Thoughthestrainenergiescanbehigh,the
+RMSDsarequitelow. SummarystatisticsarereportedinTable3.
+33
+PublishedasaconferencepaperatICLR2025
+100
+80
+60
+40
+20
+0
+40 50 60 70 80
+Number of Atoms
+)%(
+ytidilaV
+NP 1 NP 2 NP 3
+40 50 60 70 80 40 60 80
+Number of Atoms Number of Atoms
+100
+80
+60
+40
+20
+0
+40 50
+Number of Atoms
+)%(
+ytidilaV
+1iep (LE) 3eml (LE) 3ny8 (LE)
+40 50 60 30 40 50
+Number of Atoms Number of Atoms
+100
+80
+60
+40
+20
+0
+30 40 50
+Number of Atoms
+)%(
+ytidilaV
+4rlu (LE) 4unn (LE) 5mo4 (LE)
+20 30 40 60 70 80
+Number of Atoms Number of Atoms
+100
+80
+60
+40
+20
+0
+40 50 60
+Number of Atoms
+)%(
+ytidilaV
+7l11 (LE) Bioisoteric FM
+Legend
+Reference
+Before xTB optimization
+After xTB optimization
+SMILES extractable
+50 60 70 80 90
+Number of Atoms
+Figure15:ValidityasafunctionofthenumberofgeneratedatomsforligandsgeneratedwithShEP-
+hERD for the natural product (NP) ligand hopping, bioactive hit diversification, and bioisosteric
+fragmentmerging(FM)experiments. FortheNPanaloggenerationandFMexperiments,wereport
+validitybothbeforeandafterrelaxationofx inimplicitwaterwithxTB.Forthebioactivehitdi-
+1
+versificationexperiments, weonlychecktheabilitytoextractSMILESstringsfromthegenerated
+x pre-xTB-optimization. Therearenoclearpatternsinthevalidityofthemoleculesgeneratedby
+1
+ShEPhERDintheseexperiments,butweattributetheoveralllowervalidityratestothedifficulties
+ofeachtaskandtheneedforout-of-distributionsampling(Fig.22),particularlyfortheNPandFM
+experiments. ValidityratesforeachexperimentaresummarizedinTable4.
+34
+PublishedasaconferencepaperatICLR2025
+Table 4: Global validity metrics for molecules generated by ShEPhERD for the natural product
+ligandhopping,bioactivehitdiversification,andbioisostericfragmentmergingexperiments.
+Naturalproductligandhopping
+NP1 NP2 NP3
+Validity(%) 65.6 56.5 55.6
+ValidityxTB(%) 67.6 62.4 56.0
+Graphconsis. (%) 78.5 88.6 68.2
+Validneutral(%) 50.5 72.3 47.0
+Bioactivehitdiversification
+1iep 3eml 3ny8 4rlu 4unn 5mo4 7l11
+Validity(%) 32.7 73.3 52.3 88.5 66.5 71.5 53.5
+Validneutral(%) 47.1 60.0 75.7 78.8 55.2 71.4 62.6
+Bioisostericfragmentmerging
+BioisostericFM
+Validity(%) 45.0
+ValidityxTB(%) 37.5
+Graphconsis. (%) 76.6
+Validneutral(%) 46.0
+35
+PublishedasaconferencepaperatICLR2025
+A.4 UNCONDITIONALANDCONDITIONALGENERATIONMETRICS
+Novelty is defined as the fraction of valid molecules that are not contained in the training set.
+Uniqueness is defined as the fraction of valid molecules that are only generated once across the
+samples from a particular model in a given experiment. Novelty and uniqueness metrics for all
+generatedsamples(inbothunconditional-andconditional-generationexperiments)arereportedin
+Table5. ShEPhERDattainsnearly100%noveltyanduniquenessforallcases.
+Fig.16alsoreportsspecificpropertydistributions(SAScore,logP,QED,Fsp3)ofunconditionally-
+generated molecules from versions of ShEPhERD trained on ShEPhERD-GDB17 or ShEPhERD-
+MOSES-aq. Propertydistributionsforgeneratedmoleculesarecomparedagainstthedistributions
+fromarandomsamplingofmoleculesfromthecorrespondingdatasets.
+Table5: NoveltyanduniquenessmetricsacrossdifferentversionsofShEPhERDtrainedoneither
+ShEPhERD-GDB17 or ShEPhERD-MOSES-aq. The first six rows report metrics for ShEPhERD
+modelswhentrainedonShEPhERD-GDB17andappliedtoeitherunconditional(P(x ,x ))orcon-
+1 i
+ditional(P(x |x ))generation. TheremainingrowsreportmetricsforShEPhERDwhentrainedto
+1 i
+learnP(x ,x ,x )onShEPhERD-MOSES-aq. P(x ,x ,x )indicatesthismodelwhenapplied
+1 3 4 1 3 4
+tounconditionallygenerate1000samples,whereasP(x |x ,x )indicatesthismodelwhenapplied
+1 3 4
+toconditionalgenerationinthenaturalproduct(NP),bioactivehitdiversification, andbioisosteric
+fragmentmerging(FM)experiments.
+Samples Novelty Uniqueness
+(%) (%)
+ShEPhERD-GDB17 P(x ,x ) 96.4 99.5
+1 2
+P(x ,x ) 96.7 99.6
+1 3
+P(x ,x ) 96.0 99.9
+1 4
+P(x |x ) 99.4 97.9
+1 2
+P(x |x ) 99.3 97.6
+1 3
+P(x |x ) 99.0 96.0
+1 4
+ShEPhERD-MOSES-aq P(x ,x ,x ) 100.0 100.0
+1 3 4
+NP1 P(x |x ,x ) 100.0 99.7
+1 3 4
+NP2 P(x |x ,x ) 100.0 100.0
+1 3 4
+NP3 P(x |x ,x ) 100.0 100.0
+1 3 4
+1iep(lowestenergy) P(x |x ,x ) 100.0 100.0
+1 3 4
+1iep(pose) P(x |x ,x ) 100.0 100.0
+1 3 4
+3eml(lowestenergy) P(x |x ,x ) 100.0 100.0
+1 3 4
+3eml(pose) P(x |x ,x ) 100.0 100.0
+1 3 4
+3ny8(lowestenergy) P(x |x ,x ) 100.0 100.0
+1 3 4
+3ny8(pose) P(x |x ,x ) 100.0 100.0
+1 3 4
+4rlu(lowestenergy) P(x |x ,x ) 99.5 100.0
+1 3 4
+4rlu(pose) P(x |x ,x ) 99.8 100.0
+1 3 4
+4unn(lowestenergy) P(x |x ,x ) 100.0 100.0
+1 3 4
+4unn(pose) P(x |x ,x ) 100.0 100.0
+1 3 4
+5mo4(lowestenergy) P(x |x ,x ) 100.0 100.0
+1 3 4
+5mo4(pose) P(x |x ,x ) 100.0 100.0
+1 3 4
+7l11(lowestenergy) P(x |x ,x ) 100.0 100.0
+1 3 4
+7l11(pose) P(x |x ,x ) 100.0 100.0
+1 3 4
+BioisostericFM P(x |x ,x ) 100.0 100.0
+1 3 4
+36
+PublishedasaconferencepaperatICLR2025
+8
+7
+6
+5
+4
+3
+2
+1
+P(x1,x2)P(x1,x3)P(x1,x4)
+s
+D
+a
+a
+m
+ta
+p
+s
+le
+e
+s
+t
+erocS
+AS
+6
+4
+2
+0
+2
+4
+6
+P(x1,x2)P(x1,x3)P(x1,x4)
+s
+D
+a
+a
+m
+ta
+p
+s
+le
+e
+s
+t
+Pgol
+ShEPhERD GDB17
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+P(x1,x2)P(x1,x3)P(x1,x4)
+s
+D
+a
+a
+m
+ta
+p
+s
+le
+e
+s
+t
+DEQ
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+P(x1,x2)P(x1,x3)P(x1,x4)
+s
+D
+a
+a
+m
+ta
+p
+s
+le
+e
+s
+t
+3psF
+7
+6
+5
+4
+3
+2
+P(x1,x3,x4)
+S
+D
+a
+a
+m
+ta
+p
+s
+l
+e
+e
+t
+s
+erocS
+AS
+8
+6
+4
+2
+0
+2
+P(x1,x3,x4)
+S
+D
+a
+a
+m
+ta
+p
+s
+l
+e
+e
+t
+s
+Pgol
+ShEPhERD MOSES aq
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4 0.3
+0.2
+P(x1,x3,x4)
+S
+D
+a
+a
+m
+ta
+p
+s
+l
+e
+e
+t
+s
+DEQ
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+P(x1,x3,x4)
+S
+D
+a
+a
+m
+ta
+p
+s
+l
+e
+e
+t
+s
+3psF
+Figure16:Distributionsofmolecularpropertiesforunconditionally-generatedmoleculescompared
+to samples from the respective datasets. SA Score is the synthetic accessibility score, logP is the
+octanol-water partition coefficient, QED is a measure of drug-likeness, and Fsp3 is the fraction
+of sp3 carbons in a molecule. (Top) The distributions relevant to ShEPhERD-GDB17. The plots
+showthepropertydistributionsforthevalidmoleculesamongst1000ShEPhERD-generatedsamples
+fromP(x ,x ), P(x ,x ), andP(x ,x ). “DatasetSamples”refersto1000randomlysampled
+1 2 1 3 1 4
+moleculesfromtheShEPhERD-GDB17dataset.(Bottom)ThesamedistributionsrelevanttoShEP-
+hERD-MOSES-aq. Theplotsshowthepropertydistributionsforthevalidmoleculesamongst1000
+ShEPhERD-generated samples from P(x ,x ,x ). “Dataset Samples” refers to 1000 randomly
+1 3 4
+sampledmoleculesfromtheShEPhERD-MOSES-aqdataset.
+37
+PublishedasaconferencepaperatICLR2025
+A.5 CALCULATINGINTERACTIONPROFILESFROM3DMOLECULARSTRUCTURES
+A.5.1 SHAPES/SURFACES
+Werepresenttheshapeofamoleculeasapointcloudsampledfromthesolventaccessiblesurface
+with probe radius r
+probe
+. Here, we describe how to extract x
+2
+= S
+2
+∈ Rn2×3 from x
+1
+= (a,C)
+withC ∈Rn1×3.
+First,wesamplepointsonthesurfacesofn unitspheresusingFibonaccisampling. Thenumberof
+1
+sampledpointsforeachsphereis25(r /1.7)2 wherer isthevanderWaals(vdW)radiusof
+a[k] a[k]
+thekthatominA˚.Thepointsarethenscaledtohavenormr +r ,andthesampledspheresare
+a[k] probe
+translatedtotheirrespectiveatomiccoordinatesinC.Pointsthatfallwithinr +r ofanyother
+a[k] probe
+atomarefilteredout.Next,weuseOpen3D(Zhouetal.,2018)togenerateaTriangleMeshusing
+theballpivotingalgorithmwithaballradiusof1.2. Finally,wesampleasurfacepointcloudwith
+approximatelyevenlyspacedpointsusingOpen3D’ssample points poisson diskmethod.
+This final step is stochastic. We used r = 0.6 for the modeling in this work, but tuning of
+probe
+similarityscoringfunctionparameters(App.A.6)originallyusedr =1.2.
+probe
+A.5.2 ELECTROSTATICPOTENTIALSURFACES
+We obtain the electrostatic potential (ESP) surface by computing the Coulombic potential at each
+pointonasurfacepointcloud. Here,wedescribehowtoextractx =(S ,v)fromx =(a,C).
+3 3 1
+We obtain S
+3
+∈ Rn3×3 using the same procedure as for S
+2
+. We then obtain the partial charges
+q ∈ Rn1 from xTB by running a single point calculation on x
+1
+. Through internal testing, we
+found that using partial charges obtained from the cheaper MMFF94 to be of insufficient quality
+and detrimental to the performance of both ShEPhERD and the ESP similarity scoring function.
+ComputingpartialchargeswithxTBisalsofavorable,assinglepointcalculationscanbecomputed
+for arbitrary atomistic systems that aren’t parameterized by the MMFF94 force field. Given the
+partialchargesofeachatom,wecancomputetheelectrostaticpotentialateachsurfacepoint:
+1 (cid:88)
+n3
+q[k]
+v[k]=
+4πϵ ∥r[k]−r[j]∥2
+0
+j=1
+whereϵ isthevacuumpermittivitywithunitse2(eV·A˚)−1.
+0
+A.5.3 PHARMACOPHORES
+Pharmacophoresx = (p,P,V)areabstractedrepresentationsofchemicalsubstructuresthatare
+4
+associatedwithcommonbiochemicalinteractions. Theycanbedirectionalornon-directional.
+Thedirectionalpharmacophoresconsideredinthisworkare:
+• Hydrogen bond acceptor (HBA) – typically an electronegative nitrogen or oxygen with
+lonepairs. Vector(s)pointfromtheheavyatomtothedirectionofalonepairbasedonsp,
+sp2,orsp3geometries.
+• Hydrogenbonddonor(HBD)–typicallyanelectronegativenitrogenoroxygenwithan
+attachedhydrogen. Vector(s)pointfromtheheavyatomtotheattachedhydrogen(s)
+• Aromatic ring – aromatic rings can form special interactions such as π-π stacking or
+cation-π interactions. We position an aromatic pharmacophore at the centroid of an aro-
+maticring. Twoantiparallelvectorspointinoppositedirections,orthogonaltotheplaneof
+thearomaticring.
+• Halogen-carbon bond – a halogen (F, Cl, Br, I) that is connected to a carbon can form
+halogen bonds that can display HBA/HBD-like properties. The vector points from the
+halogenandintheanti-paralleldirectiontotheneighboringcarbon.
+Thenon-directionalpharmacophoresare:
+• Hydrophobe–asulfuratom, ahalogenatom, oragroupofatomsthatarehydrophobic.
+We cluster groups of hydrophobic atoms such that distinct hydrophobes are > 2A˚ apart.
+Notethataromaticringsarealsohydrophobes.
+38
+PublishedasaconferencepaperatICLR2025
+• Anion–anegativelychargedatomorthecentroidofacommonanionicgroup.
+• Cation–apositivelychargedatomorthecentroidofacommoncationicgroup.
+• Zincbinder–afunctionalgroupcapableofcoordinatingwithazincion.
+WeuseSMARTSpatternsfromPharmer,RDKit,andPmapper(Koes&Camacho,2011;Landrum
+etal.,2006a;Kutlushinaetal.,2018)toidentifypharmacophoresinamolecule,withthreenotable
+changes:1)featuredefinitionsofpositive/negativeionizablearealteredtobestrictlyanions/cations;
+2)allhydrophobeswithin2A˚ areclusteredusingBerenger&Tsuda(2023)’sprotocol;and3)sepa-
+ratepharmacophoreidentitiesforhalogensweremadeduetotheiruniqueinteractiongeometry(e.g.,
+sigma holes) that warranted a distinction from HBA/HBD pharmacophores (Lin & MacKerell Jr,
+2017;Politzeretal.,2013). MostofthepharmacophoreextractionutilizesalteredcodefromRD-
+Kit (Features.FeatDirUtilsRD and Features.ShowFeats modules) (Landrum et al.,
+2006b). Somepharmacophorescanbeassociatedwithtwoormorevectors(e.g.,acarbonylgroup
+hasstrongHBAqualitiesinthedirectionsofthetwolonepairs),butweaveragethesetogetherfor
+easeofmodelinginthiswork–exceptforaromaticringswherewedonotaveragebutchooseone
+randomly, instead. Zinc binders, anions, and cations are rare in our datasets which significantly
+decreasestheprobabilityofgeneratingthesepharmacophoreswithShEPhERD.Examplesofeach
+typeofpharmacophoreareshowninFig.17.
+TheplacementofpharmacophorepositionsP areeitheratthelocationoftheidentifiedatomoratthe
+centroidofalargersubstructure–dependingontheSMARTSfeaturedefinition.Forexample,some
+ZnbinderSMARTSfeaturedefinitionsfromRDKitplacedifferentweightsoncertainatoms(Fig.
+17). EachpharmacophoreisassociatedwithavectorV andcaneitherbeaunitvector(|V[k]|=1)
+for directional pharmacophores or the zero vector (|V[k]| = 0) for directionless pharmacophores.
+Fordirectionalpharmacophores,aunitvectorinthedirectionofapotentialinteraction(e.g.,inthe
+directionofahydrogenforanHBDoralonepairforanHBA)isextracted.Itiscommonformultiple
+pharmacophorestobelocatedatthesameposition.Forexample,aromaticringsandhalogen-carbon
+bondsarealsohydrophobes(Fig.17),andhydroxylgroupsarebothHBDsandHBAs.
+A.6 PARAMETERIZATIONOF3DSIMILARITYSCORINGFUNCTIONS
+RecallfromSec. 3thatfortwopointcloudsQ andQ wemodeleachpointr asanisotropic
+A B k
+GaussianinR3 (Grant&Pickup,1995;Grantetal.,1996). Wecomputetheoverlapbetweenthem
+O with the first order Gaussian overlap. The Tanimoto similarity function sim∗(Q ,Q ) ∈
+A,B A B
+[0,1]isusedtodefineasimilarityoftwopointcloudsbasedontheiroverlaps:
+O = (cid:88) (cid:88) w (cid:16) π (cid:17) 2 3 exp (cid:16) − α ∥r −r ∥2 (cid:17)
+A,B a,b 2α 2 a b
+a∈QAb∈QB
+O
+sim∗(Q ,Q )= A,B
+A B O +O −O
+A,A B,B A,B
+Here, α parameterizes the Gaussian width and w is a weighting factor that is tuned for each
+a,b
+representation. Notethatn neednotequaln ,generally.
+QA QB
+Since3DsimilaritiesaresensitivetoSE(3)transformationsofQ withrespecttoQ ,theiroptimal
+A B
+alignmentcanbedefinedas:
+sim(Q ,Q )=maxsim∗(RQT +t,Q )
+A B A B
+R,t
+whereR ∈ SO(3)andt ∈ T(3). Theoptimizationlandscapeisnon-convexandnoisy. Forglobal
+optimizations (e.g., aligning random 3D molecules from the dataset to a target natural product),
+we optimize the alignment of Q with respect to Q with N different initializations of (R, t).
+A B
+We found that N = 50 is sufficient for convergence. For local optimizations (e.g., aligning a
+3D molecule generated by ShEPhERD to a target natural product), we use the original alignment
+(e.g.,theposenativelygeneratedbyShEPhERD)astheonlyinitializationandoptimizedirectlyvia
+gradientdescent.
+For initializations of global alignment optimization, t is set so that the center of mass (COM) of
+Q is aligned with the COM of Q . One of the initializations uses the identity R = I (to keep
+A B
+theinitialorientation). Wealsousealignmentstofourorientationsrelativetotheprincipalmoments
+39
+PublishedasaconferencepaperatICLR2025
+Figure 17: Examples of each type of pharmacophore. (Top) A molecule is shown that
+contains common pharmacophores, including hydrophobes (grey), HBA (purple), HBD (light
+blue), aromatic rings (orange), and halogen-carbon bonds (green). The left 3D struc-
+ture highlights how multiple vectors are used for HBAs when they have multiple lone
+pairs, while the right structure shows these vectors averaged into a single direction (not
+shown here but the same applies for HBDs). Additionally, the clustering scheme from
+(Berenger & Tsuda, 2023) is used to reduce the number of hydrophobes. This molecule
+is an slightly altered example from https://greglandrum.github.io/rdkit-blog/
+posts/2023-02-24-using-feature-maps.html. (Bottom)Examplesareprovidedfor
+pharmacophores that are rare in our datasets: cations, anions, and zinc binders. The pyridinium
+structure features a cation (large dark blue sphere) on the nitrogen atom. The hydrogen sulfate
+example shows an anion (large red sphere), with the SMARTS pattern covering the entire group,
+placingthefeatureatthecentroid. Thehydroxamateexamplecontainsbothacationontheoxygen
+andazincbinder(pinksphere). AlthoughtheentirehydroxamategroupisclassifiedasaZnbinder
+accordingtotheSMARTSpattern,thepharmacophoreweightsarespecificallyassignedtothetwo
+oxygenscapableofcoordinatingazincion,whichplacesthepharmacophorebetweentheoxygens
+ratherthanatthegroupcentroid.
+40
+PublishedasaconferencepaperatICLR2025
+of inertia of Q (the positive and negative orientations for the two largest principal components).
+B
+For all other initializations when N > 5, we use Fibonacci sampling to obtain evenly spaced out
+rotationsinSO(3).
+We use unit quaternions to represent R to decrease the number of parameters and increase opti-
+mization stability. We achieve optimal alignment through automatic differentiation and use Adam
+optimizerforamaximumof200stepswithalearningrateof0.1. ByimplementinginPyTorchand
+Jax,werunbatchedcomputationsacrosstheN initializations.
+A.6.1 SHAPESIMILARITYSCORINGFUNCTION
+Recall that we follow Adams & Coley (2022) in defining the volumetric shape similarity between
+twoatomicpointcloudsC andC assim∗ (C ,C )withw =2.7andα=0.81.Thesurface
+A B vol A B a,b
+shapesimilaritybetweentwosurfacesS andS isdefinedassim∗ (S ,S )withw =1,and
+A B surf A B a,b
+α=Ψ(n ). Here,Ψisafunctionfittedtosim∗ dependingonthechoiceofn .
+2 vol 2
+WefitΨ(n )byminimizingRMSEbetweensim∗ andsim∗ forn ∈[50,100,150,200,300,400]
+2 vol surf 2
+on 1K randomly sampled molecules from https://www.kaggle.com/datasets/
+art3mis/chembl22 with the number of heavy atoms ranging from 6 to 62. For parameter fit-
+ting, we used a probe radius of 1.2 A˚ when sampling the surfaces. This differs from the 0.6 A˚
+probe radius that we ultimately used when modeling and scoring the similarities for x and x in
+2 3
+our experiments, but we do not expect this discrepancy to meaningfully affect our analyses. The
+conformationsweregeneratedwithRDKitETKDGandoptimizedwithMMFF94. Resultsandcor-
+relationsfromtunedα’sarefoundinFig.18. Wedonotexpect,norwant,perfectcorrelationwith
+thevolumetricsimilaritysinceweaimtodecoupletheshaperepresentationfromtheatomiccoordi-
+nates. Ψ(n )isdefinedasanquadraticinterpolationfunctionfromSciPyusedtofittheoptimalα’s
+2
+foundinTable6. Notethatforsurfacesimilarity, werequiren = n duetothetunedα. We
+SA SB
+showtheeffectsofstochasticityinFigure19.
+Figure 18: The correlations between surface similarity and volumetric similarity after tuning the
+GaussianwidthparameterαtominimizeRMSEbetweenthetwoscoringfunctions.
+Table6: TunedGaussianwidthparameters(α)forthesurfacesimilarityscoringfunction. Largerα
+correspondstosmallerwidth.
+Numberofsurfacepoints(n ) 50 100 150 200 300 400
+2
+Gaussianwidth(α) 0.6011 0.8668 1.022 1.118 1.216 1.258
+41
+PublishedasaconferencepaperatICLR2025
+Figure19: TheeffectofstochasticsurfacesamplingonthesurfaceandESPscores,asmeasuredby
+theaverageself-similarityasafunctionofthenumberofatomsn .Foreachof∼900(xTB-relaxed)
+1
+generated compounds from ShEPhERD trained on ShEPhERD-GDB17, we repeatedly extract the
+trueshapex orESPx interactionprofile5times,scorethesimilaritybetweenpairsofextracted
+2 3
+profiles,andcomputetheaveragesimilarity. WecallthisquantitytheshapeorESP“self-similarity”
+foragivenmolecule. Weplottheaverageself-similarityasafunctionofthenumberofatomsinthe
+moleculen whenextractingx orx witheither75or400surfacepoints.Asthesurfacesaremore
+1 2 3
+denselysampled—eitherbyreducingn forfixedn orn ,orincreasingn orn forfixedn —
+1 2 3 2 3 1
+the average self-similarity approaches 1.0. Recall that we use 75 points when evaluating the self-
+consistency of ShEPhERD’s jointly generated (x ,x ) and (x ,x ) samples, but use 400 points
+1 2 1 3
+whenscoringsimilaritiesbetweentwomoleculesinallconditionalexperiments. Using400points
+forshapeandESPsimilarityscoringgivesamuchmorepreciseestimateofinteractionsimilarity.
+A.6.2 ESPSURFACESIMILARITYSCORINGFUNCTION
+Thesimilaritybetweentwoelectrostaticpotential(ESP)surfacessim∗ (x ,x )isdefinedwith
+ESP 3,A 3,B
+anoverlapfunction:
+OESP = (cid:88) (cid:88) (cid:16) π (cid:17)3 2 exp (cid:16) − α ∥r −r ∥2 (cid:17) exp (cid:18) − ∥v A [a]−v B [b]∥2(cid:19)
+A,B 2α 2 a b λ
+a∈QAb∈QB
+where α = Ψ(n ), and λ = 0.3 . ϵ is the permittivity of vacuum with units e2(eV·A˚)−1.
+3 (4πϵ0)2 0
+Wechoseλthroughmanualinspectionofoptimalalignments. Fig.19showstheeffectsofstochas-
+ticity. OthershavealsoconsidereddifferentformulationsofESPscoringfunctionstocharacterize
+bioisosteres(Goodetal.,1992;Clevesetal.,2019;Bolcatoetal.,2022;Osman&Arabi,2024).
+A.6.3 PHARMACOPHORESIMILARITYSCORINGFUNCTION
+For pharmacophore similarity, we follow the the vector weighting formulation of PheSA (Wahl,
+2024)anddefinetheoverlapsimilaritybetweentwosetsofpharmacophoresx andx as:
+4,A 4,B
+Opharm = (cid:88) (cid:88) w (cid:18) π (cid:19)3 2 exp (cid:16) − α m∥r −r ∥2 (cid:17)
+A,B;m a,b;m 2α 2 a b
+m
+a∈QA,mb∈QB,m
+(cid:80)
+O
+sim∗ (x ,x )= m∈M A,B;m
+pharm 4,A 4,B (cid:80) O +O −O
+m∈M A,A;m B,B;m A,B;m
+where M is the set of all pharmacophore types (|M| = N ), α = Ω(m) where Ω maps each
+p m
+pharmacophoretypetoaGaussianwidthusingtheparametersfromPharao(Taminauetal.,2008).
+w isdefinedas:
+a,b;m
+(cid:40)
+1 ifmisnon-directional,
+w =
+a,b;m V[a]⊤ m V[b]m+2 ifmisdirectional.
+3
+We take the absolute value of V[a]⊤V[b] for aromatic groups as we assume their π interaction
+m m
+effectsaresymmetricacrosstheirplane. NotethatPharaodoesnotdefinethehalogen-carbonbond
+pharmacophoresoweassignα=1.0.
+42
+PublishedasaconferencepaperatICLR2025
+A.7 ADDITIONALDETAILSONMODELDESIGN,TRAININGPROTOCOLS,ANDSAMPLING
+Featurescaling. Hoogeboometal.(2022)andPengetal.(2023)foundthatlinearlyscalingcertain
+one-hotfeaturesin3DmolecularDDPMscanimprovemodelperformanceasmeasuredviasample
+validity, presumably because increasing/decreasing the magnitude of certain features causes them
+to become resolved earlier/later in the denoising process. We loosely follow these prior works to
+scale a and f by 0.25 and B by 1.0. We additionally scale v and p by 2.0. Finally, we scale the
+pharmacophore directional vectors V by 2.0. However, we did not rigorously tune these scaling
+factors. Wealsodidnotexploretheuseofdifferentnoiseschedulesfordifferentvariables,although
+thisstrategyhasalsobeenfoundtobehelpfulfor3DmoleculeDDPMs(Pengetal.,2023).
+Noise schedule. ShEPhERD uses the same noise schedule for all diffusion/denoising processes.
+We choose the variance schedule σ2 to be a weighted combination of the linear schedule used by
+t
+RFDiffusion(Watsonetal.,2023)andacosinescheduleintroducedbyNichol&Dhariwal(2021).
+Fig.20plotsournoisescheduleintermsofσ ,α ,σ ,andα fort∈[1,T]. WeuseT =400forall
+t t t t
+ShEPhERDmodels.
+Figure20: NoisescheduleusedbyShEPhERDforallforwardnoisingprocessesintermsofσ ,α ,
+t t
+σ ,andα fort∈[1,400].
+t t
+A.7.1 FURTHERDETAILSONShEPhERD’SDENOISINGMODULES
+“E3NN-style”vs. “EGNN-style”coordinatepredictions. Asdescribedinsection3.3,wepredict
+thel=1coordinatenoisesϵˆ(t),ϵˆ(t),andϵˆ(t)fromthecorrespondingl=1nodefeaturesz˜(t)directly
+S2 S3 P i
+withequivariantfeedforwardnetworksthatappearinEquiformerV2andotherE3NN-basedarchi-
+tectures. In these “E3NN-style” coordinate predictions, the noise for each node ϵ [k] if predicted
+i
+fromonlythel=1featurez˜[k]ofthatnode. Whileeachz˜[k]implicitlycontainsinformationabout
+i i
+thenode’ssurroundingenvironment(e.g,neighboringnodes)duetoShEPhERD’sjointmodule,the
+actual denoising step is not defined with respect to the positions of the neighboring nodes. This
+notablydiffersfromHoogeboometal.(2022)’soriginalformulationofequivariantDDPMsfor3D
+moleculegeneration,whichused“EGNN-style”(Satorrasetal.,2021)coordinatepredictionstode-
+noisethemolecule’scoordinatesC. Forasingle-layerEGNN,thecoordinatepredictionsteptakes
+theform(usingournotation):
+(cid:18) (cid:19) (cid:18) (cid:19) (cid:12)(cid:12) (cid:12)(cid:12)
+C[k]′ =C[k]+ (cid:88) C[ d k]− + C 1 [j] ϕ C z[k],z[j],d kj ; d kj = (cid:12) (cid:12) (cid:12) (cid:12) (cid:12) (cid:12) C[k]−C[j] (cid:12) (cid:12) (cid:12) (cid:12) (cid:12) (cid:12)
+j̸=k kj 2
+43
+PublishedasaconferencepaperatICLR2025
+whereϕ isanMLPandC[k]′ canbeinterpretedasanupdatedcoordinateforthenodek,which
+C
+is equivariant to E(3) transformations of C. With this updated coordinate, the noise ϵˆ[k] may be
+i
+obtainedbycomputingϵˆ[k] = C[k]′−C[k]. In“EGNN-style”coordinatepredictions,therefore,
+i
+thepredictedcoordinate/noisefornodekisdefinedwithrespecttotheothernodesinthe3Dgraph.
+We hypothesize that E3NN-style coordinate predictions are sufficient for predicting ϵˆ(t), ϵˆ(t), and
+S2 S3
+ϵˆ(t) (e.g., the l=1 coordinates of x , x , and x ), as these noise predictions do not need to be so
+P 2 3 4
+highly sensitive to the positions of neighboring nodes. However, for the coordinates C of the 3D
+moleculex ,inter-nodegeometries(e.g.,bondlengthsandangles)arequiterelevanttothequality
+1
+of the molecule’s conformation. Hence, we hypothesize that it may be favorable to use EGNN-
+style coordinate predictions to obtain ϵˆ . However, EGNN-style coordinate predictions are less
+C
+expressive than E3NN-style coordinate predictions, as the difference C[k]′ −C[k] is just a linear
+(cid:80)
+combination w (C[k]−C[j])with(learnt)weightsw . TodenoiseC,wethuschoosetouse
+j̸=k j j
+bothE3NN-andEGNN-stylecoordinatepredictions. Wefirstpredictasetofupdatedcoordinates
+C′(t) from C(t) using E3NN-style coordinate predictions, and then refine C′(t) with EGNN-style
+coordinate predictions to obtain C′′(t). The noise ϵˆ is then computed as ϵˆ = C′′(t) −C(t).
+C C
+Algorithm1outlinesthisprocesswithinthecontextoftheentiredenoisingmoduleforx .
+1
+Forward-noising and denoising the covalent bond graph B. Multiple works have found that
+jointly diffusing the 2D covalent bond graph with the 3D atomic coordinates helps improve sam-
+plequalityfor3DmoleculeDDPMs(Pengetal.,2023;Vignacetal.,2023). Whileusingdiscrete
+diffusionforbond/atomtypeshasbeenfoundtofurtherimprovesamplequalitycomparedtodiffus-
+ing/denoisingcontinuousone-hotrepresentationsofbond/atomtypes,wechoosetousecontinuous
+representationsofbond/atomtypestoemphasizeoverallmodelingsimplicity, consistency,andex-
+tensibility. Inthissection,weclarifydetailsregardingtheforwardandreverseprocessesforB.
+WerepresentB ∈ Rn1×n1×5 asann
+1
+×n
+1
+adjencymatrixattributedwithone-hotfeaturesofthe
+covalentbondorderbetweeneachpairofatomsinx .Thebondtypesincludesingle,double,triple,
+1
+and aromatic bonds, as well as an extra bond type denoting the absence of a covalent bond. It is
+importanttonotethatwetreatbondsbetweenpairsofatomsasundirected edgesbysymmetrizing
+B(t) inboththeforwardnoisingandreversedenoisingprocesses. Namely,weonlyforward-noise
+anddenoisetheuppertriangleofB(t),andcopytheuppertriangletothelowertriangle. Wemask-
+outthediagonalofB(t)sothatself-loopsarenotmodeled.
+Tomaintainpermutationinvariancewhenpredictingthenoiseϵˆ [k,j]forthebondbetweenatoms
+B
+kandj fromtheirl=0noderepresentationsz [k]andz [j],weuseapermutation-invariantMLP:
+1 1
+(cid:18) (cid:19)
+1
+ϵˆ [k,j]= b +b
+B 2 kj jk
+(cid:18)(cid:20) (cid:21)(cid:19)
+b =MLP B(t)[k,j],f (d ),z [k],z [j]
+kj B RBF kj 1 1
+(cid:18)(cid:20) (cid:21)(cid:19)
+b =MLP B(t)[j,k],f (d ),z [j],z [k]
+jk B RBF jk 1 1
+whered =d =||C(t)[k]−C(t)[j]||,f isaradialbasisfunctionexpansionusingGaussian
+kj jk RBF
+basisfunctions,and[.,.]denotesconcatenationinthefeaturedimension.
+44
+PublishedasaconferencepaperatICLR2025
+A.7.2 TRAININGANDSAMPLINGPROCEDURES
+Algorithms2,3,4,5outlinetheforwardpassofShEPhERD’sdenoisingnetworkanddetailhowwe
+trainandsamplefromShEPhERD.Algorithm1detailstheforwardpassofShePhERD’sdenoising
+moduleforx . Thedenoisingmodulesforx ,x ,andx aresimpleranddescribedinsection3.
+1 2 3 4
+Trainingdetails. WetrainShEPhERDwiththeAdam optimizerusingaconstantlearningrate of
+3e-4andaneffectivebatchsizerangingfrom40to48. Weclipgradientsthathavenormexceeding
+5.0. App.A.11describesoveralltrainingtimes,andApp.A.7.3listsallhyperparameters.
+Each training example requires sampling a time step t ∈ [1,T] (we use T = 400). Rather than
+uniformly sampling t within that range, we upsample t in the range [50,250] to accelerate model
+convergence,sincethisintervalcapturesthemostimportantpartofthedenoisingtrajectory. Specif-
+ically, we uniformly sample t ∈ [50,250] 75% of the time, t ∈ [0,50) 7.5% of the time, and
+t∈(250,400]17.5%ofthetime.
+Algorithm1DenoisingModuleforx
+1
+1: Given:
+2: (z 1 ,z˜ 1 )
+3: C(t)
+4: B(t)
+5: Predictnoiseforl=0node(atom)features:
+6: (ϵˆ a ,ϵˆ f )=MLP a,f (z 1 )
+7: Predictnoiseforl=0edge(bond)features,usingpermutation-invariantMLP:
+▷RBFindicatesradialbasisfunctionexpansionwithGaussianfunctions
+8: b kj =MLP B (B(t)[k,j],RBF(||C(t)[k]−C(t)[j]||),z 1 [k],z 1 [j])
+9: b jk =MLP B (B(t)[j,k],RBF(||C(t)[j]−C(t)[k]||),z 1 [k],z 1 [j])
+10: ϵˆ B [k,j]= 1 2 (b kj +b jk )
+11: ϵˆ B [j,k]= 1 2 (b kj +b jk )
+12: PredictnoiseforcoordinatesC:
+13: ∆C E3NN =E3NN feed forward(z˜ 1 )
+14: C′(t) =C(t)+∆C E3NN
+15: C′′(t) =EGNN(z 1 ,C′(t))
+16: ϵˆ(t) =C′′(t)−C(t)
+C
+17:
+returnϵˆ(
+a
+t),ϵˆ(
+f
+t),ϵˆ(
+B
+t),ϵˆ(
+C
+t)
+45
+PublishedasaconferencepaperatICLR2025
+Algorithm2ForwardPassofShEPhERD’sDenoisingNetworkη
+1: Given:
+2: x(t) =(a(t),f(t),C(t),B(t))
+1
+3:
+x(t) =(S(t))
+2 2
+4:
+x(t) =(S(t),v(t))
+3 3
+5: x(t) =(p(t),P(t),V(t))
+4
+6: t(timestep)
+7: Addvirtualnodetoeachx i systemwithpositionsattheCOMofC(t)(0ifcentered):
+8: x(t),x(t),x(t),x(t) =add virtual nodes(x(t),x(t),x(t),x(t))
+1 2 3 4 1 2 3 4
+9: Embeddingmodules: embedeachx(t)intol=0andl=1nodefeatures:
+i
+10: z 1 ,z˜ 1 =ϕ 1 (x( 1 t),t) ▷EquiformerV2module
+11: z 2 ,z˜ 2 =ϕ 2 (x( 2 t),t) ▷EquiformerV2module
+12: z 3 ,z˜ 3 =ϕ 3 (x( 3 t),t) ▷EquiformerV2module
+13: z 4 ,z˜ 4 =ϕ 4 (x( 4 t),t) ▷EquiformerV2module
+14: Jointmodule:
+15: Collateeachsystemtoformaheterogeneous3Dgraphwithn 1 +n 2 +n 3 +n 4 nodes:
+16: C hetero =concat([C(t),S 2 (t),S 3 (t),P(t)],dim=0)
+17: z hetero =concat([z 1 ,z 2 ,z 3 ,z 4 ],dim=0)
+18: z˜ hetero =concat([z˜ 1 ,z˜ 2 ,z˜ 3 ,z˜ 4 ],dim=0)
+19: Encodeheterogeneousgraphandupdatenodeembeddings:
+20: z h ′ etero ,z˜ h ′ etero =ϕl j o o c i a n l t (C hetero ,z hetero ,z˜ hetero ) ▷EquiformerV2module
+21: z hetero +=z h ′ etero
+22: z˜ hetero +=z˜′ hetero
+23: Pooll=1nodeembeddingsacrossthenodesofeachhomogeneoussub-graph:
+24: z˜ 1 pool =sum(z˜ hetero [k]∀kifk ∈x( 1 t))
+25: z˜ 2 pool =sum(z˜ hetero [k]∀kifk ∈x( 2 t))
+26: z˜ 3 pool =sum(z˜ hetero [k]∀kifk ∈x( 3 t))
+27: z˜ 4 pool =sum(z˜ hetero [k]∀kifk ∈x( 4 t))
+28: Embedgloball=1codeforentiresystem:
+29:
+z˜global =concat([z˜pool,z˜pool,z˜pool,z˜pool],dim=−1)
+joint 1 2 3 4
+30: z˜global =ϕglobal(z˜global) ▷E3NNfeed-forwardnetwork
+joint joint joint
+31: ApplyE3NN/Equiformer’sfully-connectedtensorproduct(FCTP):
+32: t embed =sinusoidal positional encoding(t)
+33: z joint ,z˜ joint =equiformer FCTP([t embed ,z˜ j g o lo in ba t l],[t embed ,z˜ j g o lo in ba t l])
+34: Residuallyupdatenodeembeddings:
+35: foreachi∈[1,2,3,4]do
+36: z i +=z joint
+37: z˜ i +=z˜ joint
+38: endfor
+39: Denoisingmodules:
+40: (ϵˆ a ,ϵˆ f ,ϵˆ C ,ϵˆ B )=denoise x1(z 1 ,z˜ 1 )
+41: (ϵˆ S2 )=denoise x2(z 2 ,z˜ 2 )
+42: (ϵˆ S3 ,ϵˆ v )=denoise x3(z 3 ,z˜ 3 )
+43: (ϵˆ p ,ϵˆ P ,ϵˆ V )=denoise x4(z 4 ,z˜ 4 )
+44: return(ϵˆ a ,ϵˆ f ,ϵˆ C ,ϵˆ B ,ϵˆ S2 ,ϵˆ S3 ,ϵˆ v ,ϵˆ p ,ϵˆ P ,ϵˆ V )
+46
+PublishedasaconferencepaperatICLR2025
+Algorithm3TrainingAlgorithm
+1: Given:
+2: RDKit mol object mol containing 3D conformation of a molecule with explicit hydrogens,
+locallyoptimizedwithxTB.
+3: Noisescheduleσ t ,α t ,σ t ,α t fort∈[1,T].
+4: Denoisingnetworkηtobetrained
+5: Obtainunnoisedinputmoleculeanditsinteractionprofiles:
+6: mol=recenter mol(mol) ▷RecentermoleculetohaveanunweightedCOMof0
+7: a,f,C,B =get x1(mol)
+8: partial charges=get partial charges with xtb(mol) ▷singlepoint
+calculationwithxTBinimplicitsolventorgasphase
+9: vdw radii=get vdw radii(a) ▷listofVanderWaalsradiiofeachatom
+10: S 2 =get solvent surface(C,vdw radii,probe radius=0.6,n 2=75)
+11: S 3 =S 2
+12: v =get ESP at surface(S 3 ,C,partial charges)
+13: p,P,V =get pharmacophores(mol)
+14: Linearlyscalecertainfeatures:
+15: a=scale a(a)
+16: f =scale f(f)
+17: B =scale B(B)
+18: v =scale v(v)
+19: p=scale p(p)
+20: V =scale V(V)
+21: Forward-noiseinputstate:
+22: Samplet∈[1,T],andobtainthecorrespondingσ t ,α t ,σ t ,andα t
+23: Sampleindependentnoiseϵ x ∼N(0,1)forx=[a,f,C,B,S 2 ,S 3 ,v,p,P,V]
+24: Subtractcenterofmassfromϵ C
+25: Symmetrizethenoiseforϵ B
+26: Forward-noiseeachx∈[a,f,C,B,S 2 ,S 3 ,v,p,P,V]via: x(t) =α t x+σ t ϵ x
+27: Performforward-passwithShEPhERD’sdenoisingnetwork:
+28: x(t) =(a(t),f(t),C(t),B(t))
+1
+29:
+x(t) =(S(t))
+2 2
+30:
+x(t) =(S(t),v(t))
+3 3
+31: x(t) =(p(t),P(t),V(t))
+4
+32: (ϵˆ a ,ϵˆ f ,ϵˆ C ,ϵˆ B ,ϵˆ S2 ,ϵˆ S3 ,ϵˆ v ,ϵˆ p ,ϵˆ P ,ϵˆ V )
+=ShEPhERD forward(x(t),x(t),x(t),x(t),t)
+1 2 3 4
+33: Computelosses:
+34: l x =||ϵˆ x −ϵ x ||2 ∀x∈[a,f,C,B,S 2 ,S 3 ,v,p,P,V]
+(cid:80)
+35: L= x l x
+36: Optimizenetworkparameters:
+37: Takegradientstepw.r.t. thedenoisingnetwork’sparameterstominimizeL
+47
+PublishedasaconferencepaperatICLR2025
+Algorithm4SamplingAlgorithmforUnconditionalGeneration
+1: Given:
+2: TrainedShEPhERDmodelη X thatlearnsP(X)forX ⊂{x 1 ,x 2 ,x 3 ,x 4 }.
+3: n 1 ▷numberofatomstogenerate.
+4: (ifx 4 ∈X)n 4 ▷numberofpharmacophorestogenerate.
+5: Noisescheduleσ t ,α t ,σ t ,α t fort∈[1,T].
+6: extra noise ts–orderedlistoftimestepstoaddextranoisetocoordinatestates
+7: extra noise scales–listofscalingfactorstoapplytoextracoordinatenoise
+8: harmonization ts–orderedlistoftimestepsatwhichtoperformharmonization.
+9: harmonization steps–listoftimehorizons∆tforeachharmonizationaction.
+10: Sampleinitialstatesatt=T fromGaussianpriors:
+11: Samplenoisesx(T) ∼N(0,1)forx=[a,f,C,B,S 2 ,S 3 ,v,p,P,V].
+12: RemovecenterofmassfromC(T).
+13: SymmetrizeB(T).
+14: Denoisingloop:
+15: t=T
+16: whilet>0do
+17: x(t) =(a(t),f(t),C(t),B(t)).
+1
+18:
+x(t) =(S(t)).
+2 2
+19:
+x(t) =(S(t),v(t)).
+3 3
+20: x(t) =(p(t),P(t),V(t)).
+4
+21: ifharmonization ts[0]==tthen ▷Resamplestates∆tstepsinforwarddirection
+22: harmonization ts.pop(0)
+23: ∆t=harmonization steps.pop(0)
+24: x(t+∆t) =forward noise(x(t),t,∆t,noise schedule)∀i∈[1,2,3,4]
+i i
+25: t=t+∆t
+26: continue
+27: endif
+28: ▷Predicttruenoisewithdenoisingnetworkη X
+29: (ϵˆ a ,ϵˆ f ,ϵˆ C ,ϵˆ B ,ϵˆ S2 ,ϵˆ S3 ,ϵˆ v ,ϵˆ p ,ϵˆ P ,ϵˆ V )
+=ShEPhERD forward(x(t),x(t),x(t),x(t),t)
+1 2 3 4
+30:
+31: forx∈[a,f,C,B,S 2 ,S 3 ,v,p,P,V]do ▷Applyreversedenoisingequation
+32: ϵ′ ∼N(0,1)
+x
+33: ifx==C then
+34: ϵ′ =ϵ′ −get center of mass(ϵ′)
+x x x
+35: endif
+36: ifx∈[C,S 2 ,S 3 ,P]andextra noise ts[0]==tthen
+37: extra noise ts.pop(0)
+38: s ϵ =extra noise scales.pop(0)
+39: else
+40: s ϵ =0
+41: endif
+42: x(t−1) = α 1 t x(t)− α σ tσ t 2 t ϵˆ( x t)+ (cid:16) σtσ σ t t −1 +s ϵ (cid:17) ϵ′ x
+43: x(t) =x(t−1)
+44: endfor
+45: t=t−1
+46: endwhile
+47: Finalfeatureprocessing:
+48: (a(0),f(0),B(0),v(0),p(0),V(0))=undo scaling(a(0),f(0),B(0),v(0),p(0),V(0))
+49: (a(0),f(0),B(0),p(0),V(0))=argmax and round(a(0),f(0),B(0),p(0),V(0))
+48
+PublishedasaconferencepaperatICLR2025
+Algorithm5SamplingAlgorithmforConditionalGenerationwithInpainting
+1: Given:
+2: TrainedShEPhERDmodelη X thatlearnsP(X)forX ⊂{x 1 ,x 2 ,x 3 ,x 4 }
+3: n 1 ▷numberofatomstogenerate.
+4: (ifx 4 ∈X)n 4 ▷numberofpharmacophorestogenerate
+5: Noisescheduleσ t ,α t ,σ t ,α t fort∈[1,T]
+6: AsubsetofthetargetinteractionprofilesI∗ ⊆{S∗,S∗,v∗,p∗,P∗,V∗}
+2 3
+7: Simulateandstoreforward-noisingofeachtargetinteractionprofile:
+8: forx∗ ∈I∗do
+9: x∗ ={}
+noised
+10: x∗(t=0) =x∗
+11: x∗ [0]=x∗(t=0)
+noised
+12: fort∈range(1,T)do:
+13: Sampleϵ∼N(0,1)
+14: x∗ noised [t]=α t x∗ noised [t−1]+σ t ϵ
+15: endfor
+16: endfor
+17: Sampleinitialstatesatt=T fromGaussianpriors:
+18: Samplenoisesx(T) ∼N(0,1)forx=[a,f,C,B,S 2 ,S 3 ,v,p,P,V]
+19: RemovecenterofmassfromC(T)
+20: SymmetrizeB(T)
+21: Denoisingloop:
+22: t=T
+23: whilet>0do
+24: ▷Replacedenoisedprofileswiththeircorrespondingforward-noisedtargetprofiles
+25: forx(t) ∈[S(t),S(t),v(t),p(t),P(t),V(t)]do
+2 3
+26: x(t) =x∗ [t] ▷ifx∗ ∈I∗
+noised noised
+27: endfor
+28: x(t) =(a(t),f(t),C(t),B(t))
+1
+29:
+x(t) =(S(t))
+2 2
+30:
+x(t) =(S(t),v(t))
+3 3
+31: x(t) =(p(t),P(t),V(t))
+4
+32: ▷Predicttruenoisewithdenoisingnetworkη X
+33: (ϵˆ a ,ϵˆ f ,ϵˆ C ,ϵˆ B ,ϵˆ S2 ,ϵˆ S3 ,ϵˆ v ,ϵˆ p ,ϵˆ P ,ϵˆ V )
+=ShEPhERD forward(x(t),x(t),x(t),x(t),t)
+1 2 3 4
+34: ▷Applyreversedenoisingequation
+35: forx∈[a,f,C,B,S 2 ,S 3 ,v,p,P,V]do
+36: ϵ′ ∼N(0,1)
+x
+37: ifx==C then
+38: ϵ′ =ϵ′ −get center of mass(ϵ′)
+x x x
+39: endif
+40: x(t−1) = α 1 t x(t)− α σ tσ t 2 t ϵˆ( x t)+ σtσ σ t t −1ϵ′ x
+41: x(t) =x(t−1)
+42: endfor
+43: t=t−1
+44: endwhile
+45: Finalfeatureprocessing:
+46: (a(0),f(0),B(0),v(0),p(0),V(0))=undo scaling(a(0),f(0),B(0),v(0),p(0),V(0))
+47: (a(0),f(0),B(0),p(0),V(0))=argmax and round(a(0),f(0),B(0),p(0),V(0))
+49
+PublishedasaconferencepaperatICLR2025
+A.7.3 MODELHYPERPARAMETERS
+Table7listshyperparametersrelevanttotrainingShEPhERD.Table8liststhetotalnumberoflearn-
+ableparametersforeachversionofShEPhERDanalyzedinthemaintext. Table9listshyperparam-
+eters related to ShEPhERD’s denoising network architecture. Note that model hyperparameters
+wereselectedearlyduringmodeldevelopmentbasedonthememorylimitsofourGPUs,andwere
+not specially tuned to optimize model performance. A notable exception is the probe radius for
+extracting x and x , which was manually tuned to 0.6 A˚ in order to decouple the shape/surface
+2 3
+representation from the 2D molecular graph or exact atomic coordinates while still yielding well-
+definedshapes. Notethataproberadiusof0.0correspondstothevanderWaalssurface, whereas
+averylargeproberadiuswouldcauseallmoleculestohaveuninformativesphericalshapes. Ifone
+requirestheshape/surfacerepresentationtobemoresensitivetotheexactatomiccoordinates, one
+caneasilyretrainShEPhERDwithasmallerproberadius.
+Table7: HyperparametersusedfortrainingShEPhERD
+TrainingParameters
+Parameter Value
+Effectivebatchsize 48
+Learningrate 0.0003
+Gradientclippingvalue 5.0
+T 400
+n 75
+2
+n 75
+3
+surfaceproberadius 0.6
+aandf scalingfactors 0.25
+Bscalingfactor 1.0
+vscalingfactor 2.0
+pscalingfactor 2.0
+V scalingfactor 2.0
+Table8: TotalnumberoflearnableparametersforeachShEPhERDmodel
+TotalNumberofLearnableParameters
+Model NumberofParameters
+ShEPhERD-GDB17P(x ,x ) 4,375,054
+1 2
+ShEPhERD-GDB17P(x ,x ) 4,387,407
+1 3
+ShEPhERD-GDB17P(x ,x ) 4,407,321
+1 4
+ShEPhERD-MOSES-aqP(x ,x ,x ) 6,010,427
+1 3 4
+50
+PublishedasaconferencepaperatICLR2025
+Table9: HyperparametersforShEPhERD’sdenoisingnetworkη
+DenoisingNetworkHyperparameters
+Parameter Value
+DefaultEquiformerV2Parameters
+num node channels 64
+lmax list [1]
+mmax list [1]
+ffn hidden channels 32
+grid resolution 16
+num sphere samples 128
+edge channels 128
+activation function silu
+norm type layer norm sh
+use sep s2 act True
+use grid mlp True
+use gate act False
+use attn renorm True
+use s2 act attn False
+JointModuleParameters
+num EquiformerV2 layers 2
+attention channels 24
+num attention heads 2
+radius graph cutoff 5.0
+RBF cutoff 5.0
+x EmbeddingModuleParameters
+1
+num EquiformerV2 layers 4
+attention channels 32
+num attention heads 4
+ffn hidden channels 64
+radius graph cutoff ∞(fullyconnected)
+RBF cutoff 5.0
+x ,x ,x EmbeddingModuleParameters
+2 3 4
+num EquiformerV2 layers 2
+attention channels 24
+num attention heads 2
+ffn hidden channels 32
+radius graph cutoff 5.0
+RBF cutoff 5.0
+x3 scalar RBF expansion min -10.0
+x3 scalar RBF expansion max 10.0
+x DenoisingModuleParameters
+1
+MLP hidden dim 64
+num MLP hidden layers 2
+e3nn ffn hidden channels 32
+egnn normalize vectors True
+egnn distance expansion dim 32
+x ,x ,x DenoisingModuleParameters
+2 3 4
+MLP hidden dim 64
+num MLP hidden layers 2
+e3nn ffn hidden channels 32
+51
+PublishedasaconferencepaperatICLR2025
+A.8 SYMMETRYBREAKINGINUNCONDITIONALGENERATION
+We find that during unaltered unconditional generation, ShEPhERD tends to generate spherical
+moleculesregardlessofthechoiceofn (Fig.21). WeattributethisbehaviortoShEPhERDbeing
+1
+unabletoreliablybreaksphericalsymmetrywhendenoisingtheEuclideancoordinatecomponents
+ofX(t). ThisphenomenonisparticularlyevidentformodelstrainedonShEPhERD-GDB17,which
+containsanumberofsphericalcage-likemoleculesinthetruedatadistribution.But,thisalsooccurs
+formodelstrainedonShEPhERD-MOSES-aq,whichdoesnotcontainsuchmolecules. Intuitively,
+wecanunderstandthisphenomenonbyconsideringthatwedenoisemolecularstructuresandtheir
+interactionprofilesstartingfromisotropicGaussiannoise. Atearlytimestepsinthedenoisingtra-
+jectory(e.g., tclosetoT), themodellearnstocollapsetheisotropicnoiseintoanearpoint-mass;
+this behavior minimizes the L2 denoising losses at early time steps as predicting clean structures
+fromuninformativenoisyinputstatesisimpossible. DuetoShEPhERD’sstrictSE(3)-equivariance,
+though,thedenoisingnetworkcannotnativelybreakthesphericalsymmetryofthispointmass;this
+ultimatelyleadsthenetworktogeneratespherically-shaped(yetoftenstillvalid)molecules.
+Fortunately, we can easily solve this problem by manually adding extra noise to the coordinate
+components of X(t−1) during the most informative time steps. With our choice of noise sched-
+ule, the states X(t) undergo the most significant evolution in terms of their spatial coordinates
+from t = 130 through t = 80. For t ∈ [80,130], then, we add extra (isotropic) noise to
+C(t−1),S(t−1),S(t−1),P(t−1)sothat(asanexample): C(t−1) = 1 C(t)− σ t 2 ϵˆ(t)+σtσt−1ϵ′+
+2 3 αt αtσt σt
+ξϵ where ϵ ∼ N(0,1) and ξ scales the noise (although we just use
+symmetry-breaking symmetry-breaking
+ξ =1). ForC(t−1),westillremovetheCOMfromϵ .
+symmetry-breaking
+Naivelyaddingextranoisetothecoordinatesofthedenoisedstatescouldquicklycausethemodel
+togoout-of-distribution,leadingtolow-qualityorinvalidsamples. Toremedythis,weuseharmo-
+nization/resampling(Lugmayretal.,2022)tore-samplethestateX(t=80+∆t) giventhesymmetry-
+brokenX(t=80) (weuse∆t = 20). Empirically,wefindthisadequatetomaintainsamplequality,
+asevidencedbythehighvalidityratesandlowRMSDsuponxTB-relaxationforunconditionalsam-
+plesfromShEPhERDwhentrainedonShEPhERD-GDB17. Nevertheless, weadmittheremaybe
+lessintrusivemethodsofbreakingsymmetry;e.g.,addingnon-isotropicnoisewithsmallerξ. How-
+ever, we find our symmetry-breaking procedure to be simple and effective while only marginally
+increasingsamplingtime.
+Finally, we emphasize that this symmetry breaking procedure is only performed during uncondi-
+tionalgeneration. Wheninpaintingduringconditionalgeneration,symmetryisnaturallybrokenby
+the conditioning information, so we do not add any extra noise (although doing so could increase
+thediversityofconditionally-sampledstructures).
+Figure21: Withoutsymmetrybreakingduringunconditionalgeneration,ShEPhERDtendstogen-
+erate spherical molecules, particularly for models trained on ShEPhERD-GDB17. Shown are un-
+conditionalsamplesfromShEPhERDtrainedtolearnP(x ,x )onShEPhERD-GDB17,generated
+1 2
+eitherwithorwithoutsymmetrybreaking.
+52
+PublishedasaconferencepaperatICLR2025
+A.9 CHARACTERIZINGTHENEEDFOROUT-OF-DISTRIBUTIONPERFORMANCE
+Multipleofourexperiments, particularlythoserelatedtoligand-baseddrugdesign, requireShEP-
+hERDtogeneratelargermoleculeswithmorepharmacophoresthanthemoleculesthatShEPhERD
+was trained on. For instance, the largest molecules in ShEPhERD-MOSES-aq contain 27 heavy
+atoms, whereas the best-scoring ligands generated in our natural product ligand hopping experi-
+mentscontainmorethanthat,presumablybecausetheselargermoleculesfittheshapesofthevery
+large natural products better than molecules with fewer heavy atoms. Moreover, in our fragment
+merging experiment, we conditioned ShEPhERD on a pharmacophore profile containing 27 phar-
+macophores,whichismanymorethanthosecontainedbythemoleculesinShEPhERD-MOSES-aq.
+Toquantitativelyillustratetheneedforout-of-distributionperformanceandShEPhERD’sextrapola-
+tionability,Fig.22showsthedistributionsofn vs. n formoleculesfromShEPhERD-MOSES-aq
+1 4
+comparedagainstthemoleculesconditionallygeneratedbyShEPhERDacrossourbioisostericdrug
+design experiments. Also included are the top-scoring ligands for each experiment, to highlight
+thatShEPhERDfindshigh-scoringcompoundsthatarebothin-distributionand meaningfullyout-
+of-distribution. Fig.23showssimilardistributionsforourunconditionalandconditionalgeneration
+experimentsontheShPhERD-GDB17dataset.
+25
+20
+15
+10
+5
+0
+0 20 40 60 80
+Atom Count
+tnuoC
+erohpocamrahP
+Legend
+NP 1 25
+NP 2
+NP 3 20
+1iep
+3eml
+3ny8 15
+4rlu
+4unn 10
+5mo4
+7l11
+Fragment merging 5
+0
+0 20 40 60 80
+Atom Count
+tnuoC
+erohpocamrahP
+Legend
+NP 1
+NP 2
+NP 3
+1iep LE
+3eml LE
+3ny8 LE
+4rlu LE
+4unn LE
+5mo4 LE
+7l11 LE
+Fragment merging
+1iep pose
+3eml pose
+3ny8 pose
+4rlu pose
+4unn pose
+5mo4 pose
+7l11 pose
+Figure22: Distributionsofthenumberofpharmacophoresrelativetothenumberofatoms(includ-
+inghydrogens)forconditionalsamplesfromShEPhERDwhentrainedonShEPhERD-MOSES-aq.
+Forcomparison,thekerneldensityplotofarandomlysampledsubsetof∼320kmoleculesfromthe
+ShEPhERD-MOSES-aq dataset is shown in blue on both figures. (Left) Conditional ShEPhERD-
+generated samples from P(x |x ,x ) for our natural product (NP) ligand hopping, bioactive hit
+1 3 4
+diversification, and bioisosteric fragment merging experiments. Note that the ordering of the NPs
+correspondtotheorderfoundinFig.4. Becausewesweepovern whilespecifyingn basedon
+1 4
+thetargetx ,theShEPhERD-generatedsamplesappearashorizontallines. (Right)“Top-10”scor-
+4
+ingsamplesgeneratedbyShEPhERDforeachexperiment. The“Top-10”samplesfortheNPand
+fragmentmergingexperimentsaredefinedasthevalidsamplesthathavethehighestcombinedESP
+& pharmacophore score post xTB-relaxation and ESP-based realignment. The “Top-10” samples
+forthebioactivehitdiversificationexperimentsaredefinedbytheirVinascores. Weincludethetop
+sampleswhenconditioningonboththelowestenergyconformer(LE)andtheboundposeofeach
+PDBligand. Top-scoringsamplesarefoundbothin-andout-of-distributionintermsof(n ,n ).
+1 4
+53
+PublishedasaconferencepaperatICLR2025
+20
+15
+10
+5
+0
+0 20 40 60
+Atom Count
+tnuoC
+erohpocamrahP
+Distributions
+ShEPhERD-GDB17
+Unconditional generation
+Conditional generation
+Figure 23: The distributions of the number of pharmacophores relative to the number of atoms
+(including hydrogens) for molecules in the ShEPhERD-GDB17 dataset and molecules sampled
+by ShEPhERD trained to learn P(x ,x ). We include the distributions for ∼1M randomly sam-
+1 4
+pled molecules from the ShEPhERD-GDB17 dataset, unconditionally-generated molecules from
+P(x ,x ),andconditionally-generatedmoleculesfromP(x |x ). Alldistributionsarevisualized
+1 4 1 4
+askerneldensityestimateplots. Alldistributionsshowsignificantoverlap.
+54
+PublishedasaconferencepaperatICLR2025
+A.10 ADDITIONALEXAMPLESOFGENERATEDMOLECULES
+Figures 24, 25, and 26 show additional random examples of unconditionally-generated molecules
+and their jointly generated interaction profiles from versions of ShEPhERD trained on ShEP-
+hERD-GDB17. Figures27,28,and29showadditionalrandomexamplesofShEPhERD-generated
+moleculeswhenconditioningontargetinteractionprofilesviainpainting.Althoughweareprimarily
+interestedinusingthemodelstrainedtolearnP(x ,x ,x )onShEPhERD-MOSES-aqforcondi-
+1 3 4
+tional generation tasks relevant to ligand-based drug design, we also show unconditional samples
+fromthismodelinFig.30.
+Figure 24: Random unconditional samples from ShEPhERD trained to learn P(x ,x ) on ShEP-
+1 2
+hERD-GDB17. Weshowthenativelygeneratedmolecularstructures(withoutxTB-relaxation)and
+theirjointlygeneratedshapes. Weshowexamplesforbothlargeandsmalln .
+1
+Figure 25: Random unconditional samples from ShEPhERD trained to learn P(x ,x ) on ShEP-
+1 3
+hERD-GDB17. Weshowthenativelygeneratedmolecularstructures(withoutxTB-relaxation)and
+theirjointlygeneratedESPsurfaces. Weshowexamplesforbothlargeandsmalln .
+1
+Figure 26: Random unconditional samples from ShEPhERD trained to learn P(x ,x ) on ShEP-
+1 4
+hERD-GDB17. Weshowthenativelygeneratedmolecularstructures(withoutxTB-relaxation)and
+their jointly generated pharmacophores. We show examples for both large and small n . n is
+1 4
+sampled from the empirical data distribution P(n |n ). In these images, grey spheres represent
+4 1
+hydrophobes (the most common pharmacophore in ShEPhERD-GDB17); purple and blue arrows
+represent HBAs and HBDs, respectively; orange arrows represent aromatic groups; and green ar-
+rowsrepresenthalogen-carbonbonds.
+55
+PublishedasaconferencepaperatICLR2025
+Figure 27: Conditional samples from ShEPhERD – trained to learn P(x ,x ) on ShEPhERD-
+1 2
+GDB17–obtainedbyinpaintingthe3Dmoleculegiventargetshapesextractedfrommoleculesheld-
+outfromtraining. Weshowthenativelygeneratedmolecularstructures(withoutxTB-relaxationor
+realignment)overlaidonthetargetshapes. Theshapesurfacesareupsampledforvisualization.
+Figure 28: Conditional samples from ShEPhERD – trained to learn P(x ,x ) on ShEPhERD-
+1 3
+GDB17 – obtained by inpainting the 3D molecule given target ESP surfaces extracted from
+molecules held-out from training. We show the natively generated molecular structures (without
+xTB-relaxationorrealignment)overlaidonthetargetESPsurfaces. Thesurfacesareupsampledfor
+visualization.
+Figure 29: Conditional samples from ShEPhERD – trained to learn P(x ,x ) on ShEPhERD-
+1 4
+GDB17 – obtained by inpainting the 3D molecule given target pharmacophores extracted from
+molecules held-out from training. We show the natively generated molecular structures (without
+xTB-relaxationorrealignment)overlaidonthetargetpharmacophores.
+56
+PublishedasaconferencepaperatICLR2025
+Figure 30: Random unconditional samples from ShEPhERD trained to learn P(x ,x ,x ) on
+1 3 4
+ShEPhERD-MOSES-aq. We show the natively generated molecular structures (without xTB-
+relaxationorrealignment)andtheirjointlygeneratedESPsurfacesandpharmacophores. Notethat
+anumberofthesestructureswouldnotpassourvaliditycriteria.
+57
+PublishedasaconferencepaperatICLR2025
+A.11 TRAININGANDINFERENCERESOURCES
+Training.WetrainallmodelswithV100GPUs(32GBmemory).ForboththeShEPhERD-GDB17
+andShEPhERD-MOSES-aqdatasets, wetraineachoftheP(x ,x ), P(x ,x ), andP(x ,x ,x )
+1 2 1 3 1 3 4
+models on 2 GPUs for approximately 2 weeks. We train the P(x ,x ) model on 1 GPU for ap-
+1 4
+proximately2weeks. WeconfigurethenumberofGPUs, nominalbatchsizes, andthenumberof
+gradientaccumulationstepstoattaineffectivebatchsizesofapproximately48(molecules).
+Inference. ForeachoftheP(x ,x ),P(x ,x ),andP(x ,x ,x )models,generatingabatchof10
+1 2 1 3 1 3 4
+independentsamples(eitherunconditionallyorviainpainting)takesapproximately3-4minuteson
+aV100GPU,whenusingiterativedenoisingwithT = 400steps. Samplingtimesarereducedby
+∼50%fortheP(x ,x )models. Usingharmonizationwhensamplingincreasesthesamplingtime
+1 4
+proportionally to the number of extra denoising steps. On a single CPU, inference requires 5-10
+minutespersampledependingonsystemhardwareandthechoiceofmodel.
+LongsamplingtimesaresomewhatintrinsictotheDDPMparadigmduetoneedingnumerousfor-
+wardpassespersample. Oursamplingisalsosloweddownbyouruseofmemory-intensiveE3NN
+modulesthroughoutShEPhERD’sdenoisingnetwork. Inthiswork, wedidnotattempttoacceler-
+ate sampling (e.g., by using fewer denoising steps at inference, reducing T, using less expressive
+networks,reducingn andn ,etc.). Weleavesuchperformanceengineeringtofuturework.
+2 3
+58
+PublishedasaconferencepaperatICLR2025
+A.12 ADDITIONALEXPERIMENTSANDCOMPARISONSTORELATEDWORK
+A.12.1 COMPARISONTOSQUIDFORSHAPE-CONDITIONEDGENERATION
+WecompareShEPhERDtotwoligand-basedmodels,SQUID(Adams&Coley,2022)andShape-
+Mol(Chenetal.,2023), forshape-conditionedmoleculardesign. Toperformthiscomparison, we
+apply the version of ShEPhERD trained on MOSES-aq to learn P(x ,x ,x ) to generate new
+1 3 4
+moleculesconditionedonthesurfaceshape(e.g.,thecoordinatesofx ,whichimplicitlydefinex )
+3 2
+ofthe10003DmoleculesinSQUID’stestset.NotethatSQUIDandShEPhERDusethesametrain-
+ingandtestsplitsofMOSES,andhencetherewasnodataleakage. WeconditiontheP(x ,x ,x )
+1 3 4
+modelonthemolecules’shapes(only)byinpaintingjustthecoordinatesofx ,andallowingShEP-
+3
+hERD to generate x , x , and the electrostatic potentials of x . We generate up to 10 samples
+1 4 3
+fromShEPhERDandcomparetheaveragevolumetricshapesimilarityusingROCS(thesameshape
+scoringfunctionthatSQUIDused). SinceSQUID’sgeneratedmoleculesforeachtestmoleculeare
+publicly available for download via their GitHub, we re-evaluated the average shape similarity of
+SQUID-generatedmoleculestoensureafaircomparison.
+Acrossthe1000test-setmolecules,theaverageshapesimilarityofSQUID-generatedmoleculesis
+0.70whenusingλ = 1.0,and0.74whenusingλ = 0.3. Incontrast,theaverageshapesimilarity
+ofShEPhERD-generatedmoleculesis0.80,asubstantialimprovement. Moreover,theShEPhERD-
+generated molecules have an average 2D graph similarity of just 0.22 compared to the reference
+molecule, whereas the SQUID-generated molecules have average graph similarities of 0.25 (λ =
+1.0)and0.35(λ = 0.3). Hence, ShEPhERDisabletogeneratelesschemicallysimilarmolecules
+thathavehighershapesimilaritytothetarget,onaverage.ThefullresultsarefoundinTableA.12.1.
+WeemphasizethatShEPhERDgreatlyexceedstheperformanceofSQUIDevenwiththisindirect
+wayofdoingshape-conditionedgeneration, i.e. viainpaintingthejointP(x ,x ,x )model. We
+1 3 4
+couldalsotrainaP(x ,x )modeldirectlyforthistask; however, wedidnothavetimetoretrain
+1 2
+ShEPhERD from scratch within the rebuttal time period. We also note that ShEPhERD condi-
+tionsonsurfaceshapes,whereaswehavecomparedShEPhERDtoSQUIDusingvolumetricshape
+similarity (with ROCS). We expect that we could further improve ShEPhERD’s performance in
+shape-conditionedgenerationbyretrainingShEPhERDwithasmallersurfaceproberadius,thereby
+“shrinking”thesurfaceshapetobettermodelvolumetricshapes.
+Table10: AcomparisonofShEPhERDtodefaultversionsofSQUID(λ = {1.0,0.3})andShape-
+Mol. We recompute the shape and graph similarities of SQUID using the structures provided by
+theirGitHub. NotethatthevaluesfortheevaluationsofShapeMolandShapeMol+gweredirectly
+copiedfrom(Chenetal.,2023)whichuseadifferentalignmentprotocol.
+Model avgSim (↑) avgSim (↓) QED(↑)
+s g
+ShEPhERD 0.799±0.058 0.223±0.065 0.723
+SQUID(λ=1.0) 0.700±0.107 0.245±0.078 0.760
+SQUID(λ=0.3) 0.735±0.117 0.346±0.161 0.766
+ShapeMol∗ 0.689±0.044 0.239±0.042 0.748
+ShapeMol+g∗ 0.746±0.036 0.241±0.050 0.749
+A.12.2 COMPARISONSAGAINSTSTRUCTURE-BASEDDRUGDESIGNMODELSTHAT
+EXPLICITLYENCODETHEPROTEINPOCKET
+WhileShEPhERDisaligand-onlymodelanddoesnotexplicitlymodelproteinpocketgeometries,
+we were asked to compare to structure-based drug design (SBDD) models. We emphasize that
+since the methods differ in their respective applications and modeling strategies, the comparisons
+cannot be completely fair. Nevertheless, although ShEPhERD is not designed for structure-based
+drugdesign,itcanstillberoughlyappliedtoSBDDbyconditioningontheboundposeofaknown
+ligand (but still ignoring the surrounding protein pocket). This bound pose can be obtained from
+crystallography (e.g., the co-crystal ligands in PDB entries) or from simulated docked poses (e.g.,
+conditioning ShEPhERD on the top hit from a small docking-based virtual screen). In order to
+compare to SBDD generative models, we compare ShEPhERD against the benchmarking results
+presented by (Zheng et al., 2024), which report the average Vina docking scores amongst the top-
+59
+PublishedasaconferencepaperatICLR2025
+10generatedcompounds(amongst∼1000generatedsamples)for7PDBsystemsusinggenerative
+SBDD methods like 3DSBDD, AutoGrow4, Pocket2Mol, PocketFlow, and ResGen. Specifically,
+weuseShEPhERDtoconditionontheelectrostaticpotentialsurface(x )andpharmacophores(x )
+3 4
+of the PDB ligand in its crystallographic bound pose, generating up to 1000 valid molecules per
+PDBtarget. Wedockthe1000generatedmolecules(startingfromtheirSMILESstrings)usingthe
+same Vina program (and version) as used by Zheng et al. (2024), and compute the average Vina
+scoresamongstthetop-10moleculespertarget. Theseaveragetop-10scoresarecomparedagainst
+the results for the SBDD models evaluated by Zheng et al. (2024) in Table 11. We also evaluate
+the2DgraphsimilaritiesofShEPhERD-generatedcompoundscomparedtothePDBligandineach
+case,whicharegenerallyquitelow(Fig. 31).
+Table 11: Docking scores of ShEPhERD-generaed molecules and redocked PDB ligands, com-
+paredtoligandsgeneratedbyvariousSBDDgenerativemodels. Scoresfor3DSBDD,AutoGrow,
+Pocket2Mol,PocketFlow,andResGenarecopiedfromZhengetal.(2024).
+Model 1iep 3eml 3ny8 4rlu 4unn 5mo4 7l11
+RedockedPDBligand -9.58 -9.14 -8.62 -8.70 -9.24 -9.95 -9.10
+ShEPhERD -12.25 -10.80 -10.69 -10.19 -10.60 -10.66 -9.44
+±0.18 ±0.23 ±0.23 ±0.23 ±0.27 ±0.20 ±0.19
+3DSBDD -9.05 -10.02 -10.10 -9.80 -8.23 -8.71 -8.47
+±0.38 ±0.15 ±0.24 ±0.55 ±0.30 ±0.45 ±0.18
+AutoGrow4 -13.23 -13.03 -11.70 -11.20 -11.14 -10.38 -8.84
+±0.11 ±0.09 ±0.00 ±0.00 ±0.12 ±0.27 ±0.33
+Pocket2Mol -10.17 -12.25 -11.89 -10.57 -12.20 -10.07 -9.74
+±0.53 ±0.27 ±0.16 ±0.12 ±0.34 ±0.62 ±0.38
+PocketFlow -12.49 -9.25 -8.56 -9.65 -7.90 -7.80 -8.35
+±0.70 ±0.29 ±0.35 ±0.25 ±0.78 ±0.42 ±0.31
+ResGen -10.97 -9.25 -10.96 -11.75 -9.41 -10.34 -8.74
+±0.29 ±0.95 ±0.42 ±0.42 ±0.23 ±0.39 ±0.24
+EventhoughShEPhERDonlyseesthePDBligandandnotthetargetproteinpocket,theaveragetop-
+10VinascoresforShEPhERD-generatedmoleculesareverycomparabletothoseobtainedbythese
+SBDD methods. Out of the 6 generative models (ShEPhERD and 5 SBDD methods), ShEPhERD
+ranks1/6foronetarget,2/6foronetarget,3/6forthreetargets,and4/6fortwotargets.Theseresults
+confirm that ShEPhERD shows great promise for SBDD even though it is currently a ligand-only
+model.
+200
+150
+100
+50
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+1iep
+300
+200
+100
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+3eml
+300
+200
+100
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+3ny8
+400
+200
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+4rlu
+300
+200
+100
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+4unn
+300
+200
+100
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+5mo4
+300
+200
+100
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+7l11
+Docking screen (random)
+ShEPhERD -- bound pose
+(random 1k)
+Figure 31: The graph similarity distributions of the 1000 valid ShEPhERD-generated molecules
+used in App. A.12.2 for each target. We also show the distributions of 1000 randomly selected
+samples from the 10k docking screen. Note that only 672 ShEPhERD-generated molecules were
+valid(anddocked)forthetarget1iep.
+60
+PublishedasaconferencepaperatICLR2025
+40
+20
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+1iep
+100
+50
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+3eml
+80
+60
+40
+20
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+3ny8
+150
+100
+50
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+4rlu
+100
+75
+50
+25
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+4unn
+100
+75
+50
+25
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+5mo4
+80
+60
+40
+20
+0
+0.0 0.2 0.4 0.6 0.8 1.0
+2D Fingerprint Similarity
+ycneuqerF
+7l11
+Docking screen (random)
+ShEPhERD -- bound pose
+ShEPhERD -- lowest energy
+Figure 32: The graph similarity distributions of the valid ShEPhERD-generated molecules used
+in the main text. We also show the distributions of 500 randomly selected samples from the 10k
+dockingscreen.
+A.12.3 COMPARISONSAGAINSTINPAINTINGWITHDIFFSBDD
+We also directly compare ShEPhERD to DiffSBDD, which also uses diffusion with inpainting to
+generate molecules, albeit in a structure-based drug design scenario where the pocket is directly
+encodedbythemodel. TocompareShEPhERDspecificallyagainstDiffSBDD,weappliedShEP-
+hERDtogenerateanalogsgiventhecrystallographicboundposefortheligandinthePDBentry4tos
+(ligand PDB ID: 355), which DiffSBDD was evaluated on in Figure 2 of Schneuing et al. (2022).
+To ensure a fair comparison, we downloaded the 100 molecules generated by DiffSBDD for this
+PDBtarget,whicharefortunatelymadepubliclyavailablebySchneuingetal.(2022). Weusedthe
+moleculesgeneratedbytheall-atomversionofDiffSBDDthatusesinpainting,asthisisthemodel
+thatgenerallyperformsthebestaccordingtoSchneuingetal.(2022). Wethenre-dockedthese100
+molecules(startingfromtheirSMILESstrings)withAutoDockVina(v1.1.2)toobtaintheirdistri-
+butionofdockingscores. WethenappliedShEPhERDtogenerate100validmoleculesgiven(x ,
+3
+x )oftheboundligand(stillignoringtheactualproteinpocket),anddockedthosemolecules,again
+4
+startingfromtheirSMILESstrings.
+We compare the distributions of docking scores between the molecules generated by ShEPhERD
+andDiffSBDDinFigure33. EventhoughShEPhERDdoesnotexplicitlymodelthepocketstruc-
+ture,theaverageVinascoreforShEPhERD-generatedmoleculesisapproximately2kcal/mollower
+(better)thantheaverageVinascorefortheDiffSBDD-generatedmolecules. Moreover, theShEP-
+hERD-generated molecules have significantly lower (better) SA scores, as well. Meanwhile, the
+ShEPhERD-generatedmoleculesstillhavequitelowgraphsimilaritytothePDBligand(vastmajor-
+ityarebelow0.2).WealsoemphasizethatthisconditioningPDBligandisclearlyout-of-distribution
+for ShEPhERD, as the PDB ligand contains 42 non-hydrogen atoms, whereas ShEPhERD is only
+trainedonmoleculescontainingupto27non-hydrogenatoms. However,wedowanttoemphasize
+that, as previously mentioned, comparisons to SBDD methods are inherently unfair. In this case,
+thePDBliganditselfhasaquitegooddockingscore, whichmeansthattheShEPhERD-generated
+analogs are likely to also have good docking scores, as ShEPhERD generates molecules that pre-
+serve3Dinteractions. Nevertheless, thisexperimentshowsShEPhERD’sutilityinSBDD,despite
+beingaligand-onlymodel.
+A.12.4 COMPARISONSAGAINSTSYNFORMERONNATURALPRODUCTLIGANDHOPPING
+We compare against SynFormer (Gao et al., 2024) in our natural product ligand hopping experi-
+ments. However,notethatthegoalofournaturalproductligandhoppingexperimentswastogener-
+atesmall-moleculeanaloguesofstructurallycomplexnaturalproductsthat(1)preservetheirelec-
+trostaticandpharmacophore3Dinteractions, and(2)havesimplerchemicalstructuresasassessed
+viaSAscore. SynFormerisanon-3Dgenerativemodelthatcanbeusedtogeneratesynthesizable
+small-moleculeanaloguesofanunsynthesizablereferencemoleculethathavesimilar2Dchemical
+structures. WeappliedSynFormerusingitspubliclyavailablecodeinitsdefaultsettingstogenerate
+61
+PublishedasaconferencepaperatICLR2025
+Figure33: AcomparisonofdistributionsformoleculesgeneratedbyDiffSBDandShEPhERDfor
+thetarget4tos(PDBligandID355). WeshowdistributionsofVinaScore(v1.1.2), SAscore, and
+2Dgraphsimilarity. (Top)Thedistributionsofall100validmoleculesgeneratedbybothmodels.
+(Bottom)Thedistributionsofthetop-10dockedmoleculesfrombothmodels.
+analogsforeachofthethreenaturalproducts. Wetookeachofthegeneratedanalogs,generatedup
+to10xTB-optimizedconformers,andscoredtheir3Dsimilaritiestothereferencenaturalproducts
+afteroptimalalignment.
+WecomparetheSynFormer-generatedanalogsagainsttheShEPhERD-generatedanalogsinFigure
+34onthebasisofelectrostaticandpharmacophoresimilaritytothereferencenaturalproducts. In
+allcases,SynFormerunderperformsShEPhERD,whichisnotsurprisingsinceSynFormerwasnot
+designedtopreserve3Dinteractionsimilarity.Wealsonotethatveryfew(ifany)oftheSynFormer-
+generated molecules have SA scores below the threshold we enforce on ShEPhERD (SA<4.5),
+indicatingthatSynFormer’sanalogsaregenerallymorecomplex,evenifpurportedlysynthesizable.
+62
+PublishedasaconferencepaperatICLR2025
+Natural product (1) Natural product (2) Natural product (3)
+Figure 34: (Top) Plots of ESP vs. pharmacophore similarity for the molecules generated by Syn-
+Former and ShEPhERD in our natural product ligand hopping tasks. (Bottom) SA score distribu-
+tionsforeachmodel’sgeneratedmolecules.
+63

@@ -1,0 +1,1209 @@
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#1figure <ref>
+
+#1Figure <ref>
+#1#2figures <ref> and <ref>
+#1#2#3#4figures <ref>, <ref>, <ref> and <ref>
+
+#1section <ref>
+
+#1Section <ref>
+
+#1#2sections <ref> and <ref>
+
+#1#2#3sections <ref>, <ref> and <ref>
+
+(<ref>)1equation <ref>
+
+#1Equation <ref>
+
+#1<ref>
+
+#1chapter <ref>
+
+#1Chapter <ref>
+
+#1#2chapters<ref>–<ref>
+
+#1algorithm <ref>
+
+#1Algorithm <ref>
+#1#2algorithms <ref> and <ref>
+#1#2Algorithms <ref> and <ref>
+
+#1part <ref>
+
+#1Part <ref>
+#1#2parts <ref> and <ref>
+
+#1⌈#1 ⌉
+#1⌊#1 ⌋
+1
+
+
+
+
+ϵ
+
+
+
+η
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+ϵ
+θ
+𝐚
+𝐛
+𝐜
+𝐝
+𝐞
+𝐟
+𝐠
+𝐡
+𝐢
+𝐣
+𝐤
+𝐥
+𝐦
+𝐧
+𝐨
+𝐩
+𝐪
+𝐫
+𝐬
+𝐭
+𝐮
+𝐯
+𝐰
+𝐱
+𝐲
+𝐳
+
+
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+𝐀
+𝐁
+𝐂
+𝐃
+𝐄
+𝐅
+𝐆
+𝐇
+𝐈
+𝐉
+𝐊
+𝐋
+𝐌
+𝐍
+𝐎
+𝐏
+𝐐
+𝐑
+𝐒
+𝐓
+𝐔
+𝐕
+𝐖
+𝐗
+𝐘
+𝐙
+
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+0
+1
+μ
+θ
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+α
+β
+ϵ
+λ
+ω
+μ
+ψ
+σ
+θ
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+β
+Φ
+Λ
+Σ
+
+
+msl
+boldbxn
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+
+𝒜
+ℬ
+𝒞
+𝒟
+ℰ
+ℱ
+𝒢
+ℋ
+ℐ
+𝒥
+𝒦
+ℒ
+ℳ
+𝒩
+𝒪
+𝒫
+𝒬
+ℛ
+𝒮
+𝒯
+𝒰
+𝒱
+𝒲
+𝒳
+𝒴
+𝒵
+
+
+𝔸
+𝔹
+ℂ
+𝔻
+
+
+𝔽
+𝔾
+ℍ
+𝕀
+𝕁
+𝕂
+𝕃
+𝕄
+ℕ
+𝕆
+ℙ
+ℚ
+ℝ
+𝕊
+𝕋
+𝕌
+𝕍
+𝕎
+𝕏
+𝕐
+ℤ
+
+
+Λ
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+Σ
+
+
+
+
+Λ
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+ 
+    
+            
+       
+       
+       
+      
+         
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+ 
+
+
+
+  numbered,
+  open
+
+[table]skip=6pt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+red
+Towards Cross Domain Generalization of Hamiltonian Representation via Meta Learning
+    
+  Yeongwoo Song1  Hawoong Jeong1 2Correspondence to Hawoong Jeong.
+
+  1Department of Physics, KAIST   2Center for Complex Systems, KAIST
+
+  
+
+
+    April 11, 2026
+===================================================================================================================================================
+
+
+Recent advances in deep learning for physics have focused on discovering shared representations of target systems by incorporating physics priors or inductive biases into neural networks. While effective, these methods are limited to the system domain, where the type of system remains consistent and thus cannot ensure the adaptation to new, or unseen physical systems governed by different laws. For instance, a neural network trained on a mass-spring system cannot guarantee accurate predictions for the behavior of a two-body system or any other system with different physical laws.
+In this work, we take a significant leap forward by targeting cross domain generalization within the field of Hamiltonian dynamics. 
+We model our system with a graph neural network (GNN) and employ a meta learning algorithm to enable the model to gain experience over a distribution of systems and make it adapt to new physics. Our approach aims to learn a unified Hamiltonian representation that is generalizable across multiple system domains, thereby overcoming the limitations of system-specific models. 
+We demonstrate that the meta-trained model captures the generalized Hamiltonian representation that is consistent across different physical domains.
+Overall, through the use of meta learning, we offer a framework that achieves cross domain generalization, providing a step towards a unified model for understanding a wide array of dynamical systems via deep learning.
+
+
+
+
+§ INTRODUCTION
+
+Deep learning has succeeded in many application areas such as image classification, image generation, natural language processing, and so on <cit.>. One of the major roles of such accomplishment was capable of parameterizing useful representations from data with neural networks <cit.>.
+However, grafting deep learning to physics is yet another problem. They struggle to learn conservation laws or implicit physical geometries or symmetries.
+Although various studies make the model learn the conservative quantities or symmetries inside the system <cit.>, these approaches are system-specific, which means that if a model is trained for one system, it cannot easily adapt to another system with different physical laws. Since systems whose physics is unknown have more sparse data, these flaws make the standard supervised learning methods harder to learn the physics of the system.
+
+One of the current extents of this limitation is crafting the generalization of a fixed type of system across various parameter environments <cit.>. Here, one can think of an extension of building a unified model that is not limited to adapting to various parameter environments within a single system type, but instead generalizes across the vast landscape of different system types.
+In this paper, we focus our objectives on systems that Hamiltonian mechanics can formulate. Systems governed by Hamiltonian mechanics inhere symmetries, and their state trajectories are laid on the symplectic manifold <cit.>.
+Moreover, almost all of the physics in our nature has its own conservation laws, and Hamiltonian mechanics relates the state of the system to its corresponding conservative quantities (usually energy).
+
+In this work, we search for the generalized representation that shares the essence of Hamiltonian mechanics that a neural network can learn. In doing so, we aim to make the model easily adaptable to unseen physics.
+
+Our contributions are summarized as follows.
+
+    
+  * Utilizing the meta learning algorithm, we extend its application to the data distribution across the Hamiltonian manifold, encompassing various types of physical systems. This enables our model to generalize effectively to system data with unknown physics, enhancing its versatility.
+    
+  * We begin by evaluating the model's performance on simpler examples, such as the mass-spring and pendulum systems. Subsequently, we expand our evaluation to more complex scenarios characterized by chaotic behavior, such as the Hénon-Heiles and magnetic-mirror systems. This demonstrates the robustness and applicability of our approach across a wide range of dynamical systems.
+    
+  * To gain insights into the superior performance of the meta-trained model compared to other baselines, we conduct an in-depth analysis of the learned representations within the neural network. This investigation provides a deeper understanding of the underlying factors contributing to the model's effectiveness due to meta learning.
+    
+  * We use the term domain to refer to different types of physical systems governed by distinct laws. To the best of our knowledge, we are the first to explore cross-domain generalization across diverse dynamical system types enabling easy adaptation to new physics, surpassing prior studies limited to fixed system types.
+
+
+
+
+§ PRELIMINARIES
+
+
+
+ §.§ Hamiltonian mechanics
+
+
+Hamiltonian mechanics is one of the concrete frameworks to describe the state of a dynamical system. It begins by defining a vector composed of canonical coordinates *x = (*q, *p). Here *q and *p denotes the generalized coordinate and its canonical momentum respectively; *q = (q_1 , q_2 , … , q_N), *p = (p_1 , p_2 , … , p_N), where N is the degree of freedom of the given system. Then, Hamiltonian (ℋ) is defined such that Hamilton's equation (Equation <ref>) is held. Usually, the Hamiltonian of the system corresponds to its energy where it is to be conserved.
+
+
+    d*q/dt = ∂ℋ/∂*p, d*p/dt = -∂ℋ/∂*q
+
+
+Here, the Hamiltonian vector field *X_ℋ= (∂ℋ/∂*p, -∂ℋ/∂*q) = J ∇_*xℋ_θ, where J = [    0  I_n; -I_n    0 ],
+is known as symplectic, which allows the Hamiltonian to lie on a symplectic manifold.
+Symplectic manifold is one of the essences of differential geometry, which naturally arises from the formulations of Hamiltonian mechanics <cit.>. It provides the generalization of the phase space of a closed system, allowing one to probe the time evolution of the system.
+
+
+
+ §.§ Learning physical dynamics from neural networks
+ 
+Various works use neural networks to analyze the time evolution, or the conservation law of the physical system <cit.>. For example, Hamiltonian Neural Network (HNN) <cit.> parameterizes the Hamiltonian of the system with a neural network. HNN learns the dynamics of the given system by inducing a physical bias to the loss function. Making use of Equation <ref>, HNN predicts the dynamics of the system incorporating the symplectic gradient inside the loss function as in Equation <ref>.
+
+
+
+    ℒ_HNN =
+       || ∂ℋ_θ/∂*p - ∂*q/∂ t||_2 + || ∂ℋ_θ/∂*q + ∂*p/∂ t||_2
+
+
+As an alternative way to encode the physical bias into the objective function, the Variational Integrator Network (VIN) <cit.> has been introduced, which preserves the geometric structure of physical systems. The architecture of VIN is designed to fit the discrete-time equations of motion of the given dynamical system. Thus, it provides interpretability and more efficient learning by preserving the manifold geometry inherent in physical systems directly in the model architecture.
+
+While the theoretical understanding of inductive biases that underlie the advantages of neural networks remains elusive, recent studies attempt to shed light on the influence of such specific biases. For example, one demonstrates that contrary to conventional wisdom, the performance improvement in HNNs arises from the second-order structure, rather than the symplectic bias <cit.>. Nevertheless, a number of works focus on leveraging the inherent nature of physical systems, such as their symplectic structure and the principle of least action, to enhance the predictive capabilities of neural networks for system dynamics <cit.>.
+
+In opposition to implying relevant biases in neural networks, recent studies suggest a data-driven approach to learning the dynamics of one type of system generalized across different environments <cit.>. These focus on dynamical systems that are governed by the form of the following differential equation; d*x_e(t)/dt = f_e (*x_e(t)),
+where *x(t) is a time-dependent state in the phase space 𝒳, and f_e:𝒳→ T𝒳 maps *x_e(t) to its time-derivative state d*x_e(t)/dt which lies in the tangent space T𝒳. Here, the subscript e denotes an environment for a given dynamics (e.g. different α, β, γ, δ parameter configuration of Lotka-Volterra system; du /dt = α u - β u v, dv/dt = δ u v - γ v).
+
+
+
+ §.§ Meta learning for generalizing dynamical system
+ 
+Meta learning, also referred to as "learning to learn," focuses on training a model that exhibits strong generalization across diverse data distributions, enabling it to effectively adapt to new tasks even with a small amount of previously unseen samples.
+As a result, meta learning can serve as a promising data-driven approach for generalizing the dynamics of physical systems.
+Among various approaches of meta learning, optimization-based methods are particularly versatile and compatible with differentiable models <cit.>.
+For example, CoDA <cit.> is a representative optimization-based meta learning method for multi-environment formulation of the generalization problem for dynamical systems.
+Particularly, previous studies <cit.> have demonstrated the ability of a broadly applicable optimization-based meta-learning algorithm, Model-Agnostic Meta-Learning (MAML) <cit.>, in uncovering the physical laws of a given system across different environments.
+There also exists non-MAML based methods for generalizing dynamics. Sequential Neural Processes <cit.> aims to build a meta-transfer learning framework for stochastic processes, DyAd <cit.> is a model-based meta learning method that learns the shared dynamics of a given domain, and meta-SLVM <cit.> utilizes Bayesian meta learning for learning to adapt latent dynamic functions.
+
+The approaches mentioned above are all limited to scenarios where the systems share the same functional form of Hamiltonians, such as a set of pendulum systems with varying physical parameters (e.g. mass and length).  
+Expanding upon these limitations, we aim to investigate whether a shared neural representation can be discovered among diverse functional forms of Hamiltonians. In this study, we explore the portrayal of a symplectic manifold governed by Hamilton's equation within neural networks by incorporating MAML with GNNs. Further details regarding the MAML algorithm can be found in Section <ref> and <ref>.
+
+
+
+§ METHODS
+
+
+
+ §.§ Preparing the dataset for meta learning
+ 
+We constructed a task distribution comprising six distinct types of physical systems: mass-spring, pendulum, Hénon-Heiles, magnetic-mirror, two-body, and three-body. Given that these systems feature separable Hamiltonians, which inherently limit the diversity in the kinetic energy terms, we intentionally selected systems with varying complexities in their potential energy terms. Starting from the simplest mass-spring system, we extend the type of system to more difficult systems such as Hénon-Heiles or magnetic-mirror system. The details for each system can be found in the Supplementary Materials (SM) <ref>.
+
+This variety of systems encompasses a range of complexities, featuring simple physical systems like the mass-spring and the pendulum, as well as more intricate systems exhibiting chaotic behavior such as the Hénon-Heiles and the magnetic-mirror. Additionally, the task distribution extends to systems involving more than two particles, specifically the two-body, and the three-body, thereby providing a comprehensive set of challenges.
+For all of our systems, we generated a dataset with N=10,000 trajectories confined to the two-dimensional space, where the canonical coordinates *x = (*q, *p) as the input, and their corresponding time derivatives *ẋ=(*q̇, *ṗ) as the output of a neural network. 
+We provide the detailed procedure for generating the dataset in the SM <ref>.
+
+In the language of meta learning, several different types of systems will be used for meta training, while one of the remaining unselected systems will be used for meta testing (i.e. evaluation). We will denote each trajectory as 𝒯_𝕊, i, which is sampled from the task distribution p(𝒯_𝕊) (where S ∈{mass-spring, pendulum, Hénon-Heiles, magnetic-mirror, two-body, three-body}, and i ∈ 1 .. N). Then tasks from 𝒯_𝕊^∁ will compose the task distribution for meta training, and tasks from 𝒯_𝕊 will form the data distribution for meta testing. For example, we will use the data distribution 𝒯_𝕊^∁; 𝕊^∁ = {mass-spring, pendulum, Hénon-Heiles} for meta training, 𝒯_𝕊; S = {magnetic-mirror} for evaluating the magnetic-mirror system. The exact dataset configuration for meta training scenario is described in SM <ref>.
+
+
+
+
+ §.§ Meta training the neural network
+ 
+We use a simple graph convolutional network (GCN) <cit.> to parametrize the given physical system in which we implement it using PyTorch <cit.>. Using GNNs to describe a system of several particles mediates the model to handle various degree-of-freedom inputs such that the model can be fed with data from a diverse type of system, unlike from the previous works listed in Section <ref>, and  <ref> that dealt with fixed system scenarios.
+In line with the previous methods <cit.> that represented the physical systems as graphs, we represent the state variable (*q, p) as the node feature, while currently, edge features are not utilized.
+Our model is composed of three GCN layers to extract features of the input states, preceded by three fully connected linear layers for the regression of Hamiltonian value. We choose the mish function as the non-linear activation function. Prior works <cit.> have utilized tanh or softplus activations, hypothesizing that the relu activation may hinder parameter optimization due to its piecewise linear nature, as the HNN loss defined in Equation <ref> involves calculating derivatives of the output with respect to the inputs. After conducting several trials, we observed that the mish activation produced more stable and improved results compared to tanh or softplus activations in our case. More details regarding the network architecture are further described in the SM <ref>.
+
+Upon the framework that we described so far, we represent our model as f_θ; parameterized by neural network parameters θ. To account for the varying input (*x^i) and output (*ẋ^i) scales across different systems, we employ the log-cosh function as our loss function. This choice enhances the robustness of our model to data with diverse system dynamics, as it mitigates the impact of differing data scales.
+
+    ℒ_𝒯_i(f_θ) = ∑_(*x^i,*ẋ^i)∼𝒯_i logcosh(*ẋ^i - J∇_*xf_θ (*x^i))
+
+
+In the inner loop of our variation of MAML, the model adapts to a new task 𝒯_𝕊^∁, i by updating the parameters with one gradient step using K=50 phase space points for each task.
+
+
+    θ'_i = θ - α∇_θℒ_𝒯_𝕊^∁, i(f_θ)
+
+
+In the outer loop using the Adam optimizer <cit.>, meta optimization across systems is done by updating the parameters as below.
+
+    θ←θ - β∇_θ∑_iℒ_𝒯_𝕊^∁, i(f_θ'_i)
+
+
+
+
+
+ §.§ Evaluating the meta-trained model
+ 
+We evaluate the performance by making a few-step gradient descent on the unseen type of system during the meta training phase with K=50 data points. The model adaptation to the unseen system is done by updating the parameters as follows.
+
+    θ←θ - α∇_θℒ_𝒯_𝕊,i(f_θ)
+
+Using the adapted model at each step, we integrate our model output using the LSODA integrator <cit.> to achieve the system dynamics.
+Then, the performance was achieved by calculating the relative error between the predicted and ground truth trajectory points.
+We perform our experiments on NVIDIA RTX A6000 by performing 10 independent runs as default to ensure the stability of our results and report the average and standard error values. We again further describe the related details for the training and adaptation process in the SM <ref>.
+
+
+§ RESULTS
+ 
+
+
+ §.§ Quantitative analysis of the model performance
+ 
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The relative error throughout the time rollout for the meta-trained, pre-trained, and random-initialized model at adaptation step 50 for the predicted coordinates (top) and energy (bottom).
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+For each system, we evaluated the adaptation performance on unseen systems for the meta-trained model and compared it with the pre-trained model that doesn't utilize meta learning, and the scratch model which was adapted from random-initialized weights. We conducted up to 50 adaptation steps and computed the relative error between the predicted and the ground truth coordinates and energies at each time rollout and adaptation step. The measured relative error is defined as Err(t) = ‖ẑ(t) - z(t) ‖_2 / (‖ẑ(t)‖_2 + ‖ z(t)‖_2), as described in <cit.>. This error metric enables us to quantify the error independent of the data scale and tends towards unity as the predictions become orthogonal to the ground truth or ‖ẑ‖≫‖ z ‖.
+Compared to metrics like mean squared error, the above notion of bounded relative error provides a more accurate representation of the prediction performance.
+Finally, we calculated the geometric moving average of the relative error to account for the multiplicative accumulation of the error from the numerical integration involved.
+
+In Figure <ref>, the relative error in the predicted trajectories serves as an indicator of the overall accuracy of the adapted models, while the energy metric demonstrates that the physics of the system remains well-behaved during the prediction.
+Considering both predicted coordinates and energy, our results demonstrate that the meta-trained model robustly outperforms the other two baselines.
+
+We further examine the capability of fast adaptation of each model throughout the adaptation steps. Figure <ref> illustrates the decreasing trend of the relative error as the number of adaptation steps increases from 0 to 50.
+Note that the meta-trained model requires significantly fewer adaptation steps compared to the randomly initialized model, which corresponds to the vanilla HNN model. Also, the relative error between the predicted coordinates shows that the fast adaptation shows a significant difference as the system becomes more complex.
+Within a gradient step of less than 100, the meta-trained model demonstrates faster and superior adaptation compared to both the pre-trained model without meta learning and the HNN baseline.
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The relative error across the adaptation step for the meta-trained, pre-trained, and random-initialized model at adaptation step 50 for the predicted coordinates (top) and energy (bottom).
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+
+
+
+ §.§ Qualitative analysis of the predicted dynamics
+
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    System dynamics through time rollout 0 to 10, generated from the meta-trained, pre-trained, and random-initialized model each after 50 adaptation steps. Each row (a) to (d) corresponds to the predictions with mass-spring, pendulum, Hénon-Heiles, and the magnetic mirror system respectively.
+    
+
+
+In Section <ref>, we observed that the meta-trained model consistently achieved a lower relative error between the predicted and ground truth dynamics across both time rollouts and adaptation steps. However, a small error in the predicted trajectory does not always guarantee accurate system dynamics prediction. To provide more conclusive results, we examined the exact predicted dynamics of the three adapted models after 50 steps. We conducted this analysis for the mass-spring, pendulum, Hénon-Heiles, and magnetic-mirror systems, and the corresponding results are shown in Figure <ref>.
+
+For the mass-spring system, both the meta-trained model and pre-trained model accurately predicted the coordinates (x, p_x) within 50 adaptation steps, while the random-initialized model required more steps to adapt.  Here, it is worth noting the behavior of the prediction of the surplus coordinates (y, p_y). In the real world, we cannot readily distinguish what coordinates remain physically meaningful among different phase variables. Thus, it would be beneficial if our trained neural network could also distinguish which one is necessary for describing the system. In the experiments, we confined the dynamics of the system to a two-dimensional space, thus y, p_y should remain constant for the mass-spring system. Comparing the predicted trajectories of the redundant coordinates between the meta-trained model and the pre-trained model, we observed that the meta-trained model had a much smaller scale in the prediction of unnecessary coordinates (y, p_y).
+
+Moving on to the pendulum system, the meta-trained model also provides better predictions than the other two baselines. While the pre-trained model performed better than the random-initialized model, the dynamics of θ and p_θ were still out of phase compared to the meta-trained model. We also observed a similar behavior in the prediction of the surplus coordinates (r, p_r), as observed in the mass-spring system.
+
+For the more complex systems exhibiting chaotic behavior, such as the Hénon-Heiles and magnetic-mirror system, all four coordinates are necessary to describe the dynamics. In these scenarios, the meta-trained model significantly outperformed the pre-trained model and random-initialized model. Although the meta-trained model did not perfectly match the trajectory, it captured the overall behavior of each coordinate dynamics more reasonably compared to the other baselines.
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The measured CKAs in the last layer between the model before adapting (i.e. right after finishing meta-training or pre-training), and during the adaptation up to 1000 steps. The CKA values are transformed to 1-CKA to make a clearer visualization.
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+
+
+ §.§ Analysis on the learned representation
+
+Our objective in this section is to understand why the meta-trained model outperforms the other baselines, particularly the pre-trained model. The existing difference between the meta-trained model and the pre-trained model lies in the training strategy during the training process, while factors such as the total iterations, along with other training conditions remained the same. To investigate the impact of the training algorithm, we conducted the centered kernel alignment (CKA) <cit.> analysis on the three models. CKA offers a means to compare the representations of two layers within a neural network, providing a similarity score ranging from 0 to 1. Furthermore, it is widely recognized that early layers tend to learn general representations, while later layers tend to specialize in specific features<cit.>.
+
+Upon this observation, we examine the CKA between the model's last layer before adaptation and its state at each adaptation step, ranging from 1 to 1000. Figure <ref> shows these 1000 individual 1-CKA measurements, each comparing the model before adaptation to its state at a specific step during the adaptation process.
+In all four cases, the meta-trained model consistently exhibited substantially lower 1-CKA values compared to the other models. This finding suggests that the representations learned during the adaptation process closely resemble those of the meta-trained model when it serves as the starting point. Drawing from insights gained in the prior works utilized meta learning <cit.>, and the manifold hypothesis <cit.>, we interpret the meta-trained model gives the representation of the fundamental structure of underlying Hamiltonian dynamics. Thus making the meta-trained model acquire a generalized understanding of the diverse domain of distinct physical law. During the evaluation, the model adeptly adapts to unknown dynamics by leveraging the generalized physics learned during the meta training phase. Consequently, this observation provides further support for our initial assumption that meta learning can capture general representations across a broad domain of Hamiltonian manifolds.
+
+
+
+ §.§ Ablation analysis and comparison with existing methods
+
+First, we present the ablation studies to scrutinize the impact of both the choice of integrator and the number of data points K in the adaptation task. We experimented with symplectic integrators ranging from 1st to 4th order to ensure energy conservation compared to the LSODA integrator employed in our primary experiments. And, since we are considering scenarios where abundant data is available for known systems but sparse data for the target unknown system, we varied the test data size as K ∈ (5, 10, 20, 50) to investigate the data efficiency of the meta-trained model relative to other baselines.
+The ablation results for varying integrator and K each detailed in SM <ref> and <ref>, reveal several key findings. 1) LSODA integrator performs adequately for dynamics that do not involve large time scales, making it a reliable choice for most scenarios considered in this study. 2) Meta-trained model demonstrates the data efficiency when adapting to unseen tasks. This suggests that the meta-trained model is not only data-efficient but also robust, capable of adapting well when data for the target system is sparse.
+
+Second, we demonstrate the generalization ability of the meta-trained model by not just testing the adaptation to a single-held-out system scenario as in the previous sections but also checking the adaptation performance on various types of unseen systems (i.e. performing the adaptation task to multi-held-out-system scenario).
+This task involved four models, each of which was initially trained for adaptation to one of the following systems; mass-spring, pendulum, Hénon-Heiles, and magnetic-mirror. We conducted an additional adaptation task using namely the 2D harmonic oscillator system and the Kepler system. We evaluated the performance of these models in terms of relative error for both predicted coordinates and energy, with detailed results presented in SM <ref>. The results indicate that the meta-trained model is capable of effectively adapting to more than just a single type of unseen system, further suggesting the potential of a general model for real-world applications. This underscores the robustness and versatility of the generalized representation learned by the meta-trained model.
+
+Third, we compared the meta-trained model to the existing baselines in domain generalization for learning the physical dynamics. Although there is none that aims to generalize across the type of dynamical systems as we have already discussed in Section <ref>, it is important to recognize that the methods from previous works are not appropriate in our broader scope of generalization. We considered CoDA <cit.>, which showed the best performance across prior methods for generalizing dynamics across multi-environment within a fixed system setting, and DyAd <cit.>, which is a representative example of a non-optimization-based (model-based) meta-learning method as our baselines. The results in SM <ref>, and <ref> show that the meta-trained model outperforms the CoDA and DyAd baselines for the generalization problem in cross domain settings. Moreover, note that in some cases, the existing baselines struggled to adapt.
+
+
+
+ §.§ Limitations of our approach
+
+In our experiments, we treated all systems as conservative. However, data from unknown physics may not satisfy these conditions, raising concerns about its applicability to real-world scenarios. Correspondingly, we performed the adaptation task to a damped mass-spring system with a damping term -cẋ. From the results in SM <ref>, we can see that the non-conservative feature disturbs the adaptation. This is due to the damping term -cẋ, Equation <ref> is violated, which hinders the validity of Equation <ref> during adaptation. Thus to make use of our approach, both the data used in meta training and adaptation should not differ in their intrinsic nature.
+
+Furthermore, we extend our analysis to two-body and three-body systems, going beyond the scenarios on single-particle tasks, thereby opening the door to real-world applications. This extension allows us to explore the dynamics of two-body systems as a direct continuation, and three-body systems as a more challenging problem due to their chaotic behavior. However, we acknowledge that further refinement is required for the meta learning configuration for non-single-particle tasks. Here, we present the preliminary results for the two-body and three-body systems in the SM <ref>.
+
+
+
+§ DISCUSSION
+
+While previous studies have focused on generalizing system dynamics across different environments under consistent physical laws, our work takes a step further by aiming for generalization across diverse system domains. Specifically, we tackle the challenge of identifying the shared representation of physical systems across various functional forms of Hamiltonian. In this perspective, our work presents unique contributions compared to existing literature.
+Here, we leverage the power of meta learning algorithm to uncover the representation of the Hamiltonian manifold within neural networks.
+In our comparison between the meta-trained model and other baseline models, we provide compelling evidence that the neural network learns the Hamiltonian of an unseen system by identifying the general representation for Hamiltonian dynamics itself, rather than directly constructing the functional form of the Hamiltonian of the given system. This finding highlights the ability of meta learning to capture and exploit the underlying structure of Hamiltonian mechanics.
+To support our claim, we conduct a CKA analysis on the trained networks. This analysis provides valuable insights into why the meta-trained model outperforms the other baselines across different physics. By examining the similarity between representations before and during the adaptation process, we gain an understanding of how the meta-trained model effectively learns and adapts to diverse physical systems.
+Overall, our work contributes to the field by demonstrating the efficacy of meta learning in discovering shared representations of physical systems across distinct functional forms of Hamiltonian.
+
+In nature, each physical system operates according to its unique governing law, which is rooted in fundamental principles. In the scope of this work, systems with different functional forms of Hamiltonian are expressed with one Hamilton's equation. Building upon this observation, we propose an approach that harnesses the power of meta learning algorithms to embed these fundamental physical principles into neural networks. Our method allows us to capture and represent these general physical principles within the neural network architecture, thereby providing a means to interpret neural networks in a physical context. 
+A key advantage of our approach is that we imply minimal predefined physical priors or inductive biases. Instead, it leverages the data-driven capabilities of deep learning to uncover the underlying physics. This marks a significant step forward in developing a more comprehensive and general model for discovering physics through the lens of neural networks.
+
+
+
+
+
+
+
+
+§ ACKNOWLEDGMENTS
+
+This research was supported by the Basic Science Research Program through the National Research Foundation of Korea NRF-2022R1A2B5B02001752.
+
+
+iclr2024_conference
+
+    
+    
+
+
+§ DATASET SPECIFICATION
+
+
+
+ §.§ Types of systems used
+ 
+Below are the descriptions of the systems that are used for the dataset.
+
+   
+  Mass-Spring One of the most simplest physical system is one particle, frictionless mass-spring system, where m, k are the mass of the particle, and spring constant respectively.
+   
+    ℋ = p_x^2/2m + kx^2/2
+
+   
+   
+  Pendulum The Hamiltonian of a pendulum system is slightly more complex than the mass-spring case. Here, m, g, l denotes the mass of the particle, gravitational acceleration, and length of the pendulum respectively.
+   
+    ℋ = p_θ ^2/2ml^2 + mgl(1 - cosθ)
+
+
+   
+  Hénon-Heiles Up to here, the given dynamical system was rather simple. Hénon-Heiles gives the chaotic dynamics of a star around a galactic center with its motion constrained on a 2D plane <cit.>. In the below Hamiltonian of the Hénon-Heiles system, λ is conventionally taken as unity.
+   
+    ℋ = 1/2(p_x ^2 + p_y ^2) + 1/2(x^2 + y^2) + λ(x^2 y - y^3/3)
+
+   
+    
+  Magnetic-Mirror Here we introduce a system that has the most complicated form of Hamiltonian in our experiments. From the works of <cit.>, the Hamiltonian of the magnetic bottle type system is given as follows.
+   
+    ℋ = 1/2(ρ̇^2 + ż^2) + 1/2ρ^2 + 1/2ρ^2 z^2 - 1/8ρ^4 + 1/8ρ^2 z^4 - 1/16ρ^4 z^2 + 1/128ρ^6
+
+   
+   
+  Two-Body From now on, we expand our system with more than two particles. In the two-body system case, we consider the gravitational interaction between two particles. Then the Hamiltonian of the two-body system can be written as follows. Note that G is the gravitational constant, and m_1, m_2 are the masses for each of the two bodies.
+   
+    ℋ = *p_1^2/2m_1 + *p_2^2/2m_2 - Gm_1 m_2/|*r_1 - *r_2|
+
+  
+   
+  Three-Body Adding a particle to the two-body system gives the three-body system. Although the Hamiltonian of the three-body system is an incidental extension of the two-body case, its dynamics cannot be described by a closed-form expression, thus exhibiting chaotic behaviour.
+   
+    ℋ = *p_1^2/2m_1 + *p_2^2/2m_2 + *p_3^2/2m_3
+          - Gm_1 m_2/|*r_1 - *r_2| - Gm_2 m_3/|*r_2 - *r_3| - Gm_3 m_1/|*r_3 - *r_1|
+
+   
+
+
+
+
+
+ §.§ Dataset generation
+ 
+Using the Hamiltonian described in Section <ref>, we obtained the state trajectories (*q, *p) by employing the LSODA integrator implemented in SciPy <cit.>. The trajectories were integrated over the interval [0, 10] with 200 steps. Subsequently, we calculated the corresponding time derivatives (*q̇, *ṗ) using JAX <cit.> and Equation <ref>. For simplicity, all the constants from the Hamiltonian (i.e., m_i, k, l_i, g, G) were set to 1. The initial conditions employed for each system are described below.
+
+
+    
+  Mass-Spring The initial state (x_0, p_x_0) is randomly sampled from a uniform distribution over the interval [-1, 1]^2. The redundant coordinate (y_0, p_y_0) is set to (0, 0) as a fixed value.
+
+    
+  Pendulum The initial state (θ_0, p_θ_0) is randomly sampled from a uniform distribution over the interval [ -π/2, π/2]×[-1, 1]. The redundant coordinate (r_0, p_r_0) is set to (1, 0) as a fixed value.
+
+    
+  Hénon-Heiles The initial state (x_0, y_0, p_x_0, p_y_0) is randomly sampled from a uniform distribution over the interval [-1, 1]^4.
+
+    
+  Magnetic-Mirror The initial state (ρ_0, z_0, p_ρ_0, z_0) is randomly sampled from a uniform distribution over the interval [-1, 1]^4.
+    
+    
+  Two-Body The initial coordinate for the first body (x_1_0, y_1_0) is randomly sampled from a uniform distribution over the interval [0.5, 1.5]^2, and (p_x_1_0, p_y_1_0) is calculated to obtain a nearly-circular orbit. Then, the initial state for the second body (x_2_0, y_2_0, p_x_2_0, p_y_2_0) is set to (-x_1_0, -y_1_0, -p_x_1_0, -p_y_1_0)
+    Then we slightly perturbed p_x, p_y by adding a Gaussian noise (multiplied by a constant of 0.1) to the velocity of both two bodies. Here, the velocities are equivalent to the canonical momentum p_x and p_y, as we assume the masses m_1 and m_2 to be equal to 1.
+    
+    
+  Three-Body The initial state for the three-body system is obtained in a similar way to that of the two-body, except the initial coordinate for the first body (x_1_0, y_1_0) is randomly sampled from a uniform distribution over the interval [0.8, 1.2]^2. Again, (p_x_1_0, p_y_1_0) is set to obtain a nearly-circular orbit. The initial state for the second and third body is obtained by rotating the first and second body each by an angle of 2π/3. Here, the Gaussian noise term that is added to each of the bodies is multiplied by a constant of 0.05.
+
+
+Following the above description, we generated 10000 trajectories for each system.
+
+
+
+
+ §.§ Dataset configuration for meta training
+
+The composition of the system types used in our meta training scenario is listed in Table <ref>.
+
+    Dataset configuration for meta learning Hamiltonian systems 
+
+    
+    
+    
+    system to test     systems for meta training 
+ mass-spring     pendulum, Hénon-Heiles, magnetic-mirror 
+ 
+        pendulum     mass-spring, Hénon-Heiles, magnetic-mirror 
+ 
+        Hénon-Heiles     mass-spring, pendulum, magnetic-mirror 
+ 
+        magnetic-mirror     mass-spring, pendulum, Hénon-Heiles 
+ 
+        two-body     mass-spring, pendulum, Hénon-Heiles, magnetic-mirror 
+ 
+        three-body     mass-spring, pendulum, Hénon-Heiles, magnetic-mirror 
+ 
+    
+
+
+
+
+
+
+§ NEURAL NETWORK IMPLEMENTATION
+
+
+
+ §.§ Network architecture
+ 
+In our experiments, we constructed our model as follows: GCNConv(4, 200) - Mish - GCNConv(200, 200) - Mish - GCNConv(200, 4) - Mish - GlobalMeanPool - Linear(4, 200) - Mish - Linear(200, 200) - Mish - Linear(200, 1) - Mish, where GCNConv and Linear correspond to the graph convolutional layer and the fully connected layer implemented in PyTorch respectively. Thus, the model outputs a single-dimensional scalar value. After the forward pass, the derivative of the output with respect to the input is computed to obtain the time-derivative of the input state, utilizing Equation <ref>. Note that we did not heavily tune the hyperparameters regarding the network architecture, because we focus on the difference between the meta-trained, pre-trained, and random-initialized model, not obtaining state-of-the-art results.
+
+
+
+ §.§ Training process
+ 
+
+    
+  Mass-Spring For both meta-training and pre-training, we used a learning rate of α=0.001 for the gradient step on the inner loop, and the Adam optimizer on the outer loop with a learning rate of β=0.0005. The inner gradient update was 1 step, with a total of 5000 iterations on the outer loop. The number of task batches is set to 10, and the number of phase points used for each task was 50 (i.e. among the 200 points in each trajectory, 50 points were randomly sampled for meta training). For evaluation, we used the Adam optimizer with a learning rate of 0.0001.
+
+    
+  Pendulum All conditions were set to be the same as those of the mass-spring system.
+
+    
+  Hénon-Heiles All conditions were set to be the same as those of the mass-spring system, except for the iterations on the outer loop which was set to 10000.
+
+    
+  Magnetic-Mirror All conditions were set to be the same as those of the mass-spring system, except for the iterations on the outer loop which was set to 30000.
+    
+    
+  Two-Body For both meta-training and pre-training, we used a learning rate of α=0.001 for the gradient step on the inner loop, and the Adam optimizer on the outer loop with a learning rate of β=0.0005. We set 10000 iterations on the outer loop. The other conditions were set to be the same.
+    
+    
+  Three-Body All conditions were set to be the same as those of the two-body system, except for the β which is set to 0.0005.
+
+
+
+
+
+§ ADDITIONAL EXPERIMENTS
+
+
+
+ §.§ Ablation on integrators
+
+Figure <ref> shows the evaluation performance of meta-trained, pre-trained, and randomly-initialized models across scenarios using different integrators; LSODA, and the 1st~4th order symplectic integrator. The LSODA integrator consistently yields the best results in most cases. While symplectic integrators are known for their ability to maintain energy conservation, their advantages become more apparent in long-term dynamics. However, the time range considered in this study is not sufficient to fully capture the benefits of symplectic integrators. Nonetheless, their impact could be significant when extended to longer time scales. So in our experiments, we use LSODA as our primary integrator.
+
+
+
+ §.§ Ablation on K
+
+Figure <ref> presents the evaluation performance of meta-trained, pre-trained, and randomly-initialized models under varying K in the adaptation task. The ablation results indicate that the meta-trained model consistently performs well at low K values across adaptation tasks. Furthermore, its performance markedly improves as the data size K increases, which reflects the efficient adaptability of the meta-trained model.
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The relative error for the meta-trained, pre-trained, and random-initialized model with respect to the predicted coordinates (top) and energy (bottom) using different integrators.
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The relative error for the meta-trained, pre-trained, and random-initialized model with respect to the predicted coordinates (top) and energy (bottom) with various number of data points K used.
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The relative error throughout the time rollout of the 2D harmonic oscillator system for the meta-trained, pre-trained, and random-initialized model at adaptation step 50 with respect to the predicted coordinates (top) and energy (bottom).
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The relative error throughout the time rollout of the Kepler system for the meta-trained, pre-trained, and random-initialized model at adaptation step 50 with respect to the predicted coordinates (top) and energy (bottom).
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The example of predicted dynamics for the 2D harmonic oscillator system (a), and each good (b) and bad (c) examples of Kepler system.
+    
+
+
+
+
+ §.§ Generalization for multi-held-out system
+ 
+Here, we present the adaptation performance of the meta-trained models in Section <ref> to the multi-held-out system scenario for the extent of the single-held-out scenario demonstrated in Section <ref>.
+For example, we performed the adaptation task of the meta-trained model trained with a pendulum, Hénon-Heiles, and the magnetic-mirror system not only for the mass-spring system, but also with the newly introduced 2D harmonic oscillator, and the Kepler system as well. 
+
+The relative errors in terms of both predicted coordinates and energy for this test are presented in Figure <ref>, and <ref>. The results demonstrate that the meta-trained models exhibit proficient adaptation both to the newly introduced 2D harmonic soscillator system and the Kepler system.
+
+We also show the example of the predicted dynamics for both the 2D harmonic oscillator and the Kepler system in Figure <ref>.
+There exists a situation for the Kepler system where the meta-trained model does not perform well, which implies insufficient adaptation steps for this case.
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The prediction of each system dynamics from the meta-trained after 50 adaptation steps, and CoDA after 50 and 10000 steps.
+    Each row (a) to (d) corresponds to the predictions tested with mass-spring, pendulum, Hénon-Heiles, and the magnetic mirror system respectively.
+    
+
+
+
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The predicted dynamics of the magnetic-mirror system using DyAd.
+    
+    -0.1in
+
+
+
+
+
+ §.§ Comparison with CoDA
+ 
+The comparison of the meta-trained model between CoDA and DyAd is depicted in Figure <ref>. From the results, the dynamics from CoDA after 50 steps (red dotted line) are not sufficient to match the performance of the meta-trained model, so we also made a comparison with the CoDA after 10000 steps (red dashed line), which also failed to meet the expectations.
+
+Although CoDA is reported to outperform MAML-based methods in the scope of generalization across environments within a fixed system, our results show that MAML-based method advantages CoDA in our broader scope of definition (i.e. generalization across different types of systems).
+
+
+
+ §.§ Adaptation with DyAd
+ 
+Contrary to CoDA, where inputs are represented by the state variables *(q,p) of the system, DyAd relies on image sequence inputs. To this end, we generated sequences of images with dimensions 2×128×128, where each channel corresponds to the x y space and p_x p_y space, respectively.
+
+However, the weak supervision term in DyAd's encoder loss (the first term in Equation <ref>), 
+
+    ℒ_enc = ∑_c ∈𝒞‖ĉ - c ‖^2 + α∑_i, j, c‖ẑ^(i)_c - ẑ^(j)_c ‖^2 + β∑_i, c‖‖ẑ^(i)_c‖^2 - m ‖^2
+
+where g is the encoder network, x is the input, ẑ^(i) = g(x^(i)), and ĉ^(i) = Wẑ^(i)_c + b is an affine transformation of z_c which act as a hidden feature for task c,
+was not directly applicable to our scenario due to the varying nature of physical parameters across different systems.
+To adapt this notion to our needs, we have chosen to represent the physical parameter as the energy of the system. While it may not be exact to say that the explicit functional form of energy is common to all systems, the use of energy as a form of weak supervision can effectively utilize the minimal concept of physical parameters across different dynamical systems.
+We conducted an adaptation task for the magnetic-mirror system using the meta-trained model, which was previously trained on mass-spring, pendulum, and Hénon-Heiles systems. The results show that, as illustrated in Figure <ref>, DyAd is not appropriate to our scope of domain generalization.
+
+
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    (a) shows the dissipative dynamics of the mass-spring system as the damping coefficient c changes. The leftmost subfigure in (b) indicates the geometric moving average of the relative error at time 10 for different values of damping coefficient c. The three right subfigures in (b) represent the relative error through the time rollout with different values of c for each three models.
+    
+    
+
+
+
+
+ §.§ Adaptation to dissipative system
+ 
+Here, we performed an adaptation task to the damped mass-spring system with damping term -cẋ with the same meta-trained model that was used to adapt to the original mass-spring system (i.e. meta-trained with conservative pendulum, Hénon-Heiles, magnetic-mirror system). From Figure <ref>, we can see that the meta-trained model with conservative systems cannot easily make an adaptation to a dissipative system, which indicates a definite limitation in our problem setting.
+
+
+
+
+ §.§ Demonstration on larger systems
+
+In this section, we present preliminary results for the two-body and three-body tasks. We recognize that the training conditions, such as the learning rate for adaptation, were not sufficiently refined. As a result, while the CKA exhibits behavior similar to that observed in other single-particle tasks as shown in Figure <ref>, the prediction accuracy remains suboptimal, as illustrated in Figure <ref>. The predicted trajectories are depicted in Figure <ref>. It should be noted that while none of the models successfully capture the overall dynamics, the meta-trained model tries to capture the trend than the others. This suggests that with further refinement of the training conditions, the meta-trained model holds promise for achieving more accurate predictions.
+
+
+
+    0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The relative error throughout time rollout for the meta-trained, pre-trained, and random-initialized model.
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+    
+
+
+
+    0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The measured CKAs in the last layer between the model before making adaptation and during adaptation.
+    The solid line and the shaded area each represent the average and the standard error of 10 runs.
+    
+
+
+
+
+
+
+    -0.1in
+    
+    < g r a p h i c s >
+
+    -0.1in
+    
+    The example predicted trajectories of (a) two-body, (b) three-body systems.
+    
+
+
+
+

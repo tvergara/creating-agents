@@ -1,0 +1,2309 @@
+IN-THE-FLOW AGENTIC SYSTEM OPTIMIZATION FOR
+EFFECTIVE PLANNING AND TOOL USE
+ZhuofengLi∗1,2,HaoxiangZhang∗1,3,SeungjuHan1,ShengLiu1,JianwenXie4,
+YuZhang2,YejinChoi1,JamesZou†1,PanLu†1
+1StanfordUniversity,2TexasA&MUniversity,3UCSanDiego,4Lambda
+Website: https://agentflow.stanford.edu
+Code Model Demo Visualize
+ABSTRACT
+Outcome-drivenreinforcementlearninghasadvancedreasoninginlargelanguage
+models(LLMs), butprevailingtool-augmentedapproachestrainasingle, mono-
+lithicpolicythatinterleavesthoughtsandtoolcallsunderfullcontext;thisscales
+poorlywithlonghorizonsanddiversetoolsandgeneralizesweaklytonewscenar-
+ios. Agentic systems offer a promising alternative by decomposing work across
+specializedmodules,yetmostremaintraining-freeorrelyonofflinetrainingde-
+coupledfromthelivedynamicsofmulti-turninteraction. Weintroduce AGENT-
+FLOW, a trainable, in-the-flow agentic framework that coordinates four modules
+(planner, executor, verifier, generator) through an evolving memory and directly
+optimizesitsplannerinsidethemulti-turnloop.Totrainon-policyinliveenviron-
+ments,weproposeFlow-basedGroupRefinedPolicyOptimization(Flow-GRPO),
+whichtackleslong-horizon,sparse-rewardcreditassignmentbyconvertingmulti-
+turnoptimizationintoasequenceoftractablesingle-turnpolicyupdates. Itbroad-
+castsasingle,verifiabletrajectory-leveloutcometoeveryturntoalignlocalplan-
+ner decisions with global success and stabilizes learning with group-normalized
+advantages. Across ten benchmarks, AGENTFLOW with a 7B-scale backbone
+outperforms top-performing baselines with average accuracy gains of 14.9% on
+search, 14.0% on agentic, 14.5% on mathematical, and 4.1% on scientific tasks,
+evensurpassinglargerproprietarymodelslikeGPT-4o. Furtheranalysesconfirm
+the benefits of in-the-flow optimization, showing improved planning, enhanced
+tool-callingreliability,andpositivescalingwithmodelsizeandreasoningturns.
+AgentFlow(w/oFlow-GRPO) AgentFlow 2Wiki(Search) HotpotQA(Search) GAIA(Agentic)
+Bamboogle
+MedQA 69.6
+2Wiki
++7.0% 80.0 71.2 +10.1%
+Science 58.4
+76.0 Search
+60.0
+GPQA HotpotQA
+47.0 37.0 51.3 57.0
+19.2
+53.0 31.0 16.7 17.2 25.3 AIME24(Math) GameOf24(Math) GPQA(Science)
+GameOf24 47.4 Musique
+33.1
++19.8%
+61.5 40.0
+Math GAIA +15.9%
+AMC23 Agentic
+AIME24
+)%(ycaruccA
+)%(ycaruccA
+Qwen-2.5-7B GPT-4o (~200B) Search-R1 (7B) ReSearch (7B)
+TIR(7B) ToRL(7B) AutoGen (7B) AgentFlow (7B)
+Figure 1: Left: Performance of AGENTFLOW with a 7B-scale backbone before and after Flow-
+GRPO tuning across ten diverse reasoning benchmarks. Flow-GRPO substantially improves per-
+formancebyenhancingplanningqualityandtool-callingreliability. Right: AGENTFLOWachieves
+consistentgainsovertopbaselines,includingbaseLLMs,tool-integratedRLmodels,andtraining-
+freeagenticsystems. All7BresultsuseQwen2.5-7B-Base/Instructasthebackboneandtools.
+*Equalcontribution.†Co-seniorauthors.WorkwaspartiallydonewhileZLandHZwerevisitingStanford.
+1
+5202
+tcO
+7
+]IA.sc[
+1v29550.0152:viXra
+1 INTRODUCTION
+Recentadvancesinlargelanguagemodels(LLMs)haveunlockedremarkablereasoningcapabilities,
+largelydrivenbyreinforcementlearning(RL)fromoutcome-basedfeedback.Byfine-tuningmodels
+to maximize verifiable rewards, LLMs like DeepSeek-R1 (Guo et al., 2025) and SimpleRL (Zeng
+etal.,2025b)havedemonstratedsophisticatedbehaviorsinself-correctionandmulti-stepdeduction.
+A complementary line of work augments LLMs with external tools (e.g., web search, code exe-
+cution) for knowledge retrieval and precise computation. Tool-integrated reasoning (TIR) extends
+reinforcement learning with verifiable rewards to learn when and how to call tools by interleav-
+ingreasoning(e.g.,<think>)withtoolinvocations(e.g.,<tool call>)underfullcontext(Jin
+etal.,2025;Songetal.,2025;Chenetal.,2025;Fengetal.,2025). Earlysystemssupportedonly
+asingletooltype, whereasrecentworkenablesmulti-toolsettingsbyencodingtoolmetadatainto
+prompts (Dong et al., 2025; Qian et al., 2025a; Zhang et al., 2025). However, these methods still
+train a single, monolithic policy under multi-turn full-context reasoning, which introduces scaling
+challenges: (i) training becomes increasingly unstable as horizons lengthen, tool diversity grows,
+andenvironmentsshiftwithtoolfeedback(Wangetal.,2025c;Maietal.,2025;MoonshotAI,2025;
+Xueetal.,2025);and(ii)inference-timegeneralizationremainsbrittletounseentasksortools(Dong
+etal.,2025;Huetal.,2025b).
+Agentic systems (Wu et al., 2024; Hong et al., 2024; Hu et al., 2025b) offer a promising alter-
+native to monolithic tool-integrated reasoning models. They consist of multiple modules—often
+distinctLLMswithprescribedroles(e.g.,planner,critic)orspecializedcomponentswithdedicated
+toolsandcapabilities(e.g.,executor,coder)—thatcoordinateviasharedmemoryandinter-module
+communication. By decomposing problems into sub-goals and iterating over multiple turns, these
+systemscantackletasksthatdemanddiversetools,longhorizons,ormulti-stagereasoning. How-
+ever,achievingrobustcoordinationinsuchsystemsultimatelyrequirestraining,sincehandcrafted
+logicorstaticpromptingcannotreliablycapturewhenandhowmodulesshouldcollaborate,adaptto
+evolvingtooloutputs,orrecoverfromearlymistakes.Atthesametime,theyintroducenewtraining
+challenges: modulescoordinatesequentially,outcomefeedbackpropagatesthroughlongreasoning
+chains, and state distributions shift with evolving tool outputs. As a result, most systems remain
+training-free,relyingonhandcraftedlogicorpromptingheuristics. Whilesomeemploysupervised
+fine-tuning or preference optimization for key modules (Motwani et al., 2024; Park et al., 2025),
+these off-policy approaches are decoupled from live dynamics and learn poorly from downstream
+successes or failures. Thus, agentic systems struggle with sparse rewards, brittle adaptation, and
+inefficientorchestrationindynamicenvironments.
+To address the central challenge of learning long-horizon reasoning with sparse rewards in tool-
+integrated agentic systems, we introduce AGENTFLOW, a trainable framework for effective plan-
+ningandtooluse(Figure2). AGENTFLOWcomprisesfourspecializedmodules—planner,executor,
+verifier, and generator—that interact iteratively over multiple turns via a shared evolving memory
+and a toolset. The system operates in the flow, with each turn cycling through planning, execu-
+tion, and verification. Unlike prior agentic systems, AGENTFLOW directly optimizes its planner
+on-policy,insidethelivemulti-turnloop,allowingittodynamicallyadapttotrajectoriesshapedby
+tool calls, verifier signals, and memory updates. This evolving memory serves as a deterministic,
+structuredrecordofthereasoningprocess,enablingtransparentstatetracking,controllablebehavior,
+andboundedcontextgrowth.
+To train the planner on-policy within this agentic system, we need to overcome the long-horizon
+credit assignment problem inherent to sparse, trajectory-level rewards. We introduce Flow-based
+Group Refined Policy Optimization (Flow-GRPO, Figure 4), an on-policy algorithm designed for
+thissetting. Flow-GRPOoperatesonin-the-flowrollouts,whichcapturethefulltrajectoryofstates,
+actions,andtooleventsinducedbythelivesystem. Insteadofattemptingtoassigncreditwithbrit-
+tle,intermediateheuristics,weassignasingle,verifiablefinal-outcomerewardtotheentiretrajec-
+toryandbroadcastittoeveryturn. Thisdesigneffectivelytransformsthemulti-turnreinforcement
+learningchallengeintoaseriesofsingle-turnupdates:ateachturn,theplannerhasaccesstothefull
+memorycontextandreceivesaconsistentrewardsignalalignedwithglobalsuccess. Thisapproach,
+coupled with group-normalized advantages to stabilize training, enables robust credit assignment
+andallowstheplannertolearneffectivelong-horizonstrategiesfromsparsefeedback.
+We evaluate AGENTFLOW on ten benchmarks across diverse reasoning domains, as results high-
+lighted in Figure 1. In our main setting, all four modules use Qwen2.5-7B-Instruct (Yang et al.,
+2
+Query Toolkit Set ...
+𝑞 𝐾 𝑀𝑡 𝑎𝑡 𝐾 𝑞 𝑒𝑡 𝑀𝑡
+Turn 1
+Planner 𝑎1 Executor Verifier Planner𝜋𝜃 Executor Verifier Memory
+Turn 2 𝑎𝑡 𝑒𝑡 𝑣𝑡 𝑀𝑡+1
+Planner 𝑎2 Executor Verifier
+... I [Q np u u e t r : yAnalysis] I [C n u p r u r t e : ntSub-Goal] I [G np e u n t e : ratedCommand]
+Turn T [GlobalGoal] [SelectedTool& [ExecutionResult]
+Planner 𝑎𝑇 Executor Verifier Generator [ O R u e t q p u u i t r : edSkills] C [T o o n o t l ex M t e ] tadata] O [E u x t e p c u u t t : ionAnalysis] Trained
+[CurrentSub-Goal] Output: [MemoryAnalysis]
+[SelectedTool] [GeneratedCommand] [VerificationStatus]
+Memory o Answer [ContextforToolUse] [ExecutionResult] Frozen
+(a) AgentFlow: In-the-FlowAgentic System (b)In-the-FlowRolloutatTurnt
+Figure2:(a)OverviewofAGENTFLOW,atrainableagenticsystemforin-the-flowplanningandtool
+use. Fourmodules(planner,executor,verifier,generator)coordinateviaasharedevolvingmemory
+M and toolset K, given a query q. The planner policy is optimized on-policy inside the system’s
+multi-turn loop to enable adaptive, long-horizon reasoning. (b) A single state transition, showing
+theactionat,executionresultet,andverifiersignalvtthatupdatethememoryfromMttoMt+1.
+2024a) as a backbone, with only the planner trained via Flow-GRPO. AGENTFLOW substan-
+tiallyoutperformstop-performingspecializedtool-integratedreasoningmodelsandagenticsystems,
+achieving average accuracy by 14.9% on knowledge-intensive search, 14.0% on broader agentic
+tasks, 14.5% on mathematical reasoning, and 4.1% on scientific reasoning (§4.2). Notably, our
+7B-backbone system even surpasses the ∼200B-parameter GPT-4o (Hurst et al., 2024) across all
+domains. Thetrainedplannerlearnstooptimizeplanning,enhancetool-callingreliability,anddis-
+covereffectivesolutionpathways(§4.3). Furtheranalysesconfirmthatourin-the-flowoptimization
+withFlow-GRPOiscrucial,farsurpassingofflinesupervisedtuning(§4.4). Moreover,ourtraining
+approachproveshighlyefficient,leadingtoincreasedrewardsandcondensedresponsescomparedto
+traditionaltool-integratedRLmethods(§4.5).Finally,wedemonstratethatthesebenefitsgeneralize,
+withconsistentgainsfromscalingbackbonesizeandturnbudget(§4.6).
+Ourworkmakesthreekeycontributions:(1)WepresentAGENTFLOW,atrainablein-the-flowagen-
+ticsystemthatdirectlyoptimizesitsplannerinsidethemulti-turnloop. Bycoordinatingspecialized
+modules through an evolving memory, it enables adaptive long-horizon planning and robust tool
+orchestration. (2)WeintroduceFlow-GRPO,anon-policy,outcome-drivenalgorithmthathatcon-
+verts multi-turn RL into a sequence of tractable single-turn policy updates by broadcasting a sin-
+gle, verifiablefinal-outcomerewardtoeveryturn. (3)Throughcomprehensiveexperimentsonten
+benchmarks,weshowthatAGENTFLOWwitha7Bbackboneoutperformsspecializedbaselinesand
+even larger proprietary models. Further analyses reveal improved planning, enhanced tool-calling
+reliability,andpositivescalingwithmodelsizeandturnbudgets.
+2 PRELIMINARY
+ReinforcementlearningforreasoningLLMs. RecentprogressinreasoningLLMshasbeensig-
+nificantly driven by reinforcement learning from outcome feedback, using a verifiable reward sig-
+nal (Shao et al., 2024; Yu et al., 2025). This paradigm fine-tunes a language model to maximize
+anoutcome-basedrewardwhileremainingclosetoareferencepolicy. Formally,theobjectiveisto
+optimizeapolicyLLMπ togeneratearesponseoforagivenqueryqfromdatasetD:
+θ
+max E (cid:2) R(q,o) (cid:3) −βD (π (o|q)∥π (o|q)), (1)
+πθ
+x∼D,o∼πθ(·|q) KL θ ref
+whereR(q,o)istheoutcome-basedreward,π isareferencemodeltopreventpolicycollapse,and
+ref
+β controlsKLregularization. AlgorithmslikeGroupRelativePolicyOptimization(GRPO)(Shao
+etal.,2024)implementthisbysamplinggroupsofresponses, normalizingadvantagesbytheirre-
+wards,andupdatingthepolicywithaclippedobjectivetoencouragehigh-rewardoutputs.
+Tool-integratedreasoningmodels(LLMagents). LLMscanbeaugmentedwithexternaltools
+toaccessknowledgeandperformprecisecomputationunderreinforcementlearningwithoutcome-
+based reward. As shown in Figure 3(a), the LLM interleaves reasoning and tool calls, produc-
+ing a chain of thought within <think></think> tokens followed by tool invocations (e.g.,
+<tool call></tool call>). The resulting trajectory τ is a sequence of model generations
+andtoolobservations: τ ={s1,a1,e1,...,sT,aT},wherest denotesthecontext,at thegenerated
+action(thought+toolcall),andetthetool’sexecutionresult. Thepolicymodelπ isthentrainedto
+θ
+3
+Query Query Query Query
+LLM <tools> LLM Module1 Module 1 Module 2
+</tools>
+Trained <think></think> <think></think> Module 2 Module 3
+... ...
+Frozen <tool_call></tool_call> <tool_call></tool_call>
+Module N Module N
+token <answer></answer > <answer></answer >
+Answer o Answer o Answer o Answer o
+(a)Tool-IntegratedReasoningModels(LLMAgents) (b) Training-FreeAgentic Systems
+Figure3: ComparisonoftwoparadigmsofLLMswithtooluse. (a)Monolithictool-integrated
+reasoningmodelstrainasinglepolicytointerleavereasoning(e.g.,<think>)andtoolcalls(e.g.,
+<tool call>)withinasingle,full-contexttrajectory.(b)Agenticsystemsdecomposetasksacross
+multiple specialized modules (e.g., planner, coder) that collaborate. These systems are typically
+training-free,orchestratedbyhandcraftedlogicorprompting.
+maximizeafinaloutcomereward. Priorworkhasexploredsingle-andmulti-toolsettingsforsearch
+andcodeexecution(Jinetal.,2025;Chenetal.,2025;Fengetal.,2025;Qianetal.,2025a).
+Agenticsystemswithtoolusage. Analternativeapproachistheuseofagenticsystems(Wuetal.,
+2024;Hongetal.,2024;Luetal.,2025). AsshowninFigure3(b),theseframeworksdeploymul-
+tiplespecializedmodules—oftendistinctLLMswithcarefullydesignedpromptsandroles—within
+acollaborativeworkflow. Bydecomposingtasksandassigningsubproblemstomoduleswithdedi-
+catedtoolsandcapabilities(e.g.,planner,coder,critic),theycanaddresscomplexproblemssuchas
+webbrowsing,documentprocessing,andmulti-stageprogrammingthatexceedthescopeofasin-
+glemodel. Acentrallimitation,however,isthatthesesystemsaretypicallytraining-free: modules
+remainfrozenpre-trainedmodelsorchestratedbyhandcraftedlogicorpromptingheuristics.
+3 IN-THE-FLOW AGENTIC SYSTEM OPTIMIZATION
+Weaimtobridgethegapbetweentrainablebutmonolithicreasoningmodelsandflexibleyetstatic
+agentic systems. We present AGENTFLOW, a flexible and trainable agentic system that integrates
+fourspecializedmoduleswithanevolvingmemory(§3.1). Unlikeprioragenticsystems, AGENT-
+FLOWdirectlyoptimizestheplannerwithinthemulti-turnloopofanagenticsystem(§3.2).
+3.1 AGENTFLOW: ANIN-THE-FLOWAGENTICSYSTEM
+We propose AGENTFLOW, a general-purpose tool-integrated agentic framework for solving com-
+plexreasoningtasksthroughfine-grainedplanningandeffectivetoolusewithinamulti-turnarchi-
+tecture.AsshowninFigure2,theframeworkcomprisesfourspecializedmodules—ActionPlanner
+P,ToolExecutorE,ExecutionVerifierV,andSolutionGeneratorG—coordinatedbyashared
+evolving memory M and a toolset K. These modules interact sequentially and iteratively to per-
+formactionplanning,toolexecution,contextverification,andsolutiongeneration,therebyenabling
+tool-integratedreasoningacrossmultipleturns.
+We formalize AGENTFLOW’s problem-solving process as a multi-turn Markov Decision Process
+(MDP).Givenaqueryq andatoolsetK, thesystemproceedsforavariablenumberofturns. Let
+Mt denotethememorystatebeforeturnt(withM1 initializedfromq). Atturnt,theplannerP (a
+trainablepolicyπ )formulatesasub-goal,selectsanappropriatetoolk ∈K,andretrievesrelevant
+θ
+contextfrommemory,producinganaction: at ∼π (at |q,K,Mt).
+θ
+TheexecutorE invokesthechosentoolwithcontext,yieldinganexecutionobservationet ∼E(et |
+at,K). The verifier V then evaluates whether et is valid and whether the accumulated memory is
+sufficienttosolvethequery,producingabinaryverificationsignalvt ∼V(vt |q,et,Mt).Ifvt =0,
+thememoryisupdateddeterministicallytoincorporatenewevidence:Mt+1 =f (Mt,at,et,vt),
+mem
+wheref (·)denotesthememory-updatefunction, whichrecordsagent-processinformationina
+mem
+concise,structuredformalongwithcontextualdetailssuchastime,turnindex,anderrorsignals.
+4
+Multi-turn Group
+Computation
+Trained Frozen
+Models Models
+draweR ledoM
+Flow-GRPO
+Policy
+Model
+Reference
+Model
+Multi-turn Agentic System Rollouts
+Figure 4: Optimization for our proposed agentic system AGENTFLOW. Given a query q, an
+evolvingmemoryM,andatoolsetK,thepolicymodelgeneratesactionsthattargetsub-goalsand
+selecttools. ItistrainedviaFlow-basedGroupRefinedPolicyOptimization(Flow-GRPO),which
+enablesmulti-turnreinforcementlearningandstableoptimizationundercollaborativedynamics.
+The process repeats until vt = 1 (termination) or a predefined maximum turn budget is reached.
+UponterminationatturnT, thesolutiongeneratorG producesthefinalsolutiono, conditionedon
+thequeryandtheaccumulatedmemory: o∼G(o|q,MT).
+Thisformulationdecomposesmulti-turn,tool-integratedreasoningintostructured,observabletran-
+sitions.AfterT turns,thetrajectoryτ ={(at,et,vt)}T recordsthehistoryofplanning,execution,
+t=1
+andverification. Thejointgenerativeprocesscanbewrittenas
+p (cid:16) {at,et,vt}T , o|q (cid:17) = (cid:34) (cid:89) T π (at |q,K,Mt)E(et |at,K)V(vt |q,et,Mt) (cid:35) G(o|q,MT), (2)
+θ t=1 θ
+t=1
+where{at,et,vt}T areexplicitrealizationsofthelatentreasoningchain.Importantly,unlikelatent
+t=1
+thoughtsbehindtrajectories,ourmemoryM isanexplicitanddeterministicrecordofthereasoning
+process,ensuringtransparencyandcontrollabilityofmulti-turndecisions.
+3.2 IN-THE-FLOWREINFORCEMENTLEARNINGOPTIMIZATION
+We target tool-integrated agentic systems operating under long-horizon tasks with sparse rewards.
+In this setting, the Action Planner (the trainable policy of AGENTFLOW) selects a sequence of
+interdependent actions while the state (q,K,Mt) evolves with tool results and verifier feedback.
+Conventional offline training—e.g., supervised fine-tuning or preference fine-tuning on curated
+traces—optimizes the planner outside the active loop (Motwani et al., 2024; Park et al., 2025).
+Thisdecouplingpreventsreal-timecoordinationwiththeexecutor,verifier,andsolutiongenerator,
+induces distribution shift between training and deployment, and provides limited guidance about
+which intermediate decisions truly matter. As a result, planners often adapt poorly to multi-turn
+dynamics;earlyerrorscascade,andpost-hocfixesarebrittle.
+In-the-flow learning. To address these issues, we optimize the planner in the flow of execution.
+We roll out the full AGENTFLOW system under the current policy, collect the actual trajectory τ
+ofstates,actions,andtooleventsitinduces,andupdatethepolicywithintheagenticsystemusing
+a verifiable final-outcome signal. This exposes the multi-turn credit-assignment problem directly
+and trains the planner on the exact states it will face at inference. Our objective, Flow-GRPO, is
+designedtostabilizelearningundersparse,trajectory-levelrewardsovermultipleturns.
+Asestablishedin§3.1,rolloutsinAGENTFLOWdefineafinite-horizonMDPwithavariablehorizon
+T. Atturnt,theplannerobservesthestate(q,K,Mt),selectsanactionat,theexecutorandverifier
+return(et,vt),andthememoryupdatesdeterministicallytoMt+1.
+Policyoptimizationobjective. Theplannerpolicyπ istrainedtomaximizetheexpectedreturn
+θ
+overon-policyrollouts. LetR(τ)betherewardforacompletetrajectoryτ. Theobjectiveis:
+J(θ)=E (cid:2) R(τ) (cid:3) , θ⋆ =argmaxJ(θ), (3)
+τ∼πθ
+θ
+wherearolloutτ isthesequenceofdecisions{at}T generatedon-policybyπ .
+t=1 θ
+Final-outcome reward. Assigning credit to intermediate actions is challenging because each at
+influencesthefinalsolutiononlyindirectly,andtheirvaluemayonlyemergeafterseveralturns(e.g.,
+5
+error or improvement accumulation). To avoid brittle local feedback, we adopt a final-outcome-
+based reward: every action within a rollout receives the same global reward signal, based on the
+correctnessofthefinalsolutionowithrespecttoqueryqandgroundtruthy∗:
+r =R(at)=R¯(o,q,y∗), ∀t=1,...,T, (4)
+where R¯(o,q,y∗) ∈ {0,1} is assigned by an LLM-as-judge rubric for semantic, numeric, and
+option-levelequivalence(see§E.3). Thispropagatesatrajectory-levelsuccesssignalbackthrough
+thereasoningchain,aligningeverydecisionatwithglobalcorrectness.
+Objectivefunction. WeformalizeFlow-basedGroupRefinedPolicyOptimizationfortheplan-
+ner.Thegoalistooptimizethepolicyπ bymaximizingtheexpectedreturnoveragroupofparallel
+θ
+rollouts. Foreachquery-labelpairfromtrainingcorpus(q,y∗) ∼ D,wesampleagroupofGon-
+policytrajectories{τ
+i
+}G
+i=1
+byrunningthecurrentbehaviorpolicyπ
+θold
+insideAGENTFLOW,where
+τ = {a1,....aTi,o }. Let st = (q,K,Mt) be the state at turn t of rollout i, at the planner’s ac-
+i i i i i i i
+tion(atokensequenceoflength|at|),ando thefinalresponse. Thisstructureiskeytoaddressing
+i i
+the long-horizon credit assignment challenge: by broadcasting a single trajectory-level reward to
+allturns,weeffectivelydecomposethemulti-turnRLproblemintoasetofindependent,single-turn
+policyupdates;weprovideaformalproofofthisequivalenceandanalyzeitsconvergenceproperties
+in§B.Eachupdateforanactionat isconditionedonthefullhistoricalcontextencapsulatedinthe
+i
+statestandreceivesthesameglobalsuccesssignal,simplifyingoptimization. Theobjectiveis
+i
+J (θ)=E
+Flow-GRPO (q,y∗)∼D,{τi}G
+i=1
+∼πθold
+(cid:34) 1 (cid:88) G 1 (cid:88) Ti 1 (cid:88) |at i| min (cid:110) ρt At, clip(ρt , 1−ϵ, 1+ϵ)At (cid:111) − βD (cid:0) π ∥π (cid:1) (cid:35) ,
+G T |at| i,j i i,j i KL θ ref
+i=1 i t=1 i j=1
+(5)
+whereT isthe(variable)numberofturnsinrollouti,and
+i
+ρt i,j = π π θ θ o (cid:0) ld (cid:0) a a t i, t i j ,j (cid:12) (cid:12) (cid:12) (cid:12) s s t i t i , , a a t i, t i 1 ,1 :j :j − − 1 1 (cid:1) (cid:1) (6)
+isthetoken-levelimportanceratioforthej-thtokenofat,ϵ>0isthePPOclippingparameter,and
+i
+β >0controlstheKLpenaltytoafixedreferencepolicyπ .
+ref
+Group-normalized advantages. Because the reward in Eq. 4 is a single trajectory-level signal,
+the per-turn advantage At is constant over t within a rollout i. We reduce variance and sharpen
+i
+creditassignmentacrossthegroupbyusingagroup-normalizedadvantage:
+R¯(o ,q,y∗)−mean (cid:0) {R¯(o ,q,y∗)}G (cid:1)
+At = i k k=1 . (7)
+i std (cid:0) {R¯(o ,q,y∗)}G (cid:1)
+k k=1
+Technical contribution summary. To tackle long-horizon, sparse-reward training in multi-
+moduleagenticsystems,weproposeFlow-GRPO.Thisnovelalgorithm(i)formalizesthemulti-
+turnRLprobleminagenticsystemsintoaseriesoftractable,single-turnpolicyupdates,and(ii)
+broadcasts a single trajectory-level outcome to every turn to align local planner decisions with
+global success. Training uses an LLM-based rubric to assign verifiable final-outcome rewards,
+withgroup-normalizedadvantages,KLregularization,andclippingtostabilizelearning.
+4 EXPERIMENTS
+4.1 EXPERIMENTALSETUP
+Implementation. Inourmainexperiments,allmodules—ActionPlanner,ToolExecutor,Execu-
+tiveVerifier, andSolutionGenerator—areinstantiatedwiththeQwen2.5-7B-Instructmodel(Yang
+et al., 2024a). Among these, only the Action Planner is trainable. The system operates with five
+interactive tools: Base Generator is an instance of Qwen2.5-7B-Instruct that acts as the default
+reasoningengineiftheplannerdecidesnottouseanexternaltool;PythonCodergeneratesandex-
+ecutesPythoncodegivenaqueryandreturnstheexecutionresult;GoogleSearchsearchestheweb
+6
+SearchIntensive Agentic
+Model Size Bamboogle 2Wiki HotpotQA Musique Avg. ∆ GAIA ∆
+Qwen-2.5-7B-Instruct 7B-Inst 12.0 23.0 21.0 6.0 15.5 ↑41.8 3.2 ↑29.9
+Qwen-2.5-14B-Instruct 14B-Inst 21.6 26.7 20.0 8.0 19.1 ↑38.2 5.5 ↑27.6
+Qwen-2.5-32B-Instruct 32B-Inst 24.0 26.7 27.0 6.0 20.9 ↑36.4 9.5 ↑23.6
+Llama-3.3-70B-Instruct 70B-Inst 18.4 22.7 52.0 16.0 27.3 ↑30.0 3.2 ↑29.9
+GPT-4o-mini(Hurstetal.,2024) ∼8B 40.8 35.6 41.0 15.0 33.1 ↑24.2 7.1 ↑26.0
+GPT-4o(Hurstetal.,2024) ∼200B 68.8 49.5 54.0 24.0 49.1 ↑8.2 17.3 ↑15.8
+SupervisedFine-Tuning(SFT) 7B-Inst 12.0 25.9 22.0 6.6 16.6 ↑40.7 3.2 ↑29.9
+Iter-RetGen(Shaoetal.,2023) 7B-Inst 36.8 33.6 37.4 17.8 31.4 ↑25.9 3.9 ↑29.2
+Search-R1(Jinetal.,2025) 7B-Inst 43.2 38.2 37.0 14.6 33.3 ↑24.0 19.1 ↑14.0
+ZeroSearch(Sunetal.,2025) 7B-Base 27.8 35.2 34.6 18.0 28.9 ↑28.4 16.5 ↑16.6
+ReSearch(Chenetal.,2025) 7B-Base 42.4 47.6 43.5 22.3 39.0 ↑18.3 17.3 ↑15.8
+StepSearch(Wangetal.,2025d) 7B-Base 40.0 36.6 38.6 22.6 34.5 ↑22.8 – –
+VerlTool(Jiangetal.,2025) 7B-Base 46.4 45.3 44.8 19.3 39.0 ↑18.3 11.2 ↑21.9
+AutoGen(Wuetal.,2024) 7B-Inst 59.6 44.0 50.0 15.9 42.4 ↑14.9 6.3 ↑26.8
+AGENTFLOW 7B-Inst 58.4 60.0 51.3 19.2 47.2 ↑12.1 17.2 ↑15.9
+AGENTFLOW(w/Flow-GRPO) 7B-Inst 69.6 77.2 57.0 25.3 57.3 – 33.1 –
+Table1: Accuracycomparisononsearch-intensiveandagentictasks. 7B-BasereferstoQwen-
+2.5-7B-Baseand7B-InstreferstoQwen-2.5-7B-Instruct. AutoGenandour AGENTFLOW method
+areagenticsystems,whichuseQwen-2.5-7B-InstructfortheLLM-poweredagentsandtoolsforfair
+comparison. WevisualizethegainsofAGENTFLOWtotheeachbaselineinthe ∆columns.
+MathReasoning ScientificReasoning
+Model Size AIME24 AMC23 GameOf24 Avg. ∆ GPQA MedQA Avg. ∆
+Qwen-2.5-7B-Instruct 7B-Inst 6.7 47.5 33.0 29.1 ↑22.5 34.0 66.0 50.0 ↑13.5
+Qwen-2.5-14B-Instruct 14B-Inst 6.7 60.0 25.0 30.6 ↑21.0 31.0 75.0 53.0 ↑10.5
+Llama-3.3-70B-Instruct 70B-Inst 6.7 47.5 31.0 28.4 ↑23.1 35.0 67.0 51.0 ↑12.5
+Llama-3.1-405B-Instruct 405B-Inst 26.7 47.5 23.0 32.4 ↑19.1 30.0 62.0 46.0 ↑17.5
+GPT-4o-mini(Hurstetal.,2024) ∼8B 13.3 57.5 16.0 28.9 ↑22.6 27.0 66.0 46.5 ↑17.0
+GPT-4o(Hurstetal.,2024) ∼200B 13.3 60.0 32.0 35.1 ↑16.4 31.0 60.0 45.5 ↑18.0
+SupervisedFine-Tuning(SFT) 7B-Inst 6.7 47.5 33.0 29.1 ↑22.5 34.0 66.0 50.0 ↑13.5
+SimpleRL-reason(Zengetal.,2025b) 7B-Base 16.7 60.0 33.0 36.6 ↑15.0 45.0 65.0 50.0 ↑13.5
+Open-Reasoner-Zero(Huetal.,2025a) 7B-Base 16.7 54.9 32.0 34.5 ↑17.0 34.0 54.0 44.0 ↑19.5
+General-Reasoner(Maetal.,2025) 7B-Base 13.3 55.0 33.0 33.8 ↑17.7 35.5 61.0 48.3 ↑15.2
+Luffy(Yanetal.,2025) 7B-Inst 30.7 44.8 33.0 36.2 ↑15.3 34.0 77.0 55.5 ↑8.0
+TIR(Yangetal.,2024b) 7B-Inst 10.0 50.0 33.0 31.0 ↑20.5 42.0 76.8 59.4 ↑4.1
+ToRL(Lietal.,2025b) 7B-Inst 20.0 60.0 31.0 37.0 ↑14.5 35.0 76.5 55.8 ↑7.7
+AutoGen(Wuetal.,2024) 7B-Inst 13.3 57.5 24.0 31.6 ↑19.9 42.0 72.0 57.0 ↑6.5
+AGENTFLOW 7B-Inst 16.7 47.4 31.0 31.7 ↑19.8 37.0 76.0 56.5 ↑7.0
+AGENTFLOW(w/Flow-GRPO) 7B-Inst 40.0 61.5 53.0 51.5 – 47.0 80.0 63.5 –
+Table2: Accuracycomparisonofmathematicalandscientificreasoningtasks. Asthesamein
+Table1,AutoGenandAGENTFLOWuseQwen-2.5-7B-InstructfortheLLM-poweredtools.
+andreturnsasummarizationofTop-Ksearchresults; WikipediaSearchsearchesarticlesmatching
+agivenqueryandreturnsasummarization; andWebSearchreturnssummarizedinformationfrom
+agivenwebpage. DuringtheRLfine-tuningphase,wemixdatafromSearch-R1(Jinetal.,2025)
+andDeepMath(Heetal.,2025)astrainingdata,whichprovidespairedquestion-answerexamples
+acrosssearchandmathematicaldomains.
+Training. We provide further details on the training setup for AGENTFLOW. Our Flow-GRPO
+implementation uses a learning rate of 1 × 10−6. The Action Planner generates actions with a
+sampling temperature of 0.5 to balance exploration and exploitation. To prevent policy collapse
+and stabilize training, we incorporate a KL-divergence penalty against a reference policy with a
+coefficientβ = 0.001. Themaximumoutputlengthfortheplannerissetto2048tokenstoensure
+completeexplorationduringrollouts. Weuseabatchsizeof32with8rolloutspersample.
+Toacceleratethetrainingspeed,welimitthemaximumnumberofturnsperrolloutto3. Thefinal-
+outcome reward signal (Eq. 4) is provided by an LLM-as-judge, for which we use GPT-4o. All
+toolcallsareexecutedsynchronouslywitha500-secondtimeouttohandleexternalservicelatency
+robustly. TheLLMengineswithinthetoolsaresettoatemperatureof0.0toensuredeterministic
+and stable outputs. The full training process was conducted on 8 NVIDIA A100 GPUs. Further
+detailsonagentpromptsandthememoryupdatemechanismareprovidedin§E.1.
+Evaluation. To comprehensively evaluate tool-use capabilities of AGENTFLOW, we conduct
+experiments on four types of reasoning tasks: (1) Knowledge-intensive search including Bam-
+7
+boogle (Press et al., 2023), 2Wiki (Ho et al., 2020), HotpotQA (Yang et al., 2018), and
+Musique (Trivedi et al., 2022); (2) Agentic reasoning such as GAIA (Mialon et al., 2023) (where
+we adopt the textual split); (3) Logic-dense mathematical reasoning including AIME2024 (Art of
+ProblemSolving,2025),AMC23(MAA,2023),andGameOf24(Lightmanetal.,2023);and(4)Sci-
+entificreasoningincludingGPQA(Reinetal.,2024)andMedQA(Yangetal.,2024c). Tomitigate
+randomness,wereporttheaverageaccuracyacrossthreetrialsforallexperiments. Moreevaluation
+detailsareprovidedin§C.
+4.2 MAINRESULTS
+Baselines. As presented in Tables 1 and 2, we include five categories of baselines: (1) Open-
+source LLMs: Qwen2.5 (Yang et al., 2024a), Llama-3.1, and Llama-3.3 (Dubey et al., 2024); (2)
+ProprietaryLLMs: GPT-4o-miniandGPT-4o; (3)ReasoningLLMs: supervisedfine-tuning(Yang
+et al., 2024b), SimpleRL-reason, Open-Reasoner-Zero, General-Reasoner, and LUFFY; (4) Tool-
+integratedreasoningLLMs: bothsearch-enhanced,includingIter-RetGen,Search-R1,ZeroSearch,
+ReSearch,StepSearch,andVerlTool,andcode-enhanced,includingTIRandToRL;(5)Training-free
+agenticsystem: AutoGen. Moredetailsonbaselineimplementationsarein§C.2.
+Keyinsights. AGENTFLOWconsistentlyoutperformsallbaselinemodelsbylargemargins. Com-
+pared to the best-performing 7B models without tool integration, AGENTFLOW achieves absolute
+gains of 40.7% on search (SFT), 29.9% on agentic reasoning (SFT), 15.0% on math (SimpleRL-
+reason),and8.0%onscientifictasks(Luffy). Againstspecializedtool-integratedsystems,AGENT-
+FLOWsurpassesthetopmodelsby14.9%insearch(AutoGen),14.0%inagenticreasoning(Search-
+R1), 14.5% in math (ToRL), and4.1% in science (TIR). Notably, our 7B-backbone AGENTFLOW
+evenoutperformsthe∼200B-parameterGPT-4oacrossalldomains,withgainsrangingfrom8.2%
+to18.0%. Adetailedanalysisisprovidedin§D.1.
+4.3 IN-DEPTHANALYSISOFOPTIMIZEDPLANNING
+Flow-GRPOoptimizestoolusage. Wecomparetoolusagedistributionsbeforeandafterin-the-
+flow RL training. Figure 5 shows results on two knowledge-intensive tasks, 2Wiki and MedQA,
+whichexhibitdistinctoptimizationpatternsalongsideimprovedtaskaccuracy.For2Wiki,whichre-
+quiresbroadfactualknowledge,Flow-GRPOoptimizestheplannertoincreaseGoogleSearchusage
+by42.0%.Incontrast,forthespecializedMedQAbenchmark,whichrequiresdeep,domain-specific
+informationretrieval,fine-tuningshiftstheplannerawayfromgeneraltools,reducingGoogleSearch
+calls (66.2→10.9%) in favor of in-document Web Search (0→19.5%) and specialized Wikipedia
+Search(0→59.8%). Thisdemonstratesthattheplannerlearnstoselecttask-appropriatetools.
+BaseGenerator GoogleSearch WebSearch WikipediaSearch
+Acc:60.0% Acc:77.2%(+17.2%) Acc:76.0% Acc:80.0%(+4.0%) 50
+AfterFinet-tuning 70.5+42.0 66.2 AfterFine-tuning +59.8 40
+59.8
+30
+36.0 20
+28.5 28.8 28.7 +19.5
+-22.4 -55.319.5 10
+13.6-24.8 -22.410.9
+0
+4.0 6.3
+0 8 18 2832
+(a)2Wiki (b)MedQA Training Steps
+Figure5: ToolcallratiochangebyFlow-GRPOfine-tuning.
+)%(
+etaR
+rorrE
+gnillaC
+GAIA
+2Wiki Bamboogle
+AIME24
+-28.4%
+-19.4%
+-7.8%
+-8.4%
+Figure6: Callingerrorrate.
+Flow-GRPOenhancestool-callingefficacy. Akeyaspectofthemodel’simprovementisitsin-
+creased reliability in tool usage. As shown in Figure 6, the tool-calling error rate consistently de-
+creasesacrosstasksduringtraining,withareductionofupto28.4%onGAIA.Thistrendindicates
+that the training process not only teaches the model which tool to use but also how to invoke it
+correctlywithproperargumentsandformat,leadingtomorerobustandeffectivetoolintegration.
+Flow-GRPOincentivizesautonomousdiscoveryofnewsolutions. Wefurtherexaminequalita-
+tiveexamplesinFigure7andadditionalcasesin§F.Thesecasesshowthat AGENTFLOW,trained
+with Flow-GRPO, develops enhanced capabilities for task planning and tool use. The planner ex-
+hibitsadaptiveefficiency,strongerself-correction,andspontaneousnewintegrationoftoolsthrough-
+outstep-by-stepproblem-solving,autonomouslydiscoveringeffectivesolutionpathways.
+8
+Question: Compute the check digit the Tropicos ID for the Order 1
+• Selectedtool:Wikipedia Search(Truncated...)• Result:No results found.
+Helotiales would have if it were an ISBN-10 number.
+Ground truthanswer:3 2
+• Selectedtool:Google Search(Truncated...)• Result:Tropicos ID:100370510.
+1
+• Selectedtool:Wikipedia Search 3
+• Sub-goal: Retrieve Tropicos ID of Order Helotiales from Wikipedia. • Selectedtool:PythonCoder
+• Toolcall: query="Tropicos ID for the Order Helotiales" • Sub-goal: Write and execute a Python script to calculate the check digit for
+• Result:No results found for query: Tropicos ID for Order Helotiales. `tropicos_id` as if it were an ISBN-10 number.
+• Toolcall: query="Calculate the check digit for the ISBN-10 number" + tropicos_id
+2 • Result:Error in execute_command: name 'tropicos_id' is not defined.
+• Selectedtool:Google Search
+• Sub-goal:Retrieve the Tropicos ID of the Order. 4
+• Toolcall: query="Tropicos ID for the Order Helotiales" • Selectedtool:Python Coder
+• Result:The Tropicos ID for the Order Helotiales is 100370510. • Sub-goal:Write and execute a Python script to calculate the check digit for
+`tropicos_id` as if it were an ISBN-10 number.
+3 • Toolcall: query="Compute the check digit for 100370510 as an ISBN-10 number”
+• Selectedtool:PythonCoder • Result:3(printedoutput).
+• Sub-goal: Calculate the check digit for the Tropicos ID 100370510 def calculate_check_digit(isbn):
+if it were an ISBN-10 number. isbn_digits = [int(digit) for digit in isbn[:9]]
+• Toolcall: query="Calculate check digit for ISBN-10 number 100370510” total_sum = sum(position * digit for position, digit in enumerate(isbn_digits, start=1))
+• Result:name 'isbn' is not defined. check_digit = total_sum % 11
+... if check_digit == 10:
+4-9Action steps 3 to 9 have similar sub-goals, commands, and results; else r : eturn 'X'
+the agent is stuck in error loopsand unablefix the naming issue. return str(check_digit)
+... result = calculate_check_digit("100370510")
+print(f“The check digit is {result}”)
+Solution:The Python tool failed repeatedly with the same 'isbn'
+variable error). The agent failed to calculate the check digit. Solution:The check digit is 3, resulting in the full number 1003705103.
+AgentFlow(beforeFlow-GRPOFine-tuning) AgentFlow(afterFlow-GRPOFine-tuning)
+Figure 7: One case study example. Initially failed with repetitive errors (left), AGENTFLOW,
+trainedwithFlow-GRPO,exploresanewsolutionpathwayatturn4aftertwofailedattempts(right).
+4.4 TRAININGSTRATEGIESONTHEPLANNER
+We conduct an ablation study to analyze the impact of different training strategies for the Action
+Plannermodulein AGENTFLOW,withresultsreportedinTable3. Theexecutor,verifier,andgen-
+eratormodulesremainfixedasQwen2.5-7B-Instruct,consistentwithourmainsetup(§4.1).
+PlannerModel Training Bamboogle 2Wiki GAIA AIME24 AMC23 GameOf24 Avg.
+Qwen-2.5-7B Frozen 58.4 60.0 17.2 16.7 47.4 31.0 38.5
+GPT-4o Frozen 65.0↑6.6 70.0↑10.0 23.6↑6.4 16.7↑0.0 48.7↑1.3 42.0↑11.0 44.3↑5.8
+Qwen-2.5-7B SFT 30.4↓28.0 32.7↓27.3 6.3↓10.9 3.3↓13.4 37.5↓9.9 7.0↓24.0 19.5↓19.0
+Qwen-2.5-7B Flow-GRPO 69.6↑11.2 77.2↑17.2 33.1↑15.9 40.0↑23.3 61.5↑14.1 53.0↑22.0 55.7↑17.2
+Table3: PerformancecomparisonofAGENTFLOWacrossdifferenttrainingmethods.
+Amorecapableplannerisbeneficial,buthaslimits. ReplacingthefrozenQwen2.5-7B-Instruct
+baselinewithastrongerproprietarymodel,GPT-4o,yieldsonlyamodest5.8%averagegain. This
+indicates a key bottleneck that, while a more powerful model improves planning, its static nature
+preventsco-adaptationwiththelivedynamicsofAGENTFLOW.
+OfflineSFTleadstoperformancecollapse, whilein-the-flowRLiscrucial. Thelimitationsof
+a static planner are further exposed when distilling GPT-4o’s behavior via offline supervised fine-
+tuning (SFT) on its trajectories as Action Planner in AGENTFLOW. This results in a catastrophic
+performance collapse, with an average accuracy drop of 19.0% compared to the frozen baseline.
+Thisfailurearisesfromthetoken-levelimitationobjectiveofSFT,whichmisalignswithtrajectory-
+level task success and prevents the planner from adapting to dynamic tool feedback or recovering
+fromcompoundingerrors. Incontrast,trainingtheplannerwithouron-policyFlow-GRPOmethod
+proves highly effective: by optimizing for the final outcome, the planner learns to handle long-
+horizonworkflows,achievinga17.2%averagegainoverthefrozenbaseline.
+4.5 TRAININGEFFICIENCYANALYSIS
+230
+220 210
+200
+190
+180
+)snekot(
+htgneL
+esnopseR
+0.8
+0.7
+0.6
+0.5
+0 10 20 30 40 50 60
+Training Steps
+).ccA(
+draweR
+gniniarT
+Training Reward Trend Response Length Trend 0.4
+0.3
+0.2
+0.1
+(a) 0 10 20 30
+Training Steps
+).ccA(
+draweR
+noitadilaV
+Optimizedplanningwithincreased Flow-GRPO (ours) rewards and condensed responses. ToRL
+We analyze the training dynamics of the AGENTFLOW planner by track-
+ing its average reward and response
+length on the train set (Figure 8a).
+Training rewards steadily increase,
+indicating effective policy improve- (b)
+ment via Flow-GRPO. Meanwhile,
+Figure8: TrainingdynamicsandefficiencyofFlow-GRPO.
+response length, after an initial ex-
+9
+ploratoryrise,progressivelyshortensandstabilizes. Thisshowstheplannerlearnstobalancecon-
+cisenessandinformativeness,avoidingunnecessarilylongoutputs.
+Flow-GRPOefficiencyovertool-integratedreasoningRL. WecompareAGENTFLOW(trained
+withFlow-GRPO)againstamonolithictool-integratedreasoningbaseline(ToRL)onAIME24. As
+showninFigure8b, AGENTFLOW achievessustainedperformancegains,withvalidationaccuracy
+growingsteadily. Incontrast, ToRL’sperformancequicklystagnatesandtrendsdownwards, high-
+lighting the superior efficiency of our agentic training approach, which uses decomposition and
+stablecreditassignmenttoavoidtheinstability.
+4.6 SCALINGTRENDSINAGENTFLOW
+80
+60
+40
+20
+0 Bamboogle 2Wiki GAIA AIME24
+)%( ycaruccA
+Training scaling in backbone size. AgentFlow (Qwen-2.5-3B-Instruct) AgentFlow (Qwen-2.5-7B-Instruct)
+We study how backbone LLM scale Before tuning 80 Before tuning
+77.2
+a a f n f d ec t t h s e A ef G fi E c N ac T y FL of OW Fl ’ o s w p -G er R fo P r O m . an W c e e 53.6 68.8 63.0 72.3 After tuning 60 58.4 69.6 60.0 After tuning
+buildtwoversionsofthesystem: one 40 40.0
+33.1
+using Qwen2.5-3B-Instruct and an- 29.1 20
+other using Qwen2.5-7B-Instruct for 14.3 13.3 20.0 17.2 16.7
+all four modules (planner, executor, 0 Bamboogle 2Wiki GAIA AIME24
+Figure 9: Flow-GRPO fine-tuning offers consistent gains on
+verifier, and generator) and tools. In
+both, only the planner is fine-tuned
+AGENTFLOWasthebackbonemodelsizescalesfrom3Bto7B.
+with Flow-GRPO. As shown in Figure 9, Flow-GRPO fine-tuning consistently improves perfor-
+mance acrosstasks for bothbackbones. This demonstratesthat our in-the-flowoptimization is ef-
+fectiveacrossmodelcapacities,enhancingAGENTFLOWregardlessofLLMsize.
+Turns(Tmax) 3 5 7 10
+2Wiki 2.22 3.18 3.81 4.44
+GameOf24 1.63 2.12 2.36 2.67
+AIME24 1.63 1.63 1.86 1.90
+GAIA 2.43 3.46 4.28 5.42
+80
+70
+60
+50
+40
+30
+20
+3 5 7 10
+Max Allowed Turns
+)%(
+ycaruccA
+Inference scaling in turn budgets. We investigate how the
+maximum allowed turns (T ) affect reasoning depth and final
+max
+performanceofAGENTFLOWduringtest-timeinferencewiththe
+Qwen2.5-7B-Instructbackbone. AsshowninFigure10,increas-
+ing T from 3 to 10 consistently improves outcomes across
+max
+all tasks, accompanied by a rise in average turns consumed. +15.8%
+On knowledge-intensive benchmarks such as 2Wiki and GAIA, 2Wiki
+a larger turn budget enables AGENTFLOW for deeper informa-
+GGaammeeOOff2244 +20.0%
+tionretrieval. OnmathematicalbenchmarkslikeGameOf24and AAIIMMEE2244
+GGAAIIAA
+AIME24, it supports decomposed sub-goals, alternative strate- +16.7%
+gies,andrefinementoferrors.FinalperformancepeaksatT = +6.3% max
+10foralltasks, confirmingthatalongerreasoninghorizonben-
+efitsthesystemwithoutcausingdegenerateloops. Thisvalidates
+Figure 10: Average turns and
+thatAGENTFLOWadaptsitsturnallocationtoproblemcomplex-
+accuracywithincreasedT .
+itytoachievebettersolutionsthroughiterativerefinement. max
+5 RELATED WORK
+Reinforcement learning (RL) from outcome-based rewards has become a dominant paradigm for
+trainingLLMstouseexternaltools.Muchofthisworktrainsasingle,monolithicpolicytointerleave
+reasoning with tool calls. This strategy has proven effective in specialized, single-tool settings,
+suchascodeexecutionformathematicalproblems(Maietal.,2025;Xueetal.,2025;Fengetal.,
+2025; Li et al., 2025b) and web search for knowledge-intensive questions (Chen et al., 2025; Jin
+et al., 2025; Song et al., 2025; Li et al., 2025a; Sun et al., 2025). Recent efforts have extended
+this monolithic framework to multi-tool environments by focusing on data synthesis (Dong et al.,
+2025),unifiedtraininginfrastructure(Jiangetal.,2025),andprincipledrewarddesign(Qianetal.,
+2025a; Zhang et al., 2025). However, this monolithic approach scales poorly as task complexity
+and planning horizons grow. The central challenge is long-horizon credit assignment; attributing
+a final outcome to specific intermediate tool calls remains difficult, even with fine-grained, turn-
+level rewards (Zeng et al., 2025a; Wang et al., 2025d). This difficulty leads to training instability
+and brittle inference-time generalization, manifesting as strategic deficiencies like tool overuse or
+“cognitiveoffloading”(Wangetal.,2025b;Qianetal.,2025b),suboptimalpersonalization(Cheng
+etal.,2025),andpooralignmentwithuserpreferencesfortoolinvocation(Huangetal.,2025).
+10
+Agenticsystemswithtooluse. Agenticsystemsofferanalternativetomonolithicmodelsbyde-
+composing tasks across specialized modules. Many such systems are training-free, orchestrating
+pre-trainedLLMswithhandcraftedlogicandprompting,asseeninframeworkslikeAutoGen(Wu
+etal.,2024), MetaGPT(Hongetal.,2024), andOctoTools(Luetal.,2025). Thisstaticapproach,
+however,limitstheirabilitytolearnandadaptcollaborativestrategiesfromexperience.Recognizing
+this, recentworkexplorestrainingthesesystemstoimprovecoordination(Dengetal.,2025;Liao
+et al., 2025). However, most training paradigms are offline, relying on supervised fine-tuning or
+preferenceoptimizationonstaticdatasets(Motwanietal.,2024;Parketal.,2025). Thesemethods
+aredecoupledfromthelive,multi-turndynamicsofthesystem,preventingmodulesfromlearning
+toadapttoevolvingtooloutputsorrecoverfromearlymistakes. Trainingdirectlyintheflowwith
+on-policyRLisdifficultduetosparserewardsandlong-horizoncreditassignment,wherefeedback
+isdelayedacrosslongreasoningchainsandshiftingstatedistributions(Wangetal.,2025c). Con-
+sequently,thesesystemsoftensufferfrombrittleadaptationandrequirecomplexrewardshapingto
+learneffectively(Wangetal.,2025a).
+6 CONCLUSION
+WepresentedAGENTFLOW,atrainable,in-the-flowagenticsystemthatcoordinatesfourspecialized
+modulesviaanevolvingmemoryandoptimizesitsplannerdirectlyinsidethemulti-turnloop. To
+enable stable on-policy learning under long-horizon, sparse-reward settings, we introduced Flow-
+GRPO, which converts multi-turn RL into a sequence of tractable single-turn policy updates by
+broadcasting a single, verifiable trajectory-level outcome to every turn and stabilizing credit as-
+signmentwithgroup-normalizedadvantages. ComprehensiveexperimentsshowthatAGENTFLOW
+achievesstrongcross-domainperformance,surpassingspecializedbaselinesandevenlargerpropri-
+etarymodels. In-depthanalysesconfirmimprovedplanningandtool-callingreliability,alongwith
+positive scaling trends in model size and allowed turn budgets. Future research will focus on ex-
+tendingin-the-flowoptimizationtoothermodules,incorporatingmorefine-grainedrewardsignals,
+andscalingtheframeworktotacklemorecomplex,open-endedtasks.
+ACKNOWLEDGMENT
+WewouldliketothankYiheDeng,XuehangGuo,andKunlunZhufortheirvaluableinputduring
+theearlystagesofthiswork. WearegratefultoLambdaforprovidingGPUresources. Thiswork
+waspartiallysupportedbytheHoffman-YeeResearchGrantsprogramatStanfordHAI,theAIfor
+MathFundbyRenaissancePhilanthropy,ONRMURIN00014-24-1-2748,andtheAIResearchHub
+ProjectthroughKAIST.
+REFERENCES
+Art of Problem Solving. Aime problems and solutions, 2025. URL https:
+//artofproblemsolving.com/wiki/index.php/AIME_Problems_and_
+Solutions. 8,22
+MingyangChen,TianpengLi,HaozeSun,YijieZhou,ChenzhengZhu,HaofenWang,JeffZPan,
+WenZhang,HuajunChen,FanYang,etal. ReSearch:Learningtoreasonwithsearchforllmsvia
+reinforcementlearning. arXivpreprintarXiv:2503.19470,2025. 2,4,7,10,21
+Zihao Cheng, Hongru Wang, Zeming Liu, Yuhang Guo, Yuanfang Guo, Yunhong Wang, and
+Haifeng Wang. ToolSpectrum: Towards personalized tool utilization for large language mod-
+els. InFindingsoftheAssociationforComputationalLinguistics: ACL2025,pp.20679–20699,
+2025. 10
+Yingfan Deng, Anhao Zhou, Yuan Yuan, Xian Zhang, Yifei Zou, and Dongxiao Yu. Pe-ma:
+Parameter-efficientco-evolutionofmulti-agentsystems. arXivpreprintarXiv:2506.11803,2025.
+11
+GuantingDong,YifeiChen,XiaoxiLi,JiajieJin,HongjinQian,YutaoZhu,HangyuMao,Guorui
+Zhou,ZhichengDou,andJi-RongWen. Tool-star: Empoweringllm-brainedmulti-toolreasoner
+viareinforcementlearning. arXivpreprintarXiv:2505.16410,2025. 2,10
+11
+AbhimanyuDubey,AbhinavJauhri,AbhinavPandey,AbhishekKadian,AhmadAl-Dahle,Aiesha
+Letman,AkhilMathur,AlanSchelten,AmyYang,AngelaFan,etal. Thellama3herdofmodels.
+arXivpreprintarXiv:2407.21783,2024. 8,20
+JiazhanFeng,ShijueHuang,XingweiQu,GeZhang,YujiaQin,BaoquanZhong,ChengquanJiang,
+Jinxin Chi, and Wanjun Zhong. Retool: Reinforcement learning for strategic tool use in llms.
+arXivpreprintarXiv:2504.11536,2025. 2,4,10
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu,
+ShirongMa,PeiyiWang,XiaoBi,etal. Deepseek-r1: Incentivizingreasoningcapabilityinllms
+viareinforcementlearning. arXivpreprintarXiv:2501.12948,2025. 2
+Zhiwei He, Tian Liang, Jiahao Xu, Qiuzhi Liu, Xingyu Chen, Yue Wang, Linfeng Song, Dian
+Yu, Zhenwen Liang, Wenxuan Wang, et al. Deepmath-103k: A large-scale, challenging, de-
+contaminated, and verifiable mathematical dataset for advancing reasoning. arXiv preprint
+arXiv:2504.11456,2025. 7
+XanhHo,Anh-KhoaDuongNguyen,SakuSugawara,andAkikoAizawa. Constructingamulti-hop
+qadatasetforcomprehensiveevaluationofreasoningsteps. InProceedingsofthe28thInterna-
+tionalConferenceonComputationalLinguistics(COLING),pp.6609–6625,2020. 8,21
+SiruiHong, MingchenZhuge, JonathanChen, XiawuZheng, YuhengCheng, CeyaoZhang, Jinlin
+Wang, Zili Wang, Steven Ka Shing Yau, Zijuan Lin, et al. MetaGPT: Meta programming for a
+multi-agentcollaborativeframework. InInternationalConferenceonLearningRepresentations
+(ICLR),2024. 2,4,11
+Jingcheng Hu, Yinmin Zhang, Qi Han, Daxin Jiang, Xiangyu Zhang, and Heung-Yeung Shum.
+Open-reasoner-zero: Anopensourceapproachtoscalingupreinforcementlearningonthebase
+model. arXivpreprintarXiv:2503.24290,2025a. 7,20
+MengkangHu,YuhangZhou,WendongFan,YuzhouNie,BoweiXia,TaoSun,ZiyuYe,Zhaoxuan
+Jin,YingruLi,QiguangChen,etal. Owl: Optimizedworkforcelearningforgeneralmulti-agent
+assistanceinreal-worldtaskautomation. arXivpreprintarXiv:2505.23885,2025b. 2
+Chengrui Huang, Shen Gao, Zhengliang Shi, Dongsheng Wang, and Shuo Shang. TTPA: Token-
+level tool-use preference alignment training framework with fine-grained evaluation. arXiv
+preprintarXiv:2505.20016,2025. 10
+AaronHurst,AdamLerer,AdamPGoucher,AdamPerelman,AdityaRamesh,AidanClark,AJOs-
+trow, Akila Welihinda, Alan Hayes, Alec Radford, et al. GPT-4o system card. arXiv preprint
+arXiv:2410.21276,2024. 3,7,20
+DongfuJiang,YiLu,ZhuofengLi,ZhihengLyu,PingNie,HaozheWang,AlexSu,HuiChen,Kai
+Zou, Chao Du, et al. VerlTool: Towards holistic agentic reinforcement learning with tool use.
+arXivpreprintarXiv:2509.01055,2025. 7,10,21
+BowenJin,HansiZeng,ZhenruiYue,JinsungYoon,SercanArik,DongWang,HamedZamani,and
+JiaweiHan. Search-R1: Trainingllmstoreasonandleveragesearchengineswithreinforcement
+learning. arXivpreprintarXiv:2503.09516,2025. 2,4,7,10,20,21
+DiJin,EileenPan,NassimOufattole,Wei-HungWeng,HanyiFang,andPeterSzolovits. Whatdis-
+easedoesthispatienthave? alarge-scaleopendomainquestionansweringdatasetfrommedical
+exams. AppliedSciences,11(14):6421,2021. 22
+Xiaoxi Li, Guanting Dong, Jiajie Jin, Yuyao Zhang, Yujia Zhou, Yutao Zhu, Peitian Zhang, and
+Zhicheng Dou. Search-o1: Agentic search-enhanced large reasoning models. arXiv preprint
+arXiv:2501.05366,2025a. 10
+Xuefeng Li, Haoyang Zou, and Pengfei Liu. ToRL: Scaling tool-integrated rl. arXiv preprint
+arXiv:2503.23383,2025b. 7,10,21
+JunweiLiao,MuningWen,JunWang,andWeinanZhang. Marft: Multi-agentreinforcementfine-
+tuning. arXivpreprintarXiv:2504.16129,2025. 11
+12
+Hunter Lightman, Vineet Kosaraju, Yuri Burda, Harrison Edwards, Bowen Baker, Teddy Lee, Jan
+Leike,JohnSchulman,IlyaSutskever,andKarlCobbe. Let’sverifystepbystep. InTheTwelfth
+InternationalConferenceonLearningRepresentations(ICLR),2023. 8
+NathanLile. Mathtwentyfour(24sgame)dataset. https://huggingface.co/datasets/
+nlile/24-game,2024. 22
+PanLu,BowenChen,ShengLiu,RahulThapa,JosephBoen,andJamesZou.OctoTools:Anagentic
+frameworkwithextensibletoolsforcomplexreasoning. arXivpreprintarXiv:2502.11271,2025.
+4,11,20
+XueguangMa,QianLiu,DongfuJiang,GeZhang,ZejunMa,andWenhuChen. General-reasoner:
+Advancingllmreasoningacrossalldomains. arXivpreprintarXiv:2505.14652,2025. 7,20
+MAA. Americanmathematicscompetitions. InAmericanMathematicsCompetitions,2023. 8,22
+XinjiMai,HaotianXu,XingW,WeinongWang,YingyingZhang,andWenqiangZhang. AgentRL
+Scaling Law: Agent RL with Spontaneous Code Execution for Mathematical Problem Solving.
+arXivpreprintarXiv:2505.07773,2025. 2,10
+Gre´goire Mialon, Cle´mentine Fourrier, Thomas Wolf, Yann LeCun, and Thomas Scialom. Gaia:
+a benchmark for general ai assistants. In The Twelfth International Conference on Learning
+Representations(ICLR),2023. 8,22
+Moonshot AI. Kimi-Researcher: End-to-End RL Training for Emerging Agentic Capabilities.
+https://moonshotai.github.io/Kimi-Researcher/,June2025. 2
+Sumeet Ramesh Motwani, Chandler Smith, Rocktim Jyoti Das, Rafael Rafailov, Ivan Laptev,
+Philip HS Torr, Fabio Pizzati, Ronald Clark, and Christian Schroeder de Witt. Malt: Improv-
+ingreasoningwithmulti-agentllmtraining. arXivpreprintarXiv:2412.01928,2024. 2,5,11
+ChanwooPark,SeungjuHan,XingzhiGuo,A.Ozdaglar,KaiqingZhang,andJoo-KyungKim.MA-
+PoRL: Multi-agent post-co-training for collaborative large language models with reinforcement
+learning. InAnnualMeetingoftheAssociationforComputationalLinguistics(ACL,2025. URL
+https://api.semanticscholar.org/CorpusId:276580906. 2,5,11
+OfirPress,MuruZhang,SewonMin,LudwigSchmidt,NoahASmith,andMikeLewis. Measuring
+andnarrowingthecompositionalitygapinlanguagemodels. InFindingsoftheAssociationfor
+ComputationalLinguistics: EMNLP2023,pp.5687–5711,2023. 8,21
+Cheng Qian, Emre Can Acikgoz, Qi He, Hongru Wang, Xiusi Chen, Dilek Hakkani-Tu¨r, Gokhan
+Tur,andHengJi. ToolRL:Rewardisalltoollearningneeds. arXivpreprintarXiv:2504.13958,
+2025a. 2,4,10
+Cheng Qian, Emre Can Acikgoz, Hongru Wang, Xiusi Chen, Avirup Sil, Dilek Hakkani-Tu¨r,
+Gokhan Tur, and Heng Ji. SMART: Self-aware agent for tool overuse mitigation. In Findings
+oftheAssociationforComputationalLinguistics: ACL2025,pp.4604–4621,2025b. 10
+DavidRein,BettyLiHou,AsaCooperStickland,JacksonPetty,RichardYuanzhePang,JulienDi-
+rani,JulianMichael,andSamuelRBowman. Gpqa: Agraduate-levelgoogle-proofq&abench-
+mark. InFirstConferenceonLanguageModeling,2024. 8,22
+John Schulman, Sergey Levine, Pieter Abbeel, Michael Jordan, and Philipp Moritz. Trust region
+policyoptimization. InInternationalConferenceonMachineLearning(ICML),pp.1889–1897.
+PMLR,2015. 19
+ZhihongShao,YeyunGong,YelongShen,MinlieHuang,NanDuan,andWeizhuChen. Enhancing
+retrieval-augmented large language models with iterative retrieval-generation synergy. In Find-
+ings of the Association for Computational Linguistics: EMNLP 2023, pp. 9248–9274, 2023. 7,
+21
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang,
+Mingchuan Zhang, YK Li, Yang Wu, et al. Deepseekmath: Pushing the limits of mathemati-
+calreasoninginopenlanguagemodels. arXivpreprintarXiv:2402.03300,2024. 3
+13
+HuatongSong, JinhaoJiang, YingqianMin, JieChen, ZhipengChen, WayneXinZhao, LeiFang,
+and Ji-Rong Wen. R1-searcher: Incentivizing the search capability in llms via reinforcement
+learning. arXivpreprintarXiv:2503.05592,2025. 2,10
+HaoSun,ZileQiao,JiayanGuo,XuanboFan,YingyanHou,YongJiang,PengjunXie,YanZhang,
+Fei Huang, and Jingren Zhou. Zerosearch: Incentivize the search capability of llms without
+searching. arXivpreprintarXiv:2505.04588,2025. 7,10,21
+HarshTrivedi,NiranjanBalasubramanian,TusharKhot,andAshishSabharwal.Musique:Multihop
+questionsviasingle-hopquestioncomposition.TransactionsoftheAssociationforComputational
+Linguistics(TACL),10:539–554,2022. 8,21
+Hanlin Wang, Chak Tou Leong, Jiashuo Wang, Jian Wang, and Wenjie Li. SPA-RL: Reinforcing
+llmagentsviastepwiseprogressattribution. arXivpreprintarXiv:2505.20732,2025a. 11
+Hongru Wang, Cheng Qian, Wanjun Zhong, Xiusi Chen, Jiahao Qiu, Shijue Huang, Bowen Jin,
+MengdiWang, Kam-FaiWong, andHengJi. Actinglessisreasoningmore! teachingmodelto
+actefficiently. arXivpreprintarXiv:2504.14870,2025b. URLhttps://arxiv.org/pdf/
+2504.14870. 10
+ZihanWang,KangruiWang,QinengWang,PingyueZhang,LinjieLi,ZhengyuanYang,XingJin,
+KefanYu,MinhNhatNguyen,LichengLiu,etal. RAGEN:Understandingself-evolutioninllm
+agentsviamulti-turnreinforcementlearning. arXivpreprintarXiv:2504.20073,2025c. 2,11
+Ziliang Wang, Xuhui Zheng, Kang An, Cijun Ouyang, Jialu Cai, Yuhang Wang, and Yichao Wu.
+Stepsearch:Ignitingllmssearchabilityviastep-wiseproximalpolicyoptimization.arXivpreprint
+arXiv:2505.15107,2025d. 7,10,21
+Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang, Xiaoyun
+Zhang,ShaokunZhang,JialeLiu,etal. Autogen: Enablingnext-genllmapplicationsviamulti-
+agent conversations. In First Conference on Language Modeling (COLM), 2024. 2, 4, 7, 11,
+21
+ZhenghaiXue,LongtaoZheng,QianLiu,YingruLi,XiaosenZheng,ZejunMa,andBoAn. Sim-
+pletir: End-to-endreinforcementlearningformulti-turntool-integratedreasoning. arXivpreprint
+arXiv:2509.02479,2025. 2,10
+Jianhao Yan, Yafu Li, Zican Hu, Zhi Wang, Ganqu Cui, Xiaoye Qu, Yu Cheng, and Yue Zhang.
+Learningtoreasonunderoff-policyguidance. arXivpreprintarXiv:2504.14945,2025. 7,20
+An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li,
+DayihengLiu,FeiHuang,HaoranWei,HuanLin,JianYang,JianhongTu,JianweiZhang,Jianxin
+Yang, Jiaxi Yang, Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Keqin Bao, Kexin Yang,
+LeYu,MeiLi,MingfengXue,PeiZhang,QinZhu,RuiMen,RunjiLin,TianhaoLi,TianyiTang,
+Tingyu Xia, Xingzhang Ren, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yu Wan,
+YuqiongLiu,ZeyuCui,ZhenruZhang,andZihanQiu. Qwen2.5technicalreport. arXivpreprint
+arXiv:2412.15115,2024a. 2,6,8,20
+AnYang,BeichenZhang,BinyuanHui,BofeiGao,BowenYu,ChengpengLi,DayihengLiu,Jian-
+hongTu,JingrenZhou,JunyangLin,etal.Qwen2.5-mathtechnicalreport:Towardmathematical
+expertmodelviaself-improvement. arXivpreprintarXiv:2409.12122,2024b. 7,8,21
+Hang Yang, Hao Chen, Hui Guo, Yineng Chen, Ching-Sheng Lin, Shu Hu, Jinrong Hu, Xi Wu,
+andXinWang. Llm-medqa: Enhancingmedicalquestionansweringthroughcasestudiesinlarge
+languagemodels. arXivpreprintarXiv:2501.05464,2024c. 8
+Zhilin Yang, Peng Qi, Saizheng Zhang, Yoshua Bengio, William Cohen, Ruslan Salakhutdinov,
+and Christopher D Manning. HotpotQA: A dataset for diverse, explainable multi-hop question
+answering. InProceedingsofthe2018ConferenceonEmpiricalMethodsinNaturalLanguage
+Processing(EMNLP),pp.2369–2380,2018. 8,21
+QiyingYu,ZhengZhang,RuofeiZhu,YufengYuan,XiaochenZuo,YuYue,WeinanDai,Tiantian
+Fan,GaohongLiu,LingjunLiu,etal. Dapo: Anopen-sourcellmreinforcementlearningsystem
+atscale. arXivpreprintarXiv:2503.14476,2025. 3
+14
+SiliangZeng,QuanWei,WilliamBrown,OanaFrunza,YuriyNevmyvaka,andMingyiHong. Re-
+inforcing multi-turn reasoning in llm agents via turn-level credit assignment. arXiv preprint
+arXiv:2505.11821,2025a. 10
+WeihaoZeng,YuzhenHuang,QianLiu,WeiLiu,KeqingHe,ZejunMa,andJunxianHe. Simplerl-
+zoo:Investigatingandtamingzeroreinforcementlearningforopenbasemodelsinthewild.arXiv
+preprintarXiv:2503.18892,2025b. 2,7,20
+Shaokun Zhang, Yi Dong, Jieyu Zhang, Jan Kautz, Bryan Catanzaro, Andrew Tao, Qingyun Wu,
+ZhidingYu,andGuilinLiu. Nemotron-research-tool-n1: Tool-usinglanguagemodelswithrein-
+forcedreasoning. arXivpreprintarXiv:2505.00024,2025. 2,10
+15
+TABLE OF CONTENTS
+A TrainingAlgorithmofAGENTFLOW 17
+B TheoreticalAnalysisofFlow-GRPO 18
+B.1 PreliminariesandNotation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+B.2 EquivalenceProofforOptimizationObjectives . . . . . . . . . . . . . . . . . . . 18
+B.3 ConvergenceAnalysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+C ExperimentalDetails 20
+C.1 EvaluationDetails . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+C.2 ComparedBaselines . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+C.3 EvaluationDatasets . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+D MoreDiscussionaboutExperimentResults 22
+D.1 MainResultAnalysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+D.2 In-depthAnalysisofOptimizedPlanning . . . . . . . . . . . . . . . . . . . . . . 23
+E InstructionTemplatesinAGENTFLOW 24
+E.1 ModulesandMemory . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+E.2 ToolsetMetadata . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27
+E.3 LLM-basedJudging . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+F CaseStudies 33
+F.1 Example1: EfficientSearchforSimpleTasks . . . . . . . . . . . . . . . . . . . . 33
+F.2 Example2: SpontaneousBrute-force . . . . . . . . . . . . . . . . . . . . . . . . . 34
+F.3 Example3: AGoodInitialPlanisEssential . . . . . . . . . . . . . . . . . . . . . 36
+F.4 Example4: RobustSelf-CorrectionandAdaptation . . . . . . . . . . . . . . . . . 38
+F.5 Example5: NewCombo: RetrievewithSpecificURL . . . . . . . . . . . . . . . . 40
+F.6 Example6: RapidandCorrectPhysicsCalculation . . . . . . . . . . . . . . . . . 42
+F.7 Example7: Multi-SourceCross-Verification . . . . . . . . . . . . . . . . . . . . . 44
+16
+A TRAINING ALGORITHM OF AGENTFLOW
+WeprovideaflowchartoftheoveralltrainingalgorithmofAGENTFLOW(§3)inAlgorithm1.
+Algorithm1In-the-FlowOptimizationforAGENTFLOW
+Require: Dataset D, Action Planner policy π , Tool Executor E, Executive Verifier V, Solution
+θ
+GeneratorG,ToolsetK,andSharedEvolvingMemoryM
+Ensure: OptimizedActionPlannerparametersθ⋆
+1: foreachtrainingiterationdo
+2: foreachquery–labelpair(q,y∗)∼Ddo
+3: 1. IN-THE-FLOWROLLOUTGENERATION
+4: Initialize: t←1,Mt ←q
+5: repeat
+6: at ∼π θ (at |q,K,Mt){PlanAction}
+7: et ∼E(et |at,K) {ExecuteAction}
+8: vt ∼V(vt |q,et,Mt){VerifyResult}
+9: Mt+1 =f (Mt,at,et,vt){UpdateMemory}
+mem
+10: t←t+1
+11: untilterminationconditionmet
+12: o∼G(o|q,MT){GenerateFinalSolution}
+13: 2. REWARDCOMPUTATION
+14: R(at)=R¯(o,q,y∗), ∀t=1,...,T
+15: 3. POLICYUPDATE
+16: UpdatetheActionPlannerpolicyπ θ bymaximizingtheFlow-GRPOobjective(Eq. 5)
+17: endfor
+18: endfor
+19: return optimizedparametersθ⋆
+17
+B THEORETICAL ANALYSIS OF FLOW-GRPO
+B.1 PRELIMINARIESANDNOTATION
+Weadoptthenotationfromthepapertoformalizeouranalysis.
+DefinitionB.1(CoreComponents).Herewelistcoredefinitionofvariables.
+SymbolandDescription
+π Thetrainableplannerpolicy,parameterizedbyθ.
+θ
+π Thebehaviorpolicyusedtosampletrajectories.
+θold
+st Thestateatturnt,definedasst =(q,K,M ).
+t
+at Theaction(asequenceoftokens)generatedatstatest,whereat ∼π (·|st).
+θ
+τ AtrajectoryofstatesandactionsoverT timesteps,definedasτ ={(st,at)}T .
+t=1
+R(τ) Theoutcome-basedrewardfortrajectoryτ,whereR(τ)∈{0,1}.
+A The group-normalized advantage for trajectory τ. A crucial property is that the advantage is
+τ
+constantforalltimestepswithinatrajectorydefinedinEq.7:at =A , ∀(st,at)∈τ.
+τ
+ρt Thetoken-levelimportancesamplingratio,definedas:
+i,j
+ρt i,j = π π θ θ ol (cid:0) d (cid:0) a a t i, t i j ,j (cid:12) (cid:12) (cid:12) (cid:12) s s t i t i , , a a t i, t i 1 ,1 :j :j − − 1 1 (cid:1) (cid:1) .
+L (ρ,A) ThePPOclippedobjectiveterm,definedasL (ρ,A)=min(ρA,clip(ρ,1−ϵ,1+ϵ)A).
+clip clip
+Definition B.2 (Objective Functions).The global policy objective is the expected trajectory-level
+reward:
+J(θ):=E [R(τ)]. (8)
+τ∼πθ
+Thesingle-turnoptimizationobjectiveforagivenstatestisdefinedas:
+ 
+|at|
+1 (cid:88)
+J local (θ;st):=E at∼πθold (·|st) |at| L clip (ρt i,j ,At i ). (9)
+j=1
+ThefullFlow-GRPOobjectivefunctioninthemulti-turnsettingisgivenby:
+ 
+1 (cid:88) G 1 (cid:88) Ti 1 (cid:88) |at i |
+J Flow-GRPO (θ):=E (q,y∗)∼D  G T |at| L clip (ρt i,j ,At i )−βD KL (π θ ∥π ref ). (10)
+{τi}G i=1 ∼πθold i=1 i t=1 i j=1
+B.2 EQUIVALENCEPROOFFOROPTIMIZATIONOBJECTIVES
+TheoremB.1.InFlow-GRPO,maximizingtheglobalmulti-turnobjectiveismathematicallyequiv-
+alent to maximizing the expected token-level local objective at each time step under the on-policy
+induced state distribution, given standard sampling assumptions (trajectories sampled i.i.d. from
+thepolicywithfixedfiniteturnT).
+Proof. Let’sdenotetheclippingpartoftheFlow-GRPOobjectiveasJ (θ).
+clip
+First,bythelinearityofexpectation,wecansimplifytheexpectationoveragroupofGtrajectories.
+Sincethetrajectories{τ }aresampledindependentlyandidentically(i.i.d.)fromthebehaviorpolicy
+i
+π ,theexpectationoftheiraverageisequaltotheexpectationoverasingletrajectory.
+θold
+   
+1 (cid:88) G 1 (cid:88) Ti 1 (cid:88) |at i |
+J clip (θ)=E (q,y∗)∼D E {τi}G i=1 ∼πθold  G i=1 T i t=1  |at i | j=1 L clip (ρt i,j ,At i ) (11)
+   
+T |at|
+1 (cid:88) 1 (cid:88)
+=E (q,y∗)∼D E τ∼πθold (·|q) T  |at| L clip (ρt j ,A τ ). (12)
+t=1 j=1
+18
+Here,τ ={(st,at)}T representsasingle,arbitrarilysampledtrajectorywithadvantageA .
+t=1 τ
+Next,wecanre-interprettheexpectationovertrajectoriesasanexpectationoverthestate-visitation
+distribution induced by the policy π
+θold
+. Let dπθold be the on-policy distribution of states visited,
+whereeachstatestinatrajectoryoflengthT isweightedby1/T. Theexpectationcanberewritten
+as:
+   
+|at|
+1 (cid:88)
+J clip (θ)=E (q,y∗)∼D E st∼dπθold  E at∼πθold (·|st) |at| L clip (ρt j ,At). (13)
+j=1
+NotethatAtistheadvantagecorrespondingtothetrajectoryfromwhichstwassampled.
+Wenowrecognizethattheinnerexpectationispreciselythedefinitionofthelocal,per-stateobjec-
+tive,J (θ;st).
+local
+J clip (θ)=E (q,y∗)∼D,st∼dπθold (cid:2) J local (θ;st) (cid:3) . (14)
+AddingtheKL-divergencetermback,wearriveatthefinalequivalence:
+J Flow-GRPO (θ)=E (q,y∗)∼D,st∼dπθold (cid:2) J local (θ;st) (cid:3) −βD KL (π θ ∥π ref ). (15)
+Thisprovesthatmaximizingtheglobalmulti-turnFlow-GRPOobjectiveisequivalenttomaximiz-
+ing the expected token-level local objective at each time step under the on-policy induced state
+distribution.
+B.3 CONVERGENCEANALYSIS
+Havingestablishedthestructuralvalidityoftheobjective,wenowanalyzeitsconvergenceproper-
+ties. Theanalysisbuildsonthemonotonicimprovementguaranteeprovidedbytrust-regionmeth-
+ods(Schulmanetal.,2015).
+Lemma B.2 (Policy Performance Difference).For two policies π and π , the difference in ex-
+θ θold
+pectedreturncanbeexpressedas:
+(cid:34) T (cid:35)
+(cid:88)
+J(θ)−J(θ )=E A (st,at) , (16)
+old τ∼πθ θold
+t=1
+whereA istheadvantagefunctionundertheoldpolicy.
+θold
+Thislemmaenablestheconstructionofalowerboundonpolicyimprovement.
+TheoremB.3(MonotonicImprovementGuarantee).Definethesurrogateobjective
+L (θ)=E (cid:34) (cid:88) T π θ (at|st) A (st,at) (cid:35) . (17)
+θold τ∼πθold
+t=1
+π
+θold
+(at|st) θold
+Thentheperformanceimprovementsatisfiesthelowerbound
+J(θ)−J(θ ) ≥ L (θ)−C·D¯ (π ,π ), (18)
+old θold KL θold θ
+whereC >0isaconstantdependingonthehorizonandrewardscale,andD¯ denotestheaverage
+KL
+KL-divergencebetweenthetwopolicies.
+Byoptimizingtheright-handsideoftheaboveinequality,wecanexpecttoimprovetheperformance
+ofπ whenthepolicyupdateremainswithinatrustregion. Whiletheclippingmechanismprovides
+θ
+an approximate enforcement of this constraint, it does not offer strict guarantees. Empirically, for
+policiesπ andπ obtainedfromupdates,wetypicallyobserve:
+θold θ
+J(θ)≳J(θ ), (19)
+old
+where≳denotesnear-monotonicimprovementinpractice.
+Conclusion.ThisanalysisestablishesthatFlow-GRPOoptimizesatheoreticallygroundedsurrogate
+objectivethatapproximatestrustregionmethods. ThecombinationofclippingandKLregulariza-
+tion promotes stable policy improvement and reliable convergence to locally optimal policies, as
+validatedbyourexperiments.
+19
+C EXPERIMENTAL DETAILS
+C.1 EVALUATIONDETAILS
+Here,weoutlinethespecificsofourevaluationprotocol. Forevaluation,weincreasethemaximum
+number of turns per rollout to T = 10 to allow for more extensive and deeper reasoning. The
+planner’ssamplingtemperatureissetto0.7toencouragediversesolutionpaths. Unlessotherwise
+specified,alltoolLLMenginesareinitializedwithQwen2.5-7B-Instruct.
+Forfairandconsistentevaluation, weadoptthepreviouswork’smethodologywhilestandardizing
+tools(Luetal.,2025): wereplacesearchtoolsinsearch-enhancedmodelswithourGoogleSearch
+tool and code tools in code-enhanced models with our Python Coder tool. We use GPT-4o as an
+LLM-based judge to determine the correctness of final answers. This approach provides a robust
+measureofsemanticandnumericalequivalence,whichiscriticalforcomplexreasoningtasks. The
+specific judging prompt is detailed in §E.3, and additional information on evaluation datasets can
+befoundin§C.3. Tomitigaterandomness,wereporttheaverageaccuracywithstandarddeviation
+acrossthreetrialsforallexperiments.
+C.2 COMPAREDBASELINES
+ProprietaryLLMs:
+• Qwen2.5Series(Yangetal.,2024a),createdbyAlibaba,comesinmultipleconfigurations.These
+modelsundergotrainingonmultilingualcorporacovering29differentlanguages,demonstrating
+superiorperformanceincross-lingualapplications. Furthermore,Qwen2.5showcasesrobustpro-
+ficiencyinprogrammingandmathematicaldomains.
+• Llama-3 Series (Dubey et al., 2024), created by Meta AI, encompasses various iterations.
+Each model configuration within the Llama family provides dual versions: foundational and
+instruction-followingvariants. Trainingincorporatesdiversedatasetcombinationsspanningmul-
+tipledomainsandlinguisticvarieties. TheLlamamodelfamilydemonstratesexcellentresultsin
+logicalreasoning,softwaredevelopment,andcross-lingualcomprehensionevaluations. Through
+progressive enhancements in fine-tuning methodologies and expanded sequence lengths, these
+modelsbecomemoreapplicabletopracticaldeploymentscenarios.
+• GPT-4o Series (Hurst et al., 2024), produced by OpenAI, includes several model variants such
+asGPT-4oandGPT-4o-mini,withtrainingleveragingextensivemultimodaldatasetsencompass-
+ingtext, vision, andaudiomodalities. Theseriesachievesoutstandingperformanceincomplex
+reasoningtasks,creativegeneration,andmultimodalunderstandingbenchmarkswithcontinuous
+refinementsinalignmenttechniquesandenhancedprocessingcapabilities.
+ReasoningLLMs:
+• SFT(Zengetal.,2025b)servesasourbasicbaselinefollowingSearch-R1(Jinetal.,2025). We
+fine-tunemodelsusingsupervisedfine-tuningonGPT-4o-generatedreasoningchains.
+• SimpleRL-Zoo (Zeng et al., 2025b) investigates zero reinforcement learning training across 10
+diverse base models spanning different families and sizes using GRPO algorithm with simple
+rule-basedrewards,achievingsubstantialimprovementsinreasoningaccuracy.
+• Open-Reasoner-Zero(Huetal.,2025a)presentsthefirstopen-sourceimplementationoflarge-
+scale reasoning-oriented RL training using PPO with GAE and straightforward rule-based re-
+wards,withoutKLregularization. Theframeworkdemonstratesthatminimalistdesigncansuc-
+cessfullyscalebothresponselengthandbenchmarkperformance.
+• General-Reasoner (Ma et al., 2025) extends LLM reasoning capabilities beyond mathematics
+todiversedomainsusingRLVRthrougha230Kverifiablereasoningquestionsdatasetspanning
+physics,chemistry,andfinance.
+• LUFFY(Yanetal.,2025)addresseslimitationsinon-policyRLVRbyintroducinganoff-policy
+framework that augments training with external reasoning demonstrations using Mixed Policy
+GRPOandregularizedimportancesampling.
+Search-IntegratedReasoningLLMs:
+20
+• Iter-RetGen(Shaoetal.,2023)addresseslimitationsinretrieval-augmentedlanguagemodelsby
+introducing iterative retrieval-generation synergy, where a model’s previous response serves as
+contextforretrievingmorerelevantknowledgeinsubsequentiterations.
+• Search-R1(Jinetal.,2025)representsareinforcementlearningapproachthatdevelopsamodel
+fromthegrounduptoinvokesearchfunctionalitythroughoutthereasoningprocess.
+• ZeroSearch(Sunetal.,2025)addresseshighAPIcostsinRL-basedsearchtrainingbyusingan
+LLM to simulate search engines, employing lightweight supervised fine-tuning to transform an
+LLM into a retrieval module that generates both useful and noisy documents. The framework
+combines this with a curriculum-based rollout strategy that progressively degrades document
+quality,achievingbetterperformancethanrealsearchengine-basedmethodswhileincurringzero
+APIcosts.
+• ReSearch (Chen et al., 2025) proposes a reinforcement learning framework that trains LLMs
+to integrate search operations as components of the reasoning chain without supervised data on
+reasoningsteps,treatingsearchdecisionsasguidedbytext-basedthinking.
+• StepSearch (Wang et al., 2025d) addresses the sparse reward problem in multi-hop reasoning
+bytrainingsearchLLMsusingstep-wiseproximalpolicyoptimizationwithintermediaterewards
+andtoken-levelprocesssupervisionbasedoninformationgainandredundancypenalties.
+• VerlTool(Jiangetal.,2025)addressesfragmentationandsynchronizationbottlenecksinAgentic
+ReinforcementLearningwithToolusebyintroducingaunifiedmodularframeworkthatextends
+beyondsingle-turnRLVRparadigms,providingupstreamVeRLalignmentandunifiedtoolman-
+agementwithasynchronousrolloutexecutionachievingnear2×speedup.
+Code-IntegratedReasoningLLMs:
+• TIR(Yangetal.,2024b)isabasicbaselinethatdemonstratesthemodel’sabilitytogeneratecode
+fortoolutilization. Inourimplementation,wedirectlypromptthemodeltowritecodethatcalls
+theprogramminginterpreterandprocessesthereturnedresultstogeneratethefinalanswer.
+• ToRL (Li et al., 2025b) is a code-enhanced architecture developed via reinforcement learning
+that empowers models to independently activate code execution environments for mathematical
+reasoningtasks.
+Training-freeAgenticSystem
+• AutoGen(Wuetal.,2024)introducesanagenticconversationframeworkthatenablesdevelopers
+to build LLM applications through conversable agents that can operate using combinations of
+LLMs,humaninputs,andtools.
+C.3 EVALUATIONDATASETS
+We provide a detailed introduction to the search-intensive and agentic benchmarks in our experi-
+mentsasfollows:
+• Bamboogle (Press et al., 2023) presents a demanding multi-step reasoning dataset containing
+manuallyconstructedquestionsrequiringuptofourinferentialsteps. Thedatasetevaluatesmod-
+els’capacityforintricatecompositionalreasoningacrossinterconnectedfacts.
+• 2Wiki (2WikiMultihopQA) (Ho et al., 2020) constitutes a comprehensive multi-step QA cor-
+pus combining structured Wikidata knowledge with unstructured Wikipedia text. The dataset
+encompasses varied question formats and annotated reasoning chains to facilitate interpretable
+sequentialinference. Werandomlysample100examplesasatestsetforefficiency.
+• HotpotQA(Yangetal.,2018)representsawidely-adoptedquestionansweringcorpusfeaturing
+multi-stepqueriesconstructedfromWikipediaentries. Werandomlysample100examplesasa
+testsetforefficiency.
+• Musique(Trivedietal.,2022)comprisesamulti-stepreasoningcorpusrequiringsequentialin-
+ference where each reasoning stage depends on information derived from preceding steps. We
+conductevaluationsusingthedevelopmentpartitionofthisparticularlychallengingdataset. We
+randomlysample100examplesasatestsetforefficiency.
+21
+• GAIA (Mialon et al., 2023) constitutes a benchmark engineered to assess general AI systems
+andagents,demandingcapabilitiesincludingsequentialreasoning,webnavigation,andcompre-
+hensive tool utilization skills. We utilize the text-exclusive portion of this dataset, designed to
+challengebaselanguagemodelsinourexperimentalsetup.
+Furthermore,wealsoconductaseriesofexperimentsonmathandscientificreasoningbenchmarks:
+• AIME24(ArtofProblemSolving,2025)Acollectionof30demandingmathematicalproblems
+sourcedfromthe2024AmericanInvitationalMathematicsExamination(AIME),encompassing
+algebra, geometry, number theory, and combinatorics. Each JSONL-formatted record contains
+theproblemidentifier, questiontext, comprehensivesolutionmethodology,andthefinalnumer-
+icalresult. Createdtoassesslargelanguagemodels’sophisticatedmathematicalreasoningabil-
+ities, the dataset presents substantial difficulty, systematic multi-phase solutions, and distinctive
+answers—establishingitasarobustbenchmarkforevaluatingadvancedanalyticalcapabilities.
+• AMC23(MAA,2023)containsmathematicalproblemsderivedfromthe2023AmericanMathe-
+maticsCompetition,emphasizingareassuchasfunctionalequationsandcomplexanalysis.
+• GameOf24(Lile,2024)derivesfromthetraditionalnumericalpuzzleknownas24(alternatively
+calledthe24numbersgame).Thechallengerequiresutilizingfourgivennumberswithfundamen-
+tal arithmetic operations (addition, subtraction, multiplication, division) to create an expression
+yielding 24. For instance, with numbers 4, 9, 10, and 13, a correct solution would be “(10 - 4)
+× (13 - 9) = 24”. Successfully solving requires computational proficiency along with iterative
+attemptstovalidatepotentialsolutions. Eachchallengeisformattedasopen-endedinquiries.
+• GPQAorGraduateLevelGoogle-ProofQ&ABenchmark(Reinetal.,2024)comprisesacollec-
+tionofdemandingtext-basedmultiplechoiceproblemsauthoredbysubjectspecialistsinbiology,
+physics, and chemistry, intentionally crafted to be “exceptionally challenging”. We randomly
+sample100examplesasatestsetforefficiency.
+• MedQA (Jin et al., 2021) features text-based multiple choice problems assembled from profes-
+sionalmedicallicensingexaminations. Problemsencompasscomprehensivemedicalknowledge
+andclinicalreasoningskills.
+D MORE DISCUSSION ABOUT EXPERIMENT RESULTS
+D.1 MAINRESULTANALYSIS
+OurmainresultsarepresentedinTables1and2.Overall,AGENTFLOWconsistentlyoutperformsall
+baselinemodelsacrossdiversedomains,includingsearch-intensivetasks,agentictasks,andmathe-
+maticalandscientificreasoningtasks. Thesecomprehensiveresultsyieldseveralkeyinsights:
+MonolithicLLMsareinsufficientforcomplexreasoning. Whilescalingupmodelsize(from7B
+modeltoGPT-4o)improvesaverageperformance,theirmonolithicnaturepresentslimitationswhen
+facingcomplextasksthatrequiremulti-turnreasoningandsub-goaldecomposition. Incontrast,our
+proposed AGENTFLOW consistently outperforms these larger models. Specifically, it achieves an
+averageimprovementof8.2%overGPT-4oonsearch-intensivetasks(57.3%vs.49.1%inTable1),
+and a remarkable 15.8% gain over GPT-4o on agentic tasks (33.1% vs. 17.3% in Table 1). For
+mathematical reasoning benchmarks, AGENTFLOW obtains a substantial improvement of 16.4%
+over GPT-4o (51.5% vs. 35.1% in Table 2). Furthermore, it surpasses the strong Llama-3.3-70B
+by 12.5% on scientific reasoning tasks (63.5% vs. 51.0% in Table 2). These results demonstrate
+thatthecarefullydesignedagenticsystemof AGENTFLOW,despitebeingbuiltona7B-parameter
+backbone, can deliver superior and more efficient performance compared to substantially larger
+monolithicLLMs.
+Specialized reasoning models exhibit strong in-domain focus but limited generalizability.
+While domain-specific fine-tuning and tailored tool integration provide clear benefits over base
+LLMs,theyfailtodeliverrobustcross-domainperformanceduetofundamentalscalinglimitations.
+Ourevaluationacrossthreereasoningdomainssubstantiatestheselimitations. Onsearch-intensive
+tasks, specialized models such as Search-R1 (33.3%) and VerlTool (39.0%) perform well within
+theirnarrowscopeyetfallsubstantiallyshortof AGENTFLOW (57.3%)asshowninTable1. Sim-
+ilarly, in mathematical reasoning, methods like SimpleRL-reason (36.6%) and ToRL (37.0%) trail
+22
+significantlybehind AGENTFLOW (51.5%)inTable2. Eveninscientificreasoning,wheremodels
+such as Luffy (55.5%) offer competitive results, they are consistently surpassed by AGENTFLOW
+(63.5%)inTable2.Thesefindingsdemonstratethatwhilespecializedreasoningmodelsexcelwithin
+narrowdomains,theirrelianceonasinglemonolithicpolicyintroducespoorgeneralization,making
+thembrittlewhenconfrontedwithdiverse,cross-domainchallenges.
+AGENTFLOWdemonstratessuperior,versatilereasoningthroughitsadaptiveagenticsystem.
+AGENTFLOW establishes a new state-of-the-art agentic system by achieving an average accuracy
+of57.3%onsearch-intensivetasks,33.1%onagentictasks,51.5%onmathematicalreasoning,and
+63.5% on scientific reasoning. Our method’s advantage stems from combining an agentic system
+with targeted planning policy refinement via on-policy reinforcement learning in an online fash-
+ion. When compared to AutoGen—a general agent framework with the same backbone model—
+AGENTFLOW demonstrates a massive improvement of 14.9% on search tasks and 19.9% on math
+tasks. Thisunderscoresthatthecoreadvantagecomesfromourdedicatedtrainableagenticsystem
+thatintegratesournovelFlow-GRPOforin-systemon-policyoptimization,enablingeffectiveagent
+planningandtoolutilizationtosolvecomplex,long-horizonproblemsacrossdiversedomains.
+D.2 IN-DEPTHANALYSISOFOPTIMIZEDPLANNING
+AGENTFLOW adapts to inference-time tool scaling. We scale the tools—the Base Generator
+and Python Coder—to GPT-4o-powered versions. Empirical results on search and math datasets
+(Figure11)showthatAGENTFLOW,whenusingtheseGPT-4o-poweredtools,substantiallyoutper-
+formsitsperformancewithQwen2.5-7B-Instruct-poweredtools, achievingimprovementsof1.0%
+on GAIA, 6.0% on AMC23, and a notable 13.0% on HotpotQA. This finding further supports a
+consistenttrend: afterin-the-flowRLtraining,theplannercanadaptivelyleverageimprovementsin
+theunderlyingtoolstoenhancetheagenticsystem’soverallperformance.
+Flow-GRPOspontaneoustoolusagepreferencechange. Wefurthercomparetoolusagedistri-
+butionsbeforeandafterin-the-flowRLtrainingonMusique. Figure12showsthatduetoMusique’s
+needforadiversesourceofinformation,Flow-GRPOoptimizestheplannertoincreaseWebSearch
+to delve deeper into the URL provided by other search tools. This maneuver presents a steady
+performanceimprovementof6.1%.
+BaseGenerator GoogleSearch
+Qwen2.5-7B-Instruct GPT-4o
+WebSearch WikipediaSearch
+Acc:19.2% Acc:25.2%(+6.21%)
+AfterFinet-tuning
+-1.5
+38.7 38.5 13.6 -4.7
+13.6
++5.2
+13.6
+18.4
+-2.2
+3.1
+0.9
+Figure11: Toolscalingstudy. AGENTFLOW’s Figure12:ToolcalloptimizationonMusique.
+performance improves when its tools are up- AGENTFLOW’s planner increases Web Search
+gradedfromQwen-2.5-7B-InstructtoGPT-4o. usageafterFlow-GRPOtraining.
+23
+E INSTRUCTION TEMPLATES IN AGENTFLOW
+E.1 MODULESANDMEMORY
+E.1.1 ACTIONPLANNER
+ToolMetadatacanbefoundin§E.2.
+InstructionforActionPlanner
+Task:Determinetheoptimalnextsteptoaddressthequeryusingavailabletoolsandpreviouscontext.
+Context:
+Query:{Question}
+AvailableTools:[BaseGenerator,PythonCoder,GoogleSearch,WikipediaSearch,WebSearch]
+ToolboxMetadata:[ToolMetadata1,ToolMetadata2,...]
+PreviousSteps:{ActionsfromMemory}
+Instructions:
+1. Analyzethecurrentobjective,thehistoryofexecutedsteps,andthecapabilitiesoftheavailabletools.
+2. Selectthesinglemostappropriatetoolforthenextaction.
+3. Considerthespecificityofthetask(e.g.,calculationvs.informationretrieval).
+4. Consider the source of required information (e.g., general knowledge, mathematical computation, a
+specificURL).
+5. Considerthelimitationsofeachtoolasdefinedinthemetadata.
+6. Formulateaclear,concise,andachievablesub-goalthatpreciselydefineswhattheselectedtoolshould
+accomplish.
+7. Provideallnecessarycontext(e.g.,relevantdata,variablenames,filepaths,orURLs)sothetoolcan
+executeitstaskwithoutambiguity.
+ResponseFormat:
+1. Justification: Explainwhythechosentoolisoptimalforthesub-goal,referencingitscapabilitiesand
+thetaskrequirements.
+2. Context:Provideallprerequisiteinformationforthetool.
+3. Sub-Goal:Statetheexactobjectiveforthetool.
+4. ToolName:Statetheexactnameoftheselectedtool(e.g.,WikipediaSearch).
+Rules:
+Selectonlyonetoolperstep.
+TheSub-Goalmustbedirectlyandsolelyachievablebytheselectedtool.
+TheContextsectionmustcontainallinformationthetoolneeds;donotassumeimplicitknowledge.
+The final response must end with the Context, Sub-Goal, and Tool Name sections in that order. No
+additionaltextshouldfollow.
+E.1.2 TOOLEXECUTOR
+InstructionforToolExecutor
+Task:Generateaprecisecommandtoexecutetheselectedtool.
+Context:
+Query:{Question}
+Sub-Goal:{SubGoalfromNextStepPlan}
+ToolName:{SelectedToolfromNextStepPlan}
+ToolboxMetadata:{SelectedToolMetadatafromNextStepPlan}
+RelevantData:{ContextfromNextStepPlan}
+Instructions:
+1. Analyzethetool’srequiredparametersfromitsmetadata.
+2. ConstructvalidPythoncodethataddressesthesub-goalusingtheprovidedcontextanddata.
+3. Thecommandmustincludeatleastonecalltotool.execute().
+4. Eachtool.execute()callmustbeassignedtoavariablenamedexecution.
+24
+5. Useexactnumbers,strings,andparametersinthetool.execute()callbasedonthecontext.
+OutputFormat: Presentyourresponseinthefollowingstructuredformat. Donotincludeanyextratext
+orexplanations.
+Example1:
+GeneratedCommand:
+execution = tool.execute(query="Summarize the following porblom:"Isaac has
+100 toys, masa gets ...., how much are their together?")
+Example2:
+GeneratedCommand:
+execution = tool.execute(query=["Methanol", "function of hyperbola",
+"Fermat’s Last Theorem"])
+E.1.3 EXECUTIONVERIFIER
+InstructionforExecutionVerifier
+Task: Evaluateifthecurrentmemoryiscompleteandaccurateenoughtoanswerthequery,orifmore
+toolsareneeded.
+Context:
+Query:{Question}
+AvailableTools:[BaseGenerator,PythonCoder,GoogleSearch,WikipediaSearch,WebSearch]
+ToolboxMetadata:[ToolMetadata1,ToolMetadata2,...]
+Memory(ToolsUsed&Results):{ActionsfromMemory}
+Instructions:
+1. Reviewtheoriginalquery, theinitialanalysis, andthecompletehistoryofactionsandresultsinthe
+memory.
+2. Doestheaccumulatedinformationfullyaddressallaspectsofthequery?
+3. Arethereanyunansweredsub-questionsormissingpiecesofinformation?
+4. Arethereanyinconsistenciesorcontradictionsbetweendifferentsteps?
+5. Isanyinformationambiguous,potentiallyhallucinated,orinneedofverification?
+6. Determineifanyunusedtoolscouldprovidecriticalmissinginformationbasedontheirmetadata.
+FinalDetermination:
+If the memory is sufficient to form a complete and accurate answer, explain why and conclude with
+“Conclusion:STOP”.
+Ifmoreinformationisneeded,clearlystatewhatismissing,suggestwhichtool(s)couldhelp,andcon-
+cludewith“Conclusion:CONTINUE”.
+Rules:
+Theresponsemustendwitheitherexactly“Conclusion:STOP”or“Conclusion:CONTINUE”.
+Donotincludeanytextaftertheconclusionstatement.
+Yourjustificationmustbeconciseanddirectlytiedtothequeryandmemory.
+E.1.4 SOLUTIONGENERATOR
+InstructionforSolutionGenerator
+Task:Generateaconcisefinalanswertothequerybasedonallprovidedcontext.
+Context:
+Query:{Question}
+InitialAnalysis:{QueryAnalysis}
+ActionsTaken:{ActionsfromMemory}
+Instructions:
+25
+1. Carefullyreviewtheoriginaluserquery,theinitialanalysis,andthecompletesequenceofactionsand
+theirresults.
+2. Synthesizethekeyfindingsfromtheactionhistoryintoacoherentnarrative.
+3. Constructaclear,step-by-stepsummarythatexplainshoweachactioncontributedtosolvingthequery.
+4. Provideadirect,precise,andstandalonefinalanswertotheoriginalquery.
+OutputStructure:
+1. ProcessSummary:Aclear,step-by-stepbreakdownofhowthequerywasaddressed. Foreachaction,
+stateitspurpose(e.g.,“ToverifyX”)andsummarizeitskeyresultorfindinginonesentence.
+2. Answer:Adirectandconcisefinalanswertothequery.Thisshouldbeaself-containedstatementthat
+fullyresolvestheuser’squestion.
+Rules:
+Theresponsemustfollowtheexacttwo-partstructureabove.
+TheProcessSummaryshouldbeinformativebutconcise,focusingonthelogicalflowofthesolution.
+TheAnswermustbeplacedattheveryendandbeclearlyidentifiable.
+Donotincludeanyadditionalsections,explanations,ordisclaimersbeyondthespecifiedstructure.
+E.1.5 EVOLVINGMEMORY
+ExampleMemoryEntry
+"Query": Where is the largest shopping mall besides Tokyo’s biggest
+metropolitan station?
+"Action Turn 1": {
+"Tool Name": "Wikipedia Search",
+"Sub-Goal": "Retrieve detailed information about Tokyo‘s metropolitan
+area from Wikipedia.",
+"Command": "execution = tool.execute(query="Tokyo metropolitan area
+details")",
+"Result": "The Greater Tokyo Area is the largest metropolitan area in the
+world...",
+"Verification Status": "
+Brief Review of the Query, Initial Analysis, and Previous Memory.
+Assessment of Completeness and Accuracy.
+Conclusion: The memory is not complete and accurate enough to answer
+the query. Additional tools are needed to verify or generate more solutions.
+Final Determination: CONTINUE"
+},
+"Action Turn 2": {
+...
+},
+...
+"Action Turn t": {
+...
+"Verification Status": "
+Brief Review of the Query, Initial Analysis, and Previous Memory.
+Assessment of Completeness and Accuracy. (Including Time Dilation
+Calculation, Geographic Precise, Inconsistencies or Contradictions, Unit
+Conversion, etc. )
+Conclusion: The memory is complete and accurate enough to answer the
+query. No additional tools are needed to verify or generate more solutions.
+Final Determination: STOP"
+}
+Our shared evolving memory system creates a deterministic, structured record that captures the
+reasoningprocessacrossthreeintegratedagents:theActionPlanner,ToolExecutorr,andExecution
+26
+Verifier. By sequentially stacking crucial information from each action step, the system enables
+transparentstatetracking,controllablebehavior,andboundedcontextgrowth.
+Thememoryreadingandmatchingprocessemploysregularexpressionstoparseoutputsgenerated
+bydifferentsystemcomponents,adheringtostandardizedformatsdefinedintheirrespectivecom-
+ponent instructions. For the Action Planner, we use a relatively permissive regular expression to
+extract key information. Specifically, it matches the content immediately following: Sub-Goal as
+thesub-goalandthecontentfollowing;ToolNameastheselectedtool. Thisextractedinformation
+isthenusedtopopulatethenextmemoryentry. FortheToolExecutorr,theregularexpressionisde-
+signedtocapturetheentireCommandlinestartingwithexecution = tool.execute(...).
+Additionally,thevaluepassedtotheQueryparameterwithinthiscommandisparsedandsavedinto
+the memory for future reference. All results returned by the tools are directly stored in the Result
+fieldofthememory. TheVerificationStatusisextractedfromExecutionVerifier,includingabrief
+analysisofthecurrenttoolresultandpreviousmemory,andthenitgivesaconclusionwhetherthe
+loopneedstobeCONTINUEorSTOP.
+E.2 TOOLSETMETADATA
+This section details the implementation and metadata of the tools used in our main results. We
+employasuiteofspecializedtools,eachdesignedfordistincttasks.Below,wepresentcoremetadata
+foreachtool,includingitsfunctionality,input/outputschema,limitations,andbestpractices.
+E.2.1 BASEGENERATOR
+ToolMetadataofBaseGenerator
+Description: Ageneralizedtoolthattakesqueryfromtheuser,andanswersthequestionstepbystepto
+thebestofitsability.Itcanalsoacceptanimage.
+Input:query:str-Thequerythatincludesqueryfromtheusertoguidetheagenttogenerateresponse.
+Output:str-Thegeneratedresponsetotheoriginalquery
+DemoCommands:
+Command:
+execution = tool.execute(query="Summarize the following text in a few
+lines")
+Description:Generateashortsummarygiventhequeryfromtheuser.
+Limitation
+TheBaseGeneratormayprovidehallucinatedorincorrectresponses.
+BestPractice
+1. Useitforgeneralqueriesortasksthatdon’trequirespecializedknowledgeorspecifictoolsinthe
+toolbox.
+2. Provideclear,specificquery.
+3. Useittoanswertheoriginalquerythroughstepbystepreasoningfortaskswithoutcomplexor
+multi-stepreasoning.
+4. Forcomplexqueries,breakthemdownintosubtasksandusethetoolmultipletimes.
+5. Useitasastartingpointforcomplextasks,thenrefinewithspecializedtools.
+6. Verifyimportantinformationfromitsresponses.
+LLMEngineRequired:True
+27
+E.2.2 PYTHONCODER
+ToolMetadataofPythonCoder
+Description:AtoolthatgeneratesandexecutessimplePythoncodesnippetsforbasicarithmeticalcalcu-
+lationsandmath-relatedproblems. Thegeneratedcoderunsinahighlyrestrictedenvironmentwithonly
+basicmathematicaloperationsavailable.
+Input:query:str-Aclear,specificdescriptionofthearithmeticcalculationormathproblemtobesolved,
+includinganynecessarynumericalinputs.
+Output:dict-Adictionarycontainingthegeneratedcode,calculationresult,andanyerrormessages.
+Outputprompt: Givenaquery,generateaPythoncodesnippetthatperformsthespecifiedoperationon
+theprovideddata. Pleasethinkstepbystep. Ensuretobreakdowntheprocessintoclear,logicalsteps.
+Makesuretoprintthefinalresultinthegeneratedcodesnippetwithadescriptivemessageexplainingwhat
+theoutputrepresents.Thefinaloutputshouldbepresentedinthefollowingformat:
+‘‘‘python
+<code snippet>
+‘‘‘
+DemoCommands:
+Command:
+execution = tool.execute(query="Find the sum of prime numbers up to 50")
+Description:GenerateaPythoncodesnippettofindthesumofprimenumbersupto50.
+Command:
+query=" Given the list [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], calculate the sum of
+squares of odd numbers"
+execution = tool.execute(query=query)
+Description:GenerateaPythonfunctionforamathematicaloperationonagivenlistofnumbers.
+Limitation
+1. RestrictedtobasicPythonarithmeticoperationsandbuilt-inmathematicalfunctions.
+2. Cannotuseanyexternallibrariesormodules,includingthoseinthePythonstandardlibrary.
+3. Limitedtosimplemathematicalcalculationsandproblems.
+4. Cannotperformanystringprocessing,datastructuremanipulation,orcomplexalgorithms.
+5. Noaccesstoanysystemresources,fileoperations,ornetworkrequests.
+6. Cannotuse‘import’statements.
+7. Allcalculationsmustbeself-containedwithinasinglefunctionorscript.
+8. Inputmustbeprovideddirectlyinthequerystring.
+9. Outputislimitedtonumericalresultsorsimplelists/tuplesofnumbers.
+10. Outputshouldbekepttoasinglenumericalresultorasimplelist/tupleofnumbers.
+11. DONOTgenerateloopoutput.
+BestPractice
+1. Provideclearandspecificqueriesthatdescribethedesiredmathematicalcalculation.
+2. Includeallnecessarynumericalinputsdirectlyinthequerystring.
+3. Keeptasksfocusedonbasicarithmetic,algebraiccalculations,orsimplealgorithms.
+4. Ensureallrequirednumericaldataisincludedinthequery.
+5. Verifythatthequeryonlyinvolvesmathematicaloperationsanddoesnotrequireanydatapro-
+cessingorcomplexalgorithms.
+6. ReviewgeneratedcodetoensureitonlyusesbasicPythonarithmeticoperationsandbuilt-inmath
+functions.
+LLMEngineRequired:True
+28
+E.2.3 GOOGLESEARCH
+ToolMetadataofGoogleSearch
+Description: AwebsearchtoolpoweredbyGoogleSearchthatprovidesreal-timeinformationfromthe
+internetwithcitationsupport.
+Input:query:str-Thesearchquerytofindinformationontheweb.
+Input: add citations: bool-Whethertoaddcitationstotheresults. IfTrue,theresultswillbeformatted
+withcitations.Bydefault,itisTrue.
+Output:str-Thesearchresultsofthequery.
+DemoCommands:
+Command:
+execution = tool.execute(query="What is the capital of France?")
+Description:SearchforgeneralinformationaboutthecapitalofFrancewithdefaultcitationsenabled.
+Command:
+execution = tool.execute(query="Who won the euro 2024?", addcitations=False)
+Description:SearchforinformationabouttheEuro2024winnerwithoutcitations.
+Command:
+execution = tool.execute(query="Physics and Society article arXiv August 11,
+2016", addcitations=True)
+Description:Searchforspecificacademicarticleswithcitationsenabled.
+Limitation
+1. Thistoolisonlysuitableforgeneralinformationsearch.
+2. Thistoolcontainslessdomain-specificinformation.
+3. ThistoolisnotsuitableforsearchingandanalyzingvideosonYouTubeorothervideoplatforms.
+BestPractice
+1. Choosethistoolwhenyouwanttosearchforgeneralinformationaboutatopic.
+2. Choosethistoolforquestiontypesofquery,suchas“WhatisthecapitalofFrance?” or“Who
+inventedthetelephone?”.
+3. Thetoolwillreturnsummarizedinformation.
+4. Thistoolismoresuitablefordefinition,worldknowledge,andgeneralinformationsearch.
+LLMEngineRequired:False
+29
+E.2.4 WIKIPEDIASEARCH
+Wikipedia search will first call Wikipedia API to retrieve relevant URLs with snippets. Then the
+RAG (Retrieval-Augmented Generation) process begins by extracting raw text content from the
+givenwebpageURL,cleaningittoremoveHTMLelementsandretainonlymeaningfultext. This
+content is then split into overlapping chunks of approximately 200 words each, with a 20-word
+overlap to preserve context across segments from the first 1M words in each URL. Next, both
+the user’s query and the document chunks are embedded into the vector space using the OpenAI
+text-embedding-3-small1 model. The system computes the cosine similarity between the
+queryembeddingandeachchunkembeddingtorankthechunksbyrelevance. Wesetthatthetop
+10 most similar chunks are selected and passed forward as context. And a base LLM engine will
+summarizetheextractedcontext.
+ToolMetadataofWikipediaSearch
+Description:AtoolthatsearchesWikipediaandreturnsrelevantpageswiththeirpagetitles,URLs,ab-
+stract,andretrievedinformationbasedonagivenquery.
+Input:query:str-ThesearchqueryforWikipedia.
+Output: dict-Adictionarycontainingsearchresults,allmatchingpageswiththeircontent,URLs,and
+metadata.
+DemoCommands:
+Command:
+execution = tool.execute(query="What is the exact mass in kg of the moon")
+Description:SearchWikipediaandgettheinformationaboutthemassofthemoon.
+Command:
+execution = tool.execute(query="Funtion of human kidney")
+Description:SearchWikipediaandgettheinformationaboutthefunctionofthehumankidney.
+Command:
+execution = tool.execute(query="When was the first moon landing?")
+Description:SearchWikipediaandgettheinformationaboutthefirstmoonlanding.
+Limitation
+1. ItisdesignedspecificallyforretrievinggroundedinformationfromWikipediapagesonly.
+2. FilteringofrelevantpagesdependsonLLMmodelperformanceandmaynotalwaysselectopti-
+malpages.
+3. ThereturnedinformationaccuracydependsonWikipedia’scontentquality.
+BestPractice
+1. Usespecific,targetedqueriesratherthanbroadorambiguousquestions.
+2. The tool automatically filters for relevant pages using LLM-based selection - trust the “rele-
+vant pages”results.
+3. Ifinitialresultsareinsufficient,examinethe“other pages”sectionforadditionalpotentiallyrel-
+evantcontent.
+4. Usethistoolaspartofamulti-stepresearchprocessratherthanasinglesourceoftruth.
+5. YoucanusetheWebSearchtogetmoreinformationfromtheURLs.
+LLMEngineRequired:True
+1https://platform.openai.com/docs/models/text-embedding-3-small
+30
+E.2.5 WEBSEARCH
+WebsearchwilldirectlyaccesstheURLinthequery. ThentheRAG(Retrieval-AugmentedGener-
+ation)processbeginsbysplittingcontentfromthepageintooverlappingchunksofapproximately
+200wordseach,witha20-wordoverlaptopreservecontextacrosssegmentsfromthefirst1Mwords
+in each URL. Next, both the user’s query and the document chunks are embedded into the vector
+spaceusingtheOpenAItext-embedding-3-small2model.Thesystemcomputesthecosinesimilarity
+betweenthequeryembeddingandeachchunkembeddingtorankthechunksbyrelevance. Weset
+that the top 10 most similar chunks are selected and passed forward as context. And a base LLM
+enginewillsummarizetheextractedcontext.
+ToolMetadataofWebSearch
+Description: Aspecializedtoolforansweringquestionsbyretrievingrelevantinformationfromagiven
+websiteusingRAG(Retrieval-AugmentedGeneration).
+Input:query:str-Thesearchqueryforthewebsite.
+Input:url:str-TheURLofthewebsitetoretrieveinformationfrom.
+Output:str-Theanswertotheuser’squerybasedontheinformationgatheredfromthewebsite.
+DemoCommands:
+Command:
+execution = tool.execute(query="What is the exact mass in kg of the moon?",
+url="https://en.wikipedia.org/wiki/Moon")
+Description:Retrieveinformationaboutthemoon’smassfromWikipedia.
+Command:
+execution = tool.execute(query="What are the main features of Python
+programming language?", url="https://www.python.org/about/apps/")
+Description:GetinformationaboutPythonfeaturesfromtheofficialwebsite.
+Limitation
+1. RequiresvalidURLsthatareaccessibleandcontaintextcontent.
+2. MaynotworkwithJavaScript-heavywebsitesorthoserequiringauthentication.
+3. Performancedependsonthequalityandrelevanceofthewebsitecontent.
+4. Mayreturnincompleteorinaccurateinformationifthewebsitecontentisnotcomprehensive.
+5. Limitedbythechunkingandembeddingprocesswhichmaymisscontext.
+6. RequiresOpenAIAPIaccessforembeddingsandLLMgeneration.
+BestPractice
+1. Usespecific,targetedqueriesratherthanbroadquestions.
+2. EnsuretheURLisaccessibleandcontainsrelevantinformation.
+3. Preferwebsiteswithwell-structured,text-richcontent.
+4. Forcomplexqueries,breakthemdownintosmaller,specificquestions.
+5. Verifyimportantinformationfrommultiplesourceswhenpossible.
+6. Useitaspartofamulti-stepresearchprocessratherthanasinglesourceoftruth.
+7. Itishighlyrecommendedtousethistoolaftercallingotherweb-basedtools(e.g.,GoogleSearch,
+WikipediaSearch,etc.)togetthereal,accessibleURLs.
+LLMEngineRequired:True
+2https://platform.openai.com/docs/models/text-embedding-3-small
+31
+E.3 LLM-BASEDJUDGING
+WeemployGPT-4oasourjudgemodelusingatwo-step“analyze-then-judge”instructionparadigm
+toensurebothaccuracyandefficiency.
+RewardFunctionInstructioninTraining
+Task:DetermineiftheModelResponseisequivalenttotheGroundTruth.
+Instructions:
+1. Extract:IsolatethefinalanswerfromtheModelResponse,ignoringallreasoningsteps.Lookspecif-
+icallyforcontentwithin ... ortheconcludingstatement.
+2. Normalize&Compare:Assessequivalenceafternormalization:
+3. MathematicalAnswers:Mustbemathematicallyidentical(e.g., 1 isequivalentto0.5).
+2
+4. Numerical/Textual Answers: Ignore formatting (commas, spaces), case sensitivity, and extraneous
+units/currency(e.g.,“1,000”==“1000”,“Paris”==“PARIS”).
+5. MultipleChoiceQuestions(MCQ):Theanswermustmatcheitherthecorrectoption’scontent(e.g.,
+“Paris”)oritsidentifier(e.g.,“A”or“1st”).
+6. Verdict:Return“True”onlyifthenormalizedanswersaresemanticallyormathematicallyequivalent.
+Inputs:
+Question:{Question}
+ModelResponse:{FinalResponsefromSolutionGenerator}
+GroundTruth:{GT}
+OutputFormat: Presentyourresponseinthefollowingstructuredformat. Donotincludeanyextratext
+orexplanations.
+<analysis>:Briefanalysisofthecomparison.
+<truefalse>:“True”or“False”.
+32
+F CASE STUDIES
+In this section, we conduct a case study to demonstrate how our AGENTFLOW, coherent with
+Flow-GRPO,enhancesproblem-solvingperformancewithgreaterelegance,efficiency,androbust-
+ness. WepresentsolutioncomparisonsshowingbriefoutputsfrommemoryoftheActionPlanner
+(Qwen2.5-7B-Instruct)before(w/o)tuningbyFlow-GRPOandafter(w/)Flow-GRPOtuning,with
+themethodologydetailedin§3.2.
+F.1 EXAMPLE1: EFFICIENTSEARCHFORSIMPLETASKS
+Thiscasedemonstratesthat, withFlow-GRPOtuning, theActionPlanner caneffectivelyleverage
+thesearchenginetoretrievecorrectanswersforsimpletasksinahighlyefficientmanner—unlike
+theuntunedbaseline,whichrequiresmultipletrials.
+Examplefrom#GameOf24
+Question: Using the numbers [1, 1, 1, 13], create an expression that equals 24. You must use basic
+arithmeticoperations(+,-,*,/)andparentheses.
+Answer:(13-1)*(1+1)
+SuccessCase: AGENTFLOWw/Flow-GRPO
+ActionStep1:
+• Tool:Google Search
+• Sub-goal:Findavalidarithmeticexpressionthatequals24usingthenumbers[1,1,1,13].
+• Command:
+tool.execute(query="[1, 1, 1, 13] arithmetic expression to get 24")
+• Result: Here’sanarithmeticexpressionusingthenumbers1,1,1,and13toget24: (13-1)*(1+
+1)=24
+ExecutionVerifier:PASS,STOP
+SolutionGenerator:Thearithmeticexpressionis((13−1)×(1+1))=24.
+FailureCase: AGENTFLOWw/oFlow-GRPO
+ActionStep1:
+• Tool:Python Coder
+• Sub-goal: Generate and test all possible combinations of the numbers [1, 1, 1, 13] using basic
+arithmeticoperationsandparenthesestofindanexpressionthatequals24.
+• Command:
+tool.execute(query="[1, 1, 1, 13] execution = (1 * (13 - 1 - 1))")
+• Result:
+# Define the values
+valuelist = [1, 1, 1, 13]
+operationresult = 1 * (13 - 1 - 1)
+# Print the result with a descriptive message
+print(f"The result of the operation is: operationresult")
+Theresultoftheoperationis:11
+ActionStep2:
+• Tool:Python Coder
+• Sub-goal: Generate and test all possible combinations of the numbers [1, 1, 1, 13] using basic
+arithmeticoperationsandparenthesestofindanexpressionthatequals24.
+• Command:
+tool.execute(query="[1, 1, 1, 13] -> ((1 + 1 + 1) * 13)")
+• Result:Error:unexpectedindent(<string>,line2).
+ActionSteps3-8:
+• Tool:No matched tool given(ToolNotFound)
+33
+• Sub-goal: Generate and test all possible combinations of the numbers [1, 1, 1, 13] using basic
+arithmeticoperationsandparenthesestofindanexpressionthatequals24.
+• Command:Notcommandisgeneratedduetothetoolnotfound.
+• Result:Notresultisgeneratedduetothetoolnotfound.
+• Note:Thesestepsareidenticalrepetitionswheretheagentfailedtofindamatchingtool.
+ExecutionVerifier:STOP,ToolNotFound
+SolutionGenerator: Theagentincorrectlyconcludesthat(1+1+1)×13=24.
+F.2 EXAMPLE2: SPONTANEOUSBRUTE-FORCE
+Thiscasedemonstratesthat,whentunedwithFlow-GRPO,theActionPlannerfirstattemptsseveral
+solutions,recognizestheirineffectiveness,resortstoabrute-forceapproach,andfinallyverifiesthe
+resultusingasearchengine.
+Examplefrom#GameOf24
+Question: Using the numbers [1, 1, 6, 9], create an expression that equals 24. You must use basic
+arithmeticoperations(+,-,*,/)andparentheses.
+Answer:(1+1)*9+6
+SuccessCase: AGENTFLOWw/Flow-GRPO
+ActionStep1:InitialAttempt
+• Tool:Python Coder
+• Sub-goal:Generateandtestallpossiblearithmeticexpressionsusingthenumbers[1,1,6,9]exactly
+oncetocheckifanycombinationequals24.
+• Command:
+tool.execute(query="Using the numbers [1, 1, 6, 9], create an expression
+that equals 24 using basic arithmetic operations and parentheses.")
+• Result:
+# Given numbers
+numbers = [1, 1, 6, 9]
+# Calculate the expression
+result = (numbers[0] + numbers[1]) * (numbers[3] - numbers[2])
+# Print the result
+print(f"The result of the expression (numbers[0] + numbers[1] ) *
+(numbers[3] - numbers[2]) is: result")
+Theresultoftheexpression(1+1)*(9-6)is:6
+ActionStep2:ToolError
+• Tool:Python Coder
+• Sub-goal:Generateandtestallpossiblepermutationsofthenumberswithdifferentoperatorplace-
+mentstofindanexpressionthatequals24.
+• Command:
+tool.execute(query="Using the numbers [1, 1, 6, 9], create an expression
+with +,-,*,/ that equals 24")
+• Result:Error:eval()arg1mustbeastring,bytesorcodeobject
+ActionStep3:SecondAttempt
+• Tool:Python Coder
+• Sub-goal: Generateallpossiblecombinationsofthefournumberswitheverypermutationofoper-
+ators(+,-,*,/)tofindavalidequationresultinginexactly24.
+• Command:
+tool.execute(query="Using the numbers [1, 1, 6, 9] create an expression
+with +,-,*,/ that equals to ’24’")
+• Result:
+# Given numbers
+numbers = [1, 1, 6, 9]
+34
+# Calculate the expression
+result = (numbers[2] - numbers[0]) * (numbers[3] / numbers[1]) /
+numbers[1]
+# Print the result
+print(f"The result of the expression is: result")
+Theresultoftheexpressionis:45.0
+ActionStep4:SystematicSearch(Breakthrough)
+• Tool:Python Coder
+• Sub-goal:Generateandevaluateallpossiblepermutationsofthefournumberswitheverypermuta-
+tionofoperators(+,-,*,/)tofindavalidequationresultinginexactly24.
+• Command:
+tool.execute(query="Using the numbers [1, 1, 6, 9] create an expression
+that equals 24 using +,-,/,*")
+• Result: Successfullyfoundvalidexpressions: Theexpression(1+1)*9+6equals24. Theexpres-
+sion6+(1+1)*9equals24.Theexpression6+(9*(1+1))equals24.Theexpression9*(1+1)+6equals
+24.
+ActionStep5:ConfusedVerification
+• Tool:Python Coder
+• Sub-goal: Simplifyandverifyifanyminoradjustmentstotheexistingpromisingexpressioncan
+achieveanexactmatchof24.
+• Command:
+tool.execute(query="Using the numbers [1, 1, 6, 9] and basic arithmetic
+operations create an expression that equals 24: (9 * (6 * (1 + 1)))")
+• Result:Theresultoftheexpression(9*(1+1)*6)is:108
+ActionStep6:FinalVerification
+• Tool:Google Search
+• Sub-goal: Search online for examples or discussions related to creating expressions using given
+numbersthatequalatargetvalue.
+• Command:
+tool.execute(query="using the numbers [1, 1, 6, 9] create an expression
+that equals 24", addcitations=True)
+• Result:Here’sanexpressionusingthenumbersthatequals24:(1+1)*9+6=24
+ExecutionVerifier:PASS,STOP(viaexhaustivesearchandverification)
+Solution Generator: After a multi-step process of trial, error, and verification, the final correct
+expressionis(1+1)*9+6=24.
+FailureCase: AGENTFLOWw/oFlow-GRPO
+ActionStep1:
+• Tool:Python Coder
+• Sub-goal:GenerateandtestPythoncodesnippetstofindanarithmeticexpressionusingthenumbers
+[1,1,6,9]exactlyoncethatequals24.
+• Command:
+tool.execute(query="Using the numbers [1, 1, 6, 9], create an expression
+that equals 24 using basic arithmetic operations and parentheses.")
+• Result:
+# Define the numbers
+numbers = [1, 1, 6, 9]
+# Calculate the expression
+result = (6 * 9) - ((1 + 1) * 15)
+# Print the result with a descriptive message
+print("The result of the expression is:", result)
+Theresultoftheexpressionis:24
+ExecutionVerifier:STOP
+SolutionGenerator: Theagentincorrectlyconcludestheansweris(6×9)−((1+1)×15),failing
+tonoticeitusedthenumber15,whichwasnotintheallowedinputset.
+35
+F.3 EXAMPLE3: AGOODINITIALPLANISESSENTIAL
+This case demonstrates that a well-crafted initial search with a highly relevant query is far more
+effectivethanissuingnumerouswrongpaths. WhentunedwithFlow-GRPO,theActionPlannerin
+AGENTFLOWcanidentifytheoptimalsearchengineandformulatethemosteffectivequery,leading
+toacorrectandtargetedanswerinasingletrial.
+Examplefrom#GAIA
+Question:AssumingscientistsinthefamousyoutubevideoTheThinkingMachine(ArtificialIntelligence
+in the 1960s) were interviewed the same year, what is the name of the scientist predicting the sooner
+thinkingmachinesorrobots?AnswerusingtheformatFirstnameLastname.
+Answer:ClaudeShannon
+SuccessCase: AGENTFLOWw/Flow-GRPO
+ActionTurn1:
+• Tool:Google Search
+• Sub-goal: Searchfordetailson”TheThinkingMachine”YouTubevideoandidentifykeyfigures
+makingpredictionsaboutAI.
+• Command:
+tool.execute(query="Assuming scientists in the famous youtube video The
+Thinking Machine (Artificial Intelligence in the 1960s) were interviewed
+the same year, what is the name of the scientist predicting sooner
+thinking machines or robots?")
+• Result: Thescientistwhopredictedthesooneremergenceofthinkingmachinesorrobotsin“The
+Thinking Machine” video from the 1960s was Claude Shannon. He stated, “I confidently expect
+thatwithin10or15yearswewillfindemergingfromthelaboratoriessomethingnottoofarfrom
+therobotsofscience-fictionfame.” Thispredictionwasmadeinthe1961documentary,whichwas
+producedbyCBStohonorMIT’s100thbirthday.
+ExecutionVerifier:PASS,STOP
+SolutionGenerator: ThescientistwhomadethepredictionisClaudeShannon.
+FailureCase: AGENTFLOWw/oFlow-GRPO
+ActionTurn1:
+• Tool:Web Search
+• Sub-goal: RetrieveinformationfromtheYouTubevideo“TheThinkingMachine”(ArtificialIntel-
+ligenceinthe1960s)toidentifythenameofthescientistwhomadethepredictionaboutthinking
+machinesorrobots.
+• Command:
+tool.execute(query="Who predicted the sooner thinking machines or robots
+in the YouTube video ’The Thinking Machine’ (Artificial Intelligence in
+the 1960s)?", url="https://www.youtube.com/watch?v=yourvideoid")
+• Result:Thereferenceinformationprovideddoesnotcontainanydetailsregardingpredictionsmade
+aboutthinkingmachinesorrobotsintheYouTubevideo’TheThinkingMachine’(ArtificialIntelli-
+genceinthe1960s).Therefore,Icannotprovideananswertothequery.
+ActionTurn2:
+• Tool:Google Search
+• Sub-goal:Findthenameofthescientistwhopredictedthesoonerdevelopmentofthinkingmachines
+orrobotsintheYouTubevideo“TheThinkingMachine”(ArtificialIntelligenceinthe1960s).
+• Command:
+tool.execute(query="In the YouTube video The Thinking Machine (Artificial
+Intelligence in the 1960s), which scientist predicted the sooner
+development of thinking machines or robots?", addcitations=True)
+• Result:IntheYouTubevideo“TheThinkingMachine(ArtificialIntelligenceinthe1960s),”Jerome
+Wiesner,thenDirectoroftheResearchLaboratoryofElectronicsatMIT,predictedthesoonerde-
+36
+velopmentofthinkingmachines. Hestated,“ifyoucomebackinfouror5yearsI’llsay‘Surethey
+reallydothink.”’
+ActionTurn3:
+• Tool:Google Search
+• Sub-goal:Findthenameofthescientistwhopredictedthesoonerdevelopmentofthinkingmachines
+orrobotsintheYouTubevideo“TheThinkingMachine”(ArtificialIntelligenceinthe1960s).
+• Command:
+tool.execute(query="In the YouTube video The Thinking Machine (Artificial
+Intelligence in the 1960s), which scientist predicted the sooner
+development of thinking machines or robots?", addcitations=True)
+• Result: IntheYouTubevideo“TheThinkingMachine(ArtificialIntelligenceinthe1960s),”Pro-
+fessor Jerome B. Wiesner, director of the research laboratory of electronics at MIT, predicted the
+soonerdevelopmentofthinkingmachines.Hestated,“Isuspectifyoucomebackinfouror5years
+I’llsay‘Suretheyreallydothink.”’ Anotherscientistinthevideoconfidentlyexpected“withina
+matterof10or15yearssomethingwillemergefromthelaboratorieswhichisnottoofarfromrobot
+asciencefictionfan.”
+ActionTurn4:
+• Tool:Google Search
+• Sub-goal: Find the exact year of the interview in the YouTube video “The Thinking Machine”
+(ArtificialIntelligenceinthe1960s)whereJeromeB.Wiesnermadethepredictionaboutthinking
+machinesorrobots.
+• Command:
+tool.execute(query="In the YouTube video The Thinking Machine (Artificial
+Intelligence in the 1960s), which scientist predicted the sooner
+development of thinking machines or robots?", addcitations=True)
+• Result: In the YouTube video “The Thinking Machine (Artificial Intelligence in the 1960s),” a
+scientistconfidentlypredictedthat“withinamatterof10or15yearssomethingwillemergefrom
+thelaboratorieswhichisnottoofarfromtherobotofsciencefictionfame.”Whilethevideofeatures
+interviews with several pioneering scientists in artificial intelligence, including Jerome Wiesner,
+OliverSelfridge,andClaudeShannon,thespecificspeakerforthisparticularpredictionaboutthe
+emergenceofrobotswithin10to15yearsisnotexplicitlynamedintheprovidedtranscripts.Jerome
+Wiesner,oneoftheco-hosts,alsomadeaprediction,statinghesuspectedthatin“fouror5years”
+machineswould“reallydothink.”
+ActionTurn5:
+• Tool:Google Search
+• Sub-goal: Find the exact year of the interview in the YouTube video “The Thinking Machine”
+(ArtificialIntelligenceinthe1960s).
+• Command:
+tool.execute(query="When was the YouTube video ’The Thinking Machine’
+released?", addcitations=True)
+• Result: Theoriginaltelevisionprogramtitled‘TheThinkingMachine’airedontheCBSTVnet-
+workonOctober26,1960.ItwasaspecialprogramproducedbyCBSNewsinconjunctionwiththe
+MassachusettsInstituteofTechnology(MIT).Thisdocumentaryexploredearlyconceptsofartifi-
+cialintelligenceandcomputers. Whiletheoriginalbroadcastwasin1960,variousversionsof‘The
+ThinkingMachine’havebeenuploadedtoYouTubeatdifferenttimes.
+ActionTurn6:
+• Tool:Google Search
+• Sub-goal:FindtheexactyearoftheinterviewintheYouTubevideo“TheThinkingMachine”(Arti-
+ficialIntelligenceinthe1960s)whereJeromeWiesnermadehispredictionaboutthinkingmachines
+orrobots.
+• Command:
+tool.execute(query="In which year did Jerome Wiesner make his prediction
+about thinking machines or robots in the YouTube video ’The Thinking
+Machine’ (Artificial Intelligence in the 1960s)?", addcitations=True)
+• Result: Jerome Wiesner made his prediction about thinking machines or robots in the YouTube
+video ‘The Thinking Machine’ (Artificial Intelligence in the 1960s) in 1960. The documentary,
+whichfeaturesWiesner,originallyairedonOctober26,1960,aspartofaCBSseriestitled“Tomor-
+row”. Inthevideo,Wiesnerstatedhisconfidentexpectationthat“withinamatterof10or15years
+somethingwillemergefromthelaboratorieswhichisnottoofarfromrobotasciencefictionfan”.
+37
+ExecutionVerifier:STOP,InitialToolFailure&InefficientSearchPath
+SolutionGenerator:TheanswerisJeromeB.Wiesner.However,theinitialdirectvideosearchfailed,
+leadingtomultiple,somewhatredundantGooglesearchestoextracttheinformation.
+F.4 EXAMPLE4: ROBUSTSELF-CORRECTIONANDADAPTATION
+Thisside-by-sidecomparisonillustratesthecriticalimpactofFlow-GRPOtuningonstrategictool
+usage. The trained AGENTFLOW agent demonstrates adaptive planning—recovering from failed
+searches, refininginputformulations, andultimatelyachievingacorrectsolutioninasingleeffec-
+tive trial. In contrast, the untrained agent, despite accessing the correct information early, fails to
+properly utilize the Python Coder tool and becomes trapped in a repetitive error loop, unable to
+learnoradjust. ThishighlightsFlow-GRPO’sroleinenablingnotjusttoolselection, butstrategic
+resilienceandgoal-directedreasoning.
+Examplefrom#GAIA
+Question: Compute the check digit the Tropicos ID for the Order Helotiales would have if it were an
+ISBN-10number.
+Answer:3
+SuccessCase: AGENTFLOWw/Flow-GRPO
+ActionStep1:
+• Tool:Wikipedia Search
+• Sub-goal:RetrievetheTropicosIDfromtheWikipediapageonHelotiales.
+• Command:
+tool.execute(query="Tropicos ID of Order Helotiales")
+• Result:Noresultsfoundforquery:TropicosIDofOrderHelotiales
+ActionStep2:
+• Tool:Google Search
+• Sub-goal:RetrievetheTropicosIDofOrderHelotialesfromareliableonlinesource.
+• Command:
+tool.execute(query="Tropicos ID of Order Helotiales")
+• Result:TheTropicosIDfortheOrderHelotialesis100370510.
+ActionStep3:
+• Tool:Python Coder
+• Sub-goal: WriteandexecuteaPythonscripttocalculatethecheckdigitfortropicosidasifit
+wereanISBN-10number.
+• Command:
+tool.execute(query="Calculate the check digit for the ISBN-10 number " +
+tropicosid)
+• Result:Errorinexecute tool command:name’tropicos id’isnotdefined
+ActionStep4:
+• Tool:Python Coder
+• Sub-goal: WriteandexecuteaPythonscripttocalculatethecheckdigitfortropicosidasifit
+wereanISBN-10number.
+• Command:
+tool.execute(query="Compute the check digit for 100370510 as an ISBN-10
+number")
+• Result:
+def calculatecheckdigit(isbn):
+# Extract the first 9 digits of the ISBN-10
+isbndigits = [int(digit) for digit in isbn[:9]]
+# Calculate the sum of products
+38
+totalsum = sum(position * digit for position, digit in
+enumerate(isbndigits, start=1))
+# Determine the check digit
+checkdigit = totalsum % 11
+if checkdigit == 10:
+return ’X’
+else:
+return str(checkdigit)
+# Given ISBN-10 number
+isbn10 = "100370510"
+# Compute the check digit
+checkdigitresult = calculatecheckdigit(isbn10)
+# Print the final result
+print(f"The check digit for the ISBN-10 number isbn10 is
+checkdigitresult")
+Printedoutput:ThecheckdigitfortheISBN-10number100370510is3
+ActionStep5:
+• Tool:Python Coder
+• Sub-goal:ExecutetheexistingPythonscripttocalculateandprintthecheckdigitfortropicosid
+asanISBN-10number.
+• Command:
+tool.execute(query="Compute the check digit for tropicosid 100370510 as an
+ISBN-10 number")
+• Result:
+def calculateisbn10checkdigit(tropicosid): # Step 1: Extract the
+first 9 digits of the Tropicos ID isbndigits = tropicosid[:9]
+# Step 2: Initialize the sum for the check digit calculation totalsum =
+0
+# Step 3: Calculate the sum of the products of each digit and its
+position for i, digit in enumerate(isbndigits, start=1): totalsum +=
+i * int(digit)
+# Step 4: Calculate the check digit checkdigit = totalsum
+# If the check digit is 10, it is represented as ’X’ if checkdigit ==
+10: checkdigit = ’X’
+# Step 5: Format the ISBN-10 isbn10 = f"isbndigitscheckdigit"
+return isbn10
+# Given Tropicos ID tropicosid = "100370510"
+# Step 6: Generate the ISBN-10 and print the result isbn10 =
+calculateisbn10checkdigit(tropicosid) print(f"The ISBN-10 number for
+the Tropicos ID tropicosid is: isbn10")
+Printedoutput:TheISBN-10numberfortheTropicosID100370510is:1003705103
+ExecutionVerifier:PASS,STOP
+SolutionGenerator: Thecheckdigitis3,resultinginthefullnumber1003705103.
+FailureCase: AGENTFLOWw/oFlow-GRPO
+ActionStep1:
+• Tool:Wikipedia Search
+• Sub-goal:RetrievetheTropicosIDoftheOrderHelotialesfromWikipedia.
+• Command:
+tool.execute(query="Tropicos ID for the Order Helotiales")
+• Result:Noresultsfoundforquery:TropicosIDfortheOrderHelotiales
+ActionStep2:
+• Tool:Google Search
+• Sub-goal:RetrievetheTropicosIDoftheOrderHelotialesfromareliablewebsource.
+39
+• Command:
+tool.execute(query="Tropicos ID for the Order Helotiales",
+addcitations=True)
+• Result:TheTropicosIDfortheOrderHelotialesis100370510.[1][2]
+ActionSteps3-9:
+• Tool:Python Coder
+• Sub-goal:CalculatethecheckdigitfortheTropicosID100370510ifitwereanISBN-10number.
+• Command:
+tool.execute(query="Calculate the check digit for the ISBN-10 number
+100370510")
+• Result:Error:name’isbn’isnotdefined
+• Note:ActionSteps3through9allhaveidenticalsubgoals,commands,anderrorresults—theagent
+isstuckinarepetitiveerrorloop,unabletofixthevariablenamingissue.
+ExecutionVerifier:STOP,StuckinRepetitiveToolError
+Solution Generator: The Python tool failed repeatedly with the same ‘isbn’ variable error across
+7 consecutive attempts (Steps 3-9). The agent was unable to recover from this error and failed to
+calculatethecheckdigit.
+F.5 EXAMPLE5: NEWCOMBO: RETRIEVEWITHSPECIFICURL
+This case highlights how both agents eventually succeed, but with markedly different efficiency
+and strategy. The Flow-GRPO-tuned AGENTFLOW agent learns to refine its queries effectively
+and—upon recognizing the limitations of Wikipedia search—switches tools strategically to a tar-
+geted andthe most task-solvingrelevant web search, achieving successwith minimal redundancy.
+Incontrast,theuntrainedagentpersistsinissuingdense,ineffectivequerieswithinthesametoolde-
+spitediminishingreturns,onlyescapingtheloopbyeventuallyswitchingtoGoogleSearch. While
+both reach the correct answer, the latter exhibits inefficient exploration and delayed adaptation;
+furthermore,withnopathconsistency,underscoringFlow-GRPO’sroleinfosteringnotjustcorrect-
+ness,butstrategicfocusandtimelytooltransition.
+Examplefrom#HotpotQA
+Question: WhichpartofHandel’sMessiahcoversthebirthofachildwho,accordingtothegospelsof
+LukeandMatthew,wasborninBethlehem?
+Answer:PartI
+SuccessCase: AGENTFLOWw/Flow-GRPO
+ActionSteps1-2:InitialFailures
+• Tool:Wikipedia Search
+• Sub-goal: RetrieveinformationaboutthepartofHandel’sMessiahthatreferstothebirthofJesus
+inBethlehem.
+• Command:
+tool.execute(query="Which part of Handel’s Messiah refers to the birth of
+Jesus in Bethlehem?")
+• Result: Initiallong-formqueriesfailedtofindrelevantpages(returnedirrelevantpageslike”His-
+toricalJesus”,”Advent”,”PassionofJesus”).
+ActionStep3:QueryRefinement
+• Tool:Wikipedia Search
+• Sub-goal: IdentifythespecificpartofHandel’sMessiahthatmentionsthebirthofJesusinBethle-
+hem.
+• Command:
+tool.execute(query="Handel’s Messiah birth of Jesus Bethlehem")
+• Result:Thissuccessfullyidentifiedrelevantpageslike“StructureofHandel’sMessiah”and“Mes-
+siahPartI”.
+40
+ActionSteps4-6:FurtherSearch
+• Tool:Wikipedia Search
+• Sub-goal:RetrievethespecificpartofHandel’sMessiahthatmentionsthebirthofJesusinBethle-
+hem.
+• Command:
+tool.execute(query="Which part of Handel’s Messiah refers to the birth of
+Jesus in Bethlehem?")
+and
+tool.execute(query="birth of Jesus in Handel’s Messiah")
+• Result: Agent gets briefly confused, re-runs a failed query, but then another refined query again
+locatesthemain“Messiah(Handel)”Wikipediapages.
+ActionStep7:ToolSwitching(Breakthrough)
+• Tool:Web Search(onaspecificURL)
+• Sub-goal:RetrievethespecificpartofHandel’sMessiahthatmentionsthebirthofJesusinBethle-
+hem.
+• Command:
+tool.execute(query="Which part of Handel’s Messiah covers the birth of
+Jesus in Bethlehem?",
+url="https://en.wikipedia.org/wiki/Handel%27sMessiah")
+• Result: Success! Thetoolextractedtheanswerfromthepage: ThepartofHandel’sMessiahthat
+coversthebirthofJesusinBethlehemisfoundinPartI,specificallyinthescenethatincludesthe
+prophecyofChrist’sbirth.Thissectionfeaturesthewell-knownchorus“Foruntousachildisborn,”
+whichcelebratesthenativityofJesus.
+ExecutionVerifier:PASS,STOP
+SolutionGenerator: TherelevantsectionisPartI,whichincludesthefamouschorus“Foruntous
+achildisborn”.
+SuccessCasebutstuckindenseinformation: AGENTFLOWw/oFlow-GRPO
+ActionStep1:InitialWikipediaSearch
+• Tool:Wikipedia Search
+• Sub-goal: RetrieveinformationaboutthepartofHandel’sMessiahthatreferstothebirthofJesus
+inBethlehem.
+• Command:
+tool.execute(query="Which part of Handel’s Messiah refers to the birth of
+Jesus in Bethlehem?")
+• Result:Returnedirrelevantpages(e.g.,“HistoricalJesus”,“Advent”).(Nodirectanswer)
+ActionStep2:RefinedWikipediaSearch
+• Tool:Wikipedia Search
+• Sub-goal: RetrieveinformationaboutthespecificpartofHandel’sMessiahthatmentionsthebirth
+ofJesusinBethlehem.
+• Command:
+tool.execute(query="Which part of Handel’s Messiah refers to the birth of
+Jesus in Bethlehem?")
+• Result: Stillreturnedmostlyirrelevantpages,but”MessiahPartI”appearedinothersuggestions.
+(Hintfound,butnodirectanswer)
+ActionStep3:KeywordWikipediaSearch
+• Tool:Wikipedia Search
+• Sub-goal: RetrieveinformationaboutthespecificpartofHandel’sMessiahthatmentionsthebirth
+ofJesusinBethlehem.
+• Command:
+tool.execute(query="Handel’s Messiah birth of Jesus Bethlehem")
+• Result: Still no direct relevant pages, but “Structure of Handel’s Messiah” and “Messiah Part I”
+againappeared.(Stillnodirectanswer)
+ActionSteps4-5:PersistentWikipediaQueries
+• Tool:Wikipedia Search
+41
+• Sub-goal:RetrievethespecificpartofHandel’sMessiahthatmentionsthebirthofJesusinBethle-
+hem.
+• Command:
+tool.execute(query="Which part of Handel’s Messiah refers to the birth of
+Jesus in Bethlehem?")
+tool.execute(query="Handel’s Messiah birth of Jesus Bethlehem")
+• Result: Consistently returned irrelevant pages like “Historical Jesus” and “Christmas Oratorio”.
+(Wikipediatoolstuck/ineffectivefordirectanswer)
+ActionStep6:ExternalSearch(Breakthrough)
+• Tool:Google Search
+• Sub-goal:FindthespecificpartofHandel’sMessiahthatmentionsthebirthofJesusinBethlehem.
+• Command:
+tool.execute(query="Which part of Handel’s Messiah covers the birth of
+a child who, according to the gospels of Luke and Matthew, was born in
+Bethlehem?", addcitations=True)
+• Result: Successfully found the answer: Handel’s Messiah addresses the birth of a child born in
+BethlehemprimarilyinPartIofthework. KeyelementswithinPartIincludethechorus“Forunto
+usachildisborn”andthescenedepictingtheannunciationtotheshepherds.
+ExecutionVerifier: PASS,STOP(viaqueryrefinementandexternalsearchafterWikipedialimita-
+tions)
+SolutionGenerator: ThepartofHandel’sMessiahreferringtothebirthofJesusinBethlehemis
+found in Part I, particularly the chorus “For unto us a child is born” and the scene depicting the
+annunciationtotheshepherds.
+F.6 EXAMPLE6: RAPIDANDCORRECTPHYSICSCALCULATION
+This GPQA example reveals a fundamental difference in reasoning quality between the tuned
+and untuned agents. The Flow-GRPO-enhanced AGENTFLOW correctly identifies the core chal-
+lenge—relativistic time dilation over interstellar distances—and applies the appropriate physics-
+basedcomputationinminimalsteps,arrivingatthecorrectanswer(81years)efficiently.Incontrast,
+the untrained agent misinterprets the astronaut’s age as the travel duration, leading to a cascade
+of erroneous calculations across multiple tool calls. Despite eventually retrieving the distance via
+search, it fails to integrate this information coherently or recognize its conceptual mistake. This
+highlightsthatFlow-GRPOnotonlyimprovestoolusageefficiencybutalsopromotescorrectprob-
+lemformulation,enablingtheagenttodistinguishbetweenpropertime,coordinatetime,andmission
+constraints—acriticalcapabilityforcomplexscientificreasoning.
+Examplefrom#GPQA
+Question: An intelligent civilization in the Large Magellanic Cloud has engineered an extraordinary
+spacecraftcapableoftravelingatasubstantialfractionofthespeedoflight.Theaveragelifetimeofthese
+aliensisroughly150solaryears. Now,havingEarthastheirdestinationinmind,theyaredeterminedto
+travelwiththisspacecraftataconstantspeedof0.99999987*c,wherecisthespeedoflight. Approxi-
+mately,howlongwillittakefortheir22yearsoldastronaut(fromthepointofviewoftheastronaut)to
+reachtheEarthusingthisincrediblyfastspacecraft?
+Choices:
+A.81years
+B.77years
+C.72years
+D.TheastronautwilldiebeforereachingtotheEarth.
+Answer:A.81years
+SuccessCase: AGENTFLOWw/Flow-GRPO
+ActionStep1:
+• Tool:Python Coder
+42
+• Sub-goal: Calculatethetimeittakes for the astronauttoreachEarthfromtheperspectiveofthe
+astronaut.
+• Command:
+tool.execute(query="A spacecraft travels at a speed of 0.99999987*c, where
+c is the speed of light. The distance to Earth is 165000 light-years. If
+the astronaut is 22 years old, how long will it take for the astronaut to
+reach Earth from the perspective of the astronaut? Using the formula time
+= distance / speed, calculate the time dilation effect with the velocity
+given and determine the perceived time for the astronaut.")
+• Result:
+import math
+# Constants
+speedoflight = 1 # Speed of light in arbitrary units
+distancetoearth = 165000 # Distance to Earth in light-years
+astronautage = 22 # Astronaut’s age in years
+velocityfactor = 0.99999987 # Velocity as a fraction of the speed of
+light
+# Step 1: Calculate the time it takes for the spacecraft to travel to
+Earth
+traveltime = distancetoearth / velocityfactor
+# Step 2: Calculate the Lorentz factor
+lorentzfactor = 1 / math.sqrt(1 - velocityfactor**2)
+# Step 3: Calculate the perceived time for the astronaut
+perceivedtime = traveltime * lorentzfactor
+# Print the results
+print(f"The spacecraft will take traveltime:.2f years to reach Earth.")
+print(f"Due to time dilation, the astronaut will perceive
+perceivedtime:.2f years passing.")
+The spacecraft will take 165000.02 years to reach Earth. Due to time dilation, the astronaut will
+perceive323591675.56yearspassing.
+• Note:Thecalculationcontainsanerrorintheformulaapplication.Thecorrectapproachshoulduse
+theinverserelationshipforpropertimecalculation.
+ExecutionVerifier:PASS,STOP
+SolutionGenerator: Correctphysicsapproach-properlycalculatedrelativistictraveltimeconsider-
+ingdistanceandtimedilationeffects.Therefore,thecorrectchoiceis:A.81years.
+FailureCase: AGENTFLOWw/oFlow-GRPO
+ActionStep1:
+• Tool:Python Coder
+• Sub-goal: Generate and execute Python code to calculate the time experienced by the astronaut
+usingtimedilationformula: t′ = t ,wheretisthetraveltimefromastationaryobserver’s
+(cid:114)
+1−v
+c2
+2
+perspective,andvis0.99999987*c.
+• Command:
+tool.execute(query="Calculate the time experienced by an astronaut
+using the time dilation formula: t’ = t / sqrt(1 - vˆ2/cˆ2), where t is
+approximately 22 years (the lifespan of the astronaut) and v is 0.99999987
+* c.")
+• Result:
+# Step 1: Define the constants
+c = 299792458 # Speed of light in meters per second
+v = 0.99999987 * c # Velocity of the astronaut as a fraction of the speed
+of light
+43
+# Step 2: Calculate the value inside the square root
+valueinsidesqrt = 1 - (v ** 2 / c ** 2)
+# Step 3: Compute the time experienced by the astronaut
+tprime = 22 / valueinsidesqrt # Lifespan of the astronaut in years
+# Step 4: Print the result
+print(f"The time experienced by the astronaut is tprime:.6f years.")
+• The time experienced by the astronaut is 84615390.151914 years. The time experienced by the
+astronautis84615390.151914years.
+ActionStep2:
+• Tool:Google Search
+• Sub-goal: Findscientificreferencesdiscussingsimilarscenariosregardingtraveltimesunderrela-
+tivisticconditions.
+• Command:
+tool.execute(query="relativistic travel time calculations for speeds close
+to the speed of light", addcitations=True)
+• Result: Retrieved detailed information about time dilation formulas and Lorentz factors, but this
+theoreticalknowledgewasnotproperlyintegratedwiththeproblem’sspecificrequirements.
+ExecutionVerifier:STOP,ConceptualError&InefficientMulti-StepProcess
+Solution Generator: The answer is 84615390.151914 years. However, the approach incorrectly
+treatedtheastronaut’sageastraveltime,leadingtomultipleredundantcalculationsandafundamen-
+tallyflawedmethodology.
+F.7 EXAMPLE7: MULTI-SOURCECROSS-VERIFICATION
+The comparison highlights the effectiveness of a multi-tool, systematic reasoning approach en-
+abledbyFlow-GRPO.Inthesuccesscase,themodelleveragedsequentialtoolusage—startingwith
+Google Search, followed by targeted Wikipedia and Web Search—to accurately identify Gu¨lc¸ic¸ek
+HatunasOliveraDespina’smother-in-lawthroughverifiedhistoricalsources. Eachstepbuiltupon
+priorfindings,ensuringrobustnessandprecision. Incontrast,thefailurecasewithoutFlow-GRPO
+relied on a single, improperly executed Wikipedia query without task decomposition that resulted
+in a timeout and no meaningful output, leading to premature termination. This demonstrates that
+Flow-GRPOenhancesreasoningtracereliability,toolcoordination,andoveralltaskcompletionin
+complexknowledgeretrievalscenarios.
+Examplefrom#2Wiki
+Question:Whoisthemother-in-lawofOliveraDespina?
+Answer:Gu¨lc¸ic¸ekHatun
+SuccessCase: AGENTFLOWw/Flow-GRPO
+ActionStep1:
+• Tool:Google Search
+• Sub-goal: PerformaGooglesearchfor“OliveraDespinabiography”tofindrelevantinformation
+aboutherandpossiblyidentifyherhusband’sfamilymembers.
+• Command:
+tool.execute(query="Olivera Despina biography", addcitations=True)
+• Result:OliveraDespina,alsoknownasMilevaOliveraLazarevic´orDespinaHatun,wasaSerbian
+princessbornaround1372. ShewastheyoungestdaughterofPrinceLazarofSerbiaandPrincess
+Milica. In1389,shortlyaftertheBattleofKosovo,OliverawasgiveninmarriagetotheOttoman
+SultanBayezidIasapeaceofferingbetweentheLazarevic´andOttomandynasties.
+ActionStep2:
+• Tool:Wikipedia Search
+44
+• Sub-goal:IdentifyanymentionofOlivera’sparentsorin-lawsinWikipediaarticles.
+• Command:
+tool.execute(query="Who is the mother-in-law of Olivera Despina")
+• Result:ReturnedpagesaboutBayezidIandotherrelatedhistoricalfigures,butnodirectanswerin
+relevantpages.
+ActionStep3:
+• Tool:Google Search
+• Sub-goal: PerformaGooglesearchtofindmoredetailedbiographicalinformationaboutOlivera
+Despinaandherfamilymembers.
+• Command:
+tool.execute(query="Who is the mother-in-law of Olivera Despina")
+• Result: Olivera Despina’s mother-in-law was Gu¨lc¸ic¸ek Hatun. Olivera Despina was a Serbian
+princesswhomarriedOttomanSultanBayezidIaftertheBattleofKosovoin1389.Gu¨lc¸ic¸ekHatun
+wasthefirstwifeofSultanMuradIandthemotherofBayezidI.
+ExecutionVerifier:PASS,STOP
+SolutionGenerator:Multi-toolverificationapproachsuccessfullyidentifiedGu¨lc¸ic¸ekHatunasOliv-
+eraDespina’smother-in-lawthroughsystematicresearch.
+FailureCase: AGENTFLOWw/oFlow-GRPO
+ActionStep1:
+• Tool:Google Search
+• Sub-goal: Searchforinformationaboutthefilm“Pugachev”(1978)andidentifythedirectorand
+anyawardstheyreceived.
+• Command:
+tool.execute(query="What is the award that the director of film Pugachev
+(1978 Film) received?", addcitations=True)
+• Result: Alexey Saltykov, the director of the 1978 film “Pugachev,” received the title of People’s
+ArtistoftheRSFSRin1980andtheOrderoftheBadgeofHonourforhiscontributionstocinema.
+Whilethefilm“Pugachev”itselfwashonoredwithaspecialprizeattheAll-UnionFilmFestivalin
+1979,thisawardwasgiventothefilmratherthanspecificallytoSaltykovforhisdirectionofit.
+• Note:Thisstepshowstheagentworkingonacompletelydifferentquestionthanasked.
+ActionStep2:
+• Tool:Wikipedia Search
+• Sub-goal:RetrieveinformationaboutthepersonalawardsreceivedbyAlexeySaltykovfordirecting
+thefilm“Pugachev”(1978).
+• Command:
+tool.execute(query="Alexey Saltykov awards for Pugachev 1978")
+• Result: Returnedpagesabout”AlexeySaltykov(director)”,”CatherinetheGreat”,and”Imperial
+RussianArmy”butnorelevantinformationabouttheoriginalquestion.
+Execution Verifier: STOP - Agent worked on wrong question, no useful information gathered for
+originalquery
+Solution Generator: Tool attempts failed to address the actual question about Olivera Despina’s
+mother-in-law. TheagentbecameconfusedandworkedonanunrelatedquestionaboutthePugachev
+filmdirector.
+45

@@ -1,0 +1,2664 @@
+Preprint
+ROBUSTNESS IN TEXT-ATTRIBUTED GRAPH LEARN-
+ING: INSIGHTS, TRADE-OFFS, AND NEW DEFENSES
+RunlinLei1 LuYi1 MingguoHe2 PengyuQiu3
+ZheweiWei1∗ YongchaoLiu3∗ ChuntaoHong3
+1RenminUniversityofChina 2NationalUniversityofSingapore 3AntGroup
+{runlin lei, yilu, zhewei}@ruc.edu.cn, mingguo@nus.edu.sg
+{pengyu.qpy, yongchao.ly, chuntao.hct}@antgroup.com
+ABSTRACT
+WhileGraphNeuralNetworks(GNNs)andLargeLanguageModels(LLMs)are
+powerful approaches for learning on Text-Attributed Graphs (TAGs), a compre-
+hensive understanding of their robustness remains elusive. Current evaluations
+arefragmented,failingtosystematicallyinvestigatethedistincteffectsoftextual
+and structural perturbations across diverse models and attack scenarios. To ad-
+dress these limitations, we introduce a unified and comprehensive framework to
+evaluate robustness in TAG learning. Our framework evaluates classical GNNs,
+robustGNNs(RGNNs),andGraphLLMsacrosstendatasetsfromfourdomains,
+underdiversetext-based,structure-based,andhybridperturbationsinbothpoison-
+ingandevasionscenarios.Ourextensiveanalysisrevealsmultiplefindings,among
+whichthreeareparticularlynoteworthy:1)modelshaveinherentrobustnesstrade-
+offsbetweentextandstructure,2)theperformanceofGNNsandRGNNsdepends
+heavily on the text encoder and attack type, and 3) GraphLLMs are particularly
+vulnerabletotrainingdatacorruption. Toovercometheidentifiedtrade-offs, we
+introduceSFT-auto,anovelframeworkthatdeliverssuperiorandbalancedrobust-
+nessagainstboth textualandstructuralattackswithin asinglemodel. Our work
+establishesafoundationforfutureresearchonTAGsecurityandofferspractical
+solutionsforrobustTAGlearninginadversarialenvironments. Ourcodeisavail-
+ableat: https://github.com/Leirunlin/TGRB.
+1 INTRODUCTION
+Text-attributed graphs (TAGs), which integrate structural links with rich text features, are founda-
+tionaltoapplicationsfromsocialnetworkstocitationgraphs(Wuetal.,2023;Wangetal.,2025a).
+While Graph Neural Networks (GNNs) have long been the prevailing approach for learning on
+TAGs,GraphLargeLanguageModels(GraphLLMs)areemergingasacompellingparadigm,lever-
+agingtheiradvancedreasoningcapabilitiesdirectlyongraph-structuredtext. However,therobust-
+nessofthesemodelsremainsacriticalchallenge.Forinstance,inhigh-stakesdomainssuchassocial
+and financial networks, adversaries can manipulate both graph structures and textual content, sig-
+nificantlydegradingmodelperformance. Forexample,adversariescandeploydeceptivesocialbots
+withengineeredbiographiesandnetworkpatternstoinfluencepublicopinion(Wangetal.,2023).
+Similarly,inrecommendationsystems,attackersmaycraftfakeuserprofileswithmisleadingtextual
+attributestopromotetargeteditems(Nguyenetal.,2024). Thisdualvulnerabilitymakesituniquely
+difficulttosecureTAGlearning.
+Despite its importance, existing robustness analyses remain fragmented. Early analyses of GNNs
+and Robust GNNs (RGNNs) relied on naive embeddings, largely overlooking the rich semantic
+informationinnaturallanguage(Zhengetal.,2021). Conversely,recentattemptsstartexplorations
+oftherobustnessofGraphLLMs, yetlackcomprehensivecomparisonsamongmodelfamiliesand
+∗ZheweiWeiandYongchaoLiuaretheCorrespondingauthors.
+1
+Preprint
+Train Test Attacked
+Data Attack Type
+Structure Text Hybrid
+Cora, CiteSeer, WikiCS History, Photo, Instagram, f T oc h a u i n s s d p o n a … p C er V fo T c h u a i s n s o d p n a … p N e L r P f I o ’ c m u s a o b n a n d o p th ap in e g r .
+PubMed, Arxiv Computer Reddit
+Settings
+Transductive&Poisoning Inductive &Evasion Transfer Adaptive
+I don’t know the I can use any I attack the My exactly used
+defender’s model model I want defender’s model model is attacked
+Training & Inference Training Inference
+Defense Model SFT-auto (ours)
+Classic GNNs RobustGNNs GraphLLMs RobustGraphLLMs Detection
+T ne h i i g s h n b o o d r e s i a n r c e l u … des …, its Training with noise Similarity Filtering Training Recovery
+Attack detection
+Its Label: Recovery + Filter
+CV!
+Inference Final Prediction
+Fail against either structural or textual attack Work under both structural and textual attack
+Figure1: TheoverallframeworkforevaluatingtherobustnessofTAGlearning.
+focusexclusivelyonlimitedattacksettings(Guoetal.,2024a;Zhangetal.,2025a).Thisfragmented
+landscapehasleftthefieldwithoutacomprehensiveanalysisofrobustTAGlearning.
+Toaddressthiscriticalvoid,weperformalarge-scale,systematicrobustnessanalysisonTAGs. The
+overall framework is provided in Figure 1. Our evaluation spans ten datasets across four domains
+andawidespectrumofmodels,includingclassicalGNNs,RGNNs,andGraphLLMs.Bysubjecting
+thesemodelstoaunifiedthreatmodel,weprovideaunifiedevaluationmethodologythatservesasa
+foundationforunderstandingmodelvulnerabilitiesacrossdiversearchitecturesandattacksettings.
+Theextensiveevaluationyieldsaseriesofempiricalinsights: 1)Weuncoveracrucialtext-structure
+robustnesstrade-off,wheremodelsexcelatdefendingagainsteithertextualorstructuralattacksbut
+notbothsimultaneously.2)Wefindthatpreviouslyunderratedmethods,suchasGNNGuard(Zhang
+&Zitnik,2020),achievesurprisingperformancewhenre-evaluatedinTAGsettingswithadvanced
+text encoders. 3) GraphLLMs demonstrate higher vulnerability to poisoning attacks compared to
+GNNs. Specifically,whenthetrainingdataiscompromised,GraphLLMsexperienceamoresignif-
+icantdeclineinperformancethanGNNs. 4)DirectlyintegratingexistingrobustGNNdesignsinto
+LLMarchitecturesfailstoresolvethefundamentalrobustnesstrade-off.
+Motivated by the proven effectiveness of noise-injection and similarity-filtering strategies in
+RGNNs, we explore their adaptation to GraphLLMs to address the text-structure trade-off. While
+thesevariantsshoweffectivenessagainsteithertextualorstructuralperturbationsindividually,they
+still struggle to achieve balanced robustness against both types of attacks. To achieve balanced
+robustnessagainstbothattacks,weproposeanovelSFT(supervisedfine-tuning)framework,SFT-
+auto,whichemploysmulti-tasktrainingwithadetection-predictionpipeline. Thisapproachlever-
+agesthesuperiorreasoningcapabilitiesofLLMstodetectanomaliesandmakepredictionswithin
+a single model. Our experiment results show that SFT-auto exhibits superior robustness in both
+modalitiescomparedtothebaselines.
+Tosummarize,ourmaincontributionsareasfollows:
+• AComprehensiveEvaluationFramework. Weproposeasystematicrobustnessevaluationfor
+learninginTAGsthatbenchmarksawidespectrumofmodels,fromclassicalGNNs,RGNNs,to
+GraphLLMs,againstadiversesetoftextualandstructuralattacks.
+• AbundantEmpiricalInsights. Ourlarge-scaleanalysisrevealscriticalvulnerabilitiesandtrade-
+offsinrobustTAGlearning. Weuncoveratext-structurerobustnesstrade-off,findthatsimple
+RGNNswithadvancedtextencoderscanbesurprisinglyeffective,anddemonstratethevulnera-
+bilityofGraphLLMstopoisoningattacks.
+• An Effective Defense Framework. To overcome the identified trade-off, we propose the SFT-
+auto model. It leverages the reasoning capabilities of LLMs to achieve superior and balanced
+robustnessagainstbothtextualandstructuralattacks.
+2
+Preprint
+2 PRELIMINARIES: BACKGROUND AND EVALUATION PROTOCOL
+2.1 BACKGROUND
+WedefineaTAGasG =(V,E,{s }N ),whereV isthesetofnodes,E isthesetofedges,andN is
+i i=1
+thenumberofnodes. TheadjacencymatrixisA ∈ {0,1}N×N,witheachnodev ∈ V associated
+i
+withasequentialtexts . Followingpriorworkongraphadversariallearning(Jinetal.,2021;Zheng
+i
+etal.,2021),wefocusonthetaskofnodeclassification,wherethegoalistoassigneachnodeone
+ofC possibleclasslabels. Denotethelabelvectorasy ∈{0,...,C−1}N,thelearningobjectiveis
+topredictlabelsoftargetnodesy
+target
+,givenG andground-truthlabelsytrain. Inthetransductive
+setting,allnodesareobservedduringtraining,whileintheinductivesetting,themodelisrequired
+togeneralizetopreviouslyunseentestnodes. ExistingmethodsforTAGnodeclassificationinclude
+GNNsandGraphLLMs,denotedasamodelf({s }N ,A). ForGNNs,themodelf firstemploys
+i i=1
+a text encoder to transform each s into a node-level feature matrix X, and then processed jointly
+i
+withtheadjacencymatrixA. Incontrast,someoftheGraphLLMsdirectlyinputtherawnodetexts
+{s }N intothemodelf andperformclassificationviapromptinstructions.
+i i=1
+GraphAdversarialAttacksandDefenses. Inadversarialsettings,anattackerseekstodegradethe
+performance of the defender’s model on a target set of nodes V . A typical graph attack is the
+target
+GraphModificationAttack(GMA)(Zu¨gner&Gu¨nnemann,2019;Xuetal.,2019),whichperturbs
+eitherthegraphstructureorthenodetexts. TheobjectiveofGMAis:
+N
+A′,
+m
+{s
+i
+′ i
+n
+}N i=1
+Acc
+(cid:0)
+f
+θ
+({s′
+i
+}N
+i=1
+,A′), y
+target (cid:1)
+s.t. ∥A′−A∥0 ≤2∆
+struct
+and
+X i=1
+1{s′
+i
+̸=s
+i
+}≤∆
+text
+,
+where A′ denotes the perturbed adjacency matrix, {s′}N represents the perturbed node texts,
+i i=1
+Acc(·) is theevaluationmetric(e.g., accuracy)onthetarget nodesV , and∆ and∆ are
+target struct text
+thebudgetonthetotalnumberofperturbations. Specifically,∥A′ −A∥0 measuresthenumberof
+edgemodifications(additionsordeletions),and N 1{s′ ̸=s }countsthenumberofnodeswith
+Pi=1 i i
+modifiedtexts. BesidesGMA,otherparadigmstargetingTAGsincludeText-levelGraphInjection
+Attacks (Text-GIAs), where new adversarial textual nodes are introduced into the graph, forming
+harmfulconnectionstoexistingnodes(Leietal.,2024).
+Attackscanbecategorizedbytheirtiming: poisoningattacksmodifythetrainingdatatocompro-
+mise the learned model, while evasion attacks alter test inputs to fool a fixed model at inference
+time. Forthedefender,thekeyobjectiveistomaintainhighperformanceevenwhenthedatamay
+beunderattack. EffortshavebeenmadeviaRGNNdesign(Jinetal.,2021)andLLMasgraphdata
+purifiers(Zhangetal.,2025b).
+2.2 EVALUATIONPROTOCOL
+Extensive evaluations of robustness in TAG learning have been developed. However, their analy-
+ses are limited, particularly with respect to data, baselines, and evaluation settings. As shown in
+Table1, intermsofdata, previousworkssufferfromlimiteddatasetdiversityandnarrowdomain
+coverage,withsomefocusingexclusivelyonspecificgraphtypesorapplicationdomains.Regarding
+baselines,nopreviousworkhasachievedcomprehensiveintegrationofallthreemajorgraphlearn-
+ing paradigms (GNNs, RGNNs, and GraphLLMs), resulting in fragmented evaluation landscapes.
+Finally,evaluationsettingsinexistingevaluationsareoftenconstrainedbylimitedattackdiversity.
+Table1: ComparisonsbetweenevaluationsofrobustnessinTAGlearning.
+Data Baselines EvaluationSettings
+Benchmark
+Num. Num. Attack Encoder Adaptive
+GNNs RGNNs GraphLLMs Settings
+Datasets Domains Types Analysis Attack
+GRB(Zhengetal.,2021) 5 2 ✓ ✓ × GIA Evasion&Inductive × ×
+Guoetal.(Guoetal.,2024a) 6 3 ✓ × ✓ GMA+Text Evasion&Transductive ✓ ×
+TrustGLM(Zhangetal.,2025a) 6 2 × × ✓ GMA+Text+Prompt Evasion&Transductive × ×
+Olatunjietal.(2025) 4 1 × × ✓ GMA+Text Both&Transductive × ×
+Ours 10 4 ✓ ✓ ✓ GMA+Text+Text-GIA All ✓ ✓
+3
+Preprint
+To address these limitations, we include: (1) an extensive dataset diversity spanning multiple do-
+mains and graph types; (2) a unified comparison supporting major baseline categories (GNNs,
+RGNNs,GraphLLMs); and(3)extensiveevaluationsettingswithcomprehensivemetrics. Thede-
+taileddesignoftheevaluationfollowstheprinciplesbelow:
+• Deploy sufficiently strong attacks. We found that some attacks, such as Mettack (Zu¨gner &
+Gu¨nnemann, 2019) and word-level textual attacks, don’t generate sufficiently strong attacks or
+have poor transferability. Yet, weak perturbations fail to differentiate defense models, as per-
+formance rankings become dominated by clean accuracy rather than adversarial resilience (see
+AppendixC.4). Therefore,weemploymoreeffectiveattackswithasufficientlyhighperturbation
+ratiointhemainpapertoensureahigherdegreeofdifferentiation. Resultswithsmallerratiosare
+deferredtoAppendixI.3.
+• Ensurefairbaselinecomparison. Werestrictevaluationtomodelswithcomparablecleanper-
+formancetopreventstrongerbackbonesfromappearingartificiallyrobust. MethodslikeInstruct-
+GLM,GPTzero-shot,andGraphPromptin(Guoetal.,2024a;Zhangetal.,2025a;Olatunjietal.,
+2025)significantlyunderperformsupervisedbaselines,invalidatingrobustnesscomparisons. Fol-
+lowing established practices (Hou et al., 2024; Wu et al., 2025; Wang et al., 2025b), we select
+competitive GNNs, RGNNs, and GraphLLMs as baselines. The baselines are summarized in
+Table2. ThedetailsofeachbaselineareprovidedinAppendixD.
+• Adoptrealisticevaluationprotocols.Priorbenchmarksemploymisalignedsettingsthatcompro-
+misevalidity. Asstatedin(Goschetal.,2023),poisoningattacksnaturallypairwithtransductive
+learning, while evasion attacks suit inductive evaluation. Protocol misalignments enable trivial
+memorization-baseddefenses,underminingmeaningfulassessment.Westrictlyalignattacktypes
+withappropriatelearningparadigmsacrossallexperimentalphases.
+Data. We evaluate on ten datasets spanning four distinct domains following the LLMNodeBed
+benchmark (Wu et al., 2025): academic networks (Cora (Sen et al., 2008), CiteSeer (Giles et al.,
+1998), PubMed (Yang et al., 2016), ArXiv (Hu et al., 2020)), web links (WikiCS (Mernyei &
+Cangea, 2020)), social networks (Instagram, Reddit (Huang et al., 2024)), and e-commerce (His-
+tory, Photo, Computer (Yan et al., 2023)). We adopt a supervised 60/20/20 split across train-
+ing/validation/testing for the inductive setting and a semi-supervised 10/10/80 split for the trans-
+ductivesetting. Alldatasetsareundirectedgraphs. DetailsofdatasetsareprovidedinAppendixB.
+Threat Model. Our evaluation assesses perturbations to the graph structure, node texts, and also
+includesresultsagainstText-GIAs(inAppendixE).Weevaluatebothpoisoningattacksandevasion
+attacks. Ourprimaryfocusisontransferattackswheretheattackerhasaccesstothevictim’sdata
+but not their model directly. The perturbed graph is then transferred to test the defender’s model,
+simulating a practical scenario where defenders can deploy their custom defense model. The spe-
+cificattackconfigurationsaredetailedinthesubsequentexperimentalsections,withcomprehensive
+detailsprovidedinAppendixC.WealsoexploreadaptiveattacksinAppendixG.
+Other Setups. We employ accuracy as the evaluation metric. Hyperparameters for all GNNs
+and RGNNs are optimized based on validation set performance. Following LLMNodeBed (Wu
+etal.,2025),weadoptRoBERTa(Liuetal.,2019)asthetextencoderforGNN-basedmethodsand
+Mistral-7B(Jiangetal.,2023)asthebackboneforGraphLLMs,astheseconfigurationsyieldopti-
+mal performance. All experiments are conducted across three independent runs with random data
+splits,exceptforArXiv,whichusesasingleofficialsplit.
+3 EVALUATION RESULTS
+Inthissection,wepresentevaluationresultsagainststructuralandtextualattacks. Duetospacelim-
+itations,wereporttheaveragerank,whichisderivedforeachmethodbyaveragingitsranksacross
+alldatasetswhereithasvalidresults,withfullnumericalresultsavailableinAppendixI.Similarly,
+theresultsabouthybridandadaptiveattacksaredeferredtoAppendixEand G,respectively.
+For structural attacks, in the inductive and evasion settings, we employ PGD (Xu et al., 2019) for
+smallergraphsandGRBCD(Geisleretal.,2021)forlargergraphswithaperturbationratioof0.20.
+We use GCN (Kipf & Welling, 2017) as the surrogate model with BoW embeddings to generate
+victimgraphs,andtransferthegraphsasthetestedvictimgraphs.Fortransductivestructuralattacks,
+4
+Preprint
+Table2: Categorizationofselecteddefensemodels.
+Taxonomy Subcategory SelectedDefenses/Models
+Spatial/Messagepassing GCN(Kipf&Welling,2017),GAT(Velickovicetal.,2018)
+Basicmodels
+Spectral APPNP(Klicperaetal.,2019),GPRGNN(Chienetal.,2021)
+Improvingtraining Robusttraining GRAND(Fengetal.,2020),NoisyGCN(Ennadiretal.,2024)
+Probabilistic RobustGCN(Zhuetal.,2019)
+Similarity-based GNNGuard(Zhang&Zitnik,2020)
+Improvingarchitecture
+Robustaggregation ElasticGNN(Liuetal.,2021), SoftmedianGDC(Geisleretal.,
+2021),RUNG(Houetal.,2024)
+Others EvenNet (Lei et al., 2022) (Spectral), GCORN (Abbahaddou
+etal.,2024)(WeightRegularization),
+Unsupervised Jaccard-GCN(Wuetal.,2019),Cosine-GCN(Mujkanovicetal.,
+Improvingstructure
+2022)
+Supervised ProGNN(Jinetal.,2020),Stable(Lietal.,2022b)
+GraphLLMs InstructionTuning&Align GraphGPT (Tang et al., 2024), SFT (w/ nei.) (Wang et al.,
+2025b),LLaGA(Chenetal.,2024)
+weutilizeHeuristicAttack(Lietal.,2023)withaperturbationratioof0.30,andexcludeComputer
+andArXivduetoscalabilityissues.
+We evaluate performance against textual attacks using a novel LLM-based attack. For evasion at-
+tacks,wesubstitute40%ofthetestsetnodeswithLLM-generatedtextthatdiffersfromtheoriginal
+content. Forpoisoningattacks,wereplace80%ofthetrainingsetnodes. Attackalgorithmdetails
+areprovidedinSectionC.Duetoscalabilityconcerns,weexcludetheComputerandArXivdatasets
+for evasion attacks, and additionally exclude the Photo dataset for poisoning attacks. We do not
+usegradient-basedorunnoticeableword-leveltextualattacks,asthesemethodshavebeenshownto
+havepoortransferabilityacrossdifferentmodels,asdiscussedinAppendixC.4.
+3.1 AGAINSTSTRUCTURALATTACKS
+14
+12
+10
+8 6
+4
+2
+2.5 5.0 7.5 10.0 12.5
+Performance Rank
+knaR
+porD
+Inductive & Evasion
+(Lower-Left = Better)
+NoisyG
+G
+C
+C
+N
+NRobustGCN 16
+Elast G ic C G O N R N N 14
+GAT 12
+10 GRAND APPNP LLaGA EvenNet 8 SoftmedianGDC GPRGNN 6
+GraphGPT SFT-neighbor 4
+RUNG GNNGuard 2
+5 10 15
+Performance Rank
+knaR
+porD
+The results against structural attacks Transductive & Poisoning
+(Lower-Left = Better)
+areshowninFigure2. GCORNJaccard-GCN
+RobustGCN GraphLLMs Demonstrate Inher- ElasticGNN LLaGA
+GRAND Stable entRobustnessagainstEvasionAt- NoisyGCN
+GCN
+tacks. Evenwithoutexplicitdefense SFT-neighbor GAT GraphGPT SoftmedianGDC mechanisms, SFT-neighbor outper- RUNG Cosine-GCN forms most RGNNs. GraphGPT, ProGNNGPRGNN
+which also employs instruction tun- APPNPGNNGuard
+ing, exhibits comparable strong per- EvenNet
+formance,reflectingGraphLLM’ssu-
+perior robustness against structural
+attacks. Notably, LLaGA shows rel-
+Figure 2: Comparison of robustness against structural at-
+ativelyweakerrobustnessdespitebe-
+tacks. Ranks are averaged across datasets (excluding fail-
+ing a GraphLLM. Although LLaGA
+ures) based on: 1) absolute accuracy under attack (lower
+surpassesGraphGPTincleanperfor-
+rankisbetter),and2)relativeaccuracydropfromtheclean
+mance, it proves more vulnerable to
+baseline(lowerdroprankisbetter).
+structural attacks. This suggests that
+alignment-basedmethods,whichexplicitlyutilizegraphembeddingstoaligngraphandtextspaces,
+aremoresusceptibletostructuralattacks(similartoGCNs),whileinstruction-tuningmodelsadopt
+moreconservativeneighborutilizationstrategies.
+SimpleMethodsCanShineinTAGsthroughAdvancedTextEncoders. Despitetheirsimplic-
+ity,RGNNsfromearlierresearchcandeliversurprisinglystrongperformancewhenre-evaluatedin
+TAGs. For instance, GNNGuard, as an early and straightforward RGNN that leverages threshold-
+based filtering to defend against adversarial attacks, achieves top-tier performance against the in-
+ductive/evasionattacks. Thiscontraststemsfrompriorworksthathaveoverlookedtheimportance
+oftextembeddingsandhaveonlyevaluatedRGNNsonshallowembeddings,suchasBoWorTF-
+IDF(Leietal.,2022;Houetal.,2024). InthecontextofTAGs,whereadvancedtextencodersare
+5
+Preprint
+utilized, methodslikeGNNGuardcanberevitalizedtoachievenear-SOTArobustness. Adetailed
+analysisisprovidedinAppendixF.
+In fact, by fully harnessing textual features through dataset- and embedding-specific filtering, we
+can do even better. In Appendix F.3, we propose Guardual, a novel extension that eliminates the
+reliance of GNNGuard on threshold hyperparameters. The results show that Guardual’s adaptive
+filtering mechanism makes it the leading RGNN in the structural evasion setting. These findings
+underscorethatstrategictextprocessinginTAGsfundamentallydrivesRGNNperformance.
+SpectralGNNsShowSuperiorRobustnessagainstPoisoningStructuralAttacks. Asshownin
+Figure2(right),spectralmethods,suchasEvenNet,APPNP,andGPRGNN,demonstratesuperior
+performance against poisoning attacks, aligning with findings in (Gosch et al., 2023). The robust
+diffusion process in spectral methods enables flexible use of higher-order neighborhoods, thereby
+enhancingtrainingrobustness. Structurelearningmethods,suchasProGNN,alsoexhibitpromising
+results,thoughtheircomputationaloverheadremainsasignificantpracticallimitation. Incontrast,
+the performance of GraphLLMs starts to decline. While SFT-neighbor is robust against evasion
+attacks, theperturbationsintroducedduringtrainingresultinanotableperformancedrop. Among
+GraphLLMs,LLaGAremainsthemostvulnerableduetoitsgreaterrelianceonstructure.
+3.2 AGAINSTTEXTUALATTACKS
+14
+12
+10
+8 6 4
+2
+2.5 5.0 7.5 10.0 12.5 15.0
+Performance Rank
+knaR
+porD
+Inductive & Evasion
+(Lower-Left = Better)
+APPNP GNNGuard 18
+RUNG GPRGNN 16
+SoftmedianGDC 14 SFT-neighbor
+EvenNet 12 GRAND ElasticGNN GraphGPT 10 GCORN 8 LLaGA 6 GCN NoisyGCN
+RobustGCN 4
+GAT
+5 10 15
+Performance Rank
+knaR
+porD
+Transductive & Poisoning
+Theresultsagainsttextualattacksare (Lower-Left = Better)
+GraphGPT showninFigure3.
+LLaGA Cosine-GCN
+Simple GNNs Excel Advanced GNNGuard
+SFT-neighbor Baselines. Whenconfrontingtextual SoftmedianGDC
+attacks in the evasion setting, the RUNG relative robustness rankings undergo GP A R P G P N N N PProGNN Stabl J e accard-GCN a notable shift. While spectral GRAND EvenNetGC N O o R i N syGCN methodslikeGNNGuardandRUNG GCNRobustGCN
+ElasticGNN
+demonstrate superior performance GAT
+against structural attacks, as shown
+in Figure 2, they exhibit pronounced
+Figure 3: Comparison of robustness against textual at-
+vulnerabilities to textual perturba-
+tacks. Ranks are averaged across datasets (excluding fail-
+tions. SFT-neighbor and GraphGPT
+ures) based on: 1) absolute accuracy under attack (lower
+also suffer from significant perfor-
+rankisbetter),and2)relativeaccuracydropfromtheclean
+mancedegradation. Incontrast,even
+baseline(lowerdroprankisbetter).
+naive models, such as GCN and
+GAT,exhibitthedesiredrobustnessagainstthesetextualattacks.
+GraphLLMsStruggleAgainstTextualPoisoning.Forpoisoningattacks,bothGNNsandRGNNs
+exhibit remarkable robustness. Even when 80% of the training nodes’ text is replaced, GNNs can
+stillbenefitfromthetransductivelearningparadigmandachieveaccuratepredictionsbyaggregating
+informationfromnodes’neighbors. Undertextpoisoningattacks,LLM-basedmethodsexperience
+asignificantdeclineinperformance. Forexample, ontheCiteSeerdataset, SFT-neighbor’sac-
+curacy drops by 25%, while most GNNs suffer only a 5%-10% decrease (see Tables I.1.6 and I.2
+fordetailedaccuracy). ThissuggeststhatGraphLLMs aremorevulnerabletoperturbationsin the
+trainingset,relyingheavilyonhigh-qualitytrainingtexttomaintainstrongperformance.
+4 THE TEXT-STRUCTURE TRADE-OFF
+InSection3,weexaminedmodelrobustnessunderstructuralandtextualattacks,separately. Build-
+ingonthis,wenowexplorehowvulnerabilitiesinonedimensionrelatetotheother.
+Architecture Effect. As shown in Figure 4 (Left), models with different architecture exhibit a
+cleartext-structurerobustnesstrade-off.Structure-orientedarchitecturessuchasLLaGAandvanilla
+GNNsarehighlyvulnerabletostructuralperturbationsyetremaincomparativelystableundertextual
+attacks. By contrast, text-oriented models like SFT-neighbor and GraphGPT, as well as RGNNs
+designedtoenhancestructuralrobustness, showstrongresistancetostructuralattacksbutcollapse
+6
+Preprint
+16
+14
+12
+10
+8
+6
+4
+2
+2 4 6 8 10 12 14 16
+Structure Drop Ranking
+gniknaR
+porD
+txeT
+Drop Rankings (1=smallest drop)
+100
+GNNGuard
+APPNP 95
+RUNG 90
+GPRGNN 85 SoftmedianGDC
+80 SFT-neighbor 75
+GRAND
+EvenNet 70 PubMed Computer Photo
+GraphGPT
+ElasticGNN
+GCORN LLaGA RobustGCN
+NoisyGCN
+SFT-auto
+GCN
+GAT
+)%(
+ecnamrofreP
+naelC
+SFT variants in clean datasets
+95.0% 95.1% SFT (w/o neighbor)
+SFT-neighbor 89.7%
+87.5%
+80.8%
+77.2%
+30
+20
+10
+0
+PubMed Computer Photo
+)%( porD
+ecnamrofreP
+Structure Attack Vulnerability
+29.0% GPRGNN GraphGPT SFT-neighbor 21.0%
+11.3%
+8.2% 8.6% 6.6%
+1.7% 0.6% 0.4%
+Figure4: Thetext-structurerobustnesstrade-off. (Left)SFT-autouniquelybalancesthistrade-off,
+while baseline models are polarized towards either text or structure robustness. (Right) On text-
+friendlydatasets(e.g.,PubMed),modelsarelessreliantonstructureandthuslessvulnerabletoits
+perturbation. Theoppositeholdsforstructure-criticaldatasets(e.g.,Computer,Photo).
+undertextualones.Thesecomparisonshighlighttheinherentbiasofdifferentbackbones:classifiers
+aregenerallyrobusttoeitherstructureortextperturbations,butrarelytoboth.
+Dataset Effect. Dataset characteristics critically shape the text-structure trade-off. As shown in
+Figure4(Right),thebenefitofneighborinformationdiffersmarkedlyacrossdatasets,directlyim-
+pactingvulnerability. Inthetop-rightpanel,SFTvariantsgainsubstantialaccuracyfromneighbors
+on structure-critical datasets such as Computer/Photo, but little on text-friendly datasets like
+PubMed. Thisreliancepatternexplainstherobustnessoutcomesinthebottom-rightpanel: mod-
+elsrelativelyresistanttostructuralperturbations(e.g.,GPRGNN,GraphGPT,SFT-neighbor)expe-
+rience only minor drops on text-friendly datasets, yet still suffer significantly on structure-critical
+ones. Thus,whilethetrade-offisinfluencedbymodeldesign,itsmanifestationheavilydependson
+thenatureofthedatasets.
+5 ADDRESSING THE TEXT-STRUCTURE ROBUSTNESS TRADE-OFF
+The text-structure trade-off remains a key challenge, with no current model effectively balancing
+bothaspects. Inthissection,weexploremethodstoovercomethislimitation.
+5.1 ATTEMPTSBYBUILDINGROBUSTGRAPHLLMS
+20
+15
+10
+5
+0
+5
+10
+15
+20
+20 15 10 5 0 5 10 15 20 Structure Attack Defense Improvement (%)
+)%(
+tnemevorpmI
+esnefeD
+kcattA
+txeT
+Robustness Enhancement Methods: Performance vs Base GraphLLMs
+To address the text-structure trade-off, we
+Worse Struct Better
+explore noise-injection and similarity-filtering Better Text Both
+strategies inspired by existing RGNNs, adapt-
+ingthemforGraphLLMs. SFT-noisetxt SFT-noisefull
+LLaGA-noisefull
+Noise-Injection Methods. Drawing inspira- SFT-simp
+LLaGA-noisetxt tion from GRAND (Feng et al., 2020) and GraphGPT-noise
+SFT-noise
+NoisyGCN (Ennadir et al., 2024), we inject
+LLaGA-noise
+targeted perturbations during training to re-
+duce the distribution gap between training and SFT-simf
+adversarial test conditions. We implement LLaGA-simf
+Worse Better Struct
+three variants: -noise (structural noise in- Both Worse Text
+jection),-noisetxt(textualnoiseinjection),
+and-noisefull(combinednoisetypes).All
+Figure 5: Performance of robust variants against
+methods use a 10% noise ratio. GraphGPT-
+base GraphLLMs. Points represent the improve-
+noisetxtandGraphGPT-noisefullareneglected
+ment compared to base models against structural
+duetopoorcleanperformance.
+(x-axis)andtextual(y-axis)evasionattacks.
+7
+Preprint
+Figure5demonstratesthattargetednoiseinjec-
+tionprovidesdefenseagainstcorrespondingattacktypes. The-noisevarianthelpsimprovestruc-
+ture robustness, while -noisetxt helps improve textual robustness. However, when the attack
+typeisunknown,significanttrade-offsemerge. Notably,-noisefullfailstoachievesimultane-
+ousdefenseagainstbothattacktypes. Noneofthevariantsshowsbetterresultsagainstbothattacks.
+Thislimitationrestrictsnoise-injectionmethodstospecializeddefensesforspecifictypesofattacks.
+Similarity-FilteringMethods. Inspiredbythesimilarity-filteringstrategyofGNNGuard,wepro-
+posetwovariants: -simf,whichemploysedgefilteringsimilartoGNNGuard,and-simp,which
+modifies the SFT prompt to guide adaptive reliance—leveraging neighborhood information when
+text is unreliable and depending on textual content when structure is compromised. Figure 5 re-
+veals that -simf exhibits behavior analogous to GNNGuard, providing effective defense against
+structural attacks but remaining vulnerable to text-based perturbations. In contrast, -simp yields
+modestrobustnessimprovementswithoutsignificantperformancegains. Thissuggeststhatsimple
+instructionmodificationsareinsufficientforLLMstolearneffectivedefensesthatbreaktheidenti-
+fiedtrade-offandlearneffectivedefenses.
+5.2 AUTOFRAMEWORKFORADVERSARIALATTACKDETECTIONANDRECOVERY
+The preliminary attempts highlight the fundamental challenge of achieving balanced robustness
+againstbothtypesofattacks. Asasolution,weproposeSFT-auto,anovelmodelthatleverages
+thereasoningabilitiesofLLMstodefendagainstbothtextualandstructuraladversarialattacks.
+Training. The training phase employs a principled data augmentation strategy to endow the
+model with attack recognition and recovery capabilities. We use an adaptive attack ratio r =
+min(1/|C|,0.15)toensurebalanceddetectionacrossdatasetswithvaryingclassdistributions.Train-
+ingdatacomprisesthreedistincttypes: Normalsamples(S )preserveoriginalnode-neighbor
+normal
+pairstomaintainstandardclassificationability;Attacksamples(S )containnodeswithtextde-
+attack
+liberatelyreplacedbycontentfromdifferent-classnodes,labeledas“text attacked”toteachattack
+recognition;andRecoverysamples(S )removecentertextentirely,compellingthemodelto
+recovery
+leverage neighbor information for robust prediction. This training paradigm enables the LLM to
+handle(|C|+1)-classattackdetectionand|C|-classrecoverytasksthroughspecializedprompts.
+Inference. The inference phase implements a three-stage adaptive pipeline that dynamically re-
+sponds to detected attack patterns. Stage 1: Attack Detection: The LLM identifies text-attacked
+nodes through an extended (|C|+1)-dimensional classification space, while structure attacks are
+detected via embedding-based similarity analysis. Nodes exhibiting low cosine similarity (< 0.5)
+tooverhalftheirneighborsareflaggedasstructure-attacked. Textattackdetectiontakesprecedence
+to prevent redundant dual flagging. Stage 2: Adaptive Recovery: Text-attacked nodes bypass
+their corrupted center text entirely, relying solely on original neighbor information for classifica-
+tion. Structure-attackednodesleveragetheirpreservedowntextcombinedwithfilteredneighbors.
+Connectionstotext-attackednodesorthosewithlowsimilarityareremoved. Normalnodesemploy
+standard classification using their original text and neighbors, with only text-attacked neighbors
+filtered. Thedetailedpseudo-codeofSFT-autoisgiveninAlgorithm1.
+ComplexityAnalysis. ThecomputationalcostofSFT-autoiscomparabletoSFT-neighbor,asboth
+methods are bottlenecked by the per-sample forward pass through the LLM. Training requires at
+most 1.3× more samples due to data augmentation (with ratio r ≤ 0.15). For inference, let T
+LLM
+bethetimeforasingleforwardpass. Theaverageper-sampleinferencetimeforSFT-autoisT ≈
+avg
+(1+p )·T , where p is the small fraction of detected nodes requiring recovery. The
+attack LLM attack
+value of p is bounded above by 2, which incurs an acceptable worst-case overhead, and is
+attack
+typicallyverysmallinpractice.Giventheequivalentper-samplecost,SFT-auto’soverallruntime
+iscomparabletoitsbaseline,makingitanefficientframeworkforachievingbalancedrobustness.
+Results. SFT-auto demonstrates superior performance, as visualized in Figure 4. Compared to
+baselines,SFT-autohasmoreconsistentperformanceagainstbothstructuralandtextualattacks.
+8
+Preprint
+100
+90
+80
+70
+60
+50
+40
+30
+Cora Citeseer
+Pub
+med Wikics
+Instagra
+m Reddit History Photo
+(a) Attack Performance Comparison
+)%(
+ycaruccA
+SFT-auto (Structure) AutoGCN (Structure) SFT-auto (Text) AutoGCN (Text)
+80
+60
+40
+20
+0
+Cora Citeseer
+Pub
+med Wikics
+Instagra
+m Reddit History Photo
+(b) Detection Rate against Texual Attacks
+)%(
+etaR
+noitceteD
+AutoGCN Detection Rate SFT-auto Detection Rate
+17.4×
+5.8×
+7.7× 6.2×
+6.9×
+7.3×
+10.1×
+15.0×
+Figure 6: Performance comparison between SFT-auto and AutoGCN. (a) Robustness evaluation
+showingaccuracyunderstructural(leftbars)andtextual(rightbars)attacks. (b)Detectionefficacy
+againsttextualattacks.
+5.3 GNNWITHAUTODESIGN
+HavingestablishedSFT-Auto’seffectiveness,anaturalquestionarises: Cansimilarauto-detection
+principlesenhancetherobustnessofGNNs? Toexplorethis,weimplementAutoGCNbyreplacing
+theLLMpredictorwithaGCN,whilemaintainingthesamedetectionpipelinearchitecture.
+Figure6revealsthatAutoGCNexhibitssubstantialdegradationacrossbothattackmodalities,with
+particularly pronounced deficiencies in textual anomaly detection (Figure 6b), where SFT-Auto
+achieves 6.2–17.4× improvements over AutoGCN. This performance gap illuminates fundamen-
+tal architectural differences: LLMs possess inherent multi-modal reasoning capabilities, enabling
+seamlessintegrationofdetectionandclassificationwithinunifiedframeworks. Conversely, GNNs
+lack the linguistic sophistication required for text anomaly detection. This suggests promising re-
+searchdirectionstowardhybridarchitecturesthatcombineGNNs’structuralrobustnesswithLLMs’
+semanticunderstandingthroughmulti-stagepredictionpipelinesbuiltonverified,cleandata.
+6 RELATED WORK
+Robust GNNs and GraphLLMs. The vulnerability of GNNs to adversarial attacks has been ex-
+tensivelystudied(Jinetal.,2021;Xueetal.,2025),motivatingaseriesofRGNNs. Robusttraining
+methods modify the learning process to enhance resilience, exemplified by GRAND (Feng et al.,
+2020)andNoisyGCN(Ennadiretal.,2024). Robustarchitecturaldesignsintroduceinherentlysta-
+ble mechanisms, such as GNNGuard (Zhang & Zitnik, 2020), which filters edges based on node
+similarity, SoftMedian-GDC (Geisler et al., 2021), which applies median-based aggregation, and
+RUNG(Houetal.,2024),whichadoptsanunbiasedaggregatorforimprovedsoftfiltering. Graph
+structurelearningmethods,includingProGNN(Jinetal.,2020)andStable(Lietal.,2022b),refine
+the graph topology to denoise adversarial input. However, these RGNNs rely solely on shallow
+embeddings,neglectingtheinfluenceofrawtextualinformationinTAGsonrobustness,andfocus
+primarilyondefendingagainststructuralperturbations.
+Recently, LLMs have been introduced to enhance the robustness of GNNs in TAGs. Representa-
+tivemethodsincludeGraphEdit(Guoetal.,2024b),RLLMGNN(Zhangetal.,2025b),andLang-
+GSL (Su et al., 2024), which leverage LLMs to adjust or reconstruct graph structure under adver-
+sarialsettings. However,theseapproachesuseLLMssolelyasstructurerefinersandremaintightly
+coupled to GNN backbones, limiting their flexibility and capacity to capture deeper interactions
+betweentextandstructure.
+GraphRobustnessEvaluation. ForGNNsandRGNNs,Zhengetal.(2021)proposeGRB,which
+evaluates model robustness under GIAs. More recently, Guo et al. (2024a) initiate the study of
+robustnessforLLM-basedpredictorsinTAGs.TrustGLM(Zhangetal.,2025a)extendsGraphLLM
+astheevaluationtargetandexploresdefensestrategiessuchasnoiseinjection. Olatunjietal.(2025)
+9
+Preprint
+propose a deep evaluation into GraphLLMs against text and structural attacks. However, existing
+evaluation frameworks lack uniformity and fairness across different model categories and attack
+settings. Thislimitationobscuresthekeyfindingspresentedinourstudy.
+7 CONCLUSION
+ThispaperpresentsacomprehensiveevaluationofgraphlearningmethodsonTAGsagainstbothtex-
+tualandstructuralattacks,evaluatingGNNs,RGNNs,GraphLLMs,andLLMsacrosstendatasets
+from four domains under transductive poisoning and inductive evasion settings. The experiments
+revealkeyinsights: differentclassifiertypesexhibitdistincttext-structuretrade-offs;simpleRGNN
+canshineagainwithapropertextencoder;andGNNsandLLMsdemonstratevulnerabilitiestodif-
+ferentattacktypes. Thepaperpresentsanovelmethod,SFT-auto,toaddresstheidentifiedtrade-off,
+introducing a unified LLM-based framework that is robust against both textual and structural per-
+turbations. Thepaperalsoincludescomprehensiveablationstudiesandevaluationsagainstadaptive
+andhybridattacksintheappendix,establishingafoundationforfutureresearchinTAGsecurity.
+ACKNOWLEDGEMENTS
+This research was supported in part by National Natural Science Foundation of China (No.
+92470128,No. U2241212),byNationalScienceandTechnologyMajorProject(2022ZD0114802),
+byBeijingOutstandingYoungScientistProgramNo.BJJWZYJH012019100020098andAntGroup
+throughCCF-AntResearchFund.Wealsowishtoacknowledgethesupportprovidedbythefundfor
+building world-class universities (disciplines)of Renmin University of China, by Engineering Re-
+searchCenterofNext-GenerationIntelligentSearchandRecommendation,MinistryofEducation,
+by Intelligent Social Governance Interdisciplinary Platform, Major Innovation & Planning Inter-
+disciplinary Platform for the “Double-First Class” Initiative, Public Policy and Decision-making
+ResearchLab,andPublicComputingCloud,RenminUniversityofChina.
+REFERENCES
+Yassine Abbahaddou, Sofiane Ennadir, Johannes F. Lutzeyer, Michalis Vazirgiannis, and Henrik
+Bostro¨m. Boundingtheexpectedrobustnessofgraphneuralnetworkssubjecttonodefeatureat-
+tacks. InTheTwelfthInternationalConferenceonLearningRepresentations,ICLR2024,Vienna,
+Austria,May7-11,2024.OpenReview.net,2024.
+RunjinChen, TongZhao, AjayJaiswal, NeilShah, andZhangyangWang. Llaga: Largelanguage
+andgraphassistant. arXivpreprintarXiv:2402.08170,2024.
+EliChien,JianhaoPeng,PanLi,andOlgicaMilenkovic. Adaptiveuniversalgeneralizedpagerank
+graphneuralnetwork. In9thInternationalConferenceonLearningRepresentations,ICLR2021,
+VirtualEvent,Austria,May3-7,2021.OpenReview.net,2021.
+AbhimanyuDubey,AbhinavJauhri,AbhinavPandey,AbhishekKadian,AhmadAl-Dahle,Aiesha
+Letman,AkhilMathur,AlanSchelten,AmyYang,AngelaFan,etal. Thellama3herdofmodels.
+arXive-prints,pp.arXiv–2407,2024.
+Sofiane Ennadir, Yassine Abbahaddou, Johannes F Lutzeyer, Michalis Vazirgiannis, and Henrik
+Bostro¨m. Asimpleandyetfairlyeffectivedefenseforgraphneuralnetworks. InProceedingsof
+theAAAIconferenceonartificialintelligence,volume38,pp.21063–21071,2024.
+Wenzheng Feng, Jie Zhang, Yuxiao Dong, Yu Han, Huanbo Luan, Qian Xu, Qiang Yang, Evgeny
+Kharlamov,andJieTang.Graphrandomneuralnetworksforsemi-supervisedlearningongraphs.
+Advancesinneuralinformationprocessingsystems,33:22092–22103,2020.
+SimonGeisler, TobiasSchmidt, HakanS¸irin, DanielZu¨gner, AleksandarBojchevski, andStephan
+Gu¨nnemann. Robustness of graph neural networks at scale. Advances in Neural Information
+ProcessingSystems,34:7637–7649,2021.
+10
+Preprint
+CLeeGiles,KurtDBollacker,andSteveLawrence.Citeseer:anautomaticcitationindexingsystem.
+InProceedingsofthethirdACMconferenceonDigitallibraries,pp.89–98,1998.
+Lukas Gosch, Simon Geisler, Daniel Sturm, Bertrand Charpentier, Daniel Zu¨gner, and Stephan
+Gu¨nnemann. Adversarialtrainingforgraphneuralnetworks: Pitfalls, solutions, andnewdirec-
+tions. Advancesinneuralinformationprocessingsystems,36:58088–58112,2023.
+Kai Guo, Zewen Liu, Zhikai Chen, Hongzhi Wen, Wei Jin, Jiliang Tang, and Yi Chang. Learn-
+ing on graphs with large language models(llms): A deep dive into model robustness. CoRR,
+abs/2407.12068, 2024a. doi: 10.48550/ARXIV.2407.12068. URL https://doi.org/10.
+48550/arXiv.2407.12068.
+Zirui Guo, Lianghao Xia, Yanhua Yu, Yuling Wang, Kangkang Lu, Zhiyong Huang, and Chao
+Huang. Graphedit: Large language models for graph structure learning. arXiv preprint
+arXiv:2402.15183,2024b.
+ZhichaoHou,RuiqiFeng,TylerDerr,andXiaoruiLiu. Robustgraphneuralnetworksviaunbiased
+aggregation. AdvancesinNeuralInformationProcessingSystems,37:110097–110130,2024.
+WeihuaHu,MatthiasFey,MarinkaZitnik,YuxiaoDong,HongyuRen,BowenLiu,MicheleCatasta,
+andJureLeskovec. Opengraphbenchmark: Datasetsformachinelearningongraphs. Advances
+inneuralinformationprocessingsystems,33:22118–22133,2020.
+XuanwenHuang,KaiqiaoHan,YangYang,DezhengBao,QuanmingTao,ZixingChai,andQiZhu.
+Can gnn be good adapter for llms? Proceedings of the ACM Web Conference 2024, pp. 2077–
+2088,2024.
+AaronHurst,AdamLerer,AdamPGoucher,AdamPerelman,AdityaRamesh,AidanClark,AJOs-
+trow, Akila Welihinda, Alan Hayes, Alec Radford, et al. Gpt-4o system card. arXiv preprint
+arXiv:2410.21276,2024.
+Albert Q. Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chap-
+lot,DiegodelasCasas,FlorianBressand,GiannaLengyel,GuillaumeLample,LucileSaulnier,
+Le´lio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril,
+Thomas Wang, Timothe´e Lacroix, and William El Sayed. Mistral 7b, 2023. URL https:
+//arxiv.org/abs/2310.06825.
+Wei Jin, Yao Ma, Xiaorui Liu, Xianfeng Tang, Suhang Wang, and Jiliang Tang. Graph structure
+learningforrobustgraphneuralnetworks.InProceedingsofthe26thACMSIGKDDinternational
+conferenceonknowledgediscovery&datamining,pp.66–74,2020.
+Wei Jin, Yaxing Li, Han Xu, Yiqi Wang, Shuiwang Ji, Charu Aggarwal, and Jiliang Tang. Ad-
+versarialattacksanddefensesongraphs. ACMSIGKDDExplorationsNewsletter, 22(2):19–34,
+2021.
+Thomas N. Kipf and Max Welling. Semi-supervised classification with graph convolutional net-
+works. In 5th International Conference on Learning Representations, ICLR 2017, Toulon,
+France,April24-26,2017,ConferenceTrackProceedings.OpenReview.net,2017.URLhttps:
+//openreview.net/forum?id=SJU4ayYgl.
+Johannes Klicpera, Aleksandar Bojchevski, and Stephan Gu¨nnemann. Predict then propagate:
+Graphneuralnetworksmeetpersonalizedpagerank. In7thInternationalConferenceonLearn-
+ingRepresentations,ICLR2019,NewOrleans,LA,USA,May6-9,2019.OpenReview.net,2019.
+URLhttps://openreview.net/forum?id=H1gL-2A9Ym.
+RunlinLei,ZhenWang,YaliangLi,BolinDing,andZheweiWei.Evennet:Ignoringodd-hopneigh-
+borsimprovesrobustnessofgraphneuralnetworks. Advancesinneuralinformationprocessing
+systems,35:4694–4706,2022.
+RunlinLei,YuweiHu,YuchenRen,andZheweiWei.Intrudingwithwords:Towardsunderstanding
+graphinjectionattacksatthetextlevel. AdvancesinNeuralInformationProcessingSystems,37:
+49214–49251,2024.
+11
+Preprint
+Jintang Li, Bingzhe Wu, Chengbin Hou, Guoji Fu, Yatao Bian, Liang Chen, Junzhou Huang, and
+ZibinZheng. Recentadvancesinreliabledeepgraphlearning: Inherentnoise,distributionshift,
+andadversarialattack. arXivpreprintarXiv:2202.07114,2022a.
+Kuan Li, Yang Liu, Xiang Ao, Jianfeng Chi, Jinghua Feng, Hao Yang, and Qing He. Reliable
+representationsmakeastrongerdefender: Unsupervisedstructurerefinementforrobustgnn. In
+Proceedingsofthe28thACMSIGKDDconferenceonknowledgediscoveryanddatamining,pp.
+925–935,2022b.
+KuanLi,YangLiu,XiangAo,andQingHe. Revisitinggraphadversarialattackanddefensefroma
+datadistributionperspective. InTheEleventhInternationalConferenceonLearningRepresenta-
+tionsICLR,2023.
+Xiaorui Liu, Wei Jin, Yao Ma, Yaxin Li, Hua Liu, Yiqi Wang, Ming Yan, and Jiliang Tang. Elas-
+tic graph neural networks. In International Conference on Machine Learning, pp. 6837–6849.
+PMLR,2021.
+Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy, Mike
+Lewis,LukeZettlemoyer,andVeselinStoyanov. Roberta: Arobustlyoptimizedbertpretraining
+approach. arXivpreprintarXiv:1907.11692,2019.
+Pe´terMernyeiandCa˘ta˘linaCangea. Wiki-cs: Awikipedia-basedbenchmarkforgraphneuralnet-
+works. arXivpreprintarXiv:2007.02901,2020.
+MistralAITeam. Unministral,desministraux: Introducingministral3bandministral8b. https:
+//mistral.ai/news/ministraux,October2024.
+JohnMorris,EliLifland,JinYongYoo,JakeGrigsby,DiJin,andYanjunQi. Textattack: Aframe-
+workforadversarialattacks, dataaugmentation, andadversarialtraininginnlp. InProceedings
+ofthe2020ConferenceonEmpiricalMethodsinNaturalLanguageProcessing: SystemDemon-
+strations,pp.119–126,2020.
+FelixMujkanovic,SimonGeisler,StephanGu¨nnemann,andAleksandarBojchevski. Aredefenses
+for graph neural networks robust? Advances in Neural Information Processing Systems, 35:
+8954–8968,2022.
+ThanhToanNguyen,NguyenQuocVietHung,ThanhTamNguyen,ThanhTrungHuynh,ThanhThi
+Nguyen,MatthiasWeidlich,andHongzhiYin. Manipulatingrecommendersystems: Asurveyof
+poisoningattacksandcountermeasures. ACMComputingSurveys,57(1):1–39,2024.
+Iyiola E Olatunji, Franziska Boenisch, Jing Xu, and Adam Dziedzic. Adversarial attacks and de-
+fensesongraph-awarelargelanguagemodels(llms). arXivpreprintarXiv:2508.04894,2025.
+PrithvirajSen,GalileoNamata,MustafaBilgic,LiseGetoor,BrianGallagher,andTinaEliassi-Rad.
+Collectiveclassificationinnetworkdata. AImagazine,29(3):93–106,2008.
+GuangxinSu,YifanZhu,WenjieZhang,HanchenWang,andYingZhang. Bridginglargelanguage
+models and graph structure learning models for robust representation learning. arXiv preprint
+arXiv:2410.12096,2024.
+Jiabin Tang, Yuhao Yang, Wei Wei, Lei Shi, Lixin Su, Suqi Cheng, Dawei Yin, and Chao Huang.
+Graphgpt: Graph instruction tuning for large language models. In Proceedings of the 47th In-
+ternationalACMSIGIRConferenceonResearchandDevelopmentinInformationRetrieval,pp.
+491–500,2024.
+Petar Velickovic, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Lio`, and Yoshua
+Bengio. Graphattentionnetworks. In6thInternationalConferenceonLearningRepresentations,
+ICLR 2018, Vancouver, BC, Canada, April 30 - May 3, 2018, Conference Track Proceedings.
+OpenReview.net,2018. URLhttps://openreview.net/forum?id=rJXMpikCZ.
+LanjunWang,XinranQiao,YanweiXie,WeizhiNie,YongdongZhang,andAnanLiu. Mybrother
+helpsme: Nodeinjectionbasedadversarialattackonsocialbotdetection. InProceedingsofthe
+31stACMInternationalConferenceonMultimedia,pp.6705–6714,2023.
+12
+Preprint
+ShijieWang,JianiHuang,ZhikaiChen,YuSong,WenzhuoTang,HaitaoMao,WenqiFan,HuiLiu,
+XiaoruiLiu,DaweiYin,etal. Graphmachinelearningintheeraoflargelanguagemodels(llms).
+ACMTransactionsonIntelligentSystemsandTechnology,16(5):1–40,2025a.
+WenhuiWang, FuruWei, LiDong, HangboBao, NanYang, andMingZhou. Minilm: Deepself-
+attentiondistillationfortask-agnosticcompressionofpre-trainedtransformers. Advancesinneu-
+ralinformationprocessingsystems,33:5776–5788,2020.
+Yuxiang Wang, Xinnan Dai, Wenqi Fan, and Yao Ma. Exploring graph tasks with pure llms: A
+comprehensivebenchmarkandinvestigation. arXivpreprintarXiv:2502.18771,2025b.
+HuijunWu,ChenWang,YuriyTyshetskiy,AndrewDocherty,KaiLu,andLimingZhu. Adversarial
+examples for graph data: Deep insights into attack and defense. In Sarit Kraus (ed.), Proceed-
+ingsoftheTwenty-EighthInternationalJointConferenceonArtificialIntelligence, IJCAI2019,
+Macao,China,August10-16,2019,pp.4816–4823.ijcai.org,2019.
+ShiwenWu,FeiSun,WentaoZhang,XuXie,andBinCui. Graphneuralnetworksinrecommender
+systems: Asurvey. ACMComput.Surv.,55(5):97:1–97:37,2023.
+Xixi Wu, Yifei Shen, Fangzhou Ge, Caihua Shan, Yizhu Jiao, Xiangguo Sun, and Hong Cheng.
+Whendollmshelpwithnodeclassification? acomprehensiveanalysis. CoRR,abs/2502.18771,
+2025. doi: 10.48550/ARXIV.2502.18771. URL https://doi.org/10.48550/arXiv.
+2502.18771.
+Kaidi Xu, Hongge Chen, Sijia Liu, Pin-Yu Chen, Tsui-Wei Weng, Mingyi Hong, and Xue Lin.
+Topology attack and defense for graph neural networks: An optimization perspective. In Pro-
+ceedings of the Twenty-Eighth International Joint Conference on Artificial Intelligence, IJCAI
+2019,Macao,China,August10-16,2019,pp.3961–3967.ijcai.org,2019.
+RuizhanXue,HuiminDeng,FangHe,MaojunWang,andZeyuZhang.Trustworthygnnswithllms:
+Asystematicreviewandtaxonomy. arXivpreprintarXiv:2502.08353,2025.
+HaoYan,ChaozhuoLi,RuosongLong,ChaoYan,JiananZhao,WenwenZhuang,JunYin,Peiyan
+Zhang, Weihao Han, Hao Sun, et al. A comprehensive study on text-attributed graphs: Bench-
+markingandrethinking. AdvancesinNeuralInformationProcessingSystems,36:17238–17264,
+2023.
+An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu,
+Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint
+arXiv:2505.09388,2025.
+Zhilin Yang, William Cohen, and Ruslan Salakhudinov. Revisiting semi-supervised learning with
+graphembeddings. InInternationalconferenceonmachinelearning,pp.40–48,2016.
+QihaiZhang,XinyueSheng,YuanfuSun,andQiaoyuTan. Trustglm: Evaluatingtherobustnessof
+graphllmsagainstprompt,text,andstructureattacks. InProceedingsofthe31stACMSIGKDD
+ConferenceonKnowledgeDiscoveryandDataMiningV.2,pp.5912–5923,2025a.
+XiangZhangandMarinkaZitnik. Gnnguard: Defendinggraphneuralnetworksagainstadversarial
+attacks. Advancesinneuralinformationprocessingsystems,33:9263–9275,2020.
+Zhongjian Zhang, Xiao Wang, Huichi Zhou, Yue Yu, Mengmei Zhang, Cheng Yang, and Chuan
+Shi. Canlargelanguagemodelsimprovetheadversarialrobustnessofgraphneuralnetworks? In
+Proceedingsofthe31stACMSIGKDDConferenceonKnowledgeDiscoveryandDataMiningV.
+1,pp.2008–2019,2025b.
+Qinkai Zheng, Xu Zou, Yuxiao Dong, Yukuo Cen, Da Yin, Jiarong Xu, Yang Yang, and Jie Tang.
+Graphrobustnessbenchmark: Benchmarkingtheadversarialrobustnessofgraphmachinelearn-
+ing. arXivpreprintarXiv:2111.04314,2021.
+Dingyuan Zhu, Ziwei Zhang, Peng Cui, and Wenwu Zhu. Robust graph convolutional networks
+against adversarial attacks. In Proceedings of the 25th ACM SIGKDD international conference
+onknowledgediscovery&datamining,pp.1399–1407,2019.
+13
+Preprint
+Daniel Zu¨gner and Stephan Gu¨nnemann. Adversarial attacks on graph neural networks via meta
+learning. In 7th International Conference on Learning Representations, ICLR 2019, New Or-
+leans,LA,USA,May6-9,2019.OpenReview.net,2019. URLhttps://openreview.net/
+forum?id=Bylnx209YX.
+DanielZu¨gner,AmirAkbarnejad,andStephanGu¨nnemann. Adversarialattacksonneuralnetworks
+forgraphdata. InProceedingsofthe24thACMSIGKDDinternationalconferenceonknowledge
+discovery&datamining,pp.2847–2856,2018.
+14
+Contents
+A ImplementaionandConfigurations 16
+A.1 Implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+A.2 Configuration . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+A.3 ModelCards. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+B DetailsofDatasets 16
+C DetailsofAttackMethods 17
+C.1 StructuralAttacks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+C.2 Text-basedAttacks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+C.3 HybridText-levelGraphInjectionAttacks . . . . . . . . . . . . . . . . . . . . . . 19
+C.4 AttacksExcludedintheMainPaper . . . . . . . . . . . . . . . . . . . . . . . . . 19
+C.4.1 WhynotMettack? . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+C.4.2 WhynotTextAttack? . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+D DetailsofDefenseMethods 21
+D.1 IntroductionofDefenseModel . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+D.2 ConfigurationandHyperparameters . . . . . . . . . . . . . . . . . . . . . . . . . 22
+D.2.1 GNNandRGNNs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+D.2.2 GraphLLMs. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+D.2.3 GraphLLMswithNoisyTraining . . . . . . . . . . . . . . . . . . . . . . 24
+D.2.4 SFTwithSimilarityConstraints . . . . . . . . . . . . . . . . . . . . . . . 25
+D.2.5 SFT-auto . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+E ResultsagainstWTGIA 26
+F WhyGNNGuardExcels: UnderstandingandImproving 28
+F.1 ResultsofGNNGuardunderdifferenttextencoders . . . . . . . . . . . . . . . . . 28
+F.2 DifferenceBetweenText-encoders . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+F.3 Guardual: RobustnessAgainstTest-TimeStructuralAttacks . . . . . . . . . . . . 30
+F.3.1 Dual-ThresholdDesign . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+15
+Preprint
+F.3.2 ResultsofGuardual. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+G AdaptiveAttacks 31
+G.1 AdaptiveAttacksagainstGNNGuard. . . . . . . . . . . . . . . . . . . . . . . . . 31
+G.2 AdaptiveAttacksonEmbeddingTransferability . . . . . . . . . . . . . . . . . . . 33
+H AblationStudyforSFTVariants 34
+H.1 ImpactofDifferentPromptTemplates . . . . . . . . . . . . . . . . . . . . . . . . 34
+H.1.1 Degree-basedvsRandomNeighborSelection . . . . . . . . . . . . . . . . 34
+H.1.2 LabelInformationinPrompting . . . . . . . . . . . . . . . . . . . . . . . 34
+H.2 ImpactofDifferentLLMBackbones . . . . . . . . . . . . . . . . . . . . . . . . . 34
+I FullExperimentResults 35
+I.1 GNNandRGNNResults . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
+I.1.1 Clean,Inductive . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 36
+I.1.2 Clean,Transductive. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+I.1.3 StructureAttack,Inductive . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+I.1.4 StructureAttack,Transductive . . . . . . . . . . . . . . . . . . . . . . . . 42
+I.1.5 TextAttack,Inductive . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+I.1.6 TextAttack,Transductive . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+I.2 GraphLLMResults . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 42
+I.3 ResultswithDifferentPerturbRatios . . . . . . . . . . . . . . . . . . . . . . . . . 42
+16
+Preprint
+A IMPLEMENTAION AND CONFIGURATIONS
+A.1 IMPLEMENTATION
+We rely on GreatX Li et al. (2022a) for GNN and RGNN implementations, and on NodeBed Wu
+etal.(2025)forGraphLLManddatasetloading.
+A.2 CONFIGURATION
+Experiments were run on a machine with an NVIDIA A100-SXM4 GPU (80GB), an Intel Xeon
+CPU(2.30GHz),and512GBofRAM.
+A.3 MODELCARDS
+Weusedthefollowingpublicmodels(linkstotheirofficialmodelcards):
+• Mistral-7B(Jiangetal.,2023)
+• Llama3.1–8B(Dubeyetal.,2024)
+• Ministral-8B(MistralAITeam,2024)
+• Qwen3–8B(Yangetal.,2025)
+• GPT-4omini(Hurstetal.,2024)
+• RoBERTa(Liuetal.,2019)
+• MiniLM(Wangetal.,2020)
+B DETAILS OF DATASETS
+Weevaluateourmethodson10text-attributedgraphdatasetsspanningfourdomains,selectedfrom
+the LLMNodeBed benchmark (Wu et al., 2025) to ensure comprehensive coverage of real-world
+scenarios.
+AcademicNetworks
+• Cora(Senetal.,2008): Computersciencepapersorganizedintosevenresearchareas.
+• CiteSeer (Giles et al., 1998): CS publications spanning six categories including AI and
+databases.
+• Pubmed(Yangetal.,2016): Biomedicalliteraturefocusedondiabetesresearchwiththree
+classificationtypes.
+• ArXiv(Huetal.,2020): Large-scaleCSpapercollectioncovering40specializedsubcate-
+goriesfromthearXivrepository.
+WebLinkNetwork
+• WikiCS(Mernyei&Cangea,2020):ComputerscienceWikipediaarticlescategorizedinto
+tentechnicaldomains,interconnectedthroughhyperlinkreferences.
+SocialNetworks
+• Instagram(Huangetal.,2024):Userprofilesdifferentiatedbetweenpersonalandbusiness
+accountsbasedonprofilecharacteristics.
+• Reddit(Huangetal.,2024): Communityusersclassifiedbyengagementlevelsusingpost-
+inghistoryandinteractionpatterns.
+17
+Preprint
+E-CommerceNetworks
+• History(Yanetal.,2023): Historicalliteratureproductswithdetailedcategoricalorgani-
+zation.
+• Photo (Yan et al., 2023): Photography equipment spanning professional and consumer
+categories.
+• Computer (Yan et al., 2023): Technology products including hardware components and
+accessories.
+Table3: Datasetstatisticsforthe10evaluateddatasetsfromLLMNodeBed(Wuetal.,2025).
+Domain Dataset Classes Nodes Edges
+Cora 7 2,708 5,429
+CiteSeer 6 3,186 4,277
+Academic
+Pubmed 3 19,717 44,338
+arXiv 40 169,343 1,166,243
+WebLink WikiCS 10 11,701 215,863
+Instagram 2 11,339 144,010
+Social
+Reddit 2 33,434 198,448
+Books 12 41,551 358,574
+E-Commerce Photo 12 48,362 500,928
+Computer 10 87,229 721,081
+C DETAILS OF ATTACK METHODS
+C.1 STRUCTURALATTACKS
+PGDAttack(Xuetal.,2019). Awhiteboxgradient-baseddiscreteGMAthatiterativelyperturbs
+thegraphstructureviaprojectedgradientascentovercontinuousrelaxationvariables, followedby
+stochasticbinarizationtoapplyedgeadditions/removalsunderabudgetconstraint.
+Hyperparameters:
+• Learningrate: η0 =0.1.
+• Optimization: 200optimizationepochs+20samplingepochs.
+• Budget: Default20%oftotaledges.
+• TargetEmbedding: BoW.
+PGD-Guard(Threshold-basedPGD)(Mujkanovicetal.,2022). Anadaptivevariantthatcon-
+strains perturbations to pairs of nodes whose cosine similarity exceeds a threshold, emulating
+defense-awarestrategiesintendedtobypasssimilarityfiltering(targetingGNNGuard(Zhang&Zit-
+nik,2020)).
+Hyperparameters:
+• Cosinesimilaritythresholds: [0.0,0.3,0.5,0.7].
+• Basesettings: sameasstandardPGD.
+• Budget: 20%ofedges.
+• TargetEmbedding: RoBERTa.
+GRBCD Attack (Geisler et al., 2021). A white-box GMA based on greedy randomized block
+coordinate descent over the discrete edge space. At each step, random edge blocks are scored by
+gradientsandgreedilyflippedwithinthebudget.
+Hyperparameters:
+18
+Preprint
+• Blocksize: 1,000,000.
+• Sampling: 50trialsperiteration;20finalsamplesforselection.
+• Earlystopping: patience-basedwithtoleranceϵ=10−7.
+• TargetEmbedding: BoW.
+HeuristicAttack(Lietal.,2023). AscalableDICE-styleheuristic(“DisconnectInternally,Con-
+nectExternally”)withtraining-awareconstraintsthatprioritizesedgesinvolvingtrainingnodesand
+degree-basednodeselection,approachinggray-boxpoisoningMetaAttack(Zu¨gner&Gu¨nnemann,
+2019)performanceviadistributionshiftsmaximization.
+Hyperparameters:
+• Add vs. remove probability: 0.5. We tried from [0.3,0.5,0.7,0.9,1.0], and found
+threshold=0.5yieldsmoststableperformance.
+• Nodesampling: inverse-degreeprobability(lowerdegree⇒higherprobability).
+C.2 TEXT-BASEDATTACKS
+LLMTextAttack. Wegenerateneighborhood-awarepromptstoinduceanLLMtorewritenode
+textssothatthepredictedlabelisdrivenawayfrom(i)thenode’scurrentclassand(ii)thedominant
+classesinitsimmediateneighborhood,whilepreservinglengthandfluency.
+PromptTemplate(instantiatedpertargetnode).
+Graphnodeclassificationtask
+Availableclasses:{classes str}
+Targetnode{node id}:
+Originaltext:“{text}”
+Originallabel:“{current label}”
+{neighbor info} (e.g.,“Neighborlabels:[...](counts:{...})”or“Noneighborsfound”)
+Task.Rewritethetexttobeasdifferentaspossiblefromtheoriginalwhilekeepingasimilarlength.
+Requirements:
+• Mustnotbelongtotheoriginalclass:“{current label}”.
+• Shouldnotbelongtoneighborclasses:{unique neighbor labels} or None.
+• {target instruction}(e.g.,preferaclassfromtheallowedset,ortheleastfrequent
+neighborclassifallareforbidden).
+• Makethecontentmaximallydissimilarfromtheoriginalsemantics.
+• Keepthewordcountroughlysimilar.
+• Producecontentthatismostunlikelyunderthenode/neighborcontextforthetargetclass.
+Goal:createtextthatisjointlyinconsistentwiththeoriginalcontentanditslocalgraphcontext.
+Returnonlythemodifiedtext,withnoexplanationsornotes.
+Modifiedtext:
+Algorithm.
+• Targetselection:samplenodeswithdegree-weightedprobabilities.Lowerdegrees,higher
+probabilities.
+• Contextextraction:foreachnode,gatheritsoriginaltext,currentlabel,neighbors’labels,
+andcounts.
+• Constraint synthesis: define the forbidden set as {current label} ∪ {neighbor labels};
+computetheallowedlabelsetoverallclasses. Ifempty,choosetheleastfrequentneighbor
+label;elsepreferalabelmaximallydifferentfromtheforbiddenset.
+• Prompting:instantiatetheabovetemplatewith{classes str},{node id},{text},
+{current label},{neighbor info},and{target instruction}.
+19
+Preprint
+• Generation: querytheLLMtogeneratearesponse.
+• Post-processing: clean text, validate constraints (length and class-avoidance heuristics),
+andembedtoupdatenodefeatures.
+Hyperparameters.
+• BackboneLLM:GPT-4o-mini(Hurstetal.,2024).
+• Temperature: 0.7.
+• Targetnodes: Trainingifunderthepoisonsetting,testnodesifundertheevasionsetting.
+• Budget: Poison: 80%ofthetrainingnodes;Evasion: 40%ofthetestnodes.
+C.3 HYBRIDTEXT-LEVELGRAPHINJECTIONATTACKS
+WTGIA:Word-levelTextGIA(Leietal.,2024). WefollowtheoriginalWTGIApipelinewith
+dataset-specificadaptationsduringinductivelearning.
+Configuration.
+• Textgenerator: Llama-3.1-8B(Dubeyetal.,2024)withno-topicpromptsandvocabulary
+masking.
+• Edgeconnectivity:Weusen =num edges×ptb rate,sothenumberoftotalinject
+injectedges
+edgesalignedtoGMAratesifthebudgetissetthesame. Specifically,weyield17(Cora),
+9(CiteSeer),22(PubMed)atptb rate=0.2.
+• Nodeinjections: 60(Cora),90(CiteSeer),400(PubMed)atptb rate = 0.2;scalepropor-
+tionallyforptb rate=0.4.
+• BoWsparsity: 0.15(Bestaccordingtotheoriginalpaper).
+• FGSM optimization: step size ϵ = 0.01 for 100 epochs; sequential injection steps of 0.2
+withATDGIAstrategy.
+• Batching: 50forPubMed;1forotherdatasets.
+C.4 ATTACKSEXCLUDEDINTHEMAINPAPER
+In this paper, we focus on untargeted attacks and text-based attacks. Therefore, methods such as
+Nettack (Zu¨gner et al., 2018) and feature attacks in GRB (Zheng et al., 2021) are not employed.
+Additionally,whilesomeattacksconformtoourexperimentalsetting,wechoosenottoadoptthem.
+Inthissubsection,weprovidedetailedjustificationfortheseexclusions.
+C.4.1 WHYNOTMETTACK?
+Mettack(Zu¨gner&Gu¨nnemann,2019). Mettack(Zu¨gner&Gu¨nnemann,2019)isagray-box
+structural poisoning attack that employs a surrogate GCN and bi-level optimization with meta-
+gradientstoidentifyvulnerableedges.
+Hyperparameters.
+• Surrogatelearningrate: 0.1;momentum: 0.9.
+• Metalearningrate: adaptive.
+• Metaepochs: 100.
+• Regularizationmodes: λ ∈ {0.0(meta-self), 0.5(meta-both), 1.0(meta-train)}. Weuse
+λ∈{0.0(meta-self)asityieldsthestrongestattacks.
+Inthemainpaper,weoptedforHeuristicAttackinsteadofMettackforthefollowingreasons:
+• TheattackperformanceofMettackisnotsignificantwhentransferringtovalidation-based
+defenses, as demonstratedinTable 4. Thisphenomenon isalso evidencedbythe GreatX
+repository(Lietal.,2022a).
+20
+Preprint
+• Mettacksuffersfromscalabilitylimitations,makingitapplicableonlytodatasetsofasize
+comparabletothePubMedlevel.
+Table4:AttackperformancecomparisononCoraandCiteSeerdatasetsusingasurrogateGCNwith
+64hiddenunits. Resultsshowmeanaccuracy±standarddeviationacrossthreeruns.
+Dataset AttackMethod Clean NoValidation WithValidation
+HeuristicAttack 82.91±0.83 61.30±1.00 70.33±2.89
+Cora
+Mettack 82.91±0.83 75.13±1.28 77.86±0.08
+HeuristicAttack 71.65±0.61 65.90±1.18 70.64±1.11
+CiteSeer
+Mettack 71.65±0.61 62.00±0.69 68.82±0.15
+In contrast, HeuristicAttack, with its superior scalability and more consistent performance across
+validationconditions,isamoreflexibleandreliablechoiceforevaluation.
+C.4.2 WHYNOTTEXTATTACK?
+Introduction of Text Adversarial Attack. While our main approach employs LLM-based text
+generation for adversarial attacks, one may be concerned about the unnoticeability of such substi-
+tutions. To address this limitation, we conduct a comprehensive analysis using established NLP
+adversarialattackmethodsthatexplicitlyoptimizeforimperceptibility. Specifically,weemploythe
+TextAttacklibraryandselectTextFoolerasourprimaryattackmethod,includingBAE,PWWS,and
+HotFlip,inpreliminaryevaluations.
+TextFooleroperatesbystrategicallyperturbingindividualwordswithininputsentencestogenerate
+semanticallyequivalentyetsyntacticallymodifiedtext. Themethodprioritizessemanticpreserva-
+tionwhileintroducingsubtlelexicalmodifications,renderingtheperturbationschallengingtodetect
+forbothhumanevaluatorsandautomatedsystems.ThischaracteristicmakesTextFoolerparticularly
+suitablewhenimperceptibilityconstitutesacriticalrequirement.
+ExperimentalConfiguration.WeconfigureTextFoolerwithMiniLMembeddingsandutilizedefault
+parametersfromtheTextAttacklibrary(Morrisetal.,2020). ThevictimmodelissetasGCN.Our
+evaluationemploysaperturbationrateof0.4acrossallexperiments. Theexperimentenvironment
+issetastheinductiveevasionsetting.
+Key Findings. Our empirical analysis reveals a critical dependency between attack effectiveness
+andthealignmentofembeddingrepresentationsusedinboththeattackgenerationandtargetmodel
+defensemechanisms. AsshowninTable5,whentheattackembeddings(MiniLM)matchthoseem-
+ployedbythetargetmodel(MiniLM),TextFoolerdemonstratessubstantiallydegradedperformance
+across all evaluated GNN architectures, with a notable performance drop. However, as shown in
+Tables 6 and 7, when embedding misalignment occurs—specifically when target models utilize
+different embedding schemes such as BoW or RoBERTa, the attack effectiveness diminishes con-
+siderably.
+Theseresultsprovidecompellingevidencethatthetextadversarialattackstilloverfitsthesurrogate
+modelandtheembeddingtype.Toensureaneffectiveattackstrengthconsistently,weusetheLLM-
+basedtextattackthatgenerallydegradestheperformanceofallbackboneswithallencoders.
+D DETAILS OF DEFENSE METHODS
+D.1 INTRODUCTIONOFDEFENSEMODEL
+ForGNNsandRGNNs,wehavethefollowingmethodsasbaselines.
+Spatial/MessagePassingModels
+1. GCN(Kipf&Welling,2017): GraphConvolutionalNetworkusinglocalizedspectralcon-
+volutionwithChebyshevpolynomials.
+21
+Preprint
+Table5: TextFoolerattackresults,MiniLMembeddingforthedefender. Boldindicatesbestperfor-
+mance,underlineindicatessecondbest.
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History
+GCN 57.32±2.84 50.78±2.14 63.32±1.19 74.26±13.51 52.85±1.89 53.80±0.49 84.47±0.40
+GAT 64.88±7.50 41.43±2.29 66.59±5.63 51.86±22.41 52.38±4.75 53.07±1.44 83.82±0.60
+APPNP 53.75±1.22 52.40±1.67 61.94±0.88 60.99±15.99 55.67±0.83 46.40±0.44 84.80±0.48
+GPRGNN 50.62±0.43 44.98±0.68 65.68±1.10 59.02±16.72 49.54±5.39 45.54±0.79 82.96±0.66
+RobustGCN 76.32±3.28 68.34±0.80 72.91±1.10 64.67±0.61 62.13±0.47 57.69±0.83 84.89±0.44
+NoisyGCN 59.35±1.61 53.24±1.09 63.78±0.76 64.15±13.95 50.24±1.82 54.03±0.79 84.55±0.34
+GRAND 60.02±1.94 66.93±1.12 65.35±0.56 49.55±0.92 63.76±0.35 51.08±0.69 83.03±0.52
+EvenNet 63.22±2.30 59.77±0.27 65.91±0.97 62.95±15.51 54.29±2.65 47.83±1.58 84.73±0.56
+GNNGuard 49.57±0.98 46.13±1.40 66.45±0.32 59.48±15.24 42.12±1.44 44.98±3.69 82.91±0.35
+Table 6: TextFooler attack results, BoW embedding for the defender. Bold indicates best perfor-
+mance,underlineindicatessecondbest.
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History
+GCN 85.30±1.61 72.99±1.93 86.13±0.30 81.52±0.24 63.11±0.70 60.54±0.93 81.79±0.11
+GAT 86.04±1.91 73.30±0.94 86.12±0.20 81.33±0.32 64.43±1.05 61.51±1.21 82.13±0.60
+APPNP 85.73±2.16 70.85±0.38 85.04±0.11 78.46±1.62 63.30±1.48 56.88±0.95 81.35±0.26
+GPRGNN 81.49±1.80 69.80±0.63 84.21±0.43 79.18±1.61 63.96±0.46 59.26±0.97 78.28±0.57
+RobustGCN 86.59±1.52 72.73±0.13 86.39±0.57 82.41±0.37 65.86±0.40 59.81±0.39 81.48±0.67
+NoisyGCN 85.55±1.28 72.36±1.41 86.01±0.30 81.65±0.35 62.82±1.00 61.63±0.11 82.19±0.14
+GRAND 83.83±2.18 73.72±1.61 87.47±0.47 80.44±0.37 64.45±0.25 62.77±1.99 79.42±0.68
+EvenNet 83.70±2.03 71.21±1.04 87.43±0.29 82.53±0.35 64.93±1.39 60.06±0.73 81.07±0.51
+GNNGuard 80.38±1.22 66.14±1.23 82.94±0.49 69.09±3.86 62.48±0.46 54.75±0.52 78.04±0.32
+Table7: TextFoolerattackresults,RoBertaembeddingforthedefender. Boldindicatesbestperfor-
+mance,underlineindicatessecondbest.
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History
+GCN 87.39±1.00 75.18±0.87 86.35±0.22 84.39±0.46 66.06±0.68 66.41±0.38 85.01±0.30
+GAT 86.84±1.28 75.60±0.70 87.15±0.23 83.80±0.82 67.09±0.75 63.92±0.31 84.59±0.54
+APPNP 79.40±1.39 73.35±0.92 88.21±0.30 80.56±4.05 64.27±1.16 57.39±0.16 85.74±0.38
+GPRGNN 82.41±0.68 70.53±1.63 85.21±0.29 79.51±4.44 62.24±1.49 54.89±1.44 84.65±0.62
+RobustGCN 86.96±1.99 74.03±0.32 86.52±0.09 83.28±0.59 67.39±0.17 59.42±0.79 84.57±0.44
+NoisyGCN 86.90±0.90 75.39±0.80 86.35±0.28 83.75±1.14 66.48±0.75 66.52±0.42 85.04±0.19
+GRAND 86.10±1.21 77.27±0.34 89.78±0.35 83.13±0.85 66.49±0.41 63.53±1.27 85.92±0.41
+EvenNet 83.09±1.55 74.19±0.64 89.45±0.57 84.91±1.63 65.42±0.79 59.59±0.36 85.62±0.57
+GNNGuard 71.40±1.74 68.65±0.46 82.27±0.82 75.48±5.68 60.58±1.71 54.14±1.26 84.64±0.52
+22
+Preprint
+2. GAT(Velickovicetal.,2018): GraphAttentionNetworkemployingmulti-headattention
+mechanismsforadaptiveneighborhoodaggregation.
+SpectralModels
+1. APPNP(Klicperaetal.,2019): ApproximatePersonalizedPropagationofNeuralPredic-
+tions,combiningneuralpredictionswithpersonalizedPageRank.
+2. GPRGNN(Chienetal.,2021): GeneralizedPageRankGraphNeuralNetworkwithlearn-
+ablegraphfiltercoefficients.
+3. EvenNet(Leietal.,2022): Spectral-baseddefenseusingevenconvolutionnetworkswith
+teleportationmechanisms.
+RobustTrainingMethods
+1. GRAND (Feng et al., 2020): Graph Random Neural Networks with consistency regular-
+izationusingrandompropagationandDropNode.
+2. NoisyGCN (Ennadir et al., 2024): GCN with feature noise injection during training to
+improverobustness.
+ProbabilisticMethods
+1. RobustGCN (Zhu et al., 2019): Robust Graph Convolutional Network with Gaussian-
+basedattentionandvariance-basedmessagepassing.
+Similarity-basedMethods
+1. GNNGuard(Zhang&Zitnik,2020): Attention-basedneighborhoodfilteringusingcosine
+similaritythresholdstodetectandmitigateadversarialedges.
+1. ElasticGNN(Liuetal.,2021): ElasticmessagepassingwithL1/L2regularizationforhan-
+dlinggraphheterophily.
+2. SoftMedianGDC(Geisleretal.,2021): SoftmedianaggregationwithGaussianDiffusion
+Convolutionandtemperaturecontrol.
+3. RUNG(Houetal.,2024): RobustGraphNeuralNetworkswithuncertaintyquantification
+andLaplaciansmoothing.
+OtherArchitecturalImprovements
+1. GCORN (Abbahaddou et al., 2024): Higher-order Graph Convolutional Networks with
+polynomialfiltersandweightregularization.
+UnsupervisedStructureCleaning
+1. Jaccard-GCN(Wuetal.,2019):PreprocessesgraphsbyremovingedgeswithlowJaccard
+similaritybetweennodefeatures.
+2. Cosine-GCN(Mujkanovicetal.,2022): Edgefilteringbasedoncosinesimilaritythresh-
+oldsbetweennodefeaturevectors.
+SupervisedStructureLearning
+1. ProGNN(Jinetal.,2020):JointoptimizationofgraphstructureandGNNparameterswith
+sparsityandsmoothnessconstraints.
+2. Stable(Lietal.,2022b):Anunsupervisedpipelinethatoptimizesgraphstructurebylearn-
+ing edge weights using a metric function combining node feature and structure informa-
+tion.ItemploysCosineandJaccardsimilaritywithlearnablethresholdstofilteradversarial
+edges.
+23
+Preprint
+GraphLLMDefenses
+1. GraphGPT (Tang et al., 2024): Graph-text alignment model using contrastive learning
+betweengraphembeddingsandtextrepresentations.
+2. LLaGA(Chenetal.,2024): LargeLanguageandGraphAssistantthatalignsgraphstruc-
+turalinformationwithlanguagemodelrepresentationsthroughmulti-modallearning.
+3. SFTwithNeighbors(Wangetal.,2025b): SupervisedFine-Tuningapproachthatincor-
+poratesneighborhoodinformationintoLLMpromptsforenhancedgraphunderstanding.
+D.2 CONFIGURATIONANDHYPERPARAMETERS
+This sub-section details configurations and hyperparameters for both GNN-based defenses and
+GraphLLMmethodsusedinourevaluationframework.
+D.2.1 GNNANDRGNNS
+GeneralSettings AllGNN-baseddefensemodelssharethefollowinggeneralhyperparameters:
+• Learningrate: 0.01(consistentacrossallmethods)
+• Weightdecay: Gridsearchover[0.0,0.0005]
+• Dropout: Gridsearchover[0.5,0.7](exceptmodel-specificvariations)
+• Hiddendimensions:128forsmalldatasets(Cora,CiteSeer,PubMed,Instagram,WikiCS);
+256forlargedatasets
+• GATadjustment: Hiddendimensionreducedbyfactorof8duetomulti-headattention
+• Trainingepochs: Dataset-dependentwithearlystopping
+– Smalldatasets(Cora,CiteSeer,Instagram,PubMed,WikiCS):400epochs
+– Mediumdatasets(Computer,Photo,History,Reddit): 600epochs
+– Largedatasets(ArXiv): 1000epochs
+• Patience: Dataset-dependentearlystopping
+– Smalldatasets: 100epochspatience
+– Mediumdatasets: 200epochspatience
+– Largedatasets: 400epochspatience
+SpecificHyperparameters. Thefollowingtablesummarizesthemodel-specifichyperparameter
+rangesforGNN-baseddefensemethods:
+Model Parameter Values
+GCN None None
+GAT Num Heads 8
+APPNP Alpha [0.1,0.3,0.7,0.9]
+GPRGNN Alpha [0.1,0.3,0.7,0.9]
+RobustGCN None None
+Lambda1 [3,6]
+ElasticGNN
+Lambda2 [3,6]
+GNNGuard Threshold [0.3,0.4,0.5,0.6,0.7]
+NoisyGCN Beta [0.1,0.3,0.5]
+GCORN None None
+Alpha [0.0005,0.3]
+ProGNN
+Beta [1.5,2.5]
+24
+Preprint
+CosineThreshold [0.3,0.5,0.7]
+Stable JaccardThreshold [0.02,0.03]
+Alpha [0.1,0.03,0.6]
+GCN-Jaccard JaccardThreshold [0.03,0.05,0.1]
+GCN-Cosine CosineThreshold [0.3,0.4,0.5,0.6,0.7]
+Dropnode [0.5]
+Order [2,4]
+MLPInputDropout [0.5]
+GRAND
+NSamples [4]
+RegConsistency [0.7,1.0]
+SharpeningTemperature [0.5]
+Temperature [0.5,1.0]
+SoftMedianGDC TeleportProbability [0.15,0.25]
+Neighbors [64]
+Lambda [0.7,0.9]
+RUNG
+Gamma [1,3]
+K [10]
+EvenNet Alpha [0.1,0.3,0.7,0.9]
+DPRate [0.5]
+D.2.2 GRAPHLLMS
+General Configurations GraphLLM methods employ distinct training configurations optimized
+forlarge-scalelanguagemodelintegration:
+• BaseLLM:Mistral-7B(4096-dimensionaloutput)asprimarybackbone
+• Textencoding: RoBERTaforfeatureextractionandalignment
+• Batchprocessing: Variesbymodelcomplexity(8-64samplesperbatch)
+• Learningrates: Lowerrates(1e-4)forstableLLMfine-tuning
+• Weightdecay: 0.05forregularization
+• Gradientclipping: Appliedtopreventexplodinggradients
+• Mixedprecision: Enabledformemoryefficiency
+GraphGPT. For GraphGPT, we adhere to the best hyperparameters in clean datasets provided
+by(Wuetal.,2025).
+LLaGA. For LLaGA, we adhere to the best hyperparameters in clean datasets provided by (Wu
+etal.,2025).
+• Languagemodelembedding: RoBERTa
+• Neighborhoodtemplate: HO(Hopfield)encoding
+SFTwithNeighbors. SupervisedFine-Tuningincorporatesneighborhood-awarepromptingwith
+LoRAoptimization:
+• Maximumneighbors: maximum neighbor=6forcontextwindowmanagement
+• Neighborfilteringstrategy:Degree-basedselection-neighborsarerankedbynodedegree
+indescendingorder,andtop-6highest-degreeneighborsareselectedforpromptinclusion
+• LoRAconfiguration: r=8,alpha=16,dropout=0.1,target modules=[q proj,v proj]
+• Sequencelengths: max txt length=128,max origin txt length=128,max ans length=16
+• Optimization: AdamWoptimizerwithgradientaccumulation
+25
+Preprint
+• Promptengineering: Integrates1-hopneighborinformationwithdegree-basedprioritiza-
+tionforenhancedcontextunderstanding
+Neighbor-awarePromptTemplate:
+NodeClassificationTask
+Question: Youaredoingnodeclassificationtaskinacitationgraph. Giventhecontentofthecenter
+node: {origin text} and its neighbor information: {neighbor text}, each node represents
+a paper and the relationship represents the citation relationship between papers, we need to classify
+thecenternodeinto7classes: {classes}. Pleasetellmewhichclassthecenternodebelongsto?
+Answeronlytheclassnamewithoutanyotherwords.
+Answer:
+D.2.3 GRAPHLLMSWITHNOISYTRAINING
+ThissubsectioncoversnoiseinjectionstrategiesacrossdifferentGraphLLMarchitecturesinSection
+GraphGPT with Noise. GraphGPT incorporates noise injection through graph-level modifica-
+tionsusingthenoise utilsframework. Supportsonlythestructural“noise”variant. Noiseisapplied
+globallytotheentiregraphstructurebeforetraining. Configurationsfollowthecleandatasetparam-
+etersfrom(Wuetal.,2025)withadditionalnoisestrategiesappliedduringcontrastivelearning. The
+perturbratioissetto10%.
+GraphGPT-noisetxt and GraphGPT-noisefull are excluded because the noise injected hurts clean
+performancetoomuch,asshowninTable9.
+Table9: PerformancecomparisonofGraphGPTvariantsacrossundertheinductivesettingonclean
+datasets.
+Method Cora CiteSeer PubMed WikiCS
+GraphGPT 81.06±2.33 74.35±2.51 94.14±0.23 82.31±1.31
+GraphGPT-noise 80.63±2.24 74.56±3.07 94.09±0.33 82.32±1.97
+GraphGPT-noisetxt 66.79±3.84 57.37±5.20 86.15±1.88 64.56±2.94
+LLaGAwithNoise. LLaGAappliesnoiseinjectionthroughgraph-levelmodificationsusingthe
+noise utilsframework.Thenoisestrategiesmodifytheglobalgraphstructureorreplacetextcontent
+across the entire graph before multi-modal learning. Noise integration occurs with the RoBERTa
+languagemodelembeddingandHO(Hopfield)neighborhoodtemplateencoding. Baseconfigura-
+tionsidenticaltocleanLLaGAtraining. Theperturbratioissetto10%.
+SFTwithNoiseVariants. SFTimplementsthreedistinctnoiseinjectionstrategiesduringtraining:
+Noise(Structure):Injectionstrategytargetshigh-degreenodeswith10%probability,addingrandom
+unconnectednodesasfakeneighbors.
+NoiseTxt (Text): Injection strategy replaces text content of 10% high-degree nodes with text from
+different-classnodes.
+Noisefull(Both): Injectionstrategycombinesbothstructuralandtextnoise-appliesbothneighbor
+injection and text replacement to the exact same coupled subset of high-degree nodes simultane-
+ously.
+• Injection ratio: 10% probability for structural noise, 10% of high-degree nodes for text
+replacement
+• Targetselection: High-degreenodes(degree>averagedegree)
+• Replacement strategy: Random selection from unconnected nodes (structural) or
+different-classnodes(text)
+• Trainingaugmentation:Appliedonlyduringthetrainingphase,inferenceusescleandata
+26
+Preprint
+• Baseconfigurations: IdenticaltoSFTwithNeighborsforallotherparameters
+SFT Noise Training Strategy (Sample-Level): Unlike GraphGPT/LLaGA which apply graph-level
+noise modifications, SFT applies noise injection at the sample level during data preparation. For
+structural noise, 10% probability of adding random unconnected nodes as fake neighbors to high-
+degreenodesduringneighborselectionforeachtrainingsample.Fortextnoise,10%ofhigh-degree
+nodes have their text content replaced with text from nodes of different classes during individual
+samplecreation.NoiseFullcombinesbothstrategieswithperfectlycorrelatedapplication-structural
+neighborinjectionandtextreplacementarestrictlycoupledtooccurontheexactsamesamples.
+D.2.4 SFTWITHSIMILARITYCONSTRAINTS
+SFT-simp. Thesimilarityvariantteachesthemodeltoselectivelyuseneighborinformationbased
+onsimilarityconstraintsthroughpromptengineering:
+• Training: Standardneighbor-basedtraining(identicaltoSFTwithNeighbors)
+• Inferencestrategy: Prompt-basedsimilarityawareness
+• Similaritycriteria: Textcontentandlabelconsistency
+Similarity-AwarePromptTemplate:
+NodeClassificationwithSimilarityConstraints
+Question: Youaredoingnodeclassificationtaskinacitationgraph. Giventhecontentofthecenter
+node: {origin text} and its neighbor information: {neighbor text}, each node represents
+a paper and the relationship represents the citation relationship between papers, we need to classify
+thecenternodeinto7classes: {classes}. ConsiderneighborinformationforclassificationONLY
+when:1)neighborsaresimilartothecenternode,or2)neighborsaresimilartoeachother. Similarity
+canbebasedontextcontentorlabelconsistency. Otherwise,ignoreneighborinformation. Pleasetell
+mewhichclassthecenternodebelongsto?Answeronlytheclassnamewithoutanyotherwords.
+Answer:
+D.2.5 SFT-AUTO
+Pipeline. The auto variant implements comprehensive attack detection and recovery through
+multi-stageinferencewithspecializedprompttemplates. Thepseudo-codeofthealgorithmispro-
+videdinAlgorithm1,andtherelatedpromptsarelistedbelow.
+AttackDetectionPromptTemplate:
+NodeClassificationwithAttackDetection
+Question: Youaredoingnodeclassificationinacitationgraph. Giventhecontentofthecenternode:
+{origin text}anditsneighborinformation: {neighbor text},classifythecenternodeinto7
+classes: {classes}or“text attacked”. Thecenternodemaybeattacked. Ifitsclassisunclearor
+differsfrommostofitsneighbors,classifyitas“text attacked”instead. Pleasetellmewhichclassthe
+centernodebelongsto?Answeronlytheclassnamewithoutanyotherwords.
+Answer:
+RecoveryPromptTemplate(Neighbor-Only):
+RecoveryUsingNeighborInformationOnly
+Question: You are doing node classification task in a citation graph. Based only on the neighbor
+information: {neighbor text}, each node represents a paper and the relationship represents the
+citationrelationshipbetweenpapers,weneedtoclassifythecenternodeinto7classes: {classes}.
+Please predict the class of the center node using only neighbor information. Answer only the class
+namewithoutanyotherwords.
+Answer:
+27
+Preprint
+Algorithm1:AutoVariantFrameworkforAdversarialAttackDetectionandRecovery
+Input: GraphdataG=(V,E,X),trainingnodesV ,testnodesV ,similaritythresholdτ
+train test
+Output: TrainedmodelM,finalpredictionsy
+pred
+TrainingPhase:;
+1
+2 r ←min (cid:16)|C 1 | ,0.15 (cid:17) // Adaptive attack ratio
+3 S normal ← PREPARENORMALSAMPLES(V train );
+4 S attack ← GENERATETEXTATTACKSAMPLES(V train ,r);
+5 S recovery ← GENERATERECOVERYSAMPLES(S attack );
+6 S all ←S normal ∪S attack ∪S recovery ;
+7 M← TRAINMODEL(S all );
+InferencePhase:;
+8
+9 I text ←∅,I struct ←∅;
+// Stage 1: Attack Detection
+10 foreachv i ∈V test do
+11 ifLOWSIMILARITYNEIGHBORS(v i ,τ)≥|N i |/2then
+12 I struct ←I struct ∪{i};
+13
+ifM(v
+i
+)=“text attacked”then
+14 I text ←I text ∪{i};
+// Stage 2: Recovery and Final Prediction
+15 foreachv i ∈V test do
+16
+ifi∈I
+text
+then
+17
+y
+pred
+[i]←M(neighbors only(v
+i
+));
+18
+elseifi∈I
+struct
+then
+19 y pred [i]←M(v i ,filtered neighbors(v i ,τ));
+else
+20
+21 y pred [i]←M(v i ,N i );
+22
+returnM,y
+pred
+28
+Preprint
+E RESULTS AGAINST WTGIA
+Inthissection,wepresentresultsagainstText-levelGIAandWTGIAattacks.
+WeintroducedtheWTGIAmethodologyandbasicsettingsinSectionC.3.Specifically,weevaluate
+onthreedatasets: Cora,CiteSeer,andPubMed,followingtheoriginalpaper. Wepresentresultsfor
+twoperturbationrates: ptb rate=0.2andptb rate=0.4.
+At ptb rate = 0.2, WTGIA introduces the same number of edges as structural evasion attacks.
+ConsideringthatinGMA,eachedgemodificationaffectstwonodesintheoriginalgraph,wealso
+conduct experiments at ptb rate = 0.4, where the number of affected edges approximately equals
+thatofGMA.ByaligningtheattackbudgetsbetweenGMAandText-levelGIA,wecanstudythe
+attackstrengthofText-levelGIAcomparedtoGMA.
+Followingourotherexperiments,weevaluatebothGNNandRGNNmodelsusingthreeembedding
+types: BoW, MiniLM, and RoBERTa. Note that WTGIA inherently uses BoW as the victim text
+encoder. Inthisexperiment,weinvestigatehowdifferenttextencodersaffectdefenseperformance
+againstWTGIA.
+Table10: WTGIAAttackedTestAccuracy(Perturbratiobeing20%)
+Cora CiteSeer PubMed
+Method
+BoW MiniLM RoBERTa BoW MiniLM RoBERTa BoW MiniLM RoBERTa
+GCN 59.29 83.46 85.36 49.22 71.73 74.03 77.49 84.65 83.95
+GAT 57.56 80.87 82.60 45.61 66.30 67.29 74.02 74.99 82.21
+APPNP 60.95 84.13 86.41 65.62 76.02 74.66 85.07 89.03 91.22
+GCORN 53.38 83.83 81.67 47.49 73.20 72.47 61.15 79.74 80.92
+GPRGNN 69.43 83.76 84.93 64.63 73.56 74.56 83.99 89.44 90.78
+GRAND 59.78 84.62 86.78 56.22 75.76 76.38 80.03 86.49 89.47
+EvenNet 78.78 82.53 82.60 68.86 73.77 73.41 83.64 86.66 89.19
+ElasticGNN 60.02 84.50 85.42 54.49 73.88 73.30 78.25 79.68 85.86
+RobustGCN 78.91 83.64 85.61 68.34 73.77 73.98 81.63 79.44 82.06
+GNNGuard 67.59 82.90 83.15 65.46 75.24 73.72 82.40 88.95 90.29
+SoftmedianGDC 80.87 84.87 83.70 71.79 75.24 74.71 86.32 89.54 91.20
+NoisyGCN 63.78 83.15 85.06 49.63 72.10 73.30 78.26 85.24 86.03
+RUNG 79.52 83.27 83.95 70.27 74.03 73.56 85.68 89.64 90.99
+GraphGPT 74.97 72.83 92.84
+LLaGA 83.21 72.36 89.76
+SFT-neighbor 79.89 73.51 94.74
+Table11: WTGIAAttackedTestAccuracy(Perturbratiobeing40%)
+Cora CiteSeer PubMed
+Method
+BoW MiniLM RoBERTa BoW MiniLM RoBERTa BoW MiniLM RoBERTa
+GCN 47.91 82.16 84.99 33.28 70.01 72.73 75.77 79.54 79.09
+GAT 47.23 76.32 80.44 27.90 60.92 62.38 66.59 63.28 72.74
+APPNP 50.55 84.01 85.67 60.29 75.39 74.61 86.07 88.88 91.18
+GCORN 32.10 82.23 81.00 26.12 70.32 67.08 53.20 77.50 77.49
+GPRGNN 64.45 82.78 83.70 52.87 73.20 72.94 84.04 89.01 90.64
+GRAND 48.03 84.44 86.10 44.36 74.97 74.29 76.36 86.16 88.90
+EvenNet 73.37 81.06 81.49 66.25 73.51 73.30 77.50 81.52 86.51
+ElasticGNN 46.19 83.27 83.64 37.57 72.52 71.89 75.57 70.76 80.49
+RobustGCN 75.03 81.80 85.85 62.12 73.35 72.99 75.97 70.62 75.52
+GNNGuard 61.32 82.78 83.76 61.86 75.34 73.41 81.11 89.05 90.24
+SoftmedianGDC 78.97 84.38 83.95 70.79 74.92 74.61 86.17 89.77 90.99
+NoisyGCN 52.46 82.16 83.76 34.12 71.26 71.89 75.22 81.03 81.67
+RUNG 79.83 82.66 84.19 68.13 73.46 74.76 85.81 89.77 91.11
+GraphGPT 71.16 70.22 92.29
+LLaGA 81.86 68.23 89.32
+SFT-neighbor 77.80 73.20 94.62
+TheexperimentalresultsarepresentedinTable10andTable11. Wehavethefollowingdiscoveries:
+Cross-ModalAttackTransferability: WTGIAexhibitssignificantlystrongerattackperformance
+againstBoW-basedmodelscomparedtoadvancedtextencoderslikeMiniLMandRoBERTa,even
+29
+Preprint
+#11
+#10
+#9
+#8
+#7
+#6
+#5
+#4
+#3
+#2
+#1
+Cora CiteSeer PubMed WikiCS History Photo Computer ArXiv
+Dataset
+)retteb
+si
+rewol(
+gniknaR
+Text Embedding Type
+11 bow
+Mistral-7B
+MiniLM
+roberta
+8 8
+Suboptimal
+7 7
+6
+4 4 Good
+2 2 2 2 2 2 2 2 Excellent
+1 1 1 1 1 1 1 1 1 1 1 1
+Figure7:GNNGuardperformancerankingacrossdifferenttextembeddingsunderstructureattacks.
+The bar chart displays ranking positions (lower is better) for each embedding type across eight
+benchmarkdatasetsintheinductivesettingwithaperturbationrateof0.2.
+underastrongbudget(40%).Thispronouncedperformancegaphighlightsthelimitedtransferability
+of text-level GIAs across different embeddings, suggesting that WTGIA overfits to the victim’s
+specificencoder(BoW).Incontrast,structuralattacksdisplayslightlymoreconsistentdegradation
+acrosstextrepresentations,underscoringthemodality-specificnatureoftext-levelperturbations.
+Vulnerability of Text-Aware Models: Text-level perturbations disproportionately impact models
+reliant on textual features, particularly LLM-based approaches like SFT-neighbor. On the Cora
+dataset, SFT-neighbor maintains competitive accuracy (8˜2%) under structural attacks but suffers
+greaterdegradationunderWTGIA.
+F WHY GNNGUARD EXCELS: UNDERSTANDING AND IMPROVING
+Inthemaintext,weobservethatGNNGuardachievesremarkableperformanceimprovements. This
+raisesafundamentalquestion: whatdrivesGNNGuard’sexceptionaleffectiveness? Inthissection,
+weprovideacomprehensiveanalysistodissecttheunderlyingmechanisms.
+F.1 RESULTSOFGNNGUARDUNDERDIFFERENTTEXTENCODERS
+InFigure7,weplottheperformanceofGNNGuardagainststructureevasionattacksusingdifferent
+textencoders. WeexcludetheresultsonInstagramandRedditbecausetheperformancedifferences
+amongallmethodsonthesedatasetsarenotsignificant. Intheranking,weremovetheGraphLLM
+methodsbecausetheydonotnecessarilydependonembeddings. Theresultsrevealsubstantialvari-
+ationsindefensiveeffectivenessdependingontheembeddingchoice. Inpreviousworks(Zhang&
+Zitnik,2020;Leietal.,2022;Mujkanovicetal.,2022;Houetal.,2024),GNNGuardisevaluatedus-
+ingembeddingslikeBoWandTF-IDF,whereitsrankingisindeedlowasshowninthetable. How-
+ever,whenswitchingtoadvancedlanguagemodelembeddingslikeMiniLMandRoBERTa,itsrank-
+ing improves significantly. For instance, on Cora, when using embeddings like BoW and Mistral-
+7B,itsrankingfallswithinthesuboptimalregion, butwhenemployingMiniLMandRoBERTa, it
+demonstrates improved ranking relative to other RGNNs and GNNs, indicating that text encoders
+significantlyinfluenceGNNGuard’sranking.
+30
+Preprint
+F.2 DIFFERENCEBETWEENTEXT-ENCODERS
+TounderstandwhythetextencoderssignificantlyaffecttheperformanceofGNNGuard,wesystem-
+aticallyevaluatetheeffectivenessofdifferenttextembeddingmethodsforsimilarity-basededgefil-
+tering,whichisessentialforitsdefensemechanism. OuranalysiscomparesBoW,TF-IDF,Mistral-
+7B,RoBERTa,andMiniLMembeddingsacrossmultiplegraphdatasetstoidentifywhichrepresen-
+tationsbestdistinguishintra-classfrominter-classedges.
+1.0
+0.8
+0.6 0.4
+0.2
+0.0
+0.0 0.2 0.4 0.6 0.8 1.0
+Intra-class Preservation Rate
+etaR gniretliF
+ssalc-retnI
+Preserve-Filter Trade-off Curves
+4.0
+3.5 3.0
+BOW 2.5 TFIDF MISTRAL-7B 2.0 M RO IN B I E LM RTA 1.5
+1.0
+0.5
+0.0
+0.0 0.2 0.4 0.6 0.8 1.0
+Cosine Similarity
+ytisneD
+Distribution Comparison
+bow intra
+bow inter tfidf intra tfidf inter Mistral-7B intra
+Mistral-7B inter MiniLM intra MiniLM inter roberta intra roberta inter
+0.6 0.4
+0.2
+0.0
+0.2
+0.4
+Separation AUC Discriminability Threshold 1 - Overlap
+Score Score Gap
+erocS
+Embedding Quality Metrics (Higher is Better)
+0.43 0.37 0.50 0.53 0.58 0.62 0.62 0.52 0.54 0.57 0.60 0.60 B T M F O IS I W D T F RAL-7B
+MINILM
+0.20 0.20 0.19 ROBERTA 0.14 0.14
+0.01 0.05 0.08
+-0.17
+-0.29
+-0.26-0.23
+-0.43
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+0.0 0.2 0.4 0.6 0.8 1.0
+Threshold
+etaR
+Embedding Comparison for photo
+Threshold Effectiveness
+bow preserve Embedding Intra ± Inter ± AUC
+bow filter
+tfidf preserve BOW 0.440±0.24 0.438±0.22 0.504
+t M fi i d s f t r f a il l t - e 7 r B preserve TFIDF 0.286±0.18 0.263±0.16 0.533
+Mistral-7B filter MISTRAL-7B 0.704±0.15 0.675±0.14 0.580
+MiniLM preserve
+MiniLM filter MINILM 0.391±0.19 0.314±0.17 0.623
+r r o o b b e e r r t t a a p fil r t e e s r erve ROBERTA 0.490±0.18 0.427±0.16 0.616
+Figure8: ComprehensiveembeddingcomparisonforthePhotodataset. (a)Preserve-filtertrade-off
+curves showing the Pareto frontier between intra-class preservation and inter-class filtering rates;
+(b)KDE-smoothedsimilaritydistributionsrevealingtheseparationbetweenintra-class(solid)and
+inter-class (dashed) edges; (c) Quantitative quality metrics including separation score, AUC, dis-
+criminability, thresholdgap, andnon-overlapscore; (d)Thresholdeffectivenesscurvesillustrating
+howpreservationandfilteringratesvarywithsimilaritythresholds;(e)Summarystatisticstablepre-
+sentingmeansimilaritiesandstandarddeviationsforeachembeddingtype.
+Figure 8 presents our comprehensive analysis framework using the Photo dataset as an example.
+Themulti-panelvisualizationrevealscriticalinsightsaboutembeddingeffectiveness:
+• Preserve-FilterTrade-off(Panela): Eachcurverepresentsanembedding’sabilitytosimultane-
+ouslypreserveintra-classedgeswhilefilteringinter-classedgesacross101similaritythresholds.
+Thecurvesaregeneratedbycomputing, foreachthresholdτ ∈ [0,1], thefractionofintra-class
+edgeswithsimilarity≥τ (x-axis)andinter-classedgeswithsimilarity<τ (y-axis). Embeddings
+withcurvesclosertotheupper-leftcornerexhibitsuperiordiscriminativecapacity. InthePhoto
+dataset,RoBERTa’scurvedominates,achieving80%inter-classfilteringwhilemaintaining40%
+intra-classpreservation.
+• SimilarityDistributions(Panelb): KerneldensityestimationwithGaussiankernels(σselected
+via Scott’s rule) visualizes the probability density functions of cosine similarities. The aggre-
+gationacrossthreerandomseedsensuresrobustness. ForPhoto,MiniLM,andRoBERTaexhibit
+clearbimodalseparationwithintra-classsimilaritiesandinter-classdifferences,whileothersshow
+substantialoverlapwithbothdistributions.
+• QualityMetrics(Panelc): Fivemetricsquantifyembeddingeffectiveness:
+31
+Preprint
+1.0
+0.8
+0.6 0.4
+0.2
+0.0
+0.0 0.2 0.4 0.6 0.8 1.0
+Intra-class Preservation Rate
+etaR gniretliF
+ssalc-retnI
+Preserve-Filter Trade-off Curves
+4.0
+3.5 3.0
+BOW 2.5 TFIDF MISTRAL-7B 2.0 M RO IN B I E LM RTA 1.5
+1.0
+0.5
+0.0
+0.0 0.2 0.4 0.6 0.8 1.0
+Cosine Similarity
+ytisneD
+Distribution Comparison
+bow intra
+bow inter tfidf intra tfidf inter Mistral-7B intra
+Mistral-7B inter MiniLM intra MiniLM inter roberta intra roberta inter
+0.6
+0.4
+0.2
+0.0
+0.2
+Separation AUC Discriminability Threshold 1 - Overlap
+Score Score Gap
+erocS
+Embedding Quality Metrics (Higher is Better)
+0.58 0.54 0.56 0.62 0.58 0.66 0.65 0.56 0.61 0.58 0.63 0.62 B TF O I W DF
+0.45 MISTRAL-7B
+MINILM
+0.18 0.20 0.17 0.22 0.19 0.27 0.25 ROBERTA
+-0.19 -0.17-0.18
+-0.32 -0.29
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+0.0 0.2 0.4 0.6 0.8 1.0
+Threshold
+etaR
+Embedding Comparison for cora
+Threshold Effectiveness
+bow preserve Embedding Intra ± Inter ± AUC
+bow filter
+tfidf preserve BOW 0.517±0.21 0.480±0.19 0.565
+t M fi i d s f t r f a il l t - e 7 r B preserve TFIDF 0.314±0.17 0.245±0.14 0.624
+Mistral-7B filter MISTRAL-7B 0.712±0.18 0.678±0.17 0.579
+MiniLM preserve
+MiniLM filter MINILM 0.504±0.15 0.420±0.14 0.662
+r r o o b b e e r r t t a a p fil r t e e s r erve ROBERTA 0.512±0.16 0.431±0.14 0.650
+Figure9: ComprehensiveembeddingcomparisonfortheCoradataset. (a)Preserve-filtertrade-off
+curves showing the Pareto frontier between intra-class preservation and inter-class filtering rates;
+(b)KDE-smoothedsimilaritydistributionsrevealingtheseparationbetweenintra-class(solid)and
+inter-class (dashed) edges; (c) Quantitative quality metrics including separation score, AUC, dis-
+criminability, thresholdgap, andnon-overlapscore; (d)Thresholdeffectivenesscurvesillustrating
+howpreservationandfilteringratesvarywithsimilaritythresholds;(e)Summarystatisticstablepre-
+sentingmeansimilaritiesandstandarddeviationsforeachembeddingtype.
+– SeparationScore: Cohen’sd=(µ −µ )/ (σ2 +σ2 )/2
+intra inter p intra inter
+– AUCScore: AreaundertheROCcurve,treatingedgeclassificationasabinarypredictiontask
+– Discriminability: max [(P(sim ≥τ)+P(sim <τ))/2]
+τ intra inter
+– ThresholdGap: Q20(sim
+intra
+)−Q80(sim
+inter
+)whereQ
+p
+denotespercentile
+– Non-overlap: 1− min(h (i),h (i))∆xusing50-binhistograms
+Pi intra inter
+• ThresholdEffectiveness(Paneld): Thisanalysisrevealstheoperationalcharacteristicsofeach
+embedding. The solid lines show P(sim ≥ τ) while dashed lines show P(sim < τ) as
+intra inter
+functions of threshold τ. The vertical separation between paired curves indicates discriminative
+powerateachthreshold.
+• StatisticalSummary(Panele):
+Thisanalysisframeworkdemonstratesthatcontextualembeddings(RoBERTa,MiniLM)providesu-
+perioredgediscriminationcomparedtosparserepresentations. WhileallGNNsandRGNNsbenefit
+frombetterembeddingsintheclassificationtask,GNNGuardenjoysmoreprotectionagainststruc-
+tural attacks with better representations due to the better distinguishability of a better embedding.
+AnotherexampleontheCoradatasetisprovidedinFigure9.
+F.3 GUARDUAL: ROBUSTNESSAGAINSTTEST-TIMESTRUCTURALATTACKS
+Despiteachievingpromisingresultswithadvancedembeddings, GNNGuardexhibitsseverallimi-
+tationsinpractice. First,thecurrentthresholdselectionreliesonvalidationsetperformance,which
+leadstooverlyconservativethresholdsduetotheinherentperformance-robustnesstrade-offonclean
+32
+Preprint
+validation data. Second, in real-world scenarios where training data integrity can be more readily
+ensured, applying aggressive thresholds during training risks excessive edge filtering, thereby de-
+gradingmodelperformanceonbenigngraphs.
+Toaddresstheselimitations,weintroduceGuardual,anadaptivedefensemechanismthatemploys
+dualsimilaritythresholdstobalancetrainingstabilitywithrobustdefensecapabilities. Thismethod
+usestheoptimalthresholdforpreservingbenigngraphstructureduringtraining,whichdiffersfrom
+thethresholdneededforeffectiveadversarialfilteringduringinference.
+F.3.1 DUAL-THRESHOLDDESIGN
+Guardualemploystwocomplementarythresholdsoptimizedfordifferentphasesofmodeldeploy-
+ment:
+• Conservative Threshold (Training): This threshold prioritizes preserving intra-class edges to
+maintaingraphconnectivityandtrainingstability. Computedusingaweightedobjectivefunction:
+score =0.7·P +0.3·P ,whereP representsthefractionofintra-classedges
+conservative preserve filter preserve
+retainedandP denotesthefractionofinter-classedgesremoved. The70-30weightingensures
+filter
+that sufficient graph structure remains intact during the learning phase, preventing performance
+degradationfromexcessiveedgepruning.
+• BalancedThreshold(Testing):Duringinference,themodelswitchestoabalancedthresholdthat
+equallyweightspreservationandfiltering: score = 0.5·P +0.5·P . Thisequal
+balanced preserve filter
+weighting provides stronger defense against adversarial edges while accepting slightly reduced
+intra-classpreservation,asgradientflowisnolongeraconcernduringevaluation.
+Givenspecificembeddings,wecanpre-computeallscoresandobtaintraining/testthresholds. The
+thresholdsforGuardualusingRoBERTaembeddingsarelistedinTable12.
+Table12: DualthresholdsemployedbyGuardualacrossdifferentdatasets. Conservativethresholds
+prioritizeedgepreservationduringtraining,whilebalancedthresholdsenhanceadversarialfiltering
+duringtesting.
+Dataset TrainingThreshold TestingThreshold
+(Conservative) (Balanced)
+Cora 0.250 0.503
+CiteSeer 0.320 0.580
+PubMed 0.360 0.633
+WikiCS 0.283 0.433
+Instagram 0.000 0.471
+Reddit 0.000 0.177
+History 0.260 0.457
+Photo 0.000 0.476
+Computer 0.000 0.457
+ArXiv 0.320 0.540
+F.3.2 RESULTSOFGUARDUAL
+The results are presented in Figure 10. We can see that, although it removes a hyperparameter
+comparedtoGNNGuard,Guardualachievesgeneralimprovement. InComputerandPhotodatasets
+(highlightedinred),Guardualdemonstratesthemostsignificantenhancements,withimprovements
+of +8.23% and +10.74% respectively. As shown in the result performance, it becomse the most
+robustRGNNagainststructuralevasionattacks,despiteitssimpleandeffectivedesign.
+33
+Preprint
+95
+90
+85
+80
+75
+70
+65
+Cora CiteSeer
+Pub
+Med WikiCS History Photo
+Co
+mputer ArXiv
+Dataset
+)%(
+ycaruccA
+Performance Comparison: GuardDual vs GNNGuard
+(RoBERTa Embedding)
+GNNGuard 4
+GuardDual
++-0.6%
+3
++0.3% +0.0% +0.2%
+2
++0.7% +10.7% 1
++8.2% +1.0%
+0
+1
+Cora CiteSeer
+Pub
+Med WikiCS History Photo
+Co
+mputer ArXiv
+Dataset
+tnemevorpmI
+gniknaR
+)drauGNNG
+naht
+retteb
+lauDdrauG(
+Ranking Advantage: GuardDual vs GNNGuard
+(Higher = Better Improvement)
+4
+2
+1 1 1 1 1
+Figure 10: Comprehensive comparison between GuardDual and GNNGuard under RoBERTa em-
+beddingforstructureattackdefense.LeftsubplotshowsabsoluteaccuracyperformancewithGuard-
+Dual consistently outperforming GNNGuard across most datasets. Right subplot displays ranking
+improvements,wherepositivevaluesindicateGuardDual’ssuperiorcompetitiveposition.
+G ADAPTIVE ATTACKS
+G.1 ADAPTIVEATTACKSAGAINSTGNNGUARD
+FollowingMujkanovicetal.(2022),weinvestigateadaptiveattackstargetingGNNGuard,leverag-
+ing its robust performance against structural attacks. We employ a modified PGD attack Xu et al.
+(2019),termedPGDGuard,whichrestrictstheattacksearchspacetoedgeswithsimilarityexceed-
+ingathresholdϵ. Alledgeadditionsorremovalssatisfythissimilarityconstraint. Wefixtheattack
+embedding to RoBERTa and evaluate PGDGuard across ϵ values of 0.0, 0.3, 0.5, and 0.7, assess-
+ing the performance of GNN and RGNN models under these conditions. Results are presented in
+Figure11.
+0.90
+0.85
+0.80
+0.75
+0.70
+0.65
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+Cora
+Baseline Methods
+0.80
+0.75
+0.70
+0.65
+0.60
+0.55
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+CiteSeer
+Baseline Methods
+0.9
+0.8
+0.7
+0.6
+0.5
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+PubMed
+Baseline Methods
+0.9
+0.8
+0.7
+0.6
+0.5 0.4
+0.3
+0.2
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+WikiCS
+Baseline Methods
+0.90
+0.85
+0.80
+0.75
+0.70
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+Cora
+GNNGuard Methods
+0.80
+0.75
+0.70
+0.65
+0.60
+0.55
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+CiteSeer
+GNNGuard Methods
+0.9
+0.8
+0.7
+0.6
+0.5
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+PubMed
+GNNGuard Methods
+0.8
+0.7
+0.6
+0.5
+0.0 0.3 0.5 0.7
+Attack Threshold
+ycaruccA
+noisavE
+Evasion Accuracy vs Attack Threshold, (ptb_rate=0.2, emb=roberta roberta)
+appnp
+evennet
+gat
+gcn
+gcorn gprgnn
+grand noisy_gcn
+robustgcn rung
+WikiCS
+GNNGuard Methods
+GNNGuard Methods
+GNNGuard (def_th=0.3)
+GNNGuard (def_th=0.4)
+GNNGuard (def_th=0.5)
+GNNGuard (def_th=0.6)
+GNNGuard (def_th=0.7)
+Figure11:Evasionaccuracyvsattackthresholdfordifferentdefensemethodswithperturbationrate
+0.2andembeddingtypesroberta.
+Keyobservationsaresummarizedasfollows:
+34
+Preprint
+Table13: Performance(%)forPGD-structureonGNNs(GCN,GRAND,RUNG).Rows=attacker
+embeddings;columns=defenderembeddings.
+Cora CiteSeer PubMed WikiCS
+Model/Dataset
+BoW MiniLM RoBERTa BoW MiniLM RoBERTa BoW MiniLM RoBERTa BoW MiniLM RoBERTa
+GCN
+Attacker=BoW 66.11 72.39 73.31 54.86 61.34 62.70 80.12 83.87 82.92 20.39 30.44 31.54
+Attacker=MiniLM 70.11 62.98 68.39 54.60 47.13 54.18 82.60 81.57 83.55 33.25 25.37 28.25
+Attacker=RoBERTa 71.34 70.85 69.43 63.95 63.74 63.58 82.21 82.29 82.73 25.12 21.50 20.86
+GRAND
+Attacker=BoW 71.89 78.60 79.89 64.00 70.22 70.74 82.45 83.88 86.41 48.57 66.75 71.86
+Attacker=MiniLM 75.28 70.91 77.06 64.79 64.99 66.88 84.02 83.43 86.03 64.96 53.57 67.01
+Attacker=RoBERTa 75.40 76.45 76.51 68.03 70.43 70.06 84.54 84.25 85.77 57.21 61.13 65.36
+RUNG
+Attacker=BoW 78.04 83.64 84.56 67.97 73.46 73.30 85.70 89.78 90.72 75.00 79.95 82.73
+Attacker=MiniLM 78.04 83.70 83.83 67.92 73.35 73.93 85.87 89.53 90.61 76.18 80.26 82.53
+Attacker=RoBERTa 79.09 83.58 84.32 69.04 74.14 73.93 86.06 89.56 90.72 75.94 80.14 82.39
+Table 14: Perfomrance (%) for PGD-structure on LLaGA and SFT-Neighbor. Rows = attacker
+embeddings;columns=datasets.
+Model/Attacker Cora CiteSeer PubMed WikiCS
+LLaGA
+BoW 75.21 66.35 87.38 66.99
+RoBERTa 72.88 67.24 86.70 60.47
+SFT-Neighbor
+BoW 82.59 74.24 92.29 84.05
+RoBERTa 81.24 71.84 94.72 86.19
+• U-ShapedPerformanceCurveforGNNGuard:GNNGuardexhibitsaU-shapedtrendin
+evasionaccuracywithrespecttoPGDGuard’sattackthresholdϵ. Whenϵsignificantlyde-
+viatesfromGNNGuard’sfilteringthreshold(eitherlowerorhigher),theattack’seffective-
+ness diminishes. However, when ϵ closely aligns with GNNGuard’s threshold, the attack
+achievesoptimalevasion,indicatingatrade-off:atlowerϵ,PGDGuard’sperturbationslack
+sufficientpotency,whileathigherϵ,GNNGuard’sfilteringmechanismeffectivelymitigates
+theattack.
+• Trade-OffsforOtherDefenseMethods:Whileincreasingtheattackthresholdϵmayam-
+plify PGDGuard’s impact on GNNGuard, it generally enhances the performance of other
+defense methods. On datasets like Cora and WikiCS, attacks tailored to GNNGuard’s
+threshold tend to weaken against alternative defenses, posing significant challenges for
+attackersaimingtogeneralizeacrossdiversedefensestrategies.
+• Dataset-SpecificExceptions: Despitethegeneraltrade-off,notableexceptionsarise,par-
+ticularly on PubMed at ϵ = 0.5. Here, PGDGuard achieves superior attack performance
+across all methods. This is attributed to PubMed’s fine-grained classification, where em-
+bedding similarities (metric in subplot b of Figure 8) for both intra-class and inter-class
+nodesclusteraround0.6. Selectingϵ = 0.5effectivelytargetspotentiallyharmfuledges,
+highlightingtheefficacyofdataset-specific,embedding-awareattackstrategies.
+Thesefindingsunderscorethenuancedinterplaybetweenattackthresholdsanddefensemechanisms,
+emphasizingtheimportanceofaligningattackstrategieswithdataset-specificembeddingcharacter-
+isticstomaximizeevasioneffectiveness.
+G.2 ADAPTIVEATTACKSONEMBEDDINGTRANSFERABILITY
+Setup. Inthemainexperiments,weinitiallyusedBoWasthevictim’stextembeddingforstruc-
+tural evasion attacks. To model adaptive attackers and embedding-aware defenders, we vary the
+textencoderusedthevictimmodelinPGDamong{BoW,MiniLM,RoBERTa}whilethedefender
+maydefendwith{BoW,MiniLM,RoBERTa}. WeevaluateGCN,GRAND,RUNG,LLaGA,and
+SFT-NeighborondatasetsCora,CiteSeer,PubMed,andWikiCS.
+TheresultsareshowninTable13andTable14. Wehavethefollowingfindings:
+35
+Preprint
+• EmbeddingMatchHelpstheAttacker.Acrossmodels,theattackperformanceishighest
+whentheattackeranddefenderusethesameembedding.Ifembeddingismismatched,even
+from advanced to BoW, the attack performance significantly degrades. In fact, when the
+surrogatetextencoderisLM,BoWasthedefender’sembeddingcanbestrong.
+• TransferisStrongerwithinLM-family.MiniLM↔RoBERTatransfersbetterthanBoW
+↔LM.
+• TransferabilitytoGraphLLMsVariesamongDatasets.LLaGA,whichtakesRoBERTa
+asthetextencoder,alsosuffersmoreiftheattackerusesRoBERTaasthesurrogate. How-
+ever,forSFT,theresultsvaryamongdatasets.Thisobservationmeansthattheeffectivetext
+encoderforattackerscoulddependonthedataset’scharacteristicsandthevictimmodel.
+H ABLATION STUDY FOR SFT VARIANTS
+Inthissubsection,weconductanablationstudytoanalyzetheimpactofdifferentneighborselection
+strategiesandprompttemplatesinourSFTvariants. Weexaminetheeffectivenessofdegree-based
+neighborselectionversusrandomselection,andinvestigatetheinfluenceofincorporatinglabelin-
+formationinthepromptingstrategy.
+H.1 IMPACTOFDIFFERENTPROMPTTEMPLATES
+Duetocontextlengthlimitations,currently,wefeednodes’neighborswiththetopdegreeasrepre-
+sentativesintheprompt. Inthissubsection,weconductanablationstudytoexaminetheimpactof
+randomlyselectingneighbors.
+H.1.1 DEGREE-BASEDVSRANDOMNEIGHBORSELECTION
+Table15: Comparisonbetweendegree-based(SFT-neighbor)andrandom(SFT-rand)neighborse-
+lection strategies across different attack scenarios. Bolded values indicate the better performance
+betweenthetwomethodsforeachdatasetandscenario.
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History
+CleanResultsonInductiveSplit
+SFT-neighbor 88.25±1.29 76.17±1.81 95.08±0.51 87.75±0.46 69.24±0.54 66.74±1.06 86.81±0.77
+SFT-rand 87.27±2.30 77.27±0.47 95.05±0.20 87.72±0.58 69.96±0.72 68.46±0.09 86.64±0.45
+StructureAttackResultsonInductiveSplit
+SFT-neighbor 82.35±1.94 71.53±1.86 94.73±0.41 86.00±1.40 68.25±0.20 62.29±3.31 85.98±0.51
+SFT-rand 79.09±2.82 71.42±0.48 94.79±0.17 85.19±0.68 68.50±0.71 65.23±1.16 84.77±0.83
+TextAttackResultsonInductiveSplit
+SFT-neighbor 75.65±1.33 43.84±2.14 72.27±3.53 51.53±1.24 64.33±1.46 65.52±1.24 64.84±0.98
+SFT-rand 78.60±1.78 47.08±2.76 73.22±1.74 50.93±0.82 61.71±1.71 66.58±0.54 68.83±6.35
+AsshowninTable15,thecomparisonbetweendegree-basedandrandomneighborselectionreveals
+distinct performance patterns across evaluation scenarios. Under clean conditions, SFT-neighbor
+demonstratesmarginaladvantagesonmostdatasets. Interestingly,undertextattackscenarios,SFT-
+randexhibitssuperiorrobustnessonseveraldatasets,includingCora(78.60%vs75.65%)andCite-
+Seer(47.08%vs43.84%). However,understructuralattacks,SFT-randismorevulnerable,exhibit-
+inglargerperformancedrops. Inconclusion,trade-offsalsoexistbetweenthetwovariants.
+H.1.2 LABELINFORMATIONINPROMPTING
+In (Wang et al., 2025b), incorporating label information in the prompt can yield better results for
+specificscenarios. Wetesttheperformanceofsuchapromptoncleandatasetsandagainstadversar-
+ial attacks. As shown in Table 16, incorporating explicit label information (SFT-neighbor-label)
+often leads to unstable performance, particularly on certain datasets like Instagram and Reddit,
+where severe degradation is observed across all scenarios. This lack of robustness and dataset-
+specificinstabilityindicatespotentialoverfittingorincompatibilitywithcertaingraphstructuresor
+data distributions. Consequently, label-enhanced prompting is not adopted due to its inconsistent
+performance.
+36
+Preprint
+Table16: Comparisonbetweenstandarddegree-basedselection(SFT-neighbor)andlabel-enhanced
+prompting(SFT-neighbor-label)acrossdifferentattackscenarios. Boldedvaluesindicatethebetter
+performancebetweenthetwomethodsforeachdatasetandscenario.Redvaluesindicatesignificant
+performancedegradation.
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History
+CleanResultsonInductiveSplit
+SFT-neighbor 88.25±1.29 76.17±1.81 95.08±0.51 87.75±0.46 69.24±0.54 66.74±1.06 86.81±0.77
+SFT-neighbor-label 87.33±2.50 77.07±0.72 94.80±0.44 87.75±0.66 35.54±3.54 14.08±0.59 86.81±0.69
+StructureAttackResultsonInductiveSplit
+SFT-neighbor 82.35±1.94 71.53±1.86 94.73±0.41 86.00±1.40 68.25±0.20 62.29±3.31 85.98±0.51
+SFT-neighbor-label 82.54±1.67 73.35±1.03 94.41±0.38 86.28±0.15 45.84±2.23 22.42±2.01 86.00±0.78
+TextAttackResultsonInductiveSplit
+SFT-neighbor 75.65±1.33 43.84±2.14 72.27±3.53 51.53±1.24 64.33±1.46 65.52±1.24 64.84±0.98
+SFT-neighbor-label 64.51±7.10 41.80±0.77 74.97±4.68 50.17±0.58 34.64±2.11 13.91±0.59 64.58±3.41
+H.2 IMPACTOFDIFFERENTLLMBACKBONES
+In the main paper, we use Mistral-7B as our LLM backbone as it shows the best performance in
+paper (Wu et al., 2025). In this subsection, we present the results of SFT with neighbor-aware
+promptsusingdifferentLLMbackbones.
+We use LLMs Mistral-7B (Jiang et al., 2023), Ministral-8B (Mistral AI Team, 2024), LLama3.1-
+8B (Dubey et al., 2024) and Qwen3-8B (Yang et al., 2025). The results are presented in Ta-
+bles17,18,and19.
+Table17: CleanperformanceofSFTwithneighbor-awarepromptintheinductivesetting.
+LLM cora CiteSeer pubmed wikics history
+Mistral-7B 88.25±1.29 76.17±1.81 95.08±0.51 87.75±0.46 86.81±0.77
+Ministral-8B 86.29±0.91 76.70±0.55 95.50±0.08 87.28±0.34 86.57±0.85
+Llama3-8B 86.10±0.93 77.43±1.18 95.38±0.15 86.33±0.15 86.68±0.78
+Qwen3-8B 85.55±0.95 77.07±1.49 95.18±0.37 86.17±0.91 86.08±0.82
+Table18: SFTwithneighborpromptagainststructureattacksintheinductivesetting.
+LLM cora CiteSeer pubmed wikics history
+Mistral-7B 82.35±1.94 71.53±1.86 94.73±0.41 86.00±1.40 85.98±0.51
+Ministral-8B 79.64±1.87 74.30±0.98 95.23±0.07 85.97±0.91 86.06±0.72
+Llama3-8B 79.15±1.12 74.34±0.48 95.00±0.14 84.98±1.01 86.08±0.69
+Qwen3-8B 77.92±1.68 72.94±0.79 94.77±0.49 84.73±1.34 85.26±0.70
+Table19: SFTwithneighborpromptagainsttextattacksintheinductivesetting.
+LLM cora CiteSeer pubmed wikics history
+Mistral-7B 75.65±1.33 43.84±2.14 72.27±3.53 51.53±1.24 64.84±0.98
+Ministral-8B 68.76±1.77 42.11±1.02 71.02±1.32 49.95±0.44 55.15±3.43
+Llama3-8B 69.74±3.81 43.37±2.81 72.19±1.67 49.58±0.42 57.82±3.37
+Qwen3-8B 74.85±2.33 44.56±2.69 71.85±0.56 49.44±0.41 63.13±3.19
+Theresultsdemonstratethat:
+• Mistral-7B consistently achieves the best performance across most datasets and settings,
+validatingourchoiceofbackboneinthemainexperiments
+37
+Preprint
+• Post-attack performance generally follows the same trends as clean performance, with
+models maintaining their relative advantages—for instance, Mistral-7B preserves its su-
+periorityonCoraacrossallattackscenarios
+• Minor variations exist in specific contexts, such as on Cora and History datasets under
+textual attacks, where both Mistral-7B and Qwen3-8B demonstrate stronger robustness,
+thoughoveralldifferencesremainmodestacrossbackbones.
+I FULL EXPERIMENT RESULTS
+ThefullresultsareprovidedinSectionI.1andSectionI.2.
+Torecovertherank-relatedresultsinthemainpaper,theprocedureisasfollows:
+1. For each dataset, all methods with valid performance values are collected. A dash in the
+tables(−)indicatesamethodwasnotapplicableduetoOOMorscalabilityissues.
+2. Methodsaresortedwithineachdatasettodeterminetheirrank.
+3. Thefinalrankistheaverageofamethod’sranksacrossalldatasetswhereithasvalues.
+Forexample,amethodwithranks(1,2,3)hasafinalrankof2,whileamethodwithranks(1,2,−)
+hasafinalrankof1.5.Notethatwithineachfigure,onlythemethodsincludedareconsideredduring
+ranking.
+InSectionI.3, weincluderesultsagainstasmallerperturbratio. Wecanseethatcomparedtothe
+mainexperiments,theattackeffectivenessdegrades.
+I.1 GNNANDRGNNRESULTS
+I.1.1 CLEAN,INDUCTIVE
+Table 20: Clean test accuracy under the inductive setting. (ptb rate=0.2, atk emb=BoW,
+def emb=BoW)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 85.98±1.36 73.93±1.94 86.84±0.25 81.92±0.29 63.05±0.49 60.22±0.82 81.97±0.13 84.23±0.17 87.75±0.23 71.35±0.00 5.40
+GAT 86.22±1.86 73.88±0.85 86.72±0.21 82.40±0.62 64.67±1.37 61.81±1.15 82.07±0.63 84.75±0.05 88.09±0.22 71.79±0.00 3.80
+APPNP 86.22±1.40 71.94±0.97 87.01±0.21 80.52±0.62 63.10±1.59 57.27±1.38 81.19±0.43 82.99±0.28 88.11±0.16 71.27±0.00 7.00
+GPRGNN 83.95±1.57 71.32±1.63 87.80±0.02 81.23±0.32 64.34±1.16 60.03±0.72 78.59±0.42 81.65±0.66 85.02±0.05 65.67±0.00 8.60
+RobustGCN 86.22±2.01 73.77±0.63 86.86±0.36 82.88±0.04 66.74±0.34 58.06±1.18 81.53±0.57 84.03±0.32 87.67±0.17 68.20±0.00 5.50
+GCORN 83.33±1.48 73.35±0.59 86.73±0.35 81.25±0.22 64.98±0.45 65.01±0.58 80.92±0.24 82.04±0.08 84.53±0.09 69.86±0.00 7.10
+NoisyGCN 86.35±1.21 73.25±1.36 86.73±0.20 81.85±0.31 63.12±0.43 61.84±0.31 82.20±0.25 84.38±0.16 87.75±0.11 71.25±0.00 5.00
+GRAND 85.12±1.76 74.19±1.41 87.75±0.45 81.49±0.19 65.02±0.48 62.50±1.78 79.65±0.62 81.71±0.42 83.78±0.14 68.23±0.00 6.00
+SoftmedianGDC 80.57±1.90 73.35±0.38 85.58±0.08 78.48±0.32 62.74±1.15 61.33±0.50 76.78±0.46 – – – 10.57
+EvenNet 84.81±1.51 72.52±0.70 87.63±0.40 83.01±0.36 65.24±0.79 60.24±0.11 81.01±0.59 84.07±0.03 87.86±0.18 70.14±0.00 5.40
+ElasticGNN 86.59±1.97 73.77±0.07 87.60±0.11 83.11±0.49 65.58±1.04 61.62±0.43 81.71±0.40 84.05±0.08 88.60±0.12 72.24±0.00 2.80
+GNNGuard 82.29±1.23 69.85±0.98 86.24±0.32 75.05±0.72 63.95±0.64 54.37±0.35 78.05±0.38 77.81±0.22 75.87±0.35 70.49±0.00 10.80
+RUNG 81.73±2.35 71.06±0.27 85.72±0.24 75.00±0.25 64.40±0.16 57.63±0.60 – – – – 11.17
+Table 21: Clean test accuracy under the inductive setting. (ptb rate=0.2, atk emb=BoW,
+def emb=Mistral-7B)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 86.84±1.99 75.44±0.63 88.24±0.63 83.43±0.36 68.49±0.30 65.39±5.04 84.74±0.44 85.64±0.34 88.33±0.16 74.18±0.00 6.00
+GAT 80.14±1.03 71.58±0.77 86.63±0.62 66.28±4.25 64.39±0.27 61.14±0.58 83.36±0.61 82.83±1.88 87.56±0.48 72.91±0.00 10.20
+APPNP 84.69±1.20 75.91±0.82 92.02±0.22 85.79±0.46 69.02±0.18 63.02±0.51 84.88±0.56 85.53±0.49 88.51±0.40 76.22±0.00 4.40
+GPRGNN 85.85±0.98 77.12±0.38 92.44±0.22 86.50±0.65 67.75±0.95 65.56±0.51 84.82±0.38 84.75±0.62 87.84±0.16 76.11±0.00 4.20
+RobustGCN 58.61±8.78 46.03±3.30 45.01±7.14 27.01±5.97 64.26±0.53 52.75±0.27 56.16±0.43 42.14±0.11 25.89±0.18 5.86±0.00 11.60
+GCORN 86.16±1.98 76.33±0.78 90.50±0.39 85.69±0.39 66.18±0.35 69.28±0.88 85.26±0.31 86.36±0.27 87.67±0.25 75.52±0.00 4.50
+NoisyGCN 87.95±1.30 75.18±0.27 88.23±0.03 84.00±0.29 68.83±0.66 65.38±3.55 84.74±0.43 85.95±0.35 88.44±0.39 74.29±0.00 5.30
+GRAND 86.29±1.45 76.49±0.64 90.80±0.33 85.32±1.05 68.25±0.10 63.55±0.88 84.57±0.57 77.99±3.35 79.59±1.60 – 6.56
+SoftmedianGDC 82.35±1.60 73.04±0.26 91.70±0.18 81.48±3.09 – 60.79±0.42 84.50±0.61 – – – 9.33
+EvenNet 85.79±1.04 75.60±0.70 90.77±0.07 87.13±0.53 69.34±0.24 64.91±0.30 84.90±0.53 85.00±0.29 88.34±0.62 74.12±0.00 4.50
+ElasticGNN 88.25±1.30 76.70±0.91 89.33±0.46 86.62±0.34 68.74±0.47 49.95±0.31 84.90±0.49 85.60±0.46 88.96±0.44 76.09±0.00 4.20
+GNNGuard 85.49±0.74 74.35±0.52 90.20±0.23 84.25±1.71 69.12±0.21 59.48±7.12 – – – – 7.50
+RUNG 82.90±1.81 73.67±0.38 92.34±0.06 83.53±0.65 68.50±0.08 63.60±0.49 – – – – 7.17
+38
+Preprint
+Table 22: Clean test accuracy under the inductive setting. (ptb rate=0.2, atk emb=BoW,
+def emb=MiniLM)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 86.35±2.07 75.76±0.98 89.28±0.51 83.81±0.13 65.06±0.68 66.98±0.59 84.57±0.36 86.04±0.25 88.93±0.11 73.86±0.00 5.60
+GAT 87.33±1.58 74.87±0.85 87.53±0.08 83.47±0.21 67.11±0.28 65.00±0.85 83.84±0.53 86.14±0.41 89.10±0.17 73.31±0.00 6.20
+APPNP 84.93±1.92 75.76±0.87 89.22±0.32 83.44±0.56 66.05±0.06 58.83±0.60 84.73±0.59 85.28±0.16 89.29±0.10 75.71±0.00 5.90
+GPRGNN 86.41±1.67 75.60±0.53 89.96±0.26 82.41±0.64 63.10±0.88 59.08±0.08 83.12±0.50 83.77±0.25 87.75±0.15 71.97±0.00 8.60
+RobustGCN 87.95±1.03 76.18±1.05 88.07±0.19 84.12±0.05 67.28±0.16 58.65±0.21 84.86±0.38 85.97±0.21 88.83±0.15 74.09±0.00 5.00
+GCORN 86.72±2.04 76.07±1.15 88.80±0.03 83.51±0.30 64.62±0.61 67.08±0.51 84.72±0.47 84.37±0.21 85.84±0.06 74.35±0.00 5.90
+NoisyGCN 85.92±1.77 76.07±0.48 89.22±0.18 84.07±0.09 65.14±0.54 67.19±0.52 84.54±0.38 86.15±0.32 89.08±0.20 73.57±0.00 5.20
+GRAND 86.41±1.28 77.48±1.74 88.15±0.14 83.06±0.04 65.46±0.31 64.60±0.49 83.03±0.52 82.40±0.46 83.49±0.08 72.22±0.00 7.90
+SoftmedianGDC 86.47±1.61 76.65±0.34 90.31±0.27 82.22±0.49 61.60±0.57 63.43±0.13 83.64±0.53 – – – 7.00
+EvenNet 86.78±1.26 75.76±2.25 88.97±0.07 84.76±0.22 65.95±0.81 61.46±0.20 84.63±0.46 85.56±0.22 89.15±0.14 73.78±0.00 5.10
+ElasticGNN 86.53±1.98 77.06±1.26 88.67±0.20 84.54±0.27 66.68±0.34 63.53±0.41 84.98±0.54 85.70±0.25 89.66±0.09 75.82±0.00 3.60
+GNNGuard 82.84±1.14 75.08±0.46 88.88±0.06 80.72±0.61 60.95±1.04 56.83±0.60 82.92±0.15 74.70±0.25 79.01±0.08 71.25±0.00 11.60
+RUNG 84.75±1.65 73.46±0.87 89.78±0.14 81.48±0.38 63.51±0.38 58.72±0.51 – – – – 10.17
+Table 23: Clean test accuracy under the inductive setting. (ptb rate=0.2, atk emb=BoW,
+def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 87.76±1.51 75.60±1.09 88.76±0.25 84.86±0.61 66.75±0.29 67.76±0.74 85.00±0.31 86.46±0.26 89.24±0.15 73.29±0.00 6.20
+GAT 87.70±1.30 76.59±0.45 88.14±0.48 84.42±0.12 67.80±0.23 64.64±0.22 84.66±0.67 86.30±0.17 89.70±0.28 74.09±0.00 5.70
+APPNP 84.75±1.61 75.76±0.63 91.26±0.22 85.03±0.63 67.21±0.13 59.99±0.45 85.79±0.57 85.70±0.20 88.99±0.14 76.00±0.00 5.80
+GPRGNN 86.29±1.61 74.19±0.45 91.05±0.16 84.38±1.00 64.26±0.58 58.35±0.67 84.68±0.45 84.76±0.23 88.23±0.17 71.83±0.00 9.70
+RobustGCN 87.70±1.28 74.82±0.59 87.92±0.12 84.37±0.18 67.97±0.08 63.09±0.87 84.43±0.43 84.79±0.39 86.78±0.14 73.73±0.00 8.50
+GCORN 87.52±1.15 76.28±0.15 89.83±0.16 85.48±0.27 65.17±0.52 67.85±0.48 85.28±0.49 85.64±0.05 87.51±0.06 73.69±0.00 6.30
+NoisyGCN 88.01±0.69 75.86±0.51 88.75±0.32 84.35±0.61 67.12±0.32 67.75±0.78 84.98±0.08 86.37±0.22 89.23±0.25 73.35±0.00 6.50
+GRAND 88.75±0.94 77.85±1.29 90.47±0.24 85.90±0.31 67.64±0.26 65.83±0.49 86.00±0.36 85.54±0.22 88.13±0.02 75.85±0.00 3.80
+SoftmedianGDC 85.36±2.13 75.71±0.90 90.76±0.22 83.53±0.94 65.53±0.50 62.91±0.19 84.78±0.47 – – – 8.71
+EvenNet 86.35±1.18 75.86±0.71 90.74±0.15 85.95±0.63 67.68±0.65 61.65±0.79 85.63±0.40 86.55±0.16 89.51±0.21 74.75±0.00 4.20
+ElasticGNN 88.31±1.51 75.76±0.52 89.89±0.20 85.48±0.35 67.64±0.80 64.06±0.87 85.81±0.57 86.19±0.02 90.07±0.08 76.22±0.00 3.80
+GNNGuard 83.64±1.94 74.03±0.53 90.21±0.41 83.03±0.53 64.09±1.23 58.58±0.33 84.65±0.49 83.07±0.08 82.38±0.06 71.16±0.00 12.10
+RUNG 84.93±1.46 73.30±1.19 90.72±0.25 84.37±0.44 66.43±0.27 58.80±0.97 – – – – 10.17
+Guardual 84.26±1.71 74.71±1.22 89.83±0.29 84.54±0.34 65.53±0.32 62.24±0.22 85.01±0.28 79.78±0.17 77.39±0.31 72.17±0.00 9.90
+Table 24: Clean test accuracy under the transductive setting. (ptb rate=0.3, atk emb=BoW,
+def emb=BoW)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 83.19±0.75 71.32±0.83 85.45±0.24 80.01±0.29 65.97±0.09 61.84±0.49 80.14±0.25 6.86
+GAT 82.99±1.03 72.30±0.56 85.38±0.21 79.76±0.35 65.41±0.06 60.73±0.30 80.67±0.12 7.86
+APPNP 83.69±0.30 72.25±1.10 87.34±0.08 80.49±0.33 65.78±0.10 60.78±0.66 80.84±0.06 4.14
+GPRGNN 83.06±0.73 72.56±0.65 86.48±0.24 79.80±0.14 66.12±0.18 60.37±1.08 80.49±0.05 5.43
+RobustGCN 83.77±0.80 71.64±0.66 86.45±0.30 81.15±0.14 65.94±0.31 59.29±0.82 80.95±0.15 5.43
+GCORN 77.40±0.60 69.77±0.58 84.71±0.32 78.87±0.33 65.43±0.45 66.34±0.08 78.36±0.02 11.57
+NoisyGCN 83.19±0.12 72.36±0.94 85.75±0.42 79.74±0.35 65.77±0.15 63.83±0.13 80.34±0.32 6.00
+GRAND 83.97±0.92 71.71±0.14 87.16±0.30 80.71±0.38 65.94±0.27 61.58±1.33 80.35±0.27 4.43
+SoftmedianGDC 82.77±1.35 71.99±0.28 85.15±0.07 74.33±0.49 65.98±0.40 59.67±0.52 78.04±0.08 10.57
+EvenNet 82.88±0.56 71.70±0.70 86.50±0.24 80.71±0.31 65.77±0.72 64.61±0.68 80.48±0.07 5.57
+ElasticGNN 83.19±0.17 73.14±0.40 87.00±0.17 80.18±0.27 65.41±0.37 60.58±0.47 80.67±0.07 5.43
+GNNGuard 80.31±0.37 71.20±0.28 86.13±0.26 77.08±0.28 64.26±0.79 58.79±0.43 79.54±0.18 12.71
+RUNG 81.91±0.59 72.20±0.80 85.57±0.30 78.75±0.47 65.55±0.23 60.24±0.11 – 10.17
+Cosine-GCN 79.48±1.38 69.70±0.92 84.03±0.26 77.61±0.47 64.78±0.50 59.07±0.36 78.26±0.21 14.57
+Jaccard-GCN 80.60±1.25 69.98±0.82 84.12±0.34 79.11±0.29 65.66±0.13 61.77±0.26 78.44±0.19 10.86
+Stable 79.97±0.45 68.29±0.67 84.00±0.43 78.94±0.55 64.66±0.51 63.32±0.31 – 12.83
+ProGNN 77.79±0.19 70.13±0.93 – – – – – 14.50
+Table 25: Clean test accuracy under the transductive setting. (ptb rate=0.3, atk emb=BoW,
+def emb=MiniLM)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 84.34±0.34 74.32±0.88 86.78±0.48 81.31±0.05 65.67±0.33 65.81±0.63 82.94±0.11 8.43
+GAT 83.97±1.30 73.86±0.61 85.94±0.35 81.85±0.31 65.56±0.07 63.31±0.86 82.65±0.01 10.29
+APPNP 84.33±0.79 74.43±0.36 88.36±0.26 81.59±0.28 65.68±0.44 62.54±0.09 83.44±0.10 5.14
+GPRGNN 84.31±0.17 73.98±0.91 88.04±0.21 81.45±0.23 65.21±0.30 62.34±0.25 82.61±0.09 10.00
+RobustGCN 84.05±0.51 75.10±0.65 86.92±0.12 81.82±0.30 66.14±0.41 64.05±0.29 83.18±0.06 5.86
+GCORN 82.77±0.80 74.94±0.65 86.99±0.14 81.07±0.35 65.75±0.15 67.37±0.29 83.12±0.02 7.86
+NoisyGCN 83.73±0.44 74.11±0.59 87.15±0.23 81.42±0.07 65.46±0.01 67.52±0.25 82.84±0.12 9.00
+GRAND 84.33±0.53 75.82±0.49 87.38±0.16 81.69±0.22 65.51±0.24 65.02±0.83 83.10±0.18 5.86
+SoftmedianGDC 84.42±0.25 75.47±0.45 88.16±0.30 81.04±0.38 65.88±0.28 63.72±0.29 83.54±0.10 4.57
+EvenNet 84.39±0.60 74.75±0.99 87.45±0.23 82.11±0.59 65.60±0.23 62.01±0.42 83.28±0.07 5.86
+ElasticGNN 84.63±0.15 74.43±0.36 87.69±0.05 81.47±0.23 65.77±0.31 62.54±0.14 83.24±0.05 5.43
+GNNGuard 82.71±0.29 74.36±0.58 87.37±0.10 81.55±0.01 64.79±0.67 59.29±0.57 82.75±0.26 11.57
+RUNG 82.19±0.26 73.68±0.20 87.76±0.26 81.37±0.01 65.02±0.53 61.51±0.11 – 12.67
+Cosine-GCN 82.02±0.81 74.19±0.34 86.30±0.22 81.36±0.09 65.45±0.38 59.37±0.08 82.50±0.08 13.43
+Jaccard-GCN 83.42±0.19 73.85±0.73 86.30±0.26 80.94±0.16 65.67±0.41 66.10±0.33 82.30±0.06 11.57
+Stable 84.09±0.19 73.68±1.06 86.84±0.23 82.53±0.28 65.33±0.54 66.21±0.24 – 8.83
+ProGNN 83.20±0.51 75.34±0.72 – – – – – 8.00
+39
+Preprint
+Table 26: Clean test accuracy under the transductive setting. (ptb rate=0.3, atk emb=BoW,
+def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 84.03±0.51 73.98±0.70 87.39±0.11 81.85±0.46 66.68±0.20 63.41±0.12 83.55±0.20 10.57
+GAT 84.25±0.48 74.19±0.40 86.20±0.20 82.05±0.25 66.45±0.24 62.91±0.19 83.33±0.21 12.29
+APPNP 85.03±0.24 74.74±0.22 89.13±0.04 82.51±0.55 67.48±0.11 63.80±0.15 84.43±0.20 3.43
+GPRGNN 85.05±0.36 74.42±0.50 89.06±0.28 82.17±0.44 67.26±0.13 63.74±0.12 84.05±0.21 4.86
+RobustGCN 83.54±0.91 74.55±1.12 87.27±0.07 81.83±0.19 66.62±0.25 62.73±0.74 83.20±0.09 12.43
+GCORN 84.34±0.61 74.67±1.32 87.44±0.05 82.17±0.15 66.46±0.30 67.60±0.18 83.81±0.10 7.86
+NoisyGCN 84.59±0.75 73.69±0.77 87.29±0.23 82.12±0.18 66.66±0.61 63.87±0.14 83.55±0.16 9.71
+GRAND 85.16±0.61 76.06±0.62 89.11±0.08 84.16±0.31 66.94±0.47 66.34±0.61 84.93±0.09 2.00
+SoftmedianGDC 83.56±0.61 74.11±0.43 88.48±0.21 80.22±0.67 66.93±0.21 63.10±0.40 84.30±0.13 9.43
+EvenNet 84.06±1.02 74.94±0.60 88.99±0.14 83.15±0.53 67.05±0.16 63.23±0.51 83.90±0.14 5.29
+ElasticGNN 84.88±0.19 74.41±1.05 88.28±0.17 82.65±0.23 66.87±0.20 63.17±0.13 83.99±0.18 6.57
+GNNGuard 83.22±0.55 73.81±0.50 87.98±0.29 82.47±0.19 67.23±0.31 59.39±0.39 83.87±0.15 10.14
+RUNG 83.42±0.64 75.35±0.88 88.86±0.26 82.64±0.33 66.82±0.27 62.85±0.17 – 8.17
+Cosine-GCN 83.25±1.08 73.43±0.61 87.05±0.16 82.60±0.63 66.96±0.21 59.37±0.49 83.75±0.20 11.43
+Jaccard-GCN 83.54±0.77 72.98±0.42 87.04±0.15 81.47±0.42 66.70±0.50 63.41±0.12 83.18±0.05 12.86
+Stable 84.40±0.80 72.70±1.30 86.66±0.27 82.65±0.36 66.75±0.26 65.33±0.58 – 9.00
+ProGNN 83.57±0.79 74.91±0.55 – – – – – 7.50
+Table 27: Accuracy under the inductive/evasion setting against structural attack. (ptb rate=0.2,
+atk emb=BoW,def emb=BoW)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 66.11±2.48 54.86±1.00 80.12±0.71 20.39±0.56 7.11±0.81 50.47±3.28 41.70±0.39 38.88±2.42 35.95±0.33 32.86±0.00 11.60
+GAT 67.53±2.03 57.31±1.07 80.18±0.58 39.47±1.08 45.03±5.36 53.83±3.18 49.44±1.63 51.95±1.37 44.08±0.03 39.62±0.00 8.10
+APPNP 69.13±2.82 64.37±0.99 83.75±0.14 57.37±1.22 55.61±2.66 52.40±2.04 59.33±0.76 55.21±0.26 41.06±0.19 43.12±0.00 5.40
+GPRGNN 71.83±1.22 62.49±0.60 82.53±0.25 57.64±0.86 60.96±1.02 64.21±1.65 64.79±0.97 59.31±0.10 50.72±0.45 50.18±0.00 2.90
+RobustGCN 69.99±2.80 58.25±1.48 80.33±0.61 31.14±0.82 60.89±0.47 52.74±1.37 51.27±0.75 48.72±0.90 40.05±0.94 41.67±0.00 7.90
+GCORN 68.57±2.52 58.52±0.97 81.69±0.50 34.16±0.21 32.63±2.84 59.81±1.73 41.51±0.77 39.00±0.67 37.12±0.15 31.39±0.00 8.90
+NoisyGCN 66.24±2.87 54.49±0.73 80.27±0.37 20.38±0.57 6.08±0.55 55.26±1.17 41.41±0.76 39.05±1.28 36.61±0.33 34.48±0.00 10.90
+GRAND 71.89±3.25 64.00±0.93 82.45±0.08 48.57±1.07 64.15±0.37 58.74±3.02 47.45±0.66 49.11±0.74 45.02±0.16 49.90±0.00 4.60
+SoftmedianGDC 74.11±2.93 64.32±1.07 82.35±0.25 72.66±0.24 55.28±1.11 61.88±0.92 69.80±0.49 – – – 3.86
+EvenNet 70.42±2.27 61.86±1.03 82.47±0.33 32.88±1.56 62.38±1.38 60.10±1.03 61.94±0.41 54.04±0.65 46.07±0.72 38.01±0.00 5.10
+ElasticGNN 68.51±2.73 56.43±0.00 81.07±0.64 37.33±0.24 39.99±6.61 45.74±0.54 60.02±0.80 55.96±0.40 40.43±0.38 43.43±0.00 7.60
+GNNGuard 67.16±2.91 68.03±0.90 84.56±0.14 75.02±0.71 63.57±0.58 53.91±0.30 53.70±0.28 46.16±0.33 44.98±0.28 39.25±0.00 5.00
+RUNG 78.04±2.22 67.97±1.37 85.70±0.25 75.00±0.25 62.42±0.08 55.41±0.58 – – – – 2.50
+Table 28: Accuracy under the inductive/evasion setting against structural attack. (ptb rate=0.2,
+atk emb=BoW,def emb=Mistral-7B)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 73.06±2.89 63.06±1.54 82.33±1.07 34.86±1.97 62.23±1.33 62.90±9.60 64.32±1.25 55.53±0.58 51.20±0.30 47.70±0.00 8.10
+GAT 67.59±1.23 61.39±1.56 81.65±1.16 38.33±3.51 64.23±0.56 57.27±0.44 65.34±1.52 54.54±0.27 51.71±1.72 49.98±0.00 8.60
+APPNP 78.54±0.71 69.70±1.09 90.35±0.26 79.27±1.00 68.52±0.35 60.18±0.63 76.83±0.83 64.66±1.12 50.41±1.33 59.74±0.00 3.50
+GPRGNN 80.57±1.81 67.40±1.05 88.59±0.74 75.64±2.00 65.78±1.72 69.00±0.22 75.27±1.04 67.23±1.51 47.75±0.83 63.55±0.00 3.80
+RobustGCN 52.21±7.89 41.17±2.86 44.91±6.81 25.12±3.15 64.17±0.42 53.50±0.29 56.18±0.42 42.14±0.11 25.89±0.18 5.86±0.00 11.20
+GCORN 72.69±2.23 63.06±0.41 84.22±0.78 33.45±0.25 58.89±1.76 71.78±3.75 57.14±1.16 53.32±0.54 44.48±0.14 43.08±0.00 8.90
+NoisyGCN 73.19±1.55 62.64±0.60 82.20±0.65 34.96±0.61 61.71±0.18 60.23±9.70 64.24±1.06 56.87±1.04 51.36±0.99 48.39±0.00 8.20
+GRAND 78.72±1.40 68.97±0.38 85.75±0.26 69.40±1.64 65.89±0.26 57.97±1.01 73.79±0.70 64.17±2.55 61.53±1.13 – 4.67
+SoftmedianGDC 77.12±1.63 67.92±0.85 88.31±0.25 77.08±2.93 – 59.37±0.30 76.97±0.47 – – – 4.83
+EvenNet 79.21±1.88 68.60±1.31 87.26±0.25 63.04±1.29 69.24±0.27 65.92±0.10 69.05±0.50 56.15±1.44 52.42±1.95 51.32±0.00 4.10
+ElasticGNN 76.01±2.11 63.17±0.44 83.50±0.75 57.28±3.23 62.01±3.46 49.95±0.31 68.02±0.49 62.22±0.21 51.74±1.08 54.03±0.00 7.10
+GNNGuard 73.37±1.06 71.89±0.30 84.59±0.73 80.83±1.86 67.56±0.30 55.14±5.73 – – – – 5.67
+RUNG 82.41±1.66 73.56±0.45 92.33±0.08 83.55±0.56 68.69±0.13 60.14±1.15 – – – – 2.17
+Table 29: Accuracy under the inductive/evasion setting against structural attack. (ptb rate=0.2,
+atk emb=BoW,def emb=MiniLM)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 72.39±2.45 61.34±1.31 83.87±0.87 30.44±1.40 57.58±0.72 65.79±1.80 64.83±0.83 58.03±0.53 55.90±0.31 41.35±0.00 9.60
+GAT 73.19±1.28 61.60±0.64 82.34±0.70 47.83±0.63 62.71±0.53 64.50±2.28 66.16±1.46 58.86±0.77 54.95±0.74 48.70±0.00 8.60
+APPNP 80.87±2.20 74.66±0.66 87.32±0.39 76.79±0.71 63.30±0.34 57.28±0.80 78.18±0.31 65.51±0.25 54.42±0.59 57.86±0.00 4.50
+GPRGNN 77.86±2.42 70.69±0.22 87.17±0.12 71.37±0.74 61.41±0.79 58.05±0.17 77.44±0.39 66.16±0.35 60.50±0.48 64.18±0.00 4.50
+RobustGCN 73.31±2.70 62.70±1.63 82.55±0.52 34.20±0.96 63.86±0.50 52.26±0.38 65.76±0.76 58.02±0.68 55.38±0.64 50.41±0.00 9.10
+GCORN 74.29±2.02 62.23±0.89 83.01±0.54 36.32±1.47 55.29±2.25 67.74±2.32 59.00±0.87 53.73±0.63 46.66±0.40 38.91±0.00 9.70
+NoisyGCN 72.82±2.34 61.55±0.85 83.77±0.61 30.49±1.29 55.28±2.89 68.01±2.17 65.27±0.68 58.19±0.68 56.79±0.15 41.32±0.00 9.20
+GRAND 78.60±1.34 70.22±1.22 83.88±0.36 66.75±0.42 64.32±0.38 65.06±1.18 72.45±0.62 65.91±0.14 61.17±0.27 57.13±0.00 4.40
+SoftmedianGDC 78.66±2.83 70.48±0.53 86.61±0.26 77.43±0.34 59.22±0.67 66.16±0.80 77.78±0.43 – – – 4.57
+EvenNet 78.41±2.03 68.86±1.29 84.90±0.17 55.20±1.07 64.18±0.86 57.46±1.19 69.13±0.28 60.29±0.29 58.03±0.59 48.64±0.00 6.10
+ElasticGNN 73.74±1.80 63.01±1.67 82.94±0.51 55.26±0.68 56.32±2.31 53.90±3.37 68.84±0.67 63.10±0.35 54.48±0.63 55.27±0.00 8.40
+GNNGuard 82.84±1.14 75.08±0.46 88.73±0.13 80.66±0.59 60.95±1.04 56.83±0.61 82.93±0.16 74.64±0.23 73.27±0.15 71.25±0.00 2.80
+RUNG 83.64±1.65 73.46±0.87 89.78±0.14 79.95±0.23 63.93±0.74 55.34±0.80 – – – – 3.50
+40
+Preprint
+Table 30: Accuracy under the inductive/evasion setting against structural attack. (ptb rate=0.2,
+atk emb=BoW,def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 73.31±2.11 62.70±0.59 82.92±0.52 31.54±0.71 60.60±0.89 65.16±2.29 65.81±0.48 57.37±0.97 55.09±0.23 45.28±0.00 10.50
+GAT 73.43±1.59 63.64±0.90 83.60±0.60 49.65±1.11 62.86±1.37 61.50±1.18 69.08±1.89 58.25±0.89 54.77±1.09 54.77±0.00 9.10
+APPNP 81.06±2.31 70.43±0.70 89.30±0.18 76.53±0.48 63.11±1.23 55.37±0.72 79.28±0.40 65.14±0.64 58.17±0.46 58.06±0.00 6.10
+GPRGNN 79.27±2.79 69.96±1.82 89.47±0.45 74.38±0.63 60.85±0.58 56.34±0.35 81.30±0.50 66.96±0.62 62.63±0.94 68.73±0.00 6.20
+RobustGCN 73.49±1.80 60.97±1.02 82.15±0.24 36.85±1.66 64.68±0.32 57.59±1.97 64.25±0.40 56.74±0.78 51.85±2.42 51.90±0.00 10.80
+GCORN 73.49±2.22 63.48±0.66 83.98±0.55 34.97±0.79 58.11±0.58 68.09±1.86 59.00±1.36 53.80±0.53 46.08±0.17 41.82±0.00 10.60
+NoisyGCN 73.55±1.35 62.59±1.28 83.02±0.48 32.14±0.77 60.85±0.70 65.77±2.11 65.44±0.58 57.76±1.11 55.09±0.55 45.43±0.00 9.60
+GRAND 79.89±0.80 70.74±1.58 86.41±0.52 71.86±0.61 64.68±0.32 63.44±0.81 76.87±0.18 69.54±0.14 64.94±0.23 69.80±0.00 4.70
+SoftmedianGDC 80.01±2.53 70.53±1.02 87.36±0.26 81.43±0.66 62.85±0.61 63.10±0.18 79.89±0.51 – – – 5.71
+EvenNet 79.83±1.30 71.47±0.64 87.53±0.45 63.02±0.33 66.64±1.09 61.98±2.69 72.86±0.14 61.93±0.38 59.79±0.47 53.73±0.00 6.00
+ElasticGNN 74.91±1.09 61.96±1.03 84.22±0.74 57.77±1.09 57.10±4.69 54.11±1.06 70.63±0.73 62.71±0.60 54.45±0.70 54.50±0.00 9.90
+GNNGuard 83.64±1.94 74.03±0.53 90.14±0.44 83.03±0.53 64.07±1.19 58.58±0.33 84.64±0.49 63.04±0.71 63.07±0.60 71.16±0.00 3.60
+RUNG 84.56±1.52 73.30±1.19 90.72±0.25 82.73±0.78 67.12±0.56 58.11±0.75 – – – – 3.17
+Guardual 83.95±1.63 74.71±1.22 89.53±0.39 83.07±0.55 65.40±0.05 61.64±0.46 84.85±0.29 73.78±0.44 71.30±0.39 72.15±0.00 2.10
+Table31:Accuracyunderthetransductive/poisoningsettingagainststructuralattack. (ptb rate=0.2,
+atk emb=BoW,def emb=BoW)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 64.56±1.14 71.31±0.44 77.59±0.23 79.96±0.35 63.87±0.17 52.28±1.42 64.39±0.33 8.71
+GAT 60.78±2.21 70.55±1.26 75.51±0.28 78.55±0.83 70.54±1.75 53.49±2.11 71.18±1.21 8.57
+APPNP 70.47±1.21 72.32±0.77 83.61±0.19 79.83±0.17 64.33±0.25 54.73±0.79 74.60±0.07 3.71
+GPRGNN 71.45±2.32 71.61±0.99 81.74±0.78 79.02±1.30 69.35±0.42 69.21±1.36 73.49±0.69 4.14
+RobustGCN 59.94±0.31 70.16±1.81 69.61±0.35 80.84±0.20 63.56±0.60 52.19±0.21 63.72±2.69 12.00
+GCORN 47.92±3.14 69.75±0.80 55.58±0.59 77.62±0.41 63.77±0.14 52.92±0.27 58.59±0.09 13.71
+NoisyGCN 63.74±0.44 71.87±0.15 76.88±0.76 79.79±0.34 63.87±0.17 52.21±1.42 63.14±1.96 9.86
+GRAND 64.05±3.51 72.22±0.98 77.90±1.65 79.98±0.35 63.65±0.13 55.05±0.92 63.92±0.06 7.57
+SoftmedianGDC 69.65±0.71 71.85±0.73 80.65±1.03 73.97±0.50 63.50±0.14 53.19±1.01 72.79±0.14 8.71
+EvenNet 72.28±1.98 69.78±0.66 85.63±0.23 80.79±0.61 79.57±0.84 66.64±0.55 77.04±0.20 3.14
+ElasticGNN 64.37±1.89 71.64±0.57 78.75±0.68 79.90±0.50 63.81±0.26 51.76±1.63 66.72±0.80 9.14
+GNNGuard 65.68±0.36 70.81±0.51 81.63±0.39 77.45±0.28 64.52±0.62 54.60±0.33 69.35±0.79 7.57
+RUNG 68.60±2.18 71.14±0.38 82.46±0.27 78.20±0.38 63.89±0.14 52.37±1.16 – 7.83
+Cosine-GCN 65.13±0.98 69.01±1.45 82.03±0.45 77.07±0.36 64.36±0.59 54.32±0.99 70.11±1.38 8.71
+Jaccard-GCN 61.21±0.80 69.49±0.61 74.76±0.52 78.45±0.51 64.23±0.64 51.89±0.65 63.40±2.38 12.14
+Stable 60.18±4.17 67.02±1.18 72.35±2.72 77.58±0.58 63.89±0.23 55.77±0.73 – 11.67
+ProGNN 76.57±1.96 70.22±0.54 – – – – – 6.00
+Table32:Accuracyunderthetransductive/poisoningsettingagainststructuralattack. (ptb rate=0.2,
+atk emb=BoW,def emb=MiniLM)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 71.84±2.32 73.66±0.20 79.44±0.27 81.19±0.28 63.81±0.18 49.89±0.01 66.90±1.80 11.00
+GAT 70.64±0.61 73.51±0.31 79.59±0.65 80.98±0.28 73.43±0.80 58.88±0.84 78.92±0.42 8.86
+APPNP 78.39±0.48 74.79±0.58 86.55±0.11 81.04±0.15 64.02±0.62 58.86±0.23 82.15±0.11 4.43
+GPRGNN 78.10±0.74 74.70±0.75 85.80±0.27 81.32±0.35 72.95±2.44 67.84±0.36 80.39±0.10 4.57
+RobustGCN 71.33±1.69 74.00±0.32 78.17±0.48 81.65±0.20 63.80±0.19 49.99±0.13 65.64±1.31 10.29
+GCORN 58.96±2.70 74.71±0.74 57.61±0.29 79.47±0.44 63.87±0.17 49.87±0.02 56.22±0.07 12.86
+NoisyGCN 72.79±3.09 73.99±0.31 79.23±0.88 81.18±0.27 63.75±0.12 49.96±0.07 68.48±2.00 10.14
+GRAND 74.08±1.81 75.18±0.96 80.62±0.66 81.55±0.26 63.65±0.04 50.79±0.73 68.14±0.50 8.00
+SoftmedianGDC 78.06±0.49 75.19±1.08 85.76±0.39 80.66±0.60 62.83±1.24 51.03±0.55 81.18±0.15 8.29
+EvenNet 78.93±1.18 74.74±0.19 87.37±0.12 82.18±0.26 78.67±0.82 67.23±1.28 82.81±0.08 2.00
+ElasticGNN 74.70±1.77 74.16±0.68 79.21±0.63 81.25±0.38 63.83±0.15 50.02±0.24 64.78±0.24 9.29
+GNNGuard 80.08±0.54 73.69±1.47 86.08±0.25 81.00±0.13 64.34±0.39 58.70±0.94 82.14±0.06 5.86
+RUNG 78.20±0.94 73.78±0.16 86.13±0.42 80.76±0.10 64.15±0.36 51.70±0.90 – 7.50
+Cosine-GCN 80.08±0.83 73.90±0.45 85.50±0.42 80.68±0.26 64.53±0.73 58.59±0.95 81.98±0.08 6.57
+Jaccard-GCN 72.07±1.57 73.47±0.22 77.08±0.35 80.45±0.51 63.74±0.14 40.96±5.10 63.14±0.45 14.43
+Stable 75.20±0.81 72.80±0.69 78.89±0.91 80.88±0.17 63.63±0.38 49.02±0.64 – 13.33
+ProGNN 83.20±0.51 73.78±1.51 – – – – – 6.00
+41
+Preprint
+Table33:Accuracyunderthetransductive/poisoningsettingagainststructuralattack. (ptb rate=0.2,
+atk emb=BoW,def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 69.57±3.44 74.68±0.41 78.44±1.30 81.69±0.37 63.86±0.18 52.77±0.72 68.51±1.53 11.00
+GAT 67.64±2.71 73.86±0.43 78.80±1.09 81.44±0.13 72.22±1.78 56.14±3.40 78.09±0.41 9.86
+APPNP 80.62±0.26 75.01±0.50 88.23±0.27 82.87±0.50 66.24±0.09 59.59±0.21 83.73±0.12 3.57
+GPRGNN 79.93±1.21 75.11±0.59 87.36±0.55 82.32±0.38 73.19±6.80 68.58±0.59 82.70±0.13 3.71
+RobustGCN 66.44±3.26 74.19±0.28 64.78±1.59 81.96±0.26 63.64±0.20 51.28±0.46 64.55±2.99 12.86
+GCORN 67.65±0.86 74.68±0.96 61.51±0.48 80.77±0.40 63.88±0.17 49.40±0.33 62.32±0.67 13.29
+NoisyGCN 71.57±1.42 74.57±0.94 77.73±0.92 81.61±0.47 63.75±0.21 53.08±3.68 70.33±1.22 11.29
+GRAND 80.05±0.76 75.81±0.74 83.73±0.50 83.23±0.45 63.93±0.20 57.16±0.40 77.99±0.55 5.43
+SoftmedianGDC 78.00±0.44 73.14±0.42 85.85±0.43 79.78±0.56 64.38±0.35 57.77±0.51 82.63±0.26 9.43
+EvenNet 80.82±1.22 75.02±0.16 88.86±0.10 83.34±0.81 81.09±0.20 68.71±0.46 84.10±0.05 1.57
+ElasticGNN 75.02±0.48 73.87±0.19 82.05±0.74 82.28±0.17 63.84±0.14 52.56±1.83 70.57±1.78 10.43
+GNNGuard 79.93±1.52 73.99±0.62 86.95±0.06 82.45±0.75 66.80±0.29 60.06±0.46 83.48±0.13 5.14
+RUNG 79.23±1.25 75.45±0.88 87.55±0.45 81.80±0.23 63.90±0.23 54.61±1.40 – 6.83
+Cosine-GCN 79.88±0.66 73.10±1.19 86.75±0.27 81.91±0.71 66.65±0.35 58.18±0.38 83.54±0.23 7.00
+Jaccard-GCN 69.82±1.49 72.47±0.45 75.94±1.43 81.05±0.47 63.50±0.49 49.56±2.21 63.00±4.95 14.29
+Stable 78.28±1.45 72.46±0.66 77.66±1.31 80.25±0.96 63.93±0.20 53.32±2.22 – 12.00
+ProGNN 83.57±0.79 74.98±0.38 – – – – – 3.50
+I.1.2 CLEAN,TRANSDUCTIVE
+I.1.3 STRUCTUREATTACK,INDUCTIVE
+I.1.4 STRUCTUREATTACK,TRANSDUCTIVE
+I.1.5 TEXTATTACK,INDUCTIVE
+Table 34: Accuracy under the inductive/evasion setting against textual attack. (ptb rate=0.4,
+def emb=BoW)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo AvgRank
+GCN 82.72±1.65 60.66±0.77 82.00±1.30 78.50±0.21 61.16±0.92 59.70±1.08 78.01±0.45 78.65±0.25 4.38
+GAT 82.90±2.20 61.76±2.50 83.05±0.69 71.54±1.13 63.21±1.40 60.60±1.30 79.55±1.09 82.05±0.30 3.25
+APPNP 80.07±0.94 38.35±1.03 67.82±0.80 50.23±0.54 60.42±0.46 55.08±0.21 74.79±0.41 73.52±0.54 9.88
+GPRGNN 74.11±2.38 40.39±1.58 73.55±2.15 54.82±0.44 59.80±1.14 58.65±0.89 67.48±0.93 71.34±1.77 10.12
+RobustGCN 84.01±2.26 63.79±2.22 82.16±0.80 74.60±0.52 65.70±0.16 56.33±0.87 77.49±0.31 78.39±0.17 3.88
+GCORN 77.31±1.63 54.49±0.64 77.09±0.83 76.35±0.19 62.02±0.47 65.51±0.65 76.46±0.35 74.52±0.75 5.75
+NoisyGCN 83.27±1.35 59.93±0.45 81.68±1.24 78.39±0.09 60.52±0.61 61.32±0.64 78.13±0.31 79.03±0.16 3.75
+GRAND 75.77±2.22 47.96±1.48 78.54±1.72 73.77±0.24 64.64±0.38 62.69±2.23 75.60±0.91 74.99±0.10 6.25
+SoftmedianGDC 70.54±2.01 47.23±0.27 70.63±1.04 47.05±0.39 59.16±0.56 59.10±0.36 61.46±0.46 – 10.71
+EvenNet 79.95±0.74 52.72±0.90 81.17±1.09 74.94±0.61 62.45±1.25 59.61±0.40 75.90±0.49 82.24±0.26 5.50
+ElasticGNN 82.96±2.05 58.73±1.53 83.07±0.31 69.59±0.87 64.34±1.24 59.96±0.59 77.40±0.29 78.73±0.37 4.25
+GNNGuard 76.81±1.51 37.62±0.34 66.37±0.47 43.70±0.32 58.91±0.97 51.93±0.65 68.78±1.17 66.70±0.63 11.75
+RUNG 65.50±4.14 43.26±0.90 64.24±1.08 48.90±0.38 61.20±0.67 55.69±0.63 – – 10.83
+Table 35: Accuracy under the inductive/evasion setting against textual attack. (ptb rate=0.4,
+def emb=MiniLM)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo AvgRank
+GCN 80.01±2.22 58.52±0.91 78.25±0.82 67.45±0.54 59.01±0.93 64.33±0.20 76.48±0.33 73.66±1.11 3.38
+GAT 81.98±1.09 58.62±1.81 78.66±3.94 61.65±1.15 63.18±1.19 62.65±1.46 77.01±0.75 72.78±3.41 3.00
+APPNP 58.73±0.23 40.23±1.84 66.51±0.64 46.68±0.30 58.83±1.19 53.07±0.32 66.07±1.04 54.41±0.26 10.25
+GPRGNN 71.77±2.13 43.16±1.53 69.84±0.66 46.53±0.28 57.88±1.54 53.98±0.31 65.12±0.85 54.71±0.33 9.25
+RobustGCN 82.29±1.29 60.61±1.97 78.15±0.26 69.83±1.37 63.67±0.51 55.63±0.22 77.73±0.41 73.08±0.67 2.88
+GCORN 79.21±0.53 54.70±0.84 72.06±0.70 62.45±1.18 57.51±0.46 64.15±0.47 74.47±0.50 63.62±0.48 6.00
+NoisyGCN 79.46±1.43 58.41±1.03 78.50±0.83 67.81±1.22 58.85±1.30 64.67±0.76 76.24±0.48 74.12±0.75 3.38
+GRAND 68.08±2.39 46.92±1.41 69.79±0.40 47.50±0.37 64.58±0.98 60.92±0.21 69.08±0.62 55.84±0.50 7.38
+SoftmedianGDC 68.57±0.63 51.15±0.39 69.32±0.74 54.46±1.76 51.94±0.42 – 63.31±3.21 – 9.17
+EvenNet 75.46±1.34 48.33±1.85 74.37±0.68 51.86±1.37 59.58±0.73 56.55±0.36 72.73±0.44 75.15±1.57 6.00
+ElasticGNN 76.75±1.96 56.11±1.89 78.57±0.64 51.80±0.97 61.45±1.02 60.19±0.60 75.86±0.73 60.90±1.07 5.38
+GNNGuard 52.34±0.57 39.66±0.56 65.82±0.39 45.25±0.34 51.53±2.12 51.53±0.77 56.90±0.51 43.72±0.22 12.50
+RUNG 55.78±0.63 39.76±1.03 66.60±0.34 46.45±0.39 57.72±1.00 53.22±1.01 – – 11.17
+I.1.6 TEXTATTACK,TRANSDUCTIVE
+I.2 GRAPHLLMRESULTS
+I.3 RESULTSWITHDIFFERENTPERTURBRATIOS
+42
+Preprint
+Table 36: Accuracy under the inductive/evasion setting against textual attack. (ptb rate=0.4,
+def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo AvgRank
+GCN 81.12±1.61 59.14±0.96 80.13±0.39 73.27±0.93 63.57±1.47 65.42±0.34 78.68±0.22 74.01±0.33 2.50
+GAT 81.49±1.58 57.84±3.32 81.94±0.97 67.54±7.56 64.29±1.30 63.29±0.12 79.10±1.36 79.17±0.80 2.62
+APPNP 59.29±1.84 42.58±0.96 67.57±0.55 48.21±0.37 58.35±1.28 55.12±0.72 68.43±0.51 54.96±0.91 10.25
+GPRGNN 66.30±1.54 41.80±0.27 67.43±0.71 48.40±0.79 57.39±1.73 54.69±0.37 62.84±1.09 55.86±2.28 10.25
+RobustGCN 83.03±2.11 60.24±1.07 79.07±1.13 69.81±2.56 64.51±0.57 60.51±0.60 78.51±0.10 68.58±1.45 3.25
+GCORN 79.21±1.28 56.06±0.74 74.51±0.58 66.75±1.32 58.80±1.18 64.97±0.42 76.91±0.67 64.81±0.94 5.50
+NoisyGCN 80.75±1.43 59.72±1.91 79.97±0.64 73.25±0.97 62.85±1.84 65.60±0.63 78.74±0.30 73.90±0.53 2.88
+GRAND 69.43±2.72 46.08±1.56 72.62±0.75 52.44±0.50 66.05±1.24 63.42±1.38 74.01±0.47 57.19±1.09 6.38
+SoftmedianGDC 65.99±0.31 49.69±0.22 69.09±0.37 51.45±0.88 55.00±1.00 – 63.03±2.97 – 9.50
+EvenNet 68.82±0.75 44.15±1.07 73.50±0.48 54.32±2.56 58.86±0.72 56.70±0.48 72.50±0.66 72.42±1.18 7.25
+ElasticGNN 78.91±3.48 52.19±0.56 78.19±0.28 56.07±1.37 63.32±2.08 60.48±0.30 76.95±0.37 59.24±2.94 5.88
+GNNGuard 51.91±1.14 38.82±0.63 65.73±0.52 47.12±0.13 54.32±0.65 53.94±1.22 61.69±1.77 54.98±0.08 12.25
+RUNG 62.12±3.13 38.56±2.11 66.49±0.66 48.07±0.42 58.80±1.09 54.07±0.80 – – 11.17
+Table 37: Accuracy under the transductive/poisoning setting against textual attack. (ptb rate=0.8,
+def emb=BoW)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 83.63±0.61 65.20±1.19 85.16±0.09 79.85±0.25 65.81±0.29 61.18±0.61 79.69±0.33 6.14
+GAT 83.74±0.12 65.54±0.90 84.98±0.05 79.05±0.97 65.55±0.34 60.92±0.30 80.52±0.16 6.86
+APPNP 84.59±0.69 66.58±1.11 86.48±0.28 79.88±0.49 65.65±0.38 60.60±0.17 80.72±0.13 3.57
+GPRGNN 84.43±0.45 66.93±1.32 85.75±0.07 78.83±0.14 65.56±0.44 59.83±0.40 80.12±0.22 6.43
+RobustGCN 83.65±0.48 64.60±1.05 85.53±0.16 80.39±0.37 65.59±0.12 59.26±0.31 80.62±0.10 6.00
+GCORN 74.71±1.80 64.35±1.03 83.32±0.19 77.63±0.41 64.79±0.51 65.30±0.16 77.94±0.17 10.86
+NoisyGCN 83.13±0.70 65.36±0.83 85.26±0.12 79.77±0.26 65.81±0.35 63.27±0.65 80.09±0.09 6.00
+GRAND 83.93±0.30 67.70±0.68 86.58±0.25 79.46±0.46 65.53±0.25 62.91±0.08 80.28±0.15 4.43
+SoftmedianGDC 82.23±0.88 60.27±1.34 83.70±0.04 70.02±0.11 66.09±0.31 61.00±0.58 77.21±0.35 10.71
+EvenNet 83.39±1.02 59.98±0.16 85.98±0.17 80.07±0.59 65.30±0.46 64.56±0.53 80.19±0.13 6.71
+ElasticGNN 83.62±0.53 68.37±0.93 86.39±0.21 79.78±0.14 65.53±0.27 60.59±0.38 80.52±0.05 5.43
+GNNGuard 79.23±0.36 17.98±0.47 85.14±0.19 72.80±0.55 64.37±0.14 58.73±0.30 78.93±0.09 13.29
+RUNG 82.88±0.59 61.48±1.49 85.01±0.24 77.69±0.51 65.28±0.25 60.49±0.11 – 10.67
+Cosine-GCN 78.59±0.51 59.74±0.21 82.06±0.30 72.68±0.18 64.72±0.11 58.66±0.34 77.44±0.22 14.86
+Jaccard-GCN 79.17±1.96 60.25±0.58 82.36±0.22 77.38±0.36 64.94±0.59 61.16±0.27 77.72±0.03 12.14
+Stable 77.86±0.62 61.11±0.40 82.22±0.24 77.51±0.16 64.59±0.22 62.95±0.34 74.80±0.35 12.57
+ProGNN 76.08±0.34 66.07±0.84 – – – – – 10.50
+Table 38: Accuracy under the transductive/poisoning setting against textual attack. (ptb rate=0.8,
+def emb=MiniLM)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 83.65±1.28 69.52±0.53 86.01±0.31 80.65±0.28 65.16±0.58 65.36±0.38 82.46±0.07 8.14
+GAT 84.33±0.67 70.46±0.75 85.38±0.28 81.47±0.53 65.29±0.07 63.69±0.43 82.45±0.18 6.71
+APPNP 84.17±0.90 70.94±0.62 87.35±0.05 81.13±0.16 65.70±0.69 61.86±0.27 83.13±0.06 4.57
+GPRGNN 84.23±0.56 70.35±0.40 87.47±0.40 80.76±0.25 64.76±0.47 61.40±0.48 82.31±0.08 7.86
+RobustGCN 84.60±0.61 69.77±0.28 86.04±0.21 81.41±0.13 65.98±0.23 64.06±0.39 82.81±0.08 4.57
+GCORN 82.66±1.20 71.26±0.77 85.30±0.22 78.91±0.10 65.72±0.25 67.37±0.13 82.41±0.10 7.14
+NoisyGCN 83.53±0.75 68.72±0.22 86.04±0.38 80.35±0.40 65.87±0.63 67.86±0.28 82.69±0.10 6.57
+GRAND 84.85±0.55 71.60±0.90 85.17±0.24 78.54±0.65 65.48±0.19 65.24±0.34 82.07±0.07 7.14
+SoftmedianGDC 84.22±0.37 65.87±1.06 85.78±0.60 77.88±0.43 65.45±0.41 – 82.99±0.10 9.33
+EvenNet 84.09±0.40 68.51±0.60 86.90±0.05 82.00±0.34 65.59±0.18 61.70±0.09 82.94±0.18 6.43
+ElasticGNN 84.37±0.70 69.94±0.80 87.28±0.16 81.36±0.11 65.17±0.75 62.62±0.17 83.05±0.18 5.71
+GNNGuard 79.70±0.25 17.98±0.47 83.85±0.35 76.18±0.36 65.39±0.92 58.95±0.32 80.99±0.15 14.29
+RUNG 81.96±0.79 67.09±0.48 86.45±0.13 80.41±0.56 64.93±0.04 61.32±0.16 – 11.33
+Cosine-GCN 79.45±1.23 67.50±1.22 82.62±0.11 76.23±0.31 65.10±0.68 58.91±0.29 80.64±0.14 14.86
+Jaccard-GCN 81.63±1.34 67.09±0.59 84.15±0.25 80.11±0.29 65.51±0.16 66.19±0.12 81.46±0.17 10.43
+Stable 81.62±0.95 70.35±0.66 84.06±0.32 80.54±0.58 65.35±0.56 64.67±0.22 – 9.67
+ProGNN 81.88±0.89 69.30±0.58 – – – – – 11.50
+43
+Preprint
+Table 39: Accuracy under the transductive/poisoning setting against textual attack. (ptb rate=0.8,
+def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History AvgRank
+GCN 84.29±0.68 68.67±0.21 86.38±0.15 81.70±0.11 66.56±0.22 63.80±0.27 83.21±0.13 8.14
+GAT 84.97±0.51 67.58±1.60 85.54±0.24 81.81±0.30 66.37±0.49 63.84±0.48 83.31±0.10 8.57
+APPNP 85.03±0.31 70.97±0.35 87.83±0.27 81.39±0.06 66.86±0.66 63.65±0.28 83.57±0.23 5.43
+GPRGNN 85.00±0.59 70.00±1.38 87.82±0.47 81.65±0.07 66.76±0.18 62.64±0.46 83.53±0.22 6.43
+RobustGCN 84.28±0.24 68.05±0.23 86.28±0.08 81.48±0.16 65.89±0.51 63.47±0.12 83.00±0.13 10.57
+GCORN 83.40±0.44 71.00±1.12 85.69±0.05 81.09±0.37 66.58±0.20 67.71±0.11 83.67±0.03 7.29
+NoisyGCN 84.29±0.23 68.35±1.19 86.41±0.08 81.47±0.21 66.40±0.33 63.65±0.26 83.31±0.03 8.71
+GRAND 85.54±0.35 71.40±0.17 87.15±0.21 82.89±0.20 67.29±0.20 67.02±0.54 84.31±0.09 2.14
+SoftmedianGDC 83.33±0.56 64.50±0.98 86.25±0.18 76.51±0.37 66.10±0.27 – 83.41±0.08 12.67
+EvenNet 84.96±0.15 67.87±0.59 87.64±0.31 82.77±0.27 66.78±0.58 63.28±1.04 83.63±0.02 6.29
+ElasticGNN 85.25±0.81 72.02±0.50 87.62±0.09 82.33±0.29 66.75±0.34 63.88±0.38 83.99±0.05 3.43
+GNNGuard 80.23±0.78 17.98±0.47 84.35±0.30 77.26±0.38 66.88±0.36 58.93±0.69 82.19±0.17 13.00
+RUNG 83.37±0.56 68.71±0.64 87.37±0.28 81.56±0.69 65.95±1.54 63.01±0.08 – 9.83
+Cosine-GCN 77.33±0.56 66.41±0.66 83.29±0.23 77.03±0.54 66.58±0.70 57.61±1.08 81.77±0.18 14.43
+Jaccard-GCN 82.36±0.85 66.92±0.91 84.95±0.22 81.04±0.27 66.87±0.31 63.82±0.19 82.50±0.18 10.86
+Stable 83.83±0.35 71.31±0.67 84.87±0.12 80.68±0.53 66.88±0.18 65.14±0.38 – 7.67
+ProGNN 82.48±1.08 71.61±2.06 – – – – – 8.00
+Table40: GraphLLM’scleanresultsintheinductive/evasionsetting.
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv
+GraphGPT 81.06±2.33 74.35±2.51 94.14±0.23 82.31±1.31 66.93±1.44 61.87±0.52 85.34±1.07 84.77±0.34 85.80±0.60 74.78
+GraphGPT-noise 80.63±2.24 74.56±3.07 94.09±0.33 82.32±1.97 67.59±0.67 60.89±1.61 85.70±0.72 83.55±0.58 – –
+GraphGPT-noisetxt 66.79±3.84 57.37±5.20 86.15±1.88 64.56±2.94 – – – – – –
+LLaGA 86.29±1.76 75.81±0.63 90.23±0.59 84.88±1.60 68.06±0.49 68.53±1.34 85.96±0.53 86.96±0.21 90.00±0.20 74.52
+LLaGA-noise 86.04±2.18 75.55±0.57 90.55±0.57 84.14±0.49 68.46±0.59 68.62±0.77 85.81±0.38 86.57±0.50 – –
+LLaGA-noisefull 83.70±2.23 75.29±1.01 89.13±0.59 83.15±1.64 68.31±0.87 68.91±0.48 85.52±0.34 86.60±0.39 – –
+LLaGA-noisetxt 83.64±1.66 73.72±1.89 86.37±3.70 80.89±1.20 68.15±0.34 67.99±2.25 84.11±1.22 84.27±1.78 – –
+LLaGA-sim 83.76±1.03 75.08±0.96 90.27±0.19 82.39±2.59 67.40±0.46 56.75±1.04 85.48±0.85 79.51±0.04 – –
+SFT-auto 83.27±2.34 74.56±1.19 94.74±0.24 86.40±0.69 68.39±1.04 66.61±1.44 86.08±0.50 84.58±0.09 83.58±0.11 –
+SFT(w/oneighbor) 82.96±1.65 74.19±0.48 94.98±0.18 87.30±0.20 69.27±0.40 62.70±0.50 86.51±0.80 80.78±0.35 77.19±0.21 76.83
+SFT-neighbor 88.25±1.29 76.17±1.81 95.08±0.51 87.75±0.46 69.24±0.54 66.74±1.06 86.81±0.77 87.51±0.07 89.74±0.14 77.84
+SFT-noise 85.30±2.58 75.65±1.89 95.13±0.27 87.78±0.30 69.78±0.88 67.33±1.09 86.53±0.67 87.52±0.13 89.65±0.11 77.93
+SFT-noisefull 87.45±1.87 78.00±1.42 94.96±0.19 86.59±0.20 69.39±0.54 67.13±0.68 86.31±0.88 86.76±0.12 89.37±0.07 77.35
+SFT-noisetxt 86.29±1.26 76.18±1.34 94.96±0.23 86.70±0.43 69.59±0.50 66.99±0.69 86.12±0.47 86.78±0.12 89.37±0.19 77.60
+SFT-simp 88.19±1.58 76.38±1.33 95.00±0.08 87.84±0.29 69.37±0.33 66.23±1.30 86.61±0.71 87.53±0.32 89.71±0.04 77.68
+SFT-simf 85.30±2.04 76.02±1.96 95.16±0.39 87.61±0.49 69.66±0.46 51.78±1.14 86.72±0.87 83.12±0.18 – –
+Table41: GraphLLM’scleanresultsinthetransductive/poisoningsetting.
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo
+GraphGPT 68.97±2.30 67.28±1.56 92.13±0.69 75.35±0.16 63.21±1.83 59.92±0.06 83.46±0.13 80.86±0.55
+GraphGPT-noise 69.71±1.63 66.07±0.06 91.87±0.79 75.66±0.12 55.44±3.63 58.51±0.58 83.09±0.25 80.14±0.89
+LLaGA 78.94±0.47 70.51±2.98 85.60±3.83 79.65±1.15 61.56±4.71 68.44±1.39 83.55±0.30 –
+LLaGA-noise 79.53±2.37 71.40±1.76 84.71±3.98 77.08±1.59 66.65±0.15 68.59±0.37 82.94±0.34 82.72±0.52
+LLaGA-noisefull 78.39±3.82 71.82±1.81 86.10±1.46 78.39±0.81 63.04±4.14 68.18±0.90 83.40±0.42 83.40±1.20
+LLaGA-noisetxt 80.11±3.95 71.26±0.70 86.39±1.17 79.60±0.93 65.28±2.14 67.31±1.06 83.71±0.22 84.38±0.67
+SFT(w/oneighbor) 75.45±2.03 72.10±0.94 93.93±0.35 82.31±0.49 66.53±1.03 60.49±1.02 84.78±0.50 –
+SFT-neighbor 79.40±1.97 72.03±2.03 93.80±0.31 82.65±0.83 66.85±0.96 66.01±0.57 85.72±0.09 85.05±0.57
+SFT-noise 81.46±2.39 71.88±1.44 94.14±0.35 83.12±1.27 65.95±1.18 66.02±0.42 85.47±0.12 –
+SFT-noisefull 80.34±1.32 70.79±3.08 93.53±0.49 82.86±0.51 66.09±1.83 66.17±0.17 85.38±0.13 –
+SFT-noisetxt 76.92±2.00 72.31±0.49 93.46±0.26 82.48±0.12 66.23±0.40 65.96±0.74 85.07±0.58 –
+SFT-simp 78.80±1.46 72.77±1.22 94.06±0.37 83.59±0.61 66.37±1.17 63.52±2.06 85.54±0.13 –
+Table 42: GraphLLM’s results under the inductive/evasion setting against structural attacks
+(ptb rate=0.20).
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv
+GraphGPT 77.68±4.77 73.51±0.72 93.62±0.77 76.51±5.85 65.31±1.03 58.01±0.74 81.59±3.79 77.47±3.32 76.12±5.52 70.61
+GraphGPT-noise 78.60±5.05 73.98±1.90 93.81±0.44 78.87±4.39 65.24±1.37 58.01±0.88 83.20±2.69 – – –
+LLaGA 75.21±3.73 66.35±1.25 87.38±1.15 66.99±5.07 66.33±1.44 73.48±5.39 81.24±1.66 63.91±4.11 62.32±2.80 70.68
+LLaGA-noise 76.26±0.75 68.03±1.57 88.29±0.65 74.95±1.94 67.73±0.53 73.65±6.02 82.34±1.26 71.88±0.63 – –
+LLaGA-noisefull 74.17±2.05 66.35±0.59 85.38±0.84 62.40±2.24 66.92±1.73 75.16±3.43 73.41±2.06 66.48±1.69 – –
+LLaGA-noisetxt 72.02±1.26 65.41±1.25 82.67±0.57 51.17±1.70 66.01±1.31 74.44±4.75 68.14±0.39 57.96±1.41 – –
+LLaGA-sim 81.92±2.61 73.77±0.48 89.43±0.58 82.91±0.46 68.21±0.49 55.20±1.68 85.57±0.39 76.32±0.42 73.99±0.40 73.73
+SFT-auto 82.59±3.53 74.24±2.14 92.29±0.45 84.05±0.69 66.93±0.99 66.18±2.74 85.54±0.69 83.99±0.14 83.62±0.13 –
+SFT-neighbor 82.35±1.94 71.53±1.86 94.73±0.41 86.00±1.40 68.25±0.20 62.29±3.31 85.98±0.51 81.72±0.34 82.39±0.20 77.21
+SFT-noise 79.52±2.72 73.14±0.36 94.51±0.31 84.38±0.60 68.45±0.48 54.54±2.95 85.31±0.73 81.75±0.12 – 77.49
+SFT-noisefull 78.04±0.85 70.17±0.86 91.53±0.55 82.07±1.23 68.62±1.01 62.39±2.69 76.16±2.83 79.00±0.84 – 73.89
+SFT-noisetxt 77.80±2.51 68.18±1.44 90.35±0.51 79.98±2.08 68.37±0.72 62.07±2.06 79.52±2.36 78.20±1.84 78.24±1.07 74.38
+SFT-simp 81.12±2.77 72.26±1.63 94.61±0.17 86.39±0.86 68.87±0.36 64.27±1.27 85.69±0.23 81.63±0.53 82.45±0.42 77.11
+SFT-simf 84.19±2.72 75.29±2.40 94.96±0.36 86.00±1.36 69.21±0.60 64.88±2.96 86.50±0.89 81.23±0.09 – –
+44
+Preprint
+Table 43: GraphLLM’s results under the transductive/poisoning setting against structural attacks.
+(ptb rate=0.30)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo
+GraphGPT 64.53±1.81 64.91±1.55 90.02±2.33 76.28±0.95 58.95±0.69 45.73±0.66 79.82±0.38 73.58±1.47
+GraphGPT-noise 65.70±0.76 64.46±2.67 90.60±1.77 75.06±0.70 58.13±0.94 45.78±0.35 80.82±0.30 74.02±0.37
+LLaGA 71.02±4.70 69.41±1.42 81.63±1.58 76.70±1.25 58.94±1.72 45.07±0.76 79.00±0.72 72.54±2.18
+LLaGA-noise 72.39±1.59 71.41±1.61 82.91±1.36 79.07±1.79 55.43±10.44 46.90±0.70 80.16±0.28 73.43±1.48
+LLaGA-noisefull 64.22±2.80 68.69±2.53 81.11±0.64 74.85±3.57 59.83±0.96 45.29±0.57 73.68±1.58 73.14±0.59
+LLaGA-noisetxt 61.92±9.72 68.12±1.98 81.05±1.11 76.37±1.81 57.36±5.04 45.63±1.36 72.64±2.52 73.04±0.93
+SFT-neighbor 69.65±4.42 71.99±1.28 92.33±0.62 82.00±1.18 62.48±2.60 51.90±1.02 82.82±1.61 80.51±0.51
+SFT-noise 70.56±2.34 71.56±1.82 92.84±0.71 82.73±0.61 60.95±4.73 51.25±0.86 83.38±0.60 81.25±0.82
+SFT-noisefull 71.48±4.09 71.78±0.71 92.35±0.86 81.92±0.56 63.90±0.24 51.39±0.47 83.71±0.29 81.16±0.52
+SFT-noisetxt 71.10±1.19 70.52±3.10 92.02±0.47 81.35±0.71 60.77±5.23 53.60±0.32 83.69±0.67 80.74±0.63
+SFT-simp 70.45±5.39 70.89±1.16 92.65±1.18 82.82±1.41 63.89±0.23 51.73±0.63 83.48±0.83 80.76±0.48
+Table 44: GraphLLM’s results under the inductive/evasion setting against textual attacks.
+(ptb rate=0.40)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo
+GraphGPT 66.48±15.39 59.51±13.47 71.21±14.22 66.45±17.17 63.38±3.93 57.27±3.57 70.53±14.86 54.23±2.63
+GraphGPT-noise 51.66±4.54 59.87±13.78 70.36±15.72 65.91±18.43 62.99±4.04 57.56±2.34 70.26±15.90 –
+LLaGA 81.73±1.76 61.65±2.30 73.84±1.08 61.14±3.87 63.40±3.54 68.83±1.61 72.55±1.70 77.58±1.62
+LLaGA-noise 80.88±1.67 61.23±3.46 70.82±1.00 51.29±1.55 59.44±1.15 68.21±2.07 71.15±1.53 67.24±1.28
+LLaGA-noisefull 79.89±2.13 61.65±1.04 77.12±0.21 63.40±1.99 62.14±2.41 68.59±0.56 78.06±0.94 74.93±1.80
+LLaGA-noisetxt 78.54±0.93 59.19±0.80 79.51±1.73 67.92±2.92 64.70±1.35 69.10±1.38 78.15±0.69 77.00±1.73
+LLaGA-sim 52.21±1.66 39.08±0.77 65.68±0.42 47.10±0.36 55.12±2.67 52.03±0.71 60.24±4.61 47.08±0.58
+SFT-auto 76.75±1.76 65.36±3.29 77.86±1.38 77.83±0.55 61.70±0.84 65.68±0.87 73.55±0.83 77.96±1.76
+SFT-neighbor 75.65±1.33 43.84±2.14 72.27±3.53 51.53±1.24 64.33±1.46 65.52±1.24 64.84±0.98 63.76±1.87
+SFT-noise 71.71±8.20 43.00±3.42 72.10±0.98 50.63±0.50 63.67±0.12 66.00±0.86 59.50±4.01 62.88±1.47
+SFT-noisefull 77.06±5.97 52.46±5.80 74.72±1.06 66.16±6.06 64.20±1.13 65.64±0.81 67.22±3.19 72.36±0.70
+SFT-noisetxt 75.64±0.49 51.67±1.22 76.35±1.50 68.27±6.29 64.78±0.93 65.26±1.23 67.49±0.76 74.71±1.30
+SFT-simp 75.03±4.71 43.57±3.46 74.66±2.67 51.16±0.86 63.54±1.87 64.49±1.37 66.37±3.40 64.79±0.70
+SFT-simf 53.38±1.29 40.28±1.88 71.66±3.38 51.52±1.24 63.70±2.10 65.92±0.86 59.42±1.24 51.24±1.35
+Table 45: GraphLLM’s results in the transductive/poisoning setting against textual attacks.
+(ptb rate=0.80)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History
+GraphGPT 63.54±2.39 40.82±11.87 84.52±1.46 61.96±3.44 42.13±3.52 46.42±2.04 73.18±1.18
+GraphGPT-noise 62.94±1.39 41.01±5.32 86.25±2.95 62.19±1.42 38.71±1.55 46.83±2.65 70.51±0.98
+LLaGA 78.96±2.60 52.52±1.31 72.16±8.62 75.60±3.10 36.33±0.26 50.67±6.62 75.57±4.36
+LLaGA-noise 79.05±3.07 51.87±10.89 78.33±5.89 71.42±2.64 36.82±0.78 47.41±3.08 71.54±2.20
+LLaGA-noisefull 77.66±2.19 50.24±5.85 80.16±1.53 70.41±7.15 42.64±4.51 62.39±2.86 75.22±5.33
+LLaGA-noisetxt 76.27±4.31 51.96±4.09 81.46±2.41 73.94±3.49 41.82±2.11 63.95±1.00 76.16±3.77
+SFT-neighbor 72.40±4.62 46.44±4.32 93.07±0.55 79.33±1.10 62.11±2.91 59.12±6.06 79.88±3.15
+SFT-noise 73.99±3.44 47.89±4.41 93.49±0.26 80.04±0.41 61.86±3.34 60.59±2.97 82.07±0.86
+SFT-noisefull 74.59±1.40 47.33±10.74 92.94±0.43 79.11±1.12 63.88±0.22 63.26±0.57 81.46±1.58
+SFT-noisetxt 72.73±4.19 43.87±4.94 93.07±0.47 79.21±1.17 63.35±0.64 61.62±1.54 80.24±0.88
+SFT-simp 76.64±1.70 46.92±6.90 93.04±0.22 79.51±1.76 55.40±14.53 60.41±2.40 79.38±1.78
+Table 46: Accuracy under the inductive/evasion setting against structural attack. (ptb rate=0.1,
+atk emb=BoW,def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo Computer ArXiv AvgRank
+GCN 77.24±2.39 64.99±1.81 84.58±0.38 45.55±0.84 59.41±0.81 62.89±1.72 70.36±0.50 66.13±0.85 64.39±0.03 52.21±0.00 10.00
+GAT 77.80±0.97 67.35±1.41 84.41±0.66 58.89±0.37 62.70±0.78 60.87±1.07 72.41±1.17 66.73±0.30 64.82±0.59 60.07±0.00 7.80
+APPNP 81.80±2.05 72.73±1.44 89.78±0.28 78.76±1.08 64.15±1.01 56.53±0.59 80.84±0.39 70.76±0.44 64.35±0.23 62.73±0.00 5.10
+GPRGNN 81.80±2.32 72.15±0.70 89.96±0.20 78.29±0.98 60.95±0.38 59.97±1.01 82.50±0.32 71.98±0.51 69.51±0.67 68.59±0.00 4.20
+RobustGCN 76.75±2.27 65.57±1.07 83.72±0.36 51.94±1.23 64.79±0.79 57.29±1.36 69.21±0.40 64.10±0.36 60.71±0.99 57.20±0.00 10.00
+GCORN 77.86±1.05 66.46±0.66 85.38±0.08 46.55±0.26 59.69±1.00 66.91±1.50 65.15±0.69 62.61±0.11 56.28±0.23 49.74±0.00 9.70
+NoisyGCN 77.31±1.74 65.78±1.58 84.46±0.47 46.65±0.79 60.95±1.02 63.26±1.37 70.52±0.47 66.29±0.72 64.75±0.21 51.40±0.00 8.80
+GRAND 81.73±1.45 72.68±0.83 87.04±0.25 75.78±1.08 65.29±0.25 63.45±1.51 79.41±0.33 74.37±0.07 71.06±0.33 70.93±0.00 3.70
+SoftmedianGDC 81.80±2.70 71.47±1.55 87.82±0.08 81.57±0.75 62.18±0.65 – 80.89±0.39 – – – 5.00
+EvenNet 80.75±1.06 72.78±1.22 88.44±0.26 70.94±0.60 66.80±0.16 62.01±2.06 76.49±0.12 69.84±0.30 68.87±0.20 59.48±0.00 4.90
+ElasticGNN 78.23±1.38 65.46±1.03 85.42±0.27 66.61±0.63 60.05±3.30 56.66±0.77 74.21±0.59 70.20±0.15 63.96±0.58 60.48±0.00 8.30
+GNNGuard 83.64±1.94 73.67±0.22 90.26±0.33 83.10±0.31 63.93±0.57 58.52±0.42 84.78±0.42 69.12±0.65 68.60±0.44 71.26±0.00 3.40
+RUNG 84.75±1.15 74.09±0.70 90.64±0.19 83.38±0.59 65.18±1.08 58.50±0.53 – – – – 2.67
+45
+Preprint
+Table 47: Accuracy under the inductive/evasion setting against textual attack. (ptb rate=0.2,
+def emb=RoBERTa)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo AvgRank
+GCN 84.87±0.40 67.45±0.63 84.90±0.30 77.50±0.45 64.15±0.45 66.62±0.67 82.05±0.28 78.92±0.19 2.62
+GAT 86.16±1.83 67.55±1.34 85.76±0.74 75.98±2.19 64.67±1.06 64.13±0.20 81.76±0.93 82.44±0.33 2.50
+APPNP 71.22±1.20 58.78±0.66 79.51±0.75 66.75±0.56 61.30±0.42 55.89±0.67 77.11±0.26 70.07±0.05 8.62
+GPRGNN 76.63±0.71 57.99±0.46 79.68±0.60 66.62±0.67 59.05±2.20 56.62±0.84 73.74±1.08 69.45±0.69 8.88
+RobustGCN 84.50±0.84 67.66±0.52 84.17±0.57 75.17±1.68 65.83±0.16 61.64±0.71 81.44±0.66 76.13±0.83 3.62
+GCORN 83.33±0.53 65.62±0.37 82.18±0.05 74.16±0.55 61.63±0.54 66.86±0.49 81.26±0.66 73.37±0.16 5.00
+NoisyGCN 84.50±0.40 68.03±1.48 84.84±0.48 77.33±0.49 64.23±0.94 66.39±1.07 82.08±0.38 78.86±0.12 2.62
+GRAND 78.72±0.38 61.86±1.10 81.83±0.53 68.86±0.82 65.53±0.67 65.30±1.00 80.21±0.43 71.11±0.15 5.75
+EvenNet 80.01±1.48 60.19±1.12 82.69±0.78 70.41±1.53 62.82±1.36 59.07±0.90 79.32±0.63 79.44±0.21 5.75
+GNNGuard 68.14±1.32 56.22±0.07 78.05±0.97 65.23±0.41 59.45±0.77 55.96±0.29 73.32±0.50 68.47±0.25 10.50
+RUNG 70.05±1.26 56.84±0.53 78.76±0.38 66.47±0.50 61.16±0.57 56.00±0.77 – – 9.67
+Table 48: GraphLLM’s results under the inductive/evasion setting against structural attacks.
+(ptb rate=0.10)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo
+LLaGA 78.41±0.64 68.49±1.50 87.97±1.28 71.46±3.37 66.87±1.03 71.26±5.87 81.93±1.56 70.53±2.44
+SFT-neighbor 83.21±1.21 72.78±2.28 94.85±0.49 86.17±0.90 68.65±0.28 64.29±2.96 86.21±0.64 83.33±0.60
+Table 49: GraphLLM’s results under the inductive/evasion setting against textual attacks.
+(ptb rate=0.20)
+Method Cora CiteSeer PubMed WikiCS Instagram Reddit History Photo
+LLaGA 82.41±1.86 64.63±1.81 81.94±1.12 69.86±2.27 64.99±1.35 68.84±1.97 79.29±1.14 78.40±0.64
+SFT-neighbor 81.61±0.21 59.30±2.28 83.85±1.25 69.80±0.64 65.62±1.10 66.28±1.35 76.15±1.15 74.94±0.51
+46

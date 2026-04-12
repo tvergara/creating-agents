@@ -1,0 +1,977 @@
+[
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/modern.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 16,
+        "score": 8.0,
+        "reasoning": "Comprehensive, systematic investigation of self-contradiction in LLMs with a novel prompting-based detection framework achieving ~80% F1 on black-box models, a deployed public tool, and the empirically striking finding that 17.7% of ChatGPT sentences contain self-contradictions \u2014 a clearly impactful contribution to LLM reliability research."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Novel and important framing of watermark learnability with direct practical implications for open-model watermarking and spoofing attacks, first to systematically study whether LMs can distill decoding-based watermarks into model weights, with clear positive results and honest limitations around fine-tuning robustness."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "Reveals a concrete, previously underexplored safety blind spot \u2014 multilingual jailbreak \u2014 with striking empirical results (80.92% unsafe output rate for ChatGPT under intentional attack) and a practical Self-Defense fine-tuning remedy, making this a clear contribution at the good end of the quality spectrum."
+      },
+      {
+        "paper_id": 9,
+        "score": 7.0,
+        "reasoning": "Claims the first training-free conversion of a pretrained Transformer (CLIP ViT-B/32) to a purely event-driven SNN, a technically ambitious contribution that tackles non-causal self-attention and test-time normalization \u2014 two previously unresolved obstacles \u2014 with concrete Universal Group Operators and Temporal-Corrective Self-Attention."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.5,
+        "reasoning": "InsTag provides the first quantitative, open-set framework for measuring instruction diversity and complexity in SFT data, and the finding that 6K carefully selected samples outperform models trained on far larger datasets is a genuinely useful empirical insight for the LLM fine-tuning community."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.5,
+        "reasoning": "Boosting of Thoughts extends Tree-of-Thoughts by accumulating error-analysis feedback as explicit prompt experience, a non-trivial departure from simply discarding failed reasoning chains, with consistent gains over ToT on complex math benchmarks without requiring human annotation."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.0,
+        "reasoning": "PromptAttack is a practically useful and cleverly framed adversarial auditing tool \u2014 making the victim LLM generate its own adversarial perturbations \u2014 with competitive attack success rates, though the core idea of structured attack prompts is intuitive enough that novelty is moderate rather than substantial."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.5,
+        "reasoning": "LLM2GR applies constrained decoding for passage retrieval without an external retrieval model, which is a practical contribution, but the novelty delta over prior generative retrieval work (DSI, GENRE) is moderate and the paper's positioning relative to these predecessors requires closer scrutiny."
+      },
+      {
+        "paper_id": 35,
+        "score": 4.0,
+        "reasoning": "ABKD applies attention-based intermediate-layer alignment for GNN knowledge distillation, but this is a straightforward adaptation of well-established intermediate KD methods (FitNets, Attention Transfer) to GNNs with no fundamentally new insight about why or how GNN structure changes the distillation dynamics."
+      },
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The core claim that standard fine-tuning suffices to remove backdoors is likely incremental over existing fine-tuning-based defenses (NAD, ANP, LP-BAA), and the paper's framing as a novel contribution risks understating the substantial prior art in fine-tuning as a defense mechanism across similar threat models."
+      }
+    ],
+    "citation_corr": -0.35803151262999733,
+    "acceptance_corr": 0.172773685116272
+  },
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "Reveals critical multilingual safety vulnerabilities in LLMs and proposes a fine-tuning-based Self-Defense framework, demonstrating responsible disclosure with appropriate acknowledgment of dual-use risk and concrete mitigations."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Thoughtfully investigates watermark learnability in LLMs and explicitly flags the spoofing attack risk, exemplifying responsible disclosure of a significant dual-use finding with clear practical implications for provenance claims."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.0,
+        "reasoning": "Thorough investigation of self-contradiction hallucinations in instruction-tuned LLMs with practical detection and mitigation tooling, presenting genuinely useful safety work with low ethical risk and honest reporting of limitations."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.8,
+        "reasoning": "InsTag provides principled quantitative analysis of instruction diversity and complexity in SFT data directly central to alignment research, with minimal ethical concerns and solid empirical grounding on MT-Bench and open-source datasets."
+      },
+      {
+        "paper_id": 4,
+        "score": 6.5,
+        "reasoning": "Demonstrates that accessible fine-tuning operations can effectively mitigate backdoor attacks across multiple ML paradigms, offering a practically useful defense with clear benefits and negligible negative ethical implications."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "PromptAttack is framed as an auditing tool for LLM robustness but represents a dual-use concern as a published attack method, though marginal risk is modest given existing adversarial NLP literature and the explicit defensive framing."
+      },
+      {
+        "paper_id": 31,
+        "score": 6.5,
+        "reasoning": "VerFedSV addresses fairness in vertical federated learning with solid theoretical grounding in cooperative game theory, representing constructive work toward equitable AI with minimal ethical risk and appropriate consideration of data owner interests."
+      },
+      {
+        "paper_id": 20,
+        "score": 6.0,
+        "reasoning": "PIA efficiently exposes privacy vulnerabilities in diffusion models with a novel extension to audio/TTS, though the paper would benefit from more substantive discussion of responsible disclosure practices and implications for model owners."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.0,
+        "reasoning": "Boosting of Thoughts improves LLM mathematical reasoning via iterative prompting with solid results on GPT-4 and Llama2, though the paper lacks meaningful ethics discussion around potential misuse in high-stakes automated reasoning contexts."
+      },
+      {
+        "paper_id": 19,
+        "score": 5.5,
+        "reasoning": "BOSS reduces computational costs for flow matching generative models and proactively mentions environmental benefits, but the ethics discussion is superficial and the paper does not address potential misuse of higher-quality image generation capabilities."
+      }
+    ],
+    "citation_corr": 0.15806243876335843,
+    "acceptance_corr": -0.7241605797043498
+  },
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 3,
+        "score": 7.0,
+        "reasoning": "Small-scale transformer experiments on GCD are fully verifiable \u2014 training distributions, operand ranges, and evaluation criteria are precisely specified, making this among the most reproducible papers in the set."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "Code is publicly available and the three-component attack prompt structure is concretely described, but reproducibility is constrained by dependence on proprietary API models (GPT-3.5, Llama2) whose versions and sampling parameters are not pinned."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.5,
+        "reasoning": "The InsTag dataset (6.6K tags) and TagLM training data (6K samples) are released, and the instruction-tagging pipeline is described in enough detail to reimplement, though SFT hyperparameters and the base model fine-tuning recipe are underspecified."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.5,
+        "reasoning": "Code is provided and the iterative boosting procedure is described algorithmically, but exact prompts, temperature settings, number of tree expansions per iteration, and GPT-4 API version are not pinned, leaving key degrees of freedom underspecified."
+      },
+      {
+        "paper_id": 16,
+        "score": 6.0,
+        "reasoning": "A deployed demo tool and clear prompting framework are provided, but the black-box ChatGPT/GPT-4 dependency means results are not reproducible as these models change over time, and exact system prompts are not released."
+      },
+      {
+        "paper_id": 34,
+        "score": 6.0,
+        "reasoning": "A manually labeled 2000-example decontextualization dataset is provided and the theoretical surrogate loss is fully specified, but fine-tuning details (model architecture, optimizer, number of epochs) for the empirical system are not reported."
+      },
+      {
+        "paper_id": 24,
+        "score": 5.5,
+        "reasoning": "Data is released on GitHub and experimental results are presented on ChatGPT and GPT-4, but API model versioning is not pinned, the Self-Defense fine-tuning procedure lacks hyperparameter detail, and results will degrade in reproducibility as these APIs evolve."
+      },
+      {
+        "paper_id": 9,
+        "score": 5.5,
+        "reasoning": "The training-free claim is appealing for reproducibility, but the Universal Group Operators and Temporal-Corrective Self-Attention Layer approximations involve design choices (grouping strategy, correction schedule) that are described qualitatively rather than with enough precision to reimplement without trial and error."
+      },
+      {
+        "paper_id": 4,
+        "score": 5.0,
+        "reasoning": "The claim spans three ML paradigms but hyperparameters for the fine-tuning and super-fine-tuning procedures are not reported, no code repository is mentioned, and the absence of variance estimates across runs makes the strong headline claim ('all you need') difficult to verify."
+      },
+      {
+        "paper_id": 23,
+        "score": 4.5,
+        "reasoning": "No code is released, the constrained decoding procedure for generating document title identifiers is described only at a high level, and the prefix-length heuristic for passage extraction is not quantified, making the method substantially harder to reimplement than competing RAG baselines."
+      }
+    ],
+    "citation_corr": 0.0796242953081988,
+    "acceptance_corr": 0.6804138174397716
+  },
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 9,
+        "score": 7.5,
+        "reasoning": "Claims the first training-free ANN-to-SNN conversion pipeline for Transformers with concrete novel mechanisms (Universal Group Operators, Temporal-Corrective Self-Attention), directly relevant to inference efficiency; the specificity of the technical contributions is verifiable and the zero-shot capability preservation claim is measurable."
+      },
+      {
+        "paper_id": 19,
+        "score": 6.5,
+        "reasoning": "Dynamic programming via Bellman optimality for distilling flow-matching models is a principled and theoretically grounded approach to inference-time efficiency, but the claim of 'substantial gains in efficiency while maintaining competitive sample quality' requires careful scrutiny of the FID/step-count tradeoff curve."
+      },
+      {
+        "paper_id": 22,
+        "score": 7.0,
+        "reasoning": "Elegantly addresses a genuine methodological flaw in prior graph distillation work (requiring full-dataset training to distill) via a computation-tree frequency insight, and the architecture-agnosticism claim is directly testable; the core premise is technically sound and non-trivial."
+      },
+      {
+        "paper_id": 35,
+        "score": 4.5,
+        "reasoning": "The attention-based intermediate-layer KD for GNNs is incremental over existing KD literature, and the headline 32.3x compression with 1.79% accuracy gain on a single large graph dataset is insufficient evidence for the breadth of the claims without cross-dataset validation or variance reporting."
+      },
+      {
+        "paper_id": 18,
+        "score": 6.0,
+        "reasoning": "The hypothesis that gradient magnitude at initialization reflects architecture-induced convergence bias is plausible and the proposed layer-wise LR adjustment is principled, but the causal chain from initialization gradient to training dynamics requires stronger theoretical grounding than empirical ImageNet results alone provide."
+      },
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The claim that standard fine-tuning 'is all you need' to mitigate backdoor attacks is empirically falsifiable by fine-tuning-resistant attacks known in the literature (e.g., attacks specifically designed to survive fine-tuning), and the abstract provides no discussion of these failure modes or scope limitations."
+      },
+      {
+        "paper_id": 6,
+        "score": 5.5,
+        "reasoning": "The analytical characterization connecting Forward-Forward and PEPITA to adaptive feedback alignment is a genuine theoretical contribution, but the practical efficiency implications for neural network training are not demonstrated and the high-dimensional prototype setting may not transfer to realistic architectures."
+      },
+      {
+        "paper_id": 5,
+        "score": 6.5,
+        "reasoning": "The formal connection between diagonal linear network implicit bias and entropically regularized LP is novel and the linear convergence rate claim under mild assumptions is a concrete verifiable result, though the applicability to practical LP instances beyond basis pursuit and OT remains undemonstrated."
+      },
+      {
+        "paper_id": 31,
+        "score": 6.0,
+        "reasoning": "VerFedSV is grounded in the theoretically well-established Shapley framework and the efficiency argument (avoiding exponential retraining) is sound, but the fairness properties claimed to be satisfied should be explicitly listed and verified against the standard Shapley axioms in the paper."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.5,
+        "reasoning": "The empirical finding that 6K carefully selected samples outperform larger SFT datasets on MT-Bench is a strong and concrete claim; the open-set tagging methodology is technically coherent, though the causal attribution of performance gains to diversity/complexity metrics rather than confounds like data quality requires more rigorous ablation."
+      }
+    ],
+    "citation_corr": -0.015875015875023813,
+    "acceptance_corr": 0.488572758022919
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 16,
+        "score": 7.5,
+        "reasoning": "Addresses a practically important and underexplored failure mode of LLMs with a comprehensive framework for detection and mitigation that works in a black-box setting, though the phenomenon of self-contradiction has been informally noted before."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "Reveals a genuinely novel empirical finding \u2014 that low-resource languages expose ~3x higher unsafe content rates \u2014 and the cross-lingual safety gap appears to be an underexplored but consequential axis of LLM alignment."
+      },
+      {
+        "paper_id": 30,
+        "score": 7.0,
+        "reasoning": "Provides a useful and systematic quantitative framework for measuring instruction diversity and complexity in SFT data, with clear empirical validation linking tagging-based data selection to improved alignment outcomes."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.5,
+        "reasoning": "The idea of accumulating trial-and-error experience as a new prompting signal is a creative and non-obvious extension of Tree of Thoughts, though the gap over existing iterative self-refinement methods warrants closer scrutiny."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "Using the victim LLM itself to generate adversarial examples via structured prompting is an interesting reframing of adversarial NLP, but the novelty over prior prompt-injection and paraphrase-based attacks is incremental."
+      },
+      {
+        "paper_id": 3,
+        "score": 7.0,
+        "reasoning": "Provides an unusually complete mechanistic characterization of what a small transformer actually learns on a mathematical task, with clear training-distribution effects \u2014 a rare fully interpretable result that advances our understanding of transformer internals."
+      },
+      {
+        "paper_id": 20,
+        "score": 6.5,
+        "reasoning": "Achieving 6x query efficiency over prior SOTA for membership inference on diffusion models is a meaningful practical improvement, and the first extension to TTS audio models is a genuinely new contribution."
+      },
+      {
+        "paper_id": 23,
+        "score": 6.0,
+        "reasoning": "Framing generative retrieval as constrained decoding within the LLM itself is an interesting no-extra-model approach, but the delta over retrieval-augmented generation baselines and the scalability of constrained decoding to large corpora need clearer articulation."
+      },
+      {
+        "paper_id": 4,
+        "score": 6.0,
+        "reasoning": "The finding that straightforward fine-tuning can remove backdoors is practically important and somewhat surprising, but the claimed generality across three paradigms would benefit from more rigorous testing against stronger adaptive attacks."
+      },
+      {
+        "paper_id": 34,
+        "score": 5.5,
+        "reasoning": "The theoretical treatment of rejection learning for fixed predictors with H-consistency guarantees is solid, but the application scope is narrow and the novelty relative to existing selective prediction and abstention literature is modest."
+      }
+    ],
+    "citation_corr": -0.15975174697478114,
+    "acceptance_corr": 0.1601281538050871
+  },
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/lone_wolf.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 30,
+        "score": 6.5,
+        "reasoning": "Concrete methodology for quantifying SFT data diversity and complexity via open-set tagging is genuinely useful, and the empirical finding that TagLM outperforms models trained on far larger SFT datasets validates the core insight, though the general claim that diversity and complexity matter is somewhat anticipated."
+      },
+      {
+        "paper_id": 16,
+        "score": 6.5,
+        "reasoning": "Self-contradiction as a specific, detectable hallucination modality is a well-scoped contribution, and the black-box applicability plus the concrete finding (17.7% of ChatGPT sentences involved in contradictions) provide real empirical novelty, though the detection and mitigation machinery is largely prompt-engineering over existing LLMs."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.0,
+        "reasoning": "The empirical finding that low-resource languages produce roughly 3x more unsafe outputs than high-resource ones is a non-obvious and policy-relevant result that extends jailbreak research into a systematically under-examined dimension, and the Self-Defense fine-tuning fix is practically grounded."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.0,
+        "reasoning": "Repurposing the victim LLM itself to generate its own adversarial perturbations is a conceptually clean framing that avoids external attack models, but the perturbation taxonomy (character/word/sentence) is borrowed from classical textual adversarial attacks and the novelty is primarily in the prompt engineering wrapper."
+      },
+      {
+        "paper_id": 33,
+        "score": 5.5,
+        "reasoning": "Iterative error-analysis-driven prompt refinement is a sensible extension of Tree-of-Thoughts but the core idea of learning from wrong intermediate steps is incremental over concurrent self-refinement and reflection literature, and the weighted binary tree structure adds complexity without a strong theoretical justification."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.0,
+        "reasoning": "Using constrained decoding over an LLM's own parameters to retrieve relevant passages is an interesting training-free alternative to dense retrieval, but constrained generation for document retrieval (DSI, GENRE) is well-established and the paper's delta over those baselines is unclear from the abstract alone."
+      },
+      {
+        "paper_id": 35,
+        "score": 5.0,
+        "reasoning": "Attention-based intermediate-layer matching for GNN distillation yields strong compression ratios, but attention-guided layer alignment for knowledge distillation is well-studied in CNNs and transformers, making the primary novelty an application transfer rather than a conceptual advance."
+      },
+      {
+        "paper_id": 19,
+        "score": 5.5,
+        "reasoning": "Applying dynamic programming to optimize denoising stepsizes before velocity-network finetuning is a principled and non-obvious combination for flow-matching distillation, though the DP step-selection idea has precedent in diffusion sampler design and the velocity-straightening objective is close to existing consistency distillation work."
+      },
+      {
+        "paper_id": 4,
+        "score": 4.5,
+        "reasoning": "The claim that standard fine-tuning suffices to remove backdoors is a useful simplification if true, but prior work already observed fine-tuning's partial effectiveness; the paper's main contribution appears to be systematic empirical confirmation rather than a mechanistic explanation or provably stronger guarantee."
+      },
+      {
+        "paper_id": 3,
+        "score": 4.5,
+        "reasoning": "Fully characterizing transformer predictions on a single arithmetic task (GCD) provides a concrete mechanistic finding, but the scope is narrow, the setting is synthetic, and the insight that training distribution shapes which GCDs are learned does not substantially advance broader mechanistic interpretability methods."
+      }
+    ],
+    "citation_corr": -0.24371482196617178,
+    "acceptance_corr": 2.7755575615628914e-17
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "Novel framing of watermark learnability with two distillation variants and important practical implications for open-model deployment and spoofing attacks that the community needs to address."
+      },
+      {
+        "paper_id": 16,
+        "score": 6.5,
+        "reasoning": "Systematic, first-of-its-kind empirical study of self-contradiction as a specific hallucination type with a practical black-box detection and mitigation framework that requires no external knowledge retrieval."
+      },
+      {
+        "paper_id": 24,
+        "score": 6.5,
+        "reasoning": "Concrete empirical insight that low-resource languages are ~3x more likely to trigger harmful outputs provides a genuinely novel and practically important safety finding, backed by a Self-Defense mitigation framework."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "Clever and novel self-attack design that turns the LLM's own generation capabilities against its safety mechanisms, with ensemble perturbations and a clean three-component prompt formulation."
+      },
+      {
+        "paper_id": 9,
+        "score": 6.5,
+        "reasoning": "Claims to be the first training-free SNN conversion of a pretrained Transformer (ViT-B/32 CLIP), addressing a genuine technical gap around non-causal self-attention with Universal Group Operators and Temporal-Corrective attention\u2014directly relevant to model efficiency for neuromorphic deployment."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.0,
+        "reasoning": "Open-set instruction tagging provides a concrete operationalization of instruction diversity and complexity for SFT analysis, and the TagLM results credibly demonstrate that tag-based data selection outperforms larger unfiltered datasets."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.0,
+        "reasoning": "Iterative boosting of thought chains with LLM-generated error analysis is an interesting extension of ToT that leverages failed reasoning attempts rather than discarding them, though the delta over Reflexion and Self-Refine is moderate."
+      },
+      {
+        "paper_id": 23,
+        "score": 6.0,
+        "reasoning": "Training-free generative retrieval via constrained LLM decoding is an appealing no-overhead alternative to retrieval pipelines, though it closely follows prior generative retrieval work and the novelty largely lies in removing the separate retrieval model."
+      },
+      {
+        "paper_id": 4,
+        "score": 5.5,
+        "reasoning": "Bold claim that standard fine-tuning suffices for backdoor removal is practically useful if well-supported across three paradigms, but the core technique is not new and the incremental 'super-fine-tuning' variant needs stronger differentiation from existing defenses."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.5,
+        "reasoning": "Provides unusually complete mechanistic characterization of transformer predictions on a synthetic GCD task and reveals how training distributions affect what divisors are learned, though the narrow scope limits broader impact."
+      }
+    ],
+    "citation_corr": -0.4262867932595694,
+    "acceptance_corr": -0.2182178902359924
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "PromptAttack has code released and uses well-known models (Llama2, GPT-3.5), but exact reproducibility is constrained by API access and the sensitivity of prompt engineering choices that are incompletely specified."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.0,
+        "reasoning": "The self-contradiction detection framework is clearly described with a publicly released tool, but heavy reliance on proprietary ChatGPT API calls limits full reproducibility and makes variance estimation across API versions difficult."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.0,
+        "reasoning": "Data released at GitHub and experimental setup with ChatGPT/GPT-4 is described in sufficient detail, though API-dependent experiments introduce reproducibility gaps for researchers without equivalent access."
+      },
+      {
+        "paper_id": 30,
+        "score": 7.5,
+        "reasoning": "InsTag uses publicly available SFT datasets and evaluates TagLM on MT-Bench with clear data sampling methodology, making this one of the more reproducible LLM fine-tuning papers in the set, though the 6.6K tag generation process needs more procedural detail."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.5,
+        "reasoning": "Code is publicly available and GPT-4/Llama2 are well-specified, but the weighted binary tree construction and aggregation component involve multiple underdocumented design choices that would require significant experimentation to reproduce faithfully."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Code and models are released at GitHub, three watermarking strategies are systematically evaluated with varied hyperparameters, and the distillation methodology is clearly formalized, making this among the stronger reproducibility submissions in the LLM space."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.5,
+        "reasoning": "The two-stage LLM2GR method is conceptually described but no code is released, constrained decoding implementation details are underspecified, and reliance on large closed LLMs makes exact replication difficult for most researchers."
+      },
+      {
+        "paper_id": 4,
+        "score": 5.5,
+        "reasoning": "The strong central claim that vanilla fine-tuning removes backdoors is empirically interesting but the paper lacks full hyperparameter specification for the proposed super-fine-tuning variant and omits details about which backdoor trigger types were tested."
+      },
+      {
+        "paper_id": 20,
+        "score": 6.0,
+        "reasoning": "Code is available and the 2-query proximal initialization attack is clearly defined, but the trajectory construction details for continuous-time diffusion models and the TTS extension lack sufficient implementation specifics for independent replication."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.5,
+        "reasoning": "The transformer GCD interpretability study uses small, well-defined models on a controlled task, but the training distribution experiments lack complete hyperparameter reporting and the criteria for explainability assessment are insufficiently formalized."
+      }
+    ],
+    "citation_corr": 0.16301661334873468,
+    "acceptance_corr": -0.06608186004550902
+  },
+  {
+    "agent_idx": 8,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "Rigorous investigation of watermark learnability via fine-tuning across three distinct watermarking strategies with multiple hyperparameter settings, honestly reporting limitations including sample complexity and fine-tuning robustness."
+      },
+      {
+        "paper_id": 24,
+        "score": 6.0,
+        "reasoning": "Clear experimental design with quantitative unsafe-content rates across many languages, but evaluation is limited to two proprietary models (ChatGPT, GPT-4) with no variance reporting across runs, raising questions about generalizability of the safety fine-tuning defense."
+      },
+      {
+        "paper_id": 34,
+        "score": 6.0,
+        "reasoning": "Strong theoretical foundation with H-consistency guarantees and a manually labeled 2,000-example evaluation set, though applicability is demonstrated on a single NLP task and the ~25% coverage improvement lacks statistical significance testing."
+      },
+      {
+        "paper_id": 16,
+        "score": 5.5,
+        "reasoning": "Interesting self-contradiction findings but the evaluation primarily uses ChatGPT to detect ChatGPT errors creating circularity concerns, and the detection F1 of ~80% is reported without variance across runs or comparison to non-LLM detection baselines."
+      },
+      {
+        "paper_id": 30,
+        "score": 5.5,
+        "reasoning": "Bold claim that 6K diverse samples outperform models trained on considerably larger SFT corpora, but evaluation relies almost exclusively on MT-Bench\u2014a narrow benchmark\u2014with no variance reporting across seeds and unclear whether TagLM hyperparameters were tuned on the same evaluation set."
+      },
+      {
+        "paper_id": 33,
+        "score": 5.5,
+        "reasoning": "The hedged claim of 'higher or comparable' performance signals mixed results that are not clearly delineated, and evaluation spans only mathematical problem domains with GPT-4 and Llama2, leaving generalizability to other LLMs and task types unverified."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.0,
+        "reasoning": "PromptAttack is a straightforward prompting approach with competitive attack success rates, but evaluation covers only two models (Llama2, GPT-3.5) with no variance reporting across runs and no ablation isolating which of the three attack guidance levels drives most of the gain."
+      },
+      {
+        "paper_id": 20,
+        "score": 5.0,
+        "reasoning": "The 6\u00d7 efficiency claim with only 2 queries is concrete and novel, but performance comparisons are made against baselines run under potentially non-identical conditions, and the TTS audio evaluation is limited in scope with minimal ablation of the proximal initialization design choice."
+      },
+      {
+        "paper_id": 4,
+        "score": 4.5,
+        "reasoning": "The claim that standard fine-tuning suffices to remove backdoors across three ML paradigms is overly broad given that the hyperparameter tuning budget for fine-tuning relative to the backdoor injection is not controlled, making it unclear whether the method generalizes to stronger or adaptive attacks."
+      },
+      {
+        "paper_id": 23,
+        "score": 4.5,
+        "reasoning": "The training-free generative retrieval approach is applied to KILT with 6 tasks, but the method depends critically on constrained decoding with no comparison to well-tuned dense retrieval baselines under matched compute budgets, and no variance or significance testing is reported."
+      }
+    ],
+    "citation_corr": -0.25560279515964984,
+    "acceptance_corr": -0.22591299788996194
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 6.5,
+        "reasoning": "The core claim (standard fine-tuning removes backdoors) is pleasingly simple and the experimental scope across three paradigms is clear, but critical reproducibility gaps remain: the paper omits specific fine-tuning hyperparameters, dataset preprocessing details, and how super-fine-tuning differs mechanically from vanilla fine-tuning, making exact replication dependent on author contact."
+      },
+      {
+        "paper_id": 9,
+        "score": 5.0,
+        "reasoning": "The training-free framing is a reproducibility strength since no new training data or schedules are required, but the two novel technical components\u2014Universal Group Operators and Temporal-Corrective Self-Attention\u2014are described at an architectural level without pseudocode or implementation specifications sufficient for independent reconstruction."
+      },
+      {
+        "paper_id": 14,
+        "score": 5.0,
+        "reasoning": "The benchmarks (CLEVR-Humans, NLVR, CLEVR-CoGen) are publicly available and the iterative-parallel distinction is conceptually clear, but the paper provides no pseudocode for the IPRM controller, omits optimizer and learning rate schedule details, and does not report variance across runs, leaving the method description below the bar for independent reimplementation."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.0,
+        "reasoning": "Code is publicly released and the three-component attack prompt structure (OI, AO, AG) is well-defined, but the fidelity filter threshold, the ensemble weighting scheme, and the exact prompt templates used are not fully specified, introducing meaningful gaps for anyone attempting to reproduce the reported attack success rates on Llama2 and GPT-3.5."
+      },
+      {
+        "paper_id": 16,
+        "score": 5.5,
+        "reasoning": "A push-button tool is released and the black-box prompting framework sidesteps the need for model weights, but the exact system prompts used for contradiction detection, the mitigation loop's stopping criterion, and the annotation guidelines for the human evaluation are absent, and the core results depend on ChatGPT API access that changes over time."
+      },
+      {
+        "paper_id": 23,
+        "score": 4.0,
+        "reasoning": "No code is provided, the constrained decoding procedure is described only at a high level without beam search parameters or vocabulary trie construction details, and the prefix-length heuristic for retrieval speed is unjustified\u2014together these gaps make independent replication of the KILT benchmark results practically infeasible without author assistance."
+      },
+      {
+        "paper_id": 24,
+        "score": 5.0,
+        "reasoning": "Data is released on GitHub and the Self-Defense fine-tuning framework is described, but the paper's core results depend on closed GPT-4 and ChatGPT APIs whose behavior has since drifted, specific translation tools and language selection criteria are underspecified, and no variance or confidence intervals accompany the reported unsafe-output rates."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.0,
+        "reasoning": "The InsTag methodology is described with enough specificity (6.6K tags, LLaMA-based open-set tagging, diversity/complexity scoring) to be largely reproducible, but the seed data curation process, the exact LLM prompts used for tag generation, and the TagLM fine-tuning hyperparameters are not fully disclosed, leaving moderate gaps."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.5,
+        "reasoning": "Code is available and the iterative boosting loop with weighted binary trees and experience-driven prompt revision is described at sufficient algorithmic detail for reimplementation, though the GPT-4 API dependency is a practical barrier to exact reproduction and the tree scoring function is not fully formalized."
+      },
+      {
+        "paper_id": 35,
+        "score": 5.5,
+        "reasoning": "The attention-based teacher-student layer-pairing concept is clearly motivated, and the OGBN-Mag benchmark results are concrete, but the paper omits the attention scoring function formulation, the distillation loss weighting scheme, and the hyperparameter search strategy, making the reported 32.3\u00d7 compression ratio difficult to independently verify."
+      }
+    ],
+    "citation_corr": 0.1755563528370989,
+    "acceptance_corr": 0.4128614119223851
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The 'Is All You Need' framing overclaims \u2014 fine-tuning to mitigate backdoors is already documented, and the paper provides no theoretical justification for why fine-tuning reliably disrupts diverse backdoor triggers across all three paradigms tested."
+      },
+      {
+        "paper_id": 9,
+        "score": 5.0,
+        "reasoning": "First training-free Transformer-to-SNN conversion is genuinely ambitious, but the Universal Group Operators lack formal approximation error bounds, leaving the core technical soundness of spatial non-linearity approximation unverified."
+      },
+      {
+        "paper_id": 18,
+        "score": 4.5,
+        "reasoning": "The link between gradient magnitude at initialization and 'architecture-induced convergence bias' is asserted rather than rigorously derived, so the theoretical justification for the adaptive layer-wise learning rate assignment is hand-wavy despite empirical gains."
+      },
+      {
+        "paper_id": 19,
+        "score": 7.0,
+        "reasoning": "The dynamic programming formulation for optimizing stepsizes in flow-matching models is technically principled, and the two-stage DP-then-velocity-refinement pipeline follows logically from Bellman optimality with a clear connection to established trajectory-straightening objectives."
+      },
+      {
+        "paper_id": 22,
+        "score": 7.5,
+        "reasoning": "The core insight \u2014 that GNN computation trees follow a skewed frequency distribution enabling architecture-agnostic distillation by compressing the tree multiset rather than emulating gradient flows \u2014 is technically clean and directly resolves two well-defined flaws in prior graph distillation work."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.0,
+        "reasoning": "The constrained-decoding retrieval approach is interesting, but the claim of 'no training and no retrieval model' while relying on prefix-based generation within a pretrained LLM conflates generation with retrieval and the technical boundary between the two is not rigorously defined."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "Extending PDHG to nonconvex-nonconcave minimax via the weak Minty variational inequality condition and Bregman proximal point theory is technically rigorous, and the resulting worst-case convergence rate is novel with clearly stated mild assumptions on the constraint structure."
+      },
+      {
+        "paper_id": 30,
+        "score": 4.0,
+        "reasoning": "The claim that 6K InsTag-selected samples outperform 'considerably larger SFT data' is empirically suspicious \u2014 the evaluation relies primarily on MT-Bench, which rewards stylistic properties and is subject to contamination, and no statistical significance or variance is reported for the TagLM comparisons."
+      },
+      {
+        "paper_id": 33,
+        "score": 2.5,
+        "reasoning": "The 'boosting' framing is technically a misnomer \u2014 the method implements iterative prompting refinement with no ensemble weights, no weak-learner guarantees, and no convergence bounds that are characteristic of boosting, making the central conceptual claim misleading rather than rigorous."
+      },
+      {
+        "paper_id": 35,
+        "score": 5.5,
+        "reasoning": "The attention-guided intermediate layer alignment for GNN compression is plausible and the 32.3x compression figure on OGBN-Mag is notable, but the paper lacks a theoretical analysis of why attention over layer pairs is optimal and the reported accuracy gain requires comparison against fine-tuned small models as a stronger baseline."
+      }
+    ],
+    "citation_corr": -0.22839941322948104,
+    "acceptance_corr": -0.27655529354003616
+  },
+  {
+    "agent_idx": 12,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 3,
+        "score": 7.0,
+        "reasoning": "Genuinely novel mechanistic interpretability work showing transformers learn specific number-theoretic algorithms for GCD, with the training distribution effect on learned divisor lists being a surprising and fully characterizable empirical finding."
+      },
+      {
+        "paper_id": 4,
+        "score": 4.5,
+        "reasoning": "The 'fine-tuning is all you need' claim is likely overstated given known failure modes of fine-tuning against adaptive attacks and persistent backdoors in specific layers, making this appear more incremental than the title suggests."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "PromptAttack is a creative reformulation of adversarial text attacks as self-directed prompts, though the core idea of using LLMs to generate adversarial examples follows naturally from their instruction-following capabilities and has conceptual precedents."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.5,
+        "reasoning": "Comprehensive treatment of self-contradiction hallucinations with rigorous evaluation, a novel prompting-based detection/mitigation framework that requires no external retrieval, and a striking empirical finding that 17.7% of ChatGPT sentences are self-contradictory."
+      },
+      {
+        "paper_id": 23,
+        "score": 6.0,
+        "reasoning": "Training-free generative retrieval via constrained decoding is an interesting conceptual reframing, but the practical gap between generating plausible-sounding passages and retrieving factually grounded ones raises questions about reliability on knowledge-sensitive tasks."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "Reveals a concrete, empirically validated safety vulnerability \u2014 low-resource languages bypassing alignment guardrails at 3x the rate of high-resource languages \u2014 with a practical Self-Defense mitigation, making this a strong contribution to LLM safety research."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.5,
+        "reasoning": "InsTag provides a principled quantitative framework for analyzing instruction diversity and complexity in SFT datasets, and the TagLM results validate the practical value, though the open-set tagging methodology relies heavily on a proprietary LLM for tag generation."
+      },
+      {
+        "paper_id": 33,
+        "score": 7.0,
+        "reasoning": "Boosting of Thoughts introduces a meaningful automation of iterative error-driven prompt refinement across tree-of-thoughts structures, with the accumulated experience mechanism being a non-obvious extension that shows consistent empirical gains over ToT and CoT baselines."
+      },
+      {
+        "paper_id": 34,
+        "score": 6.5,
+        "reasoning": "Solid theoretical contribution with H-consistency guarantees for classification with a reject option applied to NLP, though the application domain (decontextualization) is narrow and the practical impact may be limited relative to the theoretical machinery introduced."
+      },
+      {
+        "paper_id": 35,
+        "score": 5.5,
+        "reasoning": "Attention-based intermediate layer alignment for GNN knowledge distillation is a reasonable extension of existing KD techniques but the contribution over prior intermediate-layer KD methods (e.g., FitNets-style approaches) is incremental and the GNN-specific motivation is underargued."
+      }
+    ],
+    "citation_corr": -0.5701099544067034,
+    "acceptance_corr": 0.278693205716647
+  },
+  {
+    "agent_idx": 11,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "The self-adversarial framing \u2014 prompting an LLM to generate its own adversarial examples \u2014 is a genuinely creative contribution to LLM robustness auditing, though it builds on prior prompting literature and the fidelity filter is not rigorously motivated."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.0,
+        "reasoning": "Provides the first systematic and comprehensive study of self-contradiction as a distinct hallucination type in LLMs, with a practical black-box detection and mitigation framework that complements retrieval-based approaches, making it a substantive contribution to LLM safety evaluation."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "The finding that low-resource languages yield roughly 3x higher unsafe output rates \u2014 exposing a structural gap in alignment training coverage \u2014 is an important and novel empirical result with immediate implications for safety-tuning pipelines."
+      },
+      {
+        "paper_id": 30,
+        "score": 7.0,
+        "reasoning": "InsTag's open-set tagging approach is a genuinely novel operationalization of instruction diversity and complexity for SFT data analysis, and the resulting TagLM outperforming models trained on much larger datasets is a compelling validation of the framework's practical value."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.5,
+        "reasoning": "The boosting metaphor \u2014 explicitly accumulating error analyses as experience prompts across iterations \u2014 is a creative extension of chain-of-thought frameworks, though the delta over Tree of Thoughts and reflexion-style methods requires clearer articulation of what mechanism drives the gains."
+      },
+      {
+        "paper_id": 4,
+        "score": 5.0,
+        "reasoning": "While practically useful, the claim that standard fine-tuning alone is sufficient to remove backdoors is likely incremental over prior work on catastrophic forgetting of poisoned behaviors, and the paper does not sufficiently distinguish its super-fine-tuning variant from existing methods like scrubbing or mode connectivity approaches."
+      },
+      {
+        "paper_id": 23,
+        "score": 6.0,
+        "reasoning": "LLM2GR's use of constrained decoding to bypass a separate retrieval model entirely is a novel practical contribution, though the reliance on prefix generation rather than full passage generation introduces retrieval imprecision that is underexplored theoretically."
+      },
+      {
+        "paper_id": 20,
+        "score": 5.5,
+        "reasoning": "The 6x query efficiency improvement for membership inference via proximal initialization is a real practical contribution, and extending MIA to the TTS domain is genuinely new ground, though the mechanistic explanation for why mel-spectrogram models are more vulnerable is underdeveloped."
+      },
+      {
+        "paper_id": 3,
+        "score": 6.0,
+        "reasoning": "The clean mechanistic characterization of how small transformers implement GCD via a learned divisor list is a valuable interpretability result, and the training distribution sensitivity finding has broader implications for understanding how data curricula shape model behavior."
+      },
+      {
+        "paper_id": 34,
+        "score": 5.5,
+        "reasoning": "The strong H-consistency theoretical guarantee for the reject option surrogate loss is a solid foundational contribution, and the manually labeled decontextualization dataset adds artifact novelty, though the application scope is narrow and the NLP community connection to alignment evaluation could be more explicit."
+      }
+    ],
+    "citation_corr": -0.19940303615414057,
+    "acceptance_corr": 0.06666666666666664
+  },
+  {
+    "agent_idx": 13,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 16,
+        "score": 8.0,
+        "reasoning": "Addresses a concrete and practically important failure mode of LLMs\u2014self-contradiction\u2014with a rigorous black-box framework achieving ~80% F1, validated on ChatGPT and backed by the notable finding that 35% of self-contradictions are unverifiable externally, making this immediately deployable and broadly impactful."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "Reveals a genuinely important and underexplored safety vulnerability\u2014multilingual jailbreaks\u2014with alarming empirical findings (80.92% unsafe output for ChatGPT in intentional scenarios) and a concrete Self-Defense mitigation, making a strong contribution to LLM alignment research."
+      },
+      {
+        "paper_id": 30,
+        "score": 7.5,
+        "reasoning": "Proposes a systematic, empirically grounded framework for quantifying SFT instruction diversity and complexity, with the striking and actionable finding that 6K carefully selected samples outperform far larger datasets on MT-Bench, directly advancing the understanding of data quality for LLM fine-tuning."
+      },
+      {
+        "paper_id": 20,
+        "score": 7.0,
+        "reasoning": "Contributes a genuinely novel extension of membership inference attacks to diffusion-based TTS models\u2014a privacy dimension the community had not studied\u2014alongside a 6\u00d7 efficiency improvement over prior SOTA, with the insightful finding that mel-spectrogram outputs are more vulnerable than raw audio outputs."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.5,
+        "reasoning": "BoT's use of accumulated error analysis as an evolving prompt signal is a creative and empirically effective extension of Tree of Thoughts that removes dependence on human annotations, though the delta over ToT and self-refinement methods is incremental rather than transformative."
+      },
+      {
+        "paper_id": 14,
+        "score": 6.0,
+        "reasoning": "The IPRM mechanism combining iterative and parallel computation is a principled and non-obvious design choice with strong zero-shot results on CLEVR-Humans, though the paper's novelty over existing recurrent-attention hybrids remains somewhat underarticulated relative to its claims."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.5,
+        "reasoning": "Provides a rare and interesting mechanistic account of how a small transformer actually implements GCD via a learnable divisor list, with the training-distribution sensitivity finding being genuinely surprising, though the contribution is narrow in scope and its generalizability to larger models is unclear."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.0,
+        "reasoning": "PromptAttack occupies a crowded space where prompt-based adversarial generation (PAIR, AutoDAN, and similar) is already well-established, and the framing of 'fooling itself' does not introduce enough mechanistic novelty to clearly differentiate from existing self-critique and iterative refinement literature."
+      },
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The central claim that standard fine-tuning alone is sufficient to remove backdoors is presented as novel but substantially overlaps with prior work on fine-pruning and related defenses, and the title's 'all you need' framing overpromises on a finding that, while practically useful, requires much stronger adversarial evaluation to be credible."
+      },
+      {
+        "paper_id": 23,
+        "score": 3.5,
+        "reasoning": "LLM2GR's core reliance on generative passage production is fundamentally undermined by LLM hallucination\u2014the model may 'retrieve' plausible but fabricated passages\u2014and the paper lacks analysis of retrieval faithfulness, making the empirical gains on KILT difficult to interpret relative to the significant reliability risk introduced."
+      }
+    ],
+    "citation_corr": -0.38889629820154886,
+    "acceptance_corr": 0.12309149097933272
+  },
+  {
+    "agent_idx": 14,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 4.5,
+        "reasoning": "The 'Is All You Need' title dramatically overclaims: the abstract presents no discussion of adaptive backdoor attacks specifically designed to survive fine-tuning, no analysis of when fine-tuning fails, and three ML paradigms is insufficient evidence for a universal defense claim."
+      },
+      {
+        "paper_id": 9,
+        "score": 4.5,
+        "reasoning": "Claims the 'first training-free conversion' of a Transformer to SNN but evaluates only on ViT-B/32 from CLIP \u2014 single-model evidence for a general-purpose claim, with conversion accuracy loss across diverse transformer architectures conspicuously absent."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.5,
+        "reasoning": "Testing on only Llama2 and GPT-3.5 while using 'consistently yields' universally positive language is a scope-evidence mismatch; fidelity filter evaluation is underspecified and the attack's transferability to instruction-tuned safety-aligned models is unaddressed."
+      },
+      {
+        "paper_id": 16,
+        "score": 6.0,
+        "reasoning": "Offers reasonably specific numbers (17.7% rate, ~80% F1) but the comprehensive claim rests on a few models; the 35.2% unverifiable-by-web-search finding is notable but failure modes of the iterative mitigation on factually dense or long-form text are absent."
+      },
+      {
+        "paper_id": 19,
+        "score": 4.5,
+        "reasoning": "Claims 'extensive experimental evaluations' but the abstract does not characterize when dynamic programming step optimization fails, what the accuracy-budget tradeoff looks like at various budgets, or how BOSS behaves on non-image modalities despite broad 'low-resource' framing."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.0,
+        "reasoning": "Six KILT tasks provide reasonable coverage, but the 'no extra training needed' claim obscures latency costs of constrained decoding at inference and there is no analysis of prefix-only retrieval quality degradation on knowledge-intensive vs. open-domain tasks."
+      },
+      {
+        "paper_id": 24,
+        "score": 6.0,
+        "reasoning": "Specific empirical results (80.92%/40.71% unsafe rates) and two-scenario framing show reasonable experimental design, but Self-Defense fine-tuning is only validated on ChatGPT and effectiveness on open-source models under the same multilingual attack regime is entirely unaddressed."
+      },
+      {
+        "paper_id": 28,
+        "score": 4.0,
+        "reasoning": "Very narrow evaluation scope \u2014 one model architecture, one dataset regime \u2014 while the abstract makes comparative claims about contaminated vs. clean pre-training that would require much broader multi-architecture validation; failure modes beyond four-source mixtures are unexplored."
+      },
+      {
+        "paper_id": 30,
+        "score": 6.5,
+        "reasoning": "Directly addresses SFT data analysis with MT-Bench evaluation and concrete 6K-sample TagLM results, but the paper does not discuss failure modes where high-diversity tag-sampled data could hurt coherence or whether 6.6K tags adequately cover emerging instruction categories."
+      },
+      {
+        "paper_id": 33,
+        "score": 5.0,
+        "reasoning": "Scope is restricted to mathematical reasoning tasks while the framing implies broad problem-solving applicability; iterative tree exploration computational cost is not analyzed, and there is no discussion of when accumulated error experience misleads rather than guides subsequent iterations."
+      }
+    ],
+    "citation_corr": 0.2305077231965644,
+    "acceptance_corr": 0.06441566264008308
+  }
+]

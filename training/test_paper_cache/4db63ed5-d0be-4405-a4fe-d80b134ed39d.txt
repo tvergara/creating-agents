@@ -1,0 +1,971 @@
+ONEREWARD: UNIFIED MASK-GUIDED IMAGE GEN-
+ERATION VIA MULTI-TASK HUMAN PREFERENCE
+LEARNING
+YuanGong∗ XionghuiWang∗† JieWu ShiyinWang YitongWang XinglongWu
+ByteDanceInc.
+ABSTRACT
+In this paper, we introduce OneReward, a unified reinforcement learning frame-
+work that enhances the model’s generative capabilities across multiple tasks un-
+der different evaluation criteria using only One Reward model. By employing
+a single vision-language model (VLM) as the generative reward model, which
+can distinguish the winner and loser for a given task and a given evaluation cri-
+terion, it can be effectively applied to multi-task generation models, particularly
+in contexts with varied data and diverse task objectives. We utilize OneReward
+formask-guidedimagegeneration,whichcanbefurtherdividedintoseveralsub-
+taskssuchasimagefill,imageextend,objectremoval,andtextrendering,involv-
+ing a binary mask as the edit area. Although these domain-specific tasks share
+same conditioning paradigm, they differ significantly in underlying data distri-
+butions and evaluation metrics. Existing methods often rely on task-specific su-
+pervised fine-tuning (SFT), which limits generalization and training efficiency.
+BuildingonOneReward,wedevelopSeedream3.0Fill,amask-guidedgeneration
+modeltrainedviamulti-taskreinforcementlearningdirectlyonapre-trainedbase
+model, eliminating the need for task-specific SFT. Experimental results demon-
+strate that our unified edit model consistently outperforms both commercial and
+open-source competitors, such as Ideogram, Adobe Photoshop, and FLUX Fill
+[Pro], across multiple evaluation dimensions. Code and model are available at:
+https://one-reward.github.io
+1 INTRODUCTION
+Recentadvancementsindiffusionmodel(Rombachetal.(2022);Podelletal.(2023);Labs(2024))
+haveenabledadiverserangeofchallengingtasks, suchasinpainting,outpainting, objectremoval,
+and text rendering. Although these tasks share a common mask-guided input format, they exhibit
+significant divergence in conditional distributions and evaluation metrics, presenting considerable
+challenge to the development of a unified, versatile model. Inpainting, also known as image fill,
+involves modifying or adding specific objects within a localized masked area, emphasizing accu-
+ratepromptalignment,aestheticcoherence,andstructuralintegrity. Outpainting,orimage-extend,
+requiresgeneratingextensivecontentaroundanexistingimage,expandingbeyonditsoriginalbor-
+ders, with a strong emphasis on visual aesthetics, seamless integration, and structural consistency.
+Objectremovalentailsfillingamaskedregionbasedonsurroundingcontext,requiresavoidingthe
+generation of extra object, and ensuring texture consistency with the original image. Text render-
+ingspecificallytargetsaccuraterenderingoftextualelements,emphasizingprecisioningenerating
+and aligning fonts according to given instructions. Current state-of-the-art generative models typ-
+ically excel within specific editing tasks but struggle to maintain consistently high performance
+across multiple tasks simultaneously. Existing methods or community models often rely on task-
+specificsupervisedfine-tuning(SFT),orLoRA(Huetal.(2022))withlimiteddatabaseonSD1.5-
+Inpaint(Rombach et al. (2022)) and FLUX Fill(Labs (2024)), which restricts their generalization
+*Equalcontribution.
+†Projectleader.
+1
+5202
+guA
+82
+]VC.sc[
+1v66012.8052:viXra
+Overall Usability Rate (%) Overall Usability Rate (%)
+Text
+Alignment Text
+Rendering
+(%)
+Text
+Alignment
+Aesthetics
+Texture
+Consistency
+Aesthetics
+Texture
+Consistency
+Structure
+Style Consistency Structure
+Style Consistency
+Seedream 3.0 Fill Higgsfield Flux Fill [pro] Ideogram Adobe Photoshop Seedream 3.0 Fill Ideogram Flux Fill [pro] Adobe Photoshop
+(a)ImageFill (b)ImageExtendwithPrompt
+Overall Usability Rate (%) Overall Usability Rate (%)
+Texture
+Consistency
+Aesthetics
+Style
+Consistency Structure
+Seedream 3.0 Fill Ideogram Flux Fill [pro] Midjourney Adobe Photoshop
+(c)ImageExtendwithoutPrompt
+ycnetsisnoC
+erutxeT
+Structure
+)%(
+ytilauQ
+lavomeR
+Seedream 3.0 Fill Adobe Photoshop Ideogram Flux Fill [pro]
+(d)ObjectRemoval
+Figure1:Overallevaluationacrossfourimageeditingtasks,andtextrenderingisincludedinimage
+fill.Foreachsub-task,weselectedonlystate-of-the-artmodelsorclosed-sourceAPIsascompetitors
+andconducteddetailedevaluationsinmultipledimensions. Notethatdifferenttaskshavedifferent
+evaluationcriteria.
+todiverseeditingscenarios. Thisrevealsthedifficultyofdesigningaunifiedframeworkcapableof
+supportingmultipleimageeditingtaskswhileavoidingtheinefficienciesoftask-specificfine-tuning.
+Reinforcement learning from human feedback (RLHF) methods for diffusion and flow matching
+model,suchasDirectPreferenceOptimization(DPO)(Rafailovetal.(2023);Wallaceetal.(2024);
+Xu et al. (2024); Liu et al. (2025b)), reward-base method (Xu et al. (2023); Zhang et al. (2024);
+Lietal.(2024);Gaoetal.(2025b))andRL-basedmethod(Blacketal.(2023);Liuetal.(2025a);
+Xue et al. (2025)) have shown strong promise in aligning generative outputs with human prefer-
+ences across text-to-image and text-to-video domains. However, DPO faces fundamental limita-
+tions in handling diverse tasks and evaluation dimensions concurrently, as it inherently assumes
+a well-defined preference order that may not hold across heterogeneous tasks and criteria.For in-
+stance, DPO cannot unambiguously determine the winner and loser when an image is better in
+aesthetics but worse in structure than its counterpart. Reward Feedback Learning (ReFL), while
+2
+significantly boosting model performance in specific dimensions, typically requires training sepa-
+rate reward models for each evaluation criterion when using traditional multimodal architectures
+suchasBLIP(Lietal.(2022))andCLIP(Radfordetal.(2021)),increasingtrainingandtuningcom-
+plexity. Furthermore,ReFLencountersrewardconflictsinmulti-taskscenarios,wherehighquality
+objectgenerationmayreceivecompletelyoppositeevaluationsinthetaskofimage-fillandobject-
+removal. FlowGRPO(Liuetal.(2025a))andDanceGRPO(Xueetal.(2025))introduceGRPO(Shao
+et al. (2024)), which is powerful in Large Language Model(LLM), into flow matching models, by
+convertingdeterministicOrdinaryDifferentialEquation(ODE)sampleingintoaStochasticDifferen-
+tialEquation(SDE)framework. WhileGRPO-basedmethodssignificantlyenhanceperformanceon
+visiongenerationtasks,theyrelyonpolicy-basedestimationbyintroducingagroup-relativeformu-
+lationtoestimatetheadvantage,withoutexplicitlymaximizingrewardsignalsduringoptimization.
+Thisoftenresultsinslowerconvergencecomparedtoreward-drivenapproaches.
+To overcome these limitations, we introduce OneReward, a unified reinforcement learning frame-
+workformulit-taskimagegenerationusingonlyoneVLMastherewardmodel. Byincorporating
+taskcategoryandevaluationmetricinformation(e.g. aesthetics,structure,consistency)directlyinto
+its queries, the VLM can effectively distinguish between tasks and evaluation criteria, enabling it
+to make pairwise judgments and determine which output is better under certain setting. Base on
+OneReward,weadoptSeedream3.0(Gaoetal.(2025a))asthepre-trainedbasemodelanddevelop
+Seedream3.0Fill,astate-of-the-art(SOTA)mask-guidedimagegenerationmodelthatconsistently
+deliverssuperiorperformanceacrossadiversesetoftasks,includingimagefill,imageextension,ob-
+jectremoval,andtextrendering. Seedream3.0Fillisdirectlyoptimizedviareinforcementlearning
+from a pre-trained model, without any SFT. During training, we treat the initial pre-trained model
+as the reference model and the training one as the policy model, optimizing the latter to generate
+resultsthatsurpassthereferencemodelineachtask-specificevaluationmetric. Therewardsignalis
+derivedfromtheprobabilityofthetoken“Yes”generatedbytheVLM,whichisthenusedforgradi-
+entbackward. Tothebestofourknowledge,thisisthefirstworktoemployreinforcementlearning
+asadirectoptimizationparadigminthecontextofmulti-taskimageediting. Themaincontributions
+ofourworkarethreefold:
+1. We propose OneReward, a novel reward model framework for the visual domain by em-
+ployingVLMasthegenerativerewardmodeltoenhancemulti-taskreinforcementlearning,
+significantlyimprovingthepolicymodel’sgenerationabilityacrossdiversescenarios.
+2. Building on OneReward, we develop Seedream 3.0 Fill, a unified SOTA image editing
+model capable of effectively handling diverse tasks including image fill, image extend,
+object removal, and text rendering. It surpasses several leading commercial and open-
+sourcemodels,includingIdeogram,AdobePhotoshop,andFLUXFill[Pro].
+3. By applying our multi-task reinforcement learning approach on FLUX Fill [dev], we in-
+troduceandopen-sourceFLUXFill[dev][OneReward],ageneralizedimageeditingmodel
+thatoutperformstheoriginalmodelonbothinpaintingandoutpaintingtasks,servingasa
+powerfulnewbaselineforfutureresearchinunifiedmask-guidedimagegeneration.
+2 RELATED WORK
+Mask-guided image generation: Image inpainting and outpainting focus on generating coherent
+and seamless content for missing or external regions of an image. With the advent of deep learn-
+ing,methodsbasedonGenerativeAdversarialNetworks(GAN)(Goodfellowetal.(2020))became
+dominant. Notably, Large Mask Inpainting(LaMa)(Suvorov et al. (2022)) introduced Fast Fourier
+Convolutions, significantlyimprovingtheabilitytohandlelarge, complexmaskswhilepreserving
+global structural consistency, a common failure point for earlier CNN-based methods. More re-
+cently, diffusion models(Ho et al. (2020); Song et al. (2020a); Rombach et al. (2022); Song et al.
+(2020b)) have become the state-of-the-art due to their superior generative quality. RePaint (Lug-
+mayr et al. (2022)) was an early method that applied a pre-trained unconditional diffusion model
+to inpainting by repeatedly sampling the unknown region and blending it with the known context,
+althoughitsiterativenaturecanbecomputationallyintensive. Subsequentmodels, suchasthena-
+tive inpainting variant of Stable Diffusion(Rombach et al. (2022); Podell et al. (2023)), adopted a
+more efficient approach by concatenating the latent representations of the mask and the original
+image as input to its origin text-to-image model. This paradigm established a strong foundation
+3
+red wedding dress Canton Tower Temple of Heaven
+a cat a big sunflower Kimono girl on a bicycle
+Image Fill
+Two burgundy Chinese style lanterns colorful hot air balloon cable car
+Image Extend
+Object Removal
+“李老太自动洗碗器” “随便” “澳门” “运”
+Text Rendering
+Figure 2: Visual showcase of Seedream 3.0 Fill results across four scenario: image fill, image
+extend, object removal and text rendering. Each column presents a representative example with
+corresponding prompts and outputs, demonstrating the model’s unified capability across diverse
+generationobjectives.
+4
+for high-fidelity, text-guided editing. Follow-up works, such as MagicBrush(Zhang et al. (2023))
+and Inst-Inpaint (Yildirim et al. (2023)), introduced more refined instruction-based datasets to im-
+prove the accuracy of image editing. ByteEdit(Ren et al. (2024)) explored the use of feedback
+learningtoboostperformanceinthesetasksbutseparateSFTandRLproceduresareappliedindif-
+ferentsub-task. Recently,FLUXFill(Labs(2024))hasemergedasapowerfulopensourcebaseline
+demonstrating strong performance in both inpainting and outpainting. However, these models are
+oftenspecializedorlackrobustgeneralizationacrossmultiple,distincteditingmodalities. Ouruni-
+fiededitmodelbuildsdirectlyuponthesefoundations,butaddressestheirlimitationsbyleveraging
+anovelmulti-taskRLHFframework,unifyinpaint,outpainting,objectremoval,andtextrendering
+withinasingle,proficientmodel.
+RLHFfordiffusionmodel: Aligninggenerativemodelswithhumanpreferenceshasemergedasa
+rapidlyadvancingresearcharea,aimingtoenhancetheaestheticquality,instructionalignment,and
+overall user expectation of generated visual content. The success of RLHF critically depends on
+thequalityoftherewardmodel. ReFL(Xuetal.(2023))makesanimportantsteptowardgeneral-
+purpose reward modeling by training on a large-scale dataset of expert comparisons. It further
+proposes an algorithm to directly fine-tune diffusion models by treating reward scores as human
+preferencelossesandbackpropagatingthemtorandomlyselectedlaterstepsinthedenoisingpro-
+cess.Subsequentresearch,suchasVisionReward(Xuetal.(2024)),hasexploredmorefine-grained,
+multi-dimensionalrewardmodelingbydecomposinghumanpreferencesintointerpretableaxessuch
+as fidelity, composition, safety and text alignment. However, its reliance on logistic regression to
+weightthesedimensionsintroducesadditionalcomplexity,limitingitsapplicabilityinfullyend-to-
+end training pipelines and reducing generalizability to broader scenarios. Adapting RLHF algo-
+rithmsfromthe largelanguagemodel(LLM) domaintodiffusionmodels presentsasetof unique
+challenges. DirectPreferenceOptimization(DPO)(Rafailovetal.(2023))wasproposedasasim-
+plerandstablealternativetothefullRLpipeline. Insteadofrelyingonexplicitrewardmodel,DPO
+optimizesthepolicymodelbydirectlymaximizingthedifferenceinlog-probabilityratiosbetween
+preferred and dispreferred responses. This method was effectively extended to the visual domain
+withDiffusion-DPO(Wallaceetal.(2024)),whichreformulatestheobjectiveintermsofdiffusion
+modellikelihood,enablingdirectandstablepreferencealignment.DenoisingDiffusionPolicyOpti-
+mization(DDPO)(Suetal.(2024))wasapioneeringworkthatsuccessfullyappliedpolicygradient
+methodstodiffusionmodelsbycastingthedenoisingprocessasamulti-stepdecision-makingprob-
+lem. FurtheralgorithmicadvancesincludeGroupRelativePolicyOptimization(GRPO)(Shaoetal.
+(2024)),whichhasdemonstratedstrongperformanceinaligningbothdiffusionandflowmatching
+models,asevidencedbyitsapplicationsinFlowGRPO(Liuetal.(2025a))andDanceGRPO(Xue
+etal.(2025)).
+OneRewardsynthesizesrecentadvancesinalignmentstrategiesintoaunifiedframework. Ourwork
+pushesthisfrontierfurtherbyleveragingonlyoneVLMasthegenerativerewardmodeltoproduce
+task-aware feedback for our multi-task reinforcement learning. It addresses a key limitation of
+traditional algorithms such as DPO, which struggle to distinguish the winner from the loser when
+preferences vary across different evaluation dimensions. With OneReward, we develop a SOTA
+image editing model that jointly learns multiple sub-tasks within a unified reinforcement learning
+framework.
+3 PRELIMINARIES
+3.1 FLOWMATCHING
+Flow Matching(Lipman et al. (2022)) represents a new class of generative models that offers a
+more efficient and stable training paradigm compared to traditional diffusion models. Instead of
+learningthescorefunctionofadatadistribution,flowmatchingmodelslearnavelocityvectorfield
+that transports a simple prior distribution (e.g., normal distribution) to a complex data distribution
+throughacontinuousnormalizingflow(CNF).ACNFisdefinedbyanordinarydifferentialequation
+(ODE)thatdescribesthetrajectoryofasamplexoveracontinuoustimevariablet ∈ [0,1]: dxt =
+dt
+v (x ).Here,x issampledfromthepriordistributionp ,andx followsthetargetdatadistribution
+t t 0 0 1
+p . The function v (x ) is the time-dependent vector field. Flow matching aims to train a neural
+1 t t
+network v (x,t,c) (where c represents conditioning information such as text or binary mask) to
+θ
+5
+approximate a target vector field u (x|c). The conditional flow matching loss is formulated as a
+t
+simpleregressionobjective:
+(cid:104) (cid:105)
+L (θ)=E ∥v (x,t,c)−u (x|c)∥2
+FM t,pt(x|c),c θ t
+Rectified Flow(Liu et al. (2022)) is a powerful special case of flow matching that linearizes the
+transport paths to maximize sampling efficiency. It simplifies the objective by defining the target
+vectorfieldastheconstantdirectionbetweenadatasamplex anditscorrespondingnoisesample
+1
+x ,suchthatu (x|c)=x −x . Thisformulationavoidsthecomplexscore-matchingobjectiveof
+0 t 1 0
+diffusionmodels,oftenleadingtofasterconvergenceandmoreefficientgeneration. Ourmodel,is
+traineduponthisefficienttraingingmethodology.
+3.2 REINFORCEMENTLEARNINGFROMHUMANFEEDBACK
+RLHFisapowerfultechniqueforaligninggenerativemodelswithcomplex,hard-to-specifyhuman
+preferences. Humanpreferencedataiscollected,typicallyintheformofcomparisons. Foragiven
+input c, annotators are shown two outputs, winner xw and loser xl, and asked to choose which
+one they prefer. This pairwise preference dataset is used to train a reward model r (c,x) that
+ϕ
+predicts a scalar score reflecting human preference. The reward model is often trained using a
+binarycross-entropylossbasedontheBradley-Terry(Bradley&Terry(1952))model,whichstates
+thattheprobabilityofpreferringxw overxl is:
+P(xw ≻xl|c)=σ(r (xw,c)−r (xl,c))
+ϕ ϕ
+whereσisthesigmoidfunction.
+ReFL(Xu et al. (2023)) proposes a direct gradient-based fine-tuning method using scalar rewards
+fromapre-trainedrewardmodel. Unlikelanguagemodels,diffusionmodelslackatractablelikeli-
+hoodforcompletesamples,makingtraditionalRL-basedoptimizationlessstraightforwardtoapply.
+ReFLcircumventsthisbyleveragingtheinsightthatpartiallydenoisedsamplesatlattertimesteps
+already exhibit distinguishable reward scores. During training, ReFL randomly selects a late de-
+noisingstept,predictsthecorrespondingimagex′,andcomputesascalarrewardr(c,x′)fromthe
+0 0
+reward model. The gradient is then backpropagated through the denoising step using a truncated
+reward:
+L =ReLU(r(c,xˆ ))
+reward 0
+By applying feedback directly on generation trajectories, ReFL enables preference-driven fine-
+tuningofdiffusionmodelsinascalableandmodel-agnosticmanner.
+4 METHODOLOGY
+4.1 OVERVIEW
+As show in Fig. 3, we introduce a unified framework for multi-task learning, leveraging reward
+model r trained with human preferences data to fine-tunes the policy model π across a range
+θ
+of downstream tasks. We assume that the complete dataset D = {D }K can be partitioned
+k k=1
+into K subsets. For each task, D = {(x ,c ,s ,E )}N share a common format for the image
+k i i k k i=1
+x ∈ RH×W×3 andcorrespondinginputconditionc . ThesubsetD ischaracterizedbyaunique
+i i k
+identifier s and a set of evaluation metrics E . Note that D is associated with a distinct set of
+k k k
+evaluationcriteria,i.e.,E mayvarysignificantlyacrosstasks. Givencurrenttaskidss andacer-
+k k
+tainevaluationmetrice ∈ E ,therewardmodelr willbeusedtocalculatetheprobabilityhowthe
+k
+evaluation image x is better than reference image x , which are generated by policy model π
+θ ref θ
+andreferencemodelπ ,respectively.IntheprocessofourRLpipeline,Theobjectiveofourtrain-
+ref
+ingschemeistoincreasetheprobabilityofgeneratedreward-alignedtokens,asdeterminedbythe
+rewardmodelr. OneRewardenablesthemodeltoefficientlylearnaversatile,multi-taskgeneration
+policythatsatisfiesmultidimensionalhumanpreferenceswithinasingle,unifiedprocess.
+This section is structured as follows: we first detail our data construction pipeline in Section 4.2.
+Next,inSection4.3,wedescribethetrainingprocedureforourrewardmodel,termedOneReward.
+Finally,wepresentthemulti-task,multi-criteriareinforcementlearningstrategyinSection4.4.
+6
+Figure 3: Overall pipeline of our unified RL procedure. We first random sample image and con-
+ditions from different task with a certain probability. Start with same condition and different init
+noise, the reference image is fully denoised using the reference model, denoted as π (·). While
+ref
+theevaluationimageispartiallydenoisedwithrandomlyselectedstepanddirectlypredictx′ based
+0
+onthepolicymodel,denotedasπ (·). Therewardmodelguideslearningbyencouragingthepolicy
+θ
+modeltoachievesuperiorperformancetothereferencemodelacrossallevaluationdimensionsand
+tasks.
+4.2 HUMANPREFERENCEDATACOLLECTION
+Tosupportthedevelopmentandevaluationofourunifiedimageeditingframework,weconstructed
+alarge-scale, high-qualityhumanpreferencedatasetformulti-taskimagegeneration. Thisdataset
+spans four major editing tasks: image fill, image extend, object removal, and text rendering, each
+presentinguniquechallengesandrequiringdistinctevaluationperspectives.
+Inimagefillandimageextend,themodelisrequiredtosynthesizeplausiblecontentinuser-specified
+regions, guided by natural language prompts. These prompts typically describe the content to be
+generated, along with contextual details to ensure stylistic and semantic consistency with the sur-
+roundingimage.Incontrast,theobjectremovaltaskcentersontheeliminationofspecifiedelements
+fromtheinputimage. Itsobjectiveisnottoinsertnewcontent,butrathertoachievevisuallyseam-
+lesscompletionofthemaskedarea.Sinceremovaldoesnotinvolveuser-definedcontent,thereisno
+needtoprovideauniquepromptasconditionforeachsample. Toensureinputformatconsistency
+acrossalltasks,weapplyafixed,genericprompt(e.g.,“removethespecifiedobject”)toallobject
+removal instances. Each sample is structured as a triplet (I ,M,P), where I ∈ RH×W×3 is
+src src
+thesourceimage,M ∈ RH×W isthebinarymaskindicatingtheregiontobeedited,andP isthe
+corresponding text prompt. This unified input representation enables consistent processing across
+differenttaskswithinourframework. Inthedatacollectionpipeline,weemployapre-traineddiffu-
+sionmodelasthebasegeneratorandproduceasetofcandidateimagesforeachsamplebyvarying
+keyinferenceparameters,therebypromotingdiversityinoutputquality. Thisparameterrandomiza-
+tionintroducescontrolledvariabilityacrossthecandidates,enablingthelearningofnuancedhuman
+preferences. Specifically, we randomly sample the following parameter in the diffusion inference
+pipeline:
+• Inference Steps: Uniformly sampled from different denoise steps, controlling the quality
+ofgeneration.
+• Negative prompt: Including optional descriptors like “nsfw”, “blurry” or “low quality”,
+whichguidethegeneratorawayfromundesiredcontent.
+• Classifier-FreeGuidanceScale: Sampledfromarangeofvalues,controllingthetrade-off
+betweenpromptadherenceandcreativity.
+7
+Figure4: Illustrationofthepairwiseannotationprocess. Givenmultiplecandidateoutputsforthe
+samepromptandbinarymask,annotatorsidentifythebestandworstsamplesundereachevaluation
+dimension to form a winner/loser pair. If the differences between candidates are negligible, the
+dimensionisdiscarded(denotedby∅),ensuringthatonlyinformativecomparisonsareretained. To
+clarify,thisshowcaseusesanall-onemask,meaningtheentireimageregionisgenerated.
+• InitialNoiseStrength: Sampledfromapredefinedrangetosimulatevaryinglevelsofde-
+noisingstartingpoint.
+To meet the needs of multi-tasking and multi-dimensional evaluation, we design a task-specific
+annotationprotocol:
+• Structure: Measures whether the generated content maintains spatial and geometric co-
+herence with the original image layout, such as object contours, perspective, and scene
+topology.
+• Consistency: Evaluatehowsmoothlytheeditedregionintegrateswithitssurroundingsin
+termsofcolor,texture,andillumination,ensuringvisualseamlessness.
+• Text Alignment: Assesses how accurately the generated image content aligns with the
+semantics of the input prompt, especially in terms of object identity, attributes, and posi-
+tioning.
+• Aesthetic: Reflectstheoverallvisualappealoftheresult,includingcomposition,realism,
+andfidelitytohigh-qualityimagestandards.
+• RemovalQuality:Judgingtheeffectivenessofobjectremoval,focusingonwhetherthetar-
+getiscompletelyeliminatedandwhethertheareaiscleanlyfilledwithoutvisibleartifacts
+orunintendedcontent.
+Forimagefillandimageextend,eachsetofcandidateimagesisevaluatedalongthefirstfourdimen-
+sions. Andforobjectremoval, wherenousertextispresent, wereducetheevaluationtothefinal
+singlecriterion. AsshowninFig.4,annotatorsarepresentedwiththeinputtriplet(I ,M,P),and
+src
+N generatedcandidateimages.Foreachevaluationdimension,theyareinstructedtoperformaBest-
+of-N andWorst-of-N selection,identifyingthemostandleastpreferredoutputs.Thisprocessyields
+awinner/loserpairforeachdimensionofonesub-task,enablingfine-grainedanddimension-specific
+preference supervision. Since judgments are made independently across multiple dimensions, the
+samecandidatemaybeselectedasawinnerinonedimensionandaloserinanother. Forinstance,a
+particularoutputmayexhibitstrongersemanticalignmentwiththepromptthananothercandidate,
+while simultaneously being less aesthetically appealing. The design retains disagreements across
+evaluationdimensions,insteadofforcingthemintoafixedbutpotentiallymisleadinglabel.
+Bycollectingpreferencepairsatthemetriclevel, ratherthanthroughholisticoraveragedscoring,
+ourannotationstrategyovercomesamajorlimitationofpriorworkbyenablingthedisentanglement
+ofconflictingjudgmentsacrossdistinctevaluationdimensions. Thiscomparativeandmultidimen-
+sionalevaluationschemepromotehigh-qualityandrobusthumanperferencedata,whichservesasa
+strongfoundationfortrainingrewardmodelsinmulti-objectiveimagegenerationtasks.
+8
+Figure5: Thedetailofouronerewardmodel. WeutilizeVLMtojudgewhetherthefirstimageis
+betterthanthesecondone. Intheprocessofrewardfeedbacklearning,theprobabilityofy+ token
+is treated as the reward to the diffusion models. We simplely add the edit task and the evaluation
+dimensionstotheuserquery,achievingthegoaloftrainingfordifferenttaskanddimensions. The
+contentofanglebracketsisoptional,onlyaddwhentheevaluationdimensionisTextAlignment.
+4.3 MULTI-DIMENSIONALPAIRWISEREWARDMODELTRAINING
+Designing a multi-task learning framework for image editing presents significant challenges, par-
+ticularly in constructing a reward mechanism that is both scalable across heterogeneous tasks and
+robustagainstrewardhacking.Anaivesolution,trainingseparaterewardmodelsforeachevaluation
+dimensionwithineachtask, iscomputationallyexpensiveanddifficulttotune, requiringconsider-
+able resources for both training and optimization. Conventional scalar-based reward models are
+particularlyinadequateformask-guidedgenerationtasks,astheirassessmentsareeasilydominated
+by unchanged background regions. As a result, they fail to capture the true quality of the edited
+contentwithinthemaskedarea,producingrewardsignalsthataremisalignedwiththeactualeffec-
+tivenessoftheintendededits.
+To address these limitations, we propose OneReward, a unified reward model designed to assess
+outputsacrossmultipleimageeditingtasksandevaluationdimensionswithonlyonerewardmodel.
+OneReward is built upon the perceptual capabilities of a pre-trained VLM, which serves as the
+backboneforall-dimensionrewardprediction. Ratherthanintroducingtask-specificoutputheads,
+weguidethemodelthroughatextualevaluationqueryq,whichencodesboththetaskidentifiers
+k
+andtheevaluationdimensione ∈ E . ThisformulationenablesdynamicconditioningoftheVLM
+k
+onthespecificaspectofqualitytobeevaluated. Formally,theevaluationqueryisconstructedas:
+q =Φ(s ,e,P) (1)
+k
+whereΦisainstructiontemplateasshowninFig.5,P istheoriginalinputprompt,usedonlywhen
+evaluatingprompt–imagealignment. Forallotherdimensions, suchasaestheticsorstructural, the
+queryremainsprompt-free,ensuringthatjudgmentsreflectintrinsicvisualqualitywithoutsemantic
+bias.
+To further enhance robustness and address the shortcomings of absolute scoring, OneReward em-
+ploysacomparativeevaluationscheme.Itreceivesapairofgeneratedimagesandisaskedtoidentify
+thepreferredone, basedonrelativequality. AsillustratedinFig.5, therewardmodeltakesapair
+ofimages(xw,xl)alongwithanevaluationqueryqasinput,andoutputsabinaryclassificationthat
+alignswiththehumanpreferenceforthatspecificquery. Itisdefinedas:
+y =r(xw,xl,q) (2)
+OurtrainingmethodologyderivesdirectlyfromtheBest-of-NandWorst-of-Nannotationprotocol
+in Sec. 4.2. Specifically, for each set of four candidate images, annotators independently select
+the best image xw and the worst one xl for each evaluation dimension, forming pairs of human
+preference for training. This process allows each preference pair to be labeled with one or more
+evaluationdimensions,resultinginamulti-labellearningscenario.Forinstance,inFig.4,thefourth
+image excels in text alignment, but underperforms in consistency. As a result, it is labeled as the
+winner for text alignment and the loser for consistency. For each training sample, we construct
+9
+Accuracy(%) TextAlignment Consistency Structure Aesthetics RemovalQuality
+ImageFill 83.77 74.23 74.63 72.10 –
+ImageExtend 80.36 72.50 74.29 71.10 –
+ObjectRemoval – – – – 84.93
+Table 1: Accuracy of the reward model across multiple editing tasks and evaluation dimensions.
+Each entry denotes the model’s accuracy in distinguishing winners from losers on the test set for
+a given dimension (e.g., Text Alignment, Consistency, Structure, Aesthetics, Removal Quality).
+Highervaluesindicatemorereliablepreferencediscriminationbytherewardmodel.
+the corresponding evaluation queries q for all the annotated dimensions and compute the standard
+cross-entropyloss. Thelossfunctionisdefinedasfollows:
+L(ϕ)=− 1 E (cid:2) logP (cid:0) y+ |xw, xl, q (cid:1) +logP (cid:0) y− |xl, xw, q (cid:1)(cid:3) (3)
+2 (xw,xl,q)∈D ϕ ϕ
+where y+ denotes affirmative token (e.g. “Yes”), y− denotes negative token (e.g. “No”), and P
+ϕ
+representstheprobabilityassignedtothecorrespondingtokenbytherewardmodel. xw andxlrefer
+tothewinnerandloserpairunderaspecificevaluationcriterion. Notethatthisformulationisnon-
+commutative,asthequeryisdesignedtoexpecttheresponsey+whentheimageinthefirstposition
+is of higher quality. Otherwise, the expected response is y−. This training strategy enables the
+efficientutilizationofourannotations,empoweringtherewardmodelwiththecapacitytoperform
+nuanced,multidimensionalevaluationsacrossarangeoftasks.
+Table1reportstheaccuracyofourrewardmodelindifferentsub-taskandevaluationdimensions.
+Theresultsshowthattextalignmentachievesthehighestaccuracy,exceeding80%inbothimagefill
+and image extend. Other dimensions such as consistency, structure, and aesthetics yield moderate
+but stable accuracies, mostly in the low–mid 70% range. For the object removal task, the model
+reaches 84.93% in removal quality, indicating that it is particularly effective at capturing human
+preferencesinthissetting. SincetheunderlyingVLMispre-trainedwithmultimodalsupervision,it
+isnaturallymoresensitivetotext–imagecorrespondence,makingtextalignmenteasiertodiscrimi-
+nate,whereasdimensionsrelatedtointrinsicvisualqualityremainmorechallenging. Overall,these
+resultssuggestthatthemodelgeneralizeswellacrosstasksandmetrics.
+4.4 MULTI-TASKREWARDFEEDBACKLEARNING
+BasedonOneReward,weproposeanovelframeworkthatsystematicallyalignsapre-traineddiffu-
+sionmodelwithcomplex,multi-dimensionalhumanpreferencesacrossasuiteoftasks. Asshown
+inFig. 3,thewholetrainpipelineiscomposedofthreemaincomponents:afrozenreferencemodel
+π , a trainable policy model π , and the trained OneReward model r. In each iteration, we first
+ref θ
+sample data from the sub-dataset D within the full dataset {D }K , according to a predefined
+k k k=1
+sampling probability p . To promote learning in more difficult tasks, we assign higher sampling
+k
+probabilitiestothetaskthatareestimatedtobemoredifficultbasedonpriorknowledge. Theref-
+erencemodelπ isinitializedbytheparametersofthepre-traineddiffusionmodel. Itgenerates
+ref
+abaselineimagex viaafulldenoisingtrajectoryfromgaussiannoisex tothefinaloutputx ,
+ref T 0
+representingthemodel’sinitialgenerativecapacity. InspiredbyReFL(Xuetal.(2023)),theeval-
+uateimagex startfromthesameconditioncbutwithadifferentnoisevector, performingpartial
+θ
+denoisinguptoarandomlyselectedintermediatetimesteptbeforedirectlypredictingthefinallatent
+x′.Thevaedecoder,denoteasvae decode(·),isusedtoreconstructspixel-spaceimagesfromthese
+0
+latentsandgradientsarebackpropagatedonlythroughthisfinalsingle-stepprediction, makingthe
+trainingprocessefficient.Boththepredictionoftheevaluatex andthereferenceimagex ,along
+θ ref
+withanevaluationqueryq,arepassedintotherewardmodel. Therewardmodelevaluateswhether
+x ispreferredoverx underthegiventaskandevaluationdimension,andreturnsabinaryoutput
+θ ref
+tokeny+andy−:
+10
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Fill: Consistency
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Fill: Structure
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Fill: Text Alignment
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Fill: Aesthetic
+0.90
+0.85
+0.80
+0.75
+0.70
+0.65
+0.60
+0.55
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Extend: Consistency
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Extend: Structure
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Extend: Text Alignment
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Image Extend: Aesthetic
+0.9
+0.8
+0.7
+0.6
+0.5
+0.4
+0.3
+0 1000 2000 3000 4000 5000 6000 7000 8000
+Iteration
+eulaV
+draweR
+Object Removal: Removal Quality
+Figure6: WevisualizetherewardcurvesofConsistency,Structure,TextAlignment,Aestheticsfor
+imagefill(blue)andimageextend(green),RemovalQualityforobjectremoval(orange).
+x =vae decode(x′)
+θ 0
+x =vae decode(x ) (4)
+ref 0
+y =r(x ,x ,q)
+θ ref
+Asx andx aregeneratedfromthesameconditioncanddifferentmodelparameters,wesimplify
+θ ref
+the rollout procedure as π (·) and π (·), respectively. In the process of RL, The probability to
+θ ref
+responsey+ istreatedastherewardsignal. Andtheobjectiveofthepolicymodelistomaximize
+thisexpectedreward,thelossfunctionisdefinedasfollows.
+J(θ)=max (cid:0) 0,λ−P (cid:0) y+ |π (c), π (c), q (cid:1)(cid:1) (5)
+ϕ θ ref
+where y+ denotestheaffirmativetokendefinedinSec.4.3andP istheprobabilitypredictedby
+ϕ
+therewardmodelparameterizedbyϕ,λisthepredefinedrewardupperboundtoavoidhacking,the
+query q contains the information of task ids and its task-specific evaluation dimensions, as shown
+in Fig. 5. Our training objective for the policy model involves simultaneously optimizing for all
+relevantevaluationmetricsofagiventask. Ateachstep,dimension-wiserewardsarecomputedand
+averagedtoguideoptimization,effectivelycastingthetrainingprocessasaformofmulti-objective
+reinforcementlearning.Thisencouragesthemodeltoachievebalancedimprovementsacrossdiverse
+evaluationcriteria, rather thanoverfittingto anysingleaspect ofgeneration.Adetailed description
+ofthemulti-taskreinforcementlearningprocesscanbefoundinAlg.1.
+Fig.6illustratestherewardcurvesacrossdifferentevaluationdimensionsduringtraining,covering
+three tasks: image fill (blue), image extend (green), and object removal (orange). Each subplot
+showstheevolutionofrewardvaluesovertrainingiterationsforspecifictask–dimensionpairs, in-
+cludingConsistency,Structure,TextAlignment,Aesthetics,andRemovalQuality. Comparedwith
+11
+Algorithm1Multi-TaskReinforcementLearningfromHumanFeedback
+Dataset: Multi-Taskimage-conditiondatasets{D }K ,withdatasampleprobabilitydistribution
+k k=1
+P ={p ,p ,...,p },taskidsS ={s ,s ,...,s }andeachevaluationdimension{E }K .
+1 2 K 1 2 K k k=1
+Input: Referencediffusionmodelπ ,policymodelπ withparametersθ,unifiedrewardmodel
+ref θ
+rwithparametersϕ,hyperparameters[t ,t ]forthegenerationofevaluateimage.
+1 2
+1: Initreferencemodelπ ref ←π θ
+2: Initemamodelπ ema ←π θ
+3: foriteration=1,...,Ndo
+4: Sampleconditioncfromthek-thdatasetD k withprobabilityp k
+5: Sampleinitnoiseϵ 1 ,ϵ 2 fromnormaldistributeN(0,1)
+6: Randomsampledenoisetimestepstfrom[t 1 ,t 2 ]
+7: Generatethereferenceimagex ref withfulldenoiseprocedureπ ref (ϵ 1 ,c)
+8: Generatetheevaluateimagex θ withrandomdenoisestepsπ θ (ϵ 2 ,c,t)
+9: fore∈E k do
+10: Generatequeryqwithtaskids k andcurrentevalutiondimensioneasshowninFig.5
+11: ComputeRLlossJ e (x θ ,x ref ,q)inEquation5withrewardmodelr
+12: endfor
+13: Updatapolicymodelviagradientascent:π θ ←π θ + |E 1 k| ∇ πθ
+e
+(cid:80)
+∈Ek
+J e
+14: EMAupdateπ ema ←τπ ema +(1−τ)π θ
+15: endfor
+Output: π ,π
+θ ema
+single-tasksettings, multi-tasktrainingintroducesmoderatefluctuationsintherewardtrajectories.
+Nevertheless,allcurvesdisplayaclearupwardtrend,indicatingconsistentperformancegainsacross
+dimensions. Theseresultssuggestthatwhilemulti-taskoptimizationinherentlyintroducesgreater
+variabilityduetosharedcapacityandcompetingobjectives,themodelstillconvergesreliablywith
+steady improvements. The effectiveness of our reward-driven training scheme is further validated
+bythehighfinalrewardvaluesachievedacrossalldimensions.
+5 EXPERIMENTS
+5.1 IMPLEMENTATIONDETAILS
+Dataset. Our dataset for multi-task image editing was constructed through a multi-stage pipeline.
+WebeganbyextractingimageembeddingsusingtheCLIPmodel(Radfordetal.(2021)),followedby
+K-meansclusteringtoobtainadiverseandrepresentativesubsetforreinforcementlearning. Based
+on the selected subset, we further generated and annotated a large number of human preference
+pairs,whichserveastrainingdataforboththerewardmodelandtheimagegenerationmodel.
+Experimental Settings. For our reward model, we fine-tuned the open-source Qwen2.5-VL-7B-
+Instruct( Bai et al. (2025)) on our preference dataset with batch size 16, learning rate 1e-6. For
+Seedream 3.0 Fill, We adopt Seeddream 3.0( Gao et al. (2025a)) as the text-to-image base model,
+data were sampled with probabilities of 50% for image fill, 25% for image extend, and 25% for
+objectremoval. Trainingwasperformedwithbatchsize8,learningrate1e-5.
+5.2 COMPARISONSWITHSTATEOFTHEARTS
+5.2.1 EVALUATIONSETTINGS
+TocomprehensivelyevaluatetheeffectivenessofOneReward,weconductedextensivecomparisons
+withSOTAmodelsandAPIs,includingIdeogram,Higgsfield,AdobePhotoshop,Midjourney,and
+Flux Fill [Pro]. For evaluation, we constructed a diverse benchmark consisting of 130 images for
+imagefill,100forobjectremoval,and200forimageextend(splitevenlybetweentext-guidedand
+text-free). Itcoversawiderangeofscenes, suchasportraits, landscapes, pets, andtypography, as
+wellasartisticstylessuchasphotorealistic,anime,watercolor,andAI-generated.
+12
+Task Model UsabilityRate(%) TextAlignment TextureConsistency StyleConsistency Structure Aesthetics TextRendering(%) RemovalQuality(%)
+AdobePhotoshop 45.22 4.09 4.05 3.83 2.89 2.16 26.69 –
+Ideogram 50.65 3.78 4.25 4.13 3.80 2.65 24.81 –
+ImageFill FluxFill[pro] 50.97 4.12 4.16 3.72 3.46 2.47 29.32 –
+Higgsfield 52.11 4.43 4.29 3.63 3.54 2.40 45.49 –
+SeedDream3.0Fill 69.04 4.57 4.33 3.76 4.02 2.91 70.68 –
+AdobePhotoshop 44.07 4.21 4.04 4.08 2.79 2.27 – –
+ImageExtend FluxFill[pro] 44.26 4.23 3.77 3.79 3.57 2.36 – –
+wPrompt Ideogram 63.13 4.44 3.63 4.02 3.80 2.61 – –
+SeedDream3.0Fill 64.72 4.26 4.19 3.60 4.05 2.89 – –
+AdobePhotoshop 61.10 – 3.98 4.49 2.93 2.55 – –
+ImageExtend Midjourney 69.59 – 4.24 4.33 3.47 2.95 – –
+w/oPrompt F Id l e u o x g F ra il m l[pro] 7 7 0 3 . . 4 7 7 1 – – 4 3 . . 1 9 0 9 4 4 . . 3 4 7 0 3 3 . . 6 8 8 6 2 2 . . 8 9 4 2 – – – –
+SeedDream3.0Fill 87.54 – 4.36 4.02 4.19 3.29 – –
+FluxFill[pro] 15.92 – 3.97 – 3.39 – – 18.71
+ObjectRemoval I A d d e o o b g e ra P m hotoshop 7 7 0 3 . . 1 9 4 8 – – 4 4 . . 0 0 4 3 – – 3 4 . . 6 0 8 7 – – – – 8 7 3 2 . . 1 0 6 0
+SeedDream3.0Fill 82.22 – 3.87 – 4.32 – – 86.33
+Table2: QuantitativecomparisonofourmodelagainstSOTAcompetitorsacrossfoureditingtasks.
+Metrics with percentages (e.g., Usability Rate, Text Rendering, Removal Quality) are reported as
+successrates,whileotherdimensions(e.g.,TextAlignment,TextureConsistency,StyleConsistency,
+Structure,Aesthetics)areMeanOpinionScores(MOS)ratedona1–5scale. Higherscoresindicate
+better performance in all dimensions. Our model demonstrates consistently superior performance
+acrossmostdimensionscomparedwithexistingSOTAmodels,especiallyinoverallusabilityrate.
+Seedream 3.0 Fill [OneReward] Seedream 3.0 Fill [Base]
+Image Fill 66.1% 27.9% 6.1%
+Image Extend w Prompt 54.2% 38.4% 7.4%
+Image Extend w/o Prompt 68.0% 23.6% 8.4%
+Good
+Object Removal 32.3% 48.3% 19.3%Same
+Bad
+0 20 40 60 80 100
+Percentage
+Figure7:ComparisonofperformancebetweenSeedream3.0[OneReward]andSeedream3.0[Base]
+usingGood–Same–Bad(GSB)evaluation. Eachgroupcorrespondstoaspecificimageeditingtask.
+Bars represent the relative proportions of outputs judged as Good (orange), Same (green), or Bad
+(blue)acrossdifferentmodelpairs. Thisvisualizationhighlightsthedistributionofrelativeprefer-
+ences,showingwhereOneReward-enhancedmodelsoutperformthebasemodel.
+5.2.2 HUMANEVALUATION
+To comprehensively evaluate the performance of our model, we conducted a user study involving
+40 participants. Each participant rated the generated images across multiple dimensions: overall
+quality,textalignment,textureconsistency,styleconsistency,structuralplausibility,aesthetics,text
+rendering,andremovalquality. Amongthese,overallusability,textrendering,andremovalquality
+weretreatedasbinaryjudgments,whereeachimagewasassessedaseitheracceptableornot. The
+reported values for these metrics therefore represent success rates expressed as percentages. In
+contrast,theremainingdimensionswereratedona1–5Likertscale,andthescoreswereaveraged
+toproduceMeanOpinionScores(MOS),wherehighervaluesindicatebetterquality.
+ComparativeresultsforthefourimageeditingtasksarepresentedinFig.1andTab.2. SeedDream
+3.0 Fill demonstrates the strongest overall performance across all tasks. For image fill, our model
+achieves a usability rate of 69.04%, outperforming the second-best competitor (52.11%) by 16.93
+percentagepoints. Italsoobtainsthehighestscoresinmostdimensions, includingtextalignment,
+texture consistency, structure, aesthetics, and text rendering, with the only exception being style
+consistency,whereIdeogramshowsaslightadvantage.Onthetext-guidedimageextendtask,Seed-
+Dream3.0FillperformscomparablytoIdeogramwhileclearlysurpassingFluxFill[pro]andAdobe
+13
+Image Fill Image Extend Text Rendering Object Removal
+Source
+Seedream
+3.0 Fill
+Ideogram
+Flux Fill
+[pro]
+PhotoShop
+A black iphone tiger Goodfish Butterfly Change the text to Word "Black Forest Labs",
+clothes with "Intense Summer" next line word "The diary"
+wings
+Figure 8: Visual comparison of editing results for Seedream 3.0 Fill and its competitors across
+different tasks. Rows correspond to different methods, columns show task-specific prompts and
+outputs. Thesourceimagesareshowninthefirstrow. Theblankrowatthebottomindicatesthat
+thecaseisprompt-free.
+Photoshop in usability. And in the text-free setting, SeedDream 3.0 Fill shows pronounced supe-
+riority, achieving the highest usability rate (87.54%) and leading across all reported dimensions.
+For object removal, our model again delivers the best results, with a usability rate of 82.22% and
+aremovalqualityscoreof86.33%,significantlyoutperformingotherSOTAcompetitors. Thehigh
+removalqualityindicatesthatourmodelproducesthefewestunwantedobjectsinthistask,behav-
+ior that typically conflicts with goals in other generation tasks such as image fill or extend. This
+demonstratestheeffectivenessofourRLstrategyinmulti-taskhumanpreferencelearning.
+TofurtherassesstheimpactofOneReward,weconductaGood–Same–Bad(GSB)evaluationcom-
+paringSeedDream3.0Fillmodelstrainedwithandwithoutrewardguidance. AsshowninFig.7,
+each bar represents the distribution of human preferences across different tasks. Compared to the
+base model, the OneReward variant receives a higher proportion of “Good” ratings in all tasks.
+TheGSBresultsdemonstratethatourunifiedrewardmodelgenerallyshiftsmodeloutputstoward
+preferredgenerations.
+Notably,alloftheaboveresultswereachievedusingaunifiedgenerationmodel,trainedwithonly
+onerewardmodelsharedacrossdifferenttaskandevaluationdimension,withoutanytask-specific
+SFT.
+5.3 DYNAMICREINFORCEMENTLEARNING
+As shown in Alg. 1, our training pipeline typically maintain three models in parallel: a policy
+model,areferencemodel,andanEMAvariant. Thisdesignleadstohighmemoryconsumptionand
+increasestheengineeringcomplexityofmodelsynchronization. Ontheotherhand,ifthereference
+imagesareofinsufficientquality,thepolicymodelmaybetrainedonoverlyeasypreferencepairs,
+potentiallyleadingtorewardhackingandhinderingeffectivelearning.
+To address these limitations, we propose a dynamic reinforcement learning strategy (Alg. 2), in
+whichtheEMAmodelisdirectlyreusedasthereferencemodel. Astrainingprogresses,theEMA
+model gradually improves in generative quality, thereby providing an increasingly strong baseline
+14
+Image Fill Image Extend Text Rendering Object Removal
+Source
+Flux Fill
+[dev]
+Flux Fill
+[pro]
+Flux Fill [dev]
+[OneReward]
+Flux Fill [dev]
+[OneReward
+Dynamic]
+A pile of deep red a teal colored Blond Ice and snow a sign that says "different" a sign that says "Coffee"
+roses, with many couch caucasian boy
+rose petals wearing hat
+scattered in the
+background
+Figure9: VisualcomparisonofeditingresultsforFluxFillandourRLmodelacrossdifferenttasks.
+Rowscorrespondtodifferentmethods,columnsshowtask-specificpromptsandoutputs.Thesource
+imagesareshowninthefirstrow. ThelasttworowsstandsforourRL-enhancedmodel,trainedvia
+Alg.1andAlg.2.
+for policy comparison. This design not only reduces memory overhead by eliminating the need
+foraseparatereferencemodel,butalsoyieldsmorestableandadaptiverewardsignalsthroughout
+training. A conceptual visualization of the reward computation process is provided in Figure 10,
+highlighting the difference between the baseline setup and this dynamic design. In the dynamic
+variant, the reference model is continuously enhanced during training, ensuring that the policy is
+alwayscomparedagainstastrongandprogressivelyimprovingbaseline. Beyonditssimplicityand
+efficiency, the dynamic framework demonstrates highly competitive performance, as shown in the
+lastrowofFig.9.
+5.4 QUALITATIVERESULTS
+Fig. 8 presents visual comparisons in different situations. We compare Seedream 3.0 Fill with
+Ideogram,FluxFill[pro],andAdobePhotoshopusingthesameinputconditions.BasedonFluxFill
+[dev],weappliedbothAlg.1andAlg.2forRLtraining. Fig.9showsacomparisonoftheresulting
+modelswithFluxFill[dev]andFluxFill[pro]. ItshowsthatourRL-enhancedmodel,trainedvia
+OneReward,demonstratessuperiorvisualqualitycomparedtothebasemodelandeventheclosed-
+sourceAPI.Wewillreleasethebothtrainedmodelsaspartofouropen-sourcecontribution.
+6 CONCLUSIONS
+We present OneReward, a unified reward model designed for multi-task, multi-dimensional rein-
+forcement learning of diffusion and flow mathching model. It enables fine-grained supervision
+across diverse tasks by leveraging VLM as the reward model. Built on OneReward, our develop
+Seedream3.0Fill,whichachievesSOTAperformanceonimagefill,imageextend,objectremoval,
+andtextrendering,outperformingbothcommercialAPIsandopen-sourcemodelsonmostdimen-
+sions.Whilestyleconsistencyremainsarelativeweakness,weleaveitfornextoptimizationthrough
+detaileddataannotationandpost-trainingrefinement. Tofurthersupportthecommunity,weopen-
+sourceFLUXFill[dev][OneReward],anenhancedvariantoffluxmodeltrainedwithourRLframe-
+work,offeringstrongergeneralizationandbroadertaskapplicability.
+15
+REFERENCES
+ShuaiBai,KeqinChen,XuejingLiu,JialinWang,WenbinGe,SiboSong,KaiDang,PengWang,
+ShijieWang,JunTang,HumenZhong,YuanzhiZhu,MingkunYang,ZhaohaiLi,JianqiangWan,
+PengfeiWang,WeiDing,ZherenFu,YihengXu,JiaboYe,XiZhang,TianbaoXie,ZesenCheng,
+Hang Zhang, Zhibo Yang, Haiyang Xu, and Junyang Lin. Qwen2.5-vl technical report. arXiv
+preprintarXiv:2502.13923,2025.
+Kevin Black, Michael Janner, Yilun Du, Ilya Kostrikov, and Sergey Levine. Training diffusion
+modelswithreinforcementlearning. arXivpreprintarXiv:2305.13301,2023.
+RalphAllanBradleyandMiltonETerry. Rankanalysisofincompleteblockdesigns: I.themethod
+ofpairedcomparisons. Biometrika,39(3/4):324–345,1952.
+YuGao,LixueGong,QiushanGuo,XiaoxiaHou,ZhichaoLai,FanshiLi,LiangLi,XiaochenLian,
+ChaoLiao, LiyangLiu, etal. Seedream3.0technicalreport. arXivpreprintarXiv:2504.11346,
+2025a.
+YuGao,HaoyuanGuo,TuyenHoang,WeilinHuang,LuJiang,FangyuanKong,HuixiaLi,JiashiLi,
+LiangLi,XiaojieLi,etal. Seedance1.0: Exploringtheboundariesofvideogenerationmodels.
+arXivpreprintarXiv:2506.09113,2025b.
+Ian Goodfellow, Jean Pouget-Abadie, Mehdi Mirza, Bing Xu, David Warde-Farley, Sherjil Ozair,
+AaronCourville,andYoshuaBengio. Generativeadversarialnetworks. Communicationsofthe
+ACM,63(11):139–144,2020.
+JonathanHo,AjayJain,andPieterAbbeel. Denoisingdiffusionprobabilisticmodels. Advancesin
+neuralinformationprocessingsystems,33:6840–6851,2020.
+EdwardJHu,YelongShen,PhillipWallis,ZeyuanAllen-Zhu,YuanzhiLi,SheanWang,LuWang,
+WeizhuChen,etal. Lora: Low-rankadaptationoflargelanguagemodels. ICLR,1(2):3,2022.
+BlackForestLabs. Flux. https://github.com/black-forest-labs/flux,2024.
+JunnanLi,DongxuLi,CaimingXiong,andStevenHoi. Blip: Bootstrappinglanguage-imagepre-
+trainingforunifiedvision-languageunderstandingandgeneration.InInternationalconferenceon
+machinelearning,pp.12888–12900.PMLR,2022.
+Ming Li, Taojiannan Yang, Huafeng Kuang, Jie Wu, Zhaoning Wang, Xuefeng Xiao, and Chen
+Chen. Controlnet++: Improvingconditionalcontrolswithefficientconsistencyfeedback: Project
+page: liming-ai. github. io/controlnet plus plus. In European Conference on Computer Vision,
+pp.129–147.Springer,2024.
+YaronLipman,RickyTQChen,HeliBen-Hamu,MaximilianNickel,andMattLe. Flowmatching
+forgenerativemodeling. arXivpreprintarXiv:2210.02747,2022.
+Jie Liu, Gongye Liu, Jiajun Liang, Yangguang Li, Jiaheng Liu, Xintao Wang, Pengfei Wan,
+Di Zhang, and Wanli Ouyang. Flow-grpo: Training flow matching models via online rl. arXiv
+preprintarXiv:2505.05470,2025a.
+Jie Liu, Gongye Liu, Jiajun Liang, Ziyang Yuan, Xiaokun Liu, Mingwu Zheng, Xiele Wu, Qiulin
+Wang,WenyuQin,MenghanXia,etal. Improvingvideogenerationwithhumanfeedback. arXiv
+preprintarXiv:2501.13918,2025b.
+Xingchao Liu, Chengyue Gong, and Qiang Liu. Flow straight and fast: Learning to generate and
+transferdatawithrectifiedflow. arXivpreprintarXiv:2209.03003,2022.
+AndreasLugmayr,MartinDanelljan,AndresRomero,FisherYu,RaduTimofte,andLucVanGool.
+Repaint: Inpainting using denoising diffusion probabilistic models. In Proceedings of the
+IEEE/CVFconferenceoncomputervisionandpatternrecognition,pp.11461–11471,2022.
+Dustin Podell, Zion English, Kyle Lacey, Andreas Blattmann, Tim Dockhorn, Jonas Mu¨ller, Joe
+Penna,andRobinRombach. Sdxl: Improvinglatentdiffusionmodelsforhigh-resolutionimage
+synthesis. arXivpreprintarXiv:2307.01952,2023.
+16
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh, Sandhini Agarwal,
+Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark, et al. Learning transferable visual
+modelsfromnaturallanguagesupervision. InInternationalconferenceonmachinelearning,pp.
+8748–8763.PmLR,2021.
+RafaelRafailov,ArchitSharma,EricMitchell,ChristopherDManning,StefanoErmon,andChelsea
+Finn. Directpreferenceoptimization:Yourlanguagemodelissecretlyarewardmodel. Advances
+inneuralinformationprocessingsystems,36:53728–53741,2023.
+YuxiRen,JieWu,YanzuoLu,HuafengKuang,XinXia,XionghuiWang,QianqianWang,Yixing
+Zhu, Pan Xie, Shiyin Wang, et al. Byteedit: Boost, comply and accelerate generative image
+editing. InEuropeanConferenceonComputerVision,pp.184–200.Springer,2024.
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Bjo¨rn Ommer. High-
+resolutionimagesynthesiswithlatentdiffusionmodels. InProceedingsoftheIEEE/CVFconfer-
+enceoncomputervisionandpatternrecognition,pp.10684–10695,2022.
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang,
+Mingchuan Zhang, YK Li, Yang Wu, et al. Deepseekmath: Pushing the limits of mathemati-
+calreasoninginopenlanguagemodels. arXivpreprintarXiv:2402.03300,2024.
+Jiaming Song, Chenlin Meng, and Stefano Ermon. Denoising diffusion implicit models. arXiv
+preprintarXiv:2010.02502,2020a.
+YangSong,JaschaSohl-Dickstein,DiederikPKingma,AbhishekKumar,StefanoErmon,andBen
+Poole. Score-basedgenerativemodelingthroughstochasticdifferentialequations. arXivpreprint
+arXiv:2011.13456,2020b.
+Hongzu Su, Lichao Meng, Lei Zhu, Ke Lu, and Jingjing Li. Ddpo: Direct dual propensity opti-
+mizationforpost-clickconversionrateestimation. InProceedingsofthe47thInternationalACM
+SIGIRConferenceonResearchandDevelopmentinInformationRetrieval,pp.1179–1188,2024.
+Roman Suvorov, Elizaveta Logacheva, Anton Mashikhin, Anastasia Remizova, Arsenii Ashukha,
+Aleksei Silvestrov, Naejin Kong, Harshith Goka, Kiwoong Park, and Victor Lempitsky.
+Resolution-robust large mask inpainting with fourier convolutions. In Proceedings of the
+IEEE/CVFwinterconferenceonapplicationsofcomputervision,pp.2149–2159,2022.
+Bram Wallace, Meihua Dang, Rafael Rafailov, Linqi Zhou, Aaron Lou, Senthil Purushwalkam,
+StefanoErmon,CaimingXiong,ShafiqJoty,andNikhilNaik. Diffusionmodelalignmentusing
+directpreferenceoptimization. InProceedingsoftheIEEE/CVFConferenceonComputerVision
+andPatternRecognition,pp.8228–8238,2024.
+Jiazheng Xu, Xiao Liu, Yuchen Wu, Yuxuan Tong, Qinkai Li, Ming Ding, Jie Tang, and Yuxiao
+Dong. Imagereward: Learning and evaluating human preferences for text-to-image generation.
+AdvancesinNeuralInformationProcessingSystems,36:15903–15935,2023.
+JiazhengXu,YuHuang,JialeCheng,YuanmingYang,JiajunXu,YuanWang,WenboDuan,Shen
+Yang,QunlinJin,ShurunLi,etal. Visionreward: Fine-grainedmulti-dimensionalhumanprefer-
+encelearningforimageandvideogeneration. arXivpreprintarXiv:2412.21059,2024.
+Zeyue Xue, Jie Wu, Yu Gao, Fangyuan Kong, Lingting Zhu, Mengzhao Chen, Zhiheng Liu, Wei
+Liu,QiushanGuo,WeilinHuang,etal. Dancegrpo: Unleashinggrpoonvisualgeneration. arXiv
+preprintarXiv:2505.07818,2025.
+AhmetBurakYildirim,VedatBaday,ErkutErdem,AykutErdem,andAysegulDundar.Inst-inpaint:
+Instructingtoremoveobjectswithdiffusionmodels. arXivpreprintarXiv:2304.03246,2023.
+JiachengZhang,JieWu,WeifengChen,YataiJi,XuefengXiao,WeilinHuang,andKaiHan. On-
+linevpo: Align video diffusion model with online video-centric preference optimization. arXiv
+preprintarXiv:2412.15159,2024.
+KaiZhang, LingboMo, WenhuChen, HuanSun, andYuSu. Magicbrush: Amanuallyannotated
+datasetforinstruction-guidedimageediting.AdvancesinNeuralInformationProcessingSystems,
+36:31428–31449,2023.
+17
+A APPENDIX
+14
+12
+10
+8
+6
+4
+2
+0
+0 20 40 60 80 100
+Training Steps
+ytilibapaC
+ledoM
+Reward Computation: Default vs Dynamic
+Policy (Default)
+Reference (Default:Fixed)
+Policy (Dynamic)
+Reference (Dynamic:EMA)
+Dynamic reward
+Default reward
+Figure10:Schematicillustrationofrewardcomputationinthebaselineandourdynamicframework.
+In the baseline 1, rewards are measured as the vertical gap between the policy (blue) and a fixed
+reference(red).Inthedynamicmethod 2,rewardsarecomputedagainstanEMA-updatedreference
+(orange)thatevolvessmoothlywiththepolicy(green),formingadynamicbaseline. Thisfigureis
+forconceptualunderstandingonlyanddoesnotreflectactualparametervaluesortrainingdynamics.
+Algorithm2DynamicMulti-TaskReinforcementLearningfromHumanFeedback
+Dataset: Multi-Taskimage-conditiondatasets{D }K ,withdatasampleprobabilitydistribution
+k k=1
+P ={p ,p ,...,p },taskidsS ={s ,s ,...,s }andeachevaluationdimension{E }K .
+1 2 K 1 2 K k k=1
+Input: Referencediffusionmodelπ ,policymodelπ withparametersθ,unifiedrewardmodel
+ref θ
+rwithparametersϕ,hyperparameters[t ,t ]forthegenerationofevaluateimage.
+1 2
+1: Initreferencemodelπ ref ←π θ
+2: foriteration=1,...,Ndo
+3: Sampleconditioncfromthek-thdatasetD k withprobabilityp k
+4: Sampleinitnoiseϵ 1 ,ϵ 2 fromnormaldistributeN(0,1)
+5: Randomsampledenoisetimestepstfrom[t 1 ,t 2 ]
+6: Generatethereferenceimagex ref withfulldenoiseprocedureπ ref (ϵ 1 ,c)
+7: Generatetheevaluateimagex θ withrandomdenoisestepsπ θ (ϵ 2 ,c,t)
+8: fore∈E k do
+9: Generatequeryqwithtaskids k andcurrentevalutiondimensioneasshowninFig.5
+10: ComputeRLlossJ e (x θ ,x ref ,q)inEquation5withrewardmodelr
+11: endfor
+12: Updatapolicymodelviagradientascent:π θ ←π θ + |E 1 k| ∇ πθ
+e
+(cid:80)
+∈Ek
+J e
+13: ▷EMAupdateπ ref ←τπ ref +(1−τ)π θ
+14: endfor
+Output: π ,π
+θ ref
+18

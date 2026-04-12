@@ -1,0 +1,1848 @@
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#1figure <ref>
+
+#1Figure <ref>
+#1#2figures <ref> and <ref>
+#1#2#3#4figures <ref>, <ref>, <ref> and <ref>
+
+#1section <ref>
+
+#1Section <ref>
+
+#1#2sections <ref> and <ref>
+
+#1#2#3sections <ref>, <ref> and <ref>
+
+(<ref>)1equation <ref>
+
+#1Equation <ref>
+
+#1<ref>
+
+#1chapter <ref>
+
+#1Chapter <ref>
+
+#1#2chapters<ref>–<ref>
+
+#1algorithm <ref>
+
+#1Algorithm <ref>
+#1#2algorithms <ref> and <ref>
+#1#2Algorithms <ref> and <ref>
+
+#1part <ref>
+
+#1Part <ref>
+#1#2parts <ref> and <ref>
+
+#1⌈#1 ⌉
+#1⌊#1 ⌋
+1
+
+
+
+
+ϵ
+
+
+
+η
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+ϵ
+θ
+𝐚
+𝐛
+𝐜
+𝐝
+𝐞
+𝐟
+𝐠
+𝐡
+𝐢
+𝐣
+𝐤
+𝐥
+𝐦
+𝐧
+𝐨
+𝐩
+𝐪
+𝐫
+𝐬
+𝐭
+𝐮
+𝐯
+𝐰
+𝐱
+𝐲
+𝐳
+
+
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+𝐀
+𝐁
+𝐂
+𝐃
+𝐄
+𝐅
+𝐆
+𝐇
+𝐈
+𝐉
+𝐊
+𝐋
+𝐌
+𝐍
+𝐎
+𝐏
+𝐐
+𝐑
+𝐒
+𝐓
+𝐔
+𝐕
+𝐖
+𝐗
+𝐘
+𝐙
+
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+0
+1
+μ
+θ
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+α
+β
+ϵ
+λ
+ω
+μ
+ψ
+σ
+θ
+a
+b
+c
+d
+e
+f
+g
+h
+i
+j
+k
+l
+m
+n
+o
+p
+q
+r
+s
+t
+u
+v
+w
+x
+y
+z
+
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+β
+Φ
+Λ
+Σ
+
+
+msl
+boldbxn
+
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+
+𝒜
+ℬ
+𝒞
+𝒟
+ℰ
+ℱ
+𝒢
+ℋ
+ℐ
+𝒥
+𝒦
+ℒ
+ℳ
+𝒩
+𝒪
+𝒫
+𝒬
+ℛ
+𝒮
+𝒯
+𝒰
+𝒱
+𝒲
+𝒳
+𝒴
+𝒵
+
+
+𝔸
+𝔹
+ℂ
+𝔻
+
+
+𝔽
+𝔾
+ℍ
+𝕀
+𝕁
+𝕂
+𝕃
+𝕄
+ℕ
+𝕆
+ℙ
+ℚ
+ℝ
+𝕊
+𝕋
+𝕌
+𝕍
+𝕎
+𝕏
+𝕐
+ℤ
+
+
+Λ
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+Σ
+
+
+
+
+Λ
+A
+B
+C
+D
+E
+F
+G
+H
+I
+J
+K
+L
+M
+N
+O
+P
+Q
+R
+S
+T
+U
+V
+W
+X
+Y
+Z
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+⊥⊥
+d=
+d=
+
+=_a.s.
+⊥⊥
+
+
+
+
+
+
+
+_n
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+       
+       
+      
+         
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+theoremTheorem[section]
+proposition[theorem]Proposition
+lemma[theorem]Lemma
+corollary[theorem]Corollary
+definition[theorem]Definition
+assumption[theorem]Assumption
+property[theorem]Property
+remark[theorem]Remark
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Enhancing Neural Subset Selection: Integrating Background Information into Set  Representations
+
+    
+    Binghui Xie1,
+    Yatao Bian2,
+    Kaiwen zhou1,
+    Yongqiang Chen1
+
+     1The Chinese University of Hong Kong, 
+     2Tencent AI Lab, 
+    3Hong Kong Baptist University
+
+    
+    
+
+    Peilin Zhao2,
+    Bo Han3,
+    Wei Meng1,
+    James Cheng1 
+ 
+
+    April 11, 2026
+==================================================================================================================================================================================================================================================================
+
+
+
+
+Learning neural subset selection tasks, such as compound selection in AI-aided drug discovery, have become increasingly pivotal across diverse applications. The existing methodologies in the field primarily concentrate on constructing models that capture the relationship between utility function values and subsets within their respective supersets. However, these approaches tend to overlook the valuable information contained within the superset when utilizing neural networks to model set functions. In this work, we address this oversight by adopting a probabilistic perspective. Our theoretical findings demonstrate that when the target value is conditioned on both the input set and subset, it is essential to incorporate an invariant sufficient statistic of the superset into the subset of interest for effective learning. 
+This ensures that the output value remains invariant to permutations of the subset and its corresponding superset, enabling identification of the specific superset from which the subset originated. 
+Motivated by these insights, we propose a simple yet effective information aggregation module designed to merge the representations of subsets and supersets from a permutation invariance perspective. 
+Comprehensive empirical evaluations across diverse tasks and datasets validate the enhanced efficacy of our approach over conventional methods, underscoring the practicality and potency of our proposed strategies in real-world contexts.
+
+
+
+
+
+
+§ INTRODUCTION
+
+The prediction of set-valued outputs plays a crucial role in various real-world applications. For instance, anomaly detection involves identifying outliers from a majority of data <cit.>, and compound selection in drug discovery aims to extract the most effective compounds from a given compound database <cit.>. In these applications, there exists an implicit learning of a set function <cit.> that quantifies the utility of a given set input, where the highest utility value corresponds to the most desirable set output.
+
+More formally, let's consider the compound selection task: given a compound database V, the goal is to select a subset of compounds S^* ⊆ V that exhibit the highest utility. This utility can be modeled by a parameterized utility function F_θ (S;V), and the optimization criteria can be expressed as:
+
+    S^* = _S ∈ 2^V F_θ (S; V).
+
+One straightforward method is to explicitly model the utility by learning U = F_θ(S;V) using supervised data in the form of {(S_i, V_i), U_i}_i=1^N, where U_i represents the true utility value of subset S_i given V_i. However, this training approach becomes prohibitively expensive due to the need for constructing a large amount of supervision signals <cit.>.
+
+To address this limitation, another way is to solve Eq.<ref> with an implicit learning approach from a probabilistic perspective. Specifically, it is required to utilize data in the form of {(V_i, S_i^*)}_i=1^N, where S_i^* represents the optimal subset corresponding to V_i. The goal is to estimate θ such that Eq. <ref> holds for all possible (V_i, S_i). During practical training, with limited data (S_i^*, V_i)_i=1^N sampled from the underlying data distribution P(S, V), the empirical log likelihood ∑_i=1^N[log p_θ(S^*|V)] is maximized among all data pairs {S, V}, where p_θ(S|V)∝ F_θ(S; V) for all S ∈  2^V. To achieve this objective, <cit.> proposed to use a variational distribution q(Y|S,V) to approximate the distribution of P(S|V) within the variational inference framework, where Y ∈ [0, 1]^|V| represents a set of |V| independent Bernoulli distributions, representing the odds or probabilities of selecting element i in an output subset S. (More details can be found in Appendix <ref>.)
+Thus, the main challenge lies in characterizing the structure of neural networks capable of modeling hierarchical permutation invariant conditional distributions. These distributions should remain unchanged under any permutation of elements in S and V while capturing the interaction between them.
+
+However, the lack of guiding principles for designing a framework to learn the permutation invariant conditional distribution P(Y|S, V) or F(S, V) has been a challenge in the literature. A commonly used approach in the literature involves employing an encoder to generate feature vectors for each element in V. These vectors are then fed into DeepSets <cit.>, using the corresponding supervised subset S, to learn the permutation invariant set function F(S). 
+
+However, this procedure might overlook the interplay between S and V, thereby reducing the expressive power of models. See Figure <ref> for an illustrative depiction of this concept.
+
+
+ 
+
+    
+
+    
+    < g r a p h i c s >
+
+    (Left): The DeepSet-style models only focus on processing the subset S.
+(Right): In contrast, not only identifies the subset S but also takes the identification of V into account, which parameterizes the information that S is a subset of V during the training process.
+     
+     
+
+    
+
+
+
+To address these challenges, our research focuses on the aggregation of background information from the superset V into the subset S from a symmetric perspective. Initially, we describe the symmetry group of (S,V) during neural subset selection, as outlined in Section <ref>. Specifically, the subset S is required to fulfill permutation symmetry, while the superset V needs to satisfy a corresponding symmetry group within the nested sets scheme. We denote this hierarchical symmetry of (S,V) as . Subsequently, we theoretically investigate the connection between functional symmetry and probabilistic symmetry within F(S,V) and P(Y|S,V), indicating that the conditional distribution can be utilized to construct a neural network that processes the invariant sufficient representation of (S,V) with respect to . These representations, defined in Section <ref>, are proven to satisfy Sufficiency and Adequacy, which means such representations retain the information of the prediction Y while disregarding the order of the elements in S or V. Building upon the above theoretical results, we propose an interpretable and powerful model called (Invariant Representation of Subsets) for neural subset selection in Section <ref>. incorporates an information aggregation step between the invariant sufficient representations of S and V, as illustrated in Figure <ref>. This ensures that the model's output can approximate the relationship between Y and (S,V) while being unaffected by the transformations of . Furthermore, in contrast to previous works that often disregard the information embedded within the set V, our exceptional model () excels in identifying the superset V from which the subset S originates. 
+
+In summary, we makes the following contributions. Firstly, we approach neural set selection from a symmetric perspective and establish the connection between functional symmetry and probabilistic symmetry in P(Y|S,V), which enables us to characterize the model structure. Secondly, we introduce , an effective and interpretable  model for neural subset selection. Lastly, we empirically validate the effectiveness of through comprehensive experiments on diverse datasets, encompassing tasks such as product recommendation and set anomaly detection.
+
+
+§ RELATED WORK
+
+
+
+Encoding Interactions for Set Representations.
+Designing network architectures for set-structured input has emerged as a highly popular research topic. Several prominent works, including those <cit.> 
+have focused on constructing permutation equivariant models using standard feed-forward neural networks. These models demonstrate the ability to universally approximate continuous permutation-invariant functions through the utilization of set-pooling layers. However, existing approaches solely address the representation learning at the set level and overlook interactions within sub-levels, such as those between elements and subsets.
+
+
+Motivated by this limitation, subsequent studies have proposed methods to incorporate richer interactions when modeling invariant set functions for different tasks. For instance, <cit.> introduced the use of self-attention mechanisms to process elements within input sets, naturally capturing pairwise interactions. <cit.> proposed Janossy pooling as a means to encode higher-order interactions within the pooling operation. Further improvements have been proposed by <cit.>, among others. Additionally, <cit.> developed techniques to ensure Mini-Batch Consistency in set encoding, enabling the provable equivalence between mini-batch encodings and full set encodings by leveraging interactions. These studies emphasize the significance of incorporating interactions between different components.
+
+Information-Sharing in Neural Networks.
+In addition to set learning tasks, the interaction between different components holds significance across various data types and neural networks. Recent years have witnessed the development of several deep neural network-based methods that explore hierarchical structures. For Convolutional Neural Networks (CNNs), various hierarchical modules have been proposed by <cit.> to address different image-related tasks. In the context of graph-based tasks, <cit.>, and others have put forth different methods to learn hierarchical representations. The focus of these works lies in capturing local information effectively and integrating it with global information.
+
+However, the above works ignore the symmetry and expressive power in designing models. Motivated by this, <cit.> proposed how to design linear equivariant and invariant layers for learning hierarchical symmetries to handle per-element symmetries. Moreover, there are some works proposed for different tasks considering symmetry and hierarchical structure, e.g., <cit.>. Our method differs from previous work by focusing on generating a subset S ∈ V as the final output, rather than output the entire set V. Besides, embraces a probabilistic perspective, aligning with the nature of the Optimal Subset (OS) oracle.
+
+
+
+
+§ METHOD
+
+
+
+ §.§ Background
+
+Let's consider the ground set composed of n elements, denoted as x_i, i.e., V={x_1, x_2,..., x_n}. In order to facilitate the proposition of Property <ref>, we describe V as a collection of several disjoint subsets, specifically V = {S_1, …, S_m}, where S_i ∈ℝ^n_i × d. Here, n_i represents the size of subset S_i, and each element x_i ∈ is represented by a d-dimensional vector. It is worth noting that, without loss of generality, we can treat S_i as individual elements, i.e., n_i = 1. As an example of neural subset selection, the task involves encoding subsets S_i into representative vectors to predict the corresponding function value Y ∈, as discussed in the introduction section. Existing methods such as <cit.> and <cit.> directly select S_i from the encoding embeddings of all elements in V, and then input S_i into feed-forward networks. However, these methods approximate the function F(S_i, V) using only the explicit subsets S_i, which can be suboptimal since the function also relies on information from the ground set V. Furthermore, this approach leads to a conditional distribution P(Y|S) instead of the desired P(Y|S,V). Throughout this study, we assume that all random variables take values in standard Borel spaces, and all introduced maps are measurable.
+
+In this section, we introduce a principled approach for encoding subset representations that leverages background information from the entire input set V to achieve better performance. Additionally, our theoretical results naturally align with the task of neural subset selection in the OS Oracle, as they focus on investigating the probabilistic relationship between Y and (S,V), which also establishes a connection between the conditional distribution and the functional representation of both S and V. By linking the functional representation to the conditional distribution, our results also provide insights into constructing a neural network that effectively approximates the desired function F(S,V).
+
+
+
+ §.§ The Symmetric Information from Supersets
+
+
+When considering the invariant representation of S alone, we can directly utilize DeepSets with a max-pooling operation. However, incorporating background information from V into the representations poses the challenge of determining the appropriate inductive bias for the modeling process. One straightforward approach is to assume the existence of two permutation groups that act independently on V and S. However, this assumption is impractical since S is a part of V. If we transform S, the corresponding adjustments should also be made to V. From the perspective of the interaction between subsets and supersets, a natural consideration is to view the supersets as a nested set of sets, i.e., V = S_1 ∪ S_2 ∪…∪ S_m, where S_i ∩ S_j = ∅ if i ≠ j. In this perspective, the symmetric properties will become more evident.
+
+We assume the presence of an outer permutation π_m ∈𝕊_m that maps indices of the subsets to new indices, resulting in a reordering of the subsets within V. Furthermore, within each subset S_i, there exists a permutation group denoted by h_i ∈_i, which captures the possible rearrangements of elements within that specific subset. Each element of h_i represents a distinct permutation on the elements of S_i. The symmetry of nested sets of sets, referred to as , can be defined as the wreath product of the symmetric group 𝕊_m (representing outer permutations on the m subsets) and the direct product of the permutation groups associated with each subset (_1 ×_2 ×…×_m). Formally, = S_m ≀ (_1 ×_2 ×…×_m). Therefore, for any transformation r ∈ acting on V, there must exist a corresponding h ∈ acting on S. Keeping this in mind, we define the conditional distribution P(Y|S,V) to adhere to the following property:
+
+
+    Let S ∈, V ∈ and Y ∈, where  and  act on  and , respectively. Then, the conditional distribution P(Y|S,V) of Y given (S,V) is said to be invariant under a group  and  if and only if:
+
+    P(Y| S,V) = P(Y| g · (S,V)) = P(Y| h· S, r · V)     for any  h∈  and   r∈ .
+
+
+In this context, we denote the composite group = ×, which acts on the product space S × V. We have now clarified the specific inductive bias that should be considered when characterizing neural networks. In the subsequent subsection, we will delve into the exploration of constructing neural networks that fulfill this property.
+
+
+
+
+ §.§ Invariant Sufficient Representation
+
+
+Functional and probabilistic notions of symmetries represent two different approaches to achieving the same goal: a principled framework for constructing models from symmetry considerations. To characterize the precise structure of the neural network satisfying Property <ref>, we need to use a technical tool, that transfers a conditional probability distribution P(Y|S,V) into a representation of Y as a function of statics of (S,V) and random noise, i.e., f(,M(S,V)). Here, M are maps, which are based on the idea that a statistic may contain all the information that is needed for an inferential procedure. There are mainly two terms as Sufficiency and Adequacy. The ideas go hand-in-hand with notions of symmetry: while invariance describes information that is irrelevant, sufficiency and adequacy describe the information that is relevant.
+
+There are various methods to describe sufficiency and adequacy, which are equivalent under some constraints. For convenience and completeness, we follow the concept from <cit.>. We begin by defining the sufficient statistic as follows, where _ represents the Borel σ-algebra of :
+0.15in
+ 
+  Assume M : ×→ a measurable map and there is a Markov kernel k : _××→_+ such that for all X ∈ and m∈, P(| M(S, V)=m) =  k(, m). Then M is a sufficient statistic for P(S,V).
+
+This definition characterizes the information pertaining to the distribution of (S,V). More specifically, it signifies that there exists a single Markov kernel that yields the same conditional distribution of (S,V) conditioned on M(S,V)=m, regardless of the distribution P(S,V). It is important to note that if S ⊈ V, the corresponding value of M(S,V) would be zero, which is an invalid case. When examining the distribution of Y conditioned on S and V, an additional definition is required:
+
+ 
+ Let M : ×→ be a measurable map and assume M is sufficient for P(S,V). If for all s∈, v∈ and y∈, 
+    
+    P(Y ∈| S=s, V=v) = P(Y ∈| M(S,V)=m)  .
+
+Then, M serves as an adequate statistic of (S,V) for Y, and also acts as the sufficient statistic.
+
+Actually, Equation (<ref>) is equivalent to conditional independence of Y and (S,V), given M(S,V), i.e., Y _M(X) X, This is also called M d-separates (S,V) and Y. In other words, if our goal is to approximate the invariant conditional distribution P(Y|S,V), we can first seek an invariant representation of (S,V) under , which also acts as an adequate statistic for (S,V) with respect to Y. Consequently, modeling the relationship between (S,V) and Y directly is equivalent to learning the relationship between M(S,V) and Y, which naturally satisfies Property <ref>.
+
+With the given definitions, it becomes evident that we can discover an invariant representation of (S,V) with respect to the symmetric groups . This representation is referred to as the Invariant Sufficient Representation, signifying that an invariant effective representation should eliminate the information influenced by the actions of , while preserving the remaining information regarding its distribution. This concept is also referred to as Maximal Invariant in some previous literature, such as <cit.>.
+
+definitionmaxinvt
+
+(Invariant Sufficient Representation)
+For a group  of actions on any (s,v) ∈× , we say M : ×→ is an invariant sufficient  representation for space ×, if it satisfies: If M(s_1,v_1) = M(s_2,v_2), then (s_2,v_2) = g· (s_1,v_1) for some g∈; otherwise, there is no such a g that satisfies (s_2,v_2) = g· (s_1,v_1). 
+
+Clearly, the invariant sufficient representation M serves as the sufficient statistic for (S,V). Furthermore, if the conditional distribution P(Y|S,V) is invariant to transformations induced by the group , we can establish that M(S,V) is an adequate statistic for (S,V), as stated in Corollary <ref>. In other words, M(S,V) can be considered to encompass all the relevant information for predicting the label given (S,V) while eliminating the redundant information about . Hence, we can construct models that learn the relationship between M(S,V) and Y, ultimately resulting in an invariant function Y=f(S,V) under the group . From a probabilistic standpoint, this implies that P(Y|S,V)=P(Y|M(S,V)).
+
+
+
+ §.§ Characterizing the Model Structure
+
+
+Hence, by computing the invariant sufficient representations of (S,V), we can construct a -invariant layer. This idea can give rise to the following theorem:
+
+theoremmaintheorem
+
+
+  Consider a measurable group  acting on ×. Suppose we select an invariant sufficient representation denoted as M : ×→. In this case, P(Y|S,V) satisfies Property <ref> if and only if there exists a measurable function denoted as f : [0,1] ××→ such that the following equation holds:
+
+    (S, V, Y) (S, V, f(, M(S,V)) )   where ∼[0,1]  and  (S,V) ;.
+
+
+
+In this context, the variable  represents generic noise, which can be disregarded when focusing solely on the model structure rather than the complete training framework <cit.>. Consequently, the theorem highlights the necessity of characterizing the neural networks in the form of f(M(S,V)). Moreover, Theorem <ref> implies that the invariant sufficient representation M(S,V) also serves as an adequate statistic. This can be illustrated as follows:
+
+    P(Y ∈ | S=s, V=v) = P(Y ∈ | S=s, V=v, M(S,V)=m) = P(Y ∈ | M(S,V)=m).
+
+To provide additional precision and clarity, we present the following corollary, which demonstrates that M(S,V) is an adequate statistic of (S,V) for Y.
+corollaryourcorollary
+
+
+    Let  be a compact group acting measurably on standard Borel spaces S × V, and let  be another Borel space. Then any invariant sufficient representation M : ×→ under  is an adequate statistic of (S,V) for Y.
+
+
+
+
+
+ §.§ Implementation
+
+In theory, invariant sufficient representations can be computed by selecting a representative element for each orbit under the group . However, this approach is impractical due to the high dimensions of the input space and the potentially enormous number of orbits. Instead, in practice, a neural network can be employed to approximate this process and generate the desired representations <cit.>, particularly in tasks involving sets or set-like structures.
+
+However, the approach to approximating such a representation for (S,V) under  remains unclear. To simplify the problem, we can divide the task of finding the invariant sufficient representation of S and V under H and R, respectively, as defined in Section <ref>. This concept is guaranteed by the following proposition:
+propositiondivideprop
+
+
+     Assuming that M_s: 𝒮→𝒮_1 and M_v: 𝒱→𝒱_1 serve as invariant sufficient  representations for S and V with respect to H and R, respectively, then there exist maps f: 𝒮_1 ×𝒱_1 →ℳ that establish the invariant sufficient representation of M.
+
+
+Proposition <ref> specifically states that we can construct the invariant sufficient representations for S and V individually, as they are comparatively easier to construct compared to M(S,V). In the work of <cit.>, it is demonstrated that for S under H, the empirical measure M_s(S)=∑_s_i ∈ Sδ(s_i) can be chosen as a suitable invariant sufficient representation. Here, δ(s_i) represents an atom of unit mass located at s_i, such as one-hot embeddings. Additionally, leveraging the proposition established by <cit.>, we can employ ρ∑_s ∈ Sϕ(s) to approximate the empirical measure. This approximation offers a practical and effective approach to constructing the invariant sufficient representation.
+ 
+If f is a valid permutation invariant function on S, it can be approximated arbitrarily close in the form of f(S) = ρ( ∑_s ∈ Sϕ(s) ), for suitable transformations ϕ and ρ.
+
+During the implementation, an encoder ϕ is utilized to generate embeddings for each element. For example, when dealing with sets of images, ResNet can be employed as the encoder. On the other hand, ρ can represent various feedforward networks, such as fully connected layers combined with nonlinear activation functions. Similarly, for the symmetric group  acting on V, <cit.> havedemonstrated that the universal approximators of the invariant sufficient representations are ∑_S ∈ V∑_s ∈ Sϕ(s), which is equivalent to ∑_x_j ∈ Vϕ(x_j). Hence, for neural subset selection tasks, when considering a specific subset S ∈ V, The neural network construction is outlined as follows:
+
+    θ(S,V) = σ(θ_1(∑_i=1^n_iϕ(x_i)) + θ_2(∑_i=1^nϕ(x_j))),
+
+Here, the feed-forward modules θ_1 and θ_2 are accompanied by a non-linear activation layer denoted by σ. Intuitively, the inherent simplicity of the structure enables us to utilize the DeepSet module to process all elements in V and integrate them with the invariant sufficient representations of S.
+
+In practice, there are different ways to integrate the representation of V into the representation of S, such as concatenation <cit.> or addition <cit.>. Although this idea is straightforward, in the following section, we will demonstrate how this modification significantly enhances the performance of baseline methods. Notably, this idea has been empirically utilized in previous works, such as <cit.>. However, we derive it from a probabilistic invariant perspective. A corresponding equivariant framework was also introduced in <cit.>, which complements our results in the development of deep equivariant neural networks.
+
+
+
+
+
+
+
+§ EXPERIMENTS
+
+The proposed methods are assessed across multiple tasks, including product recommendation, set anomaly detection, and compound selection. To ensure robustness, all experiments are repeated five times using different random seeds, and the means and standard deviations of the results are reported. For additional experimental details and settings, we provide comprehensive information in Appendix <ref>.
+
+Evaluations. The main goal of the following tasks is to predict the corresponding S^⋆ given V. Therefore, we evaluate the methods using the mean Jaccard coefficient (MJC) metric. Specifically, for each data sample (S^⋆,V) if the model's prediction is S^', then the Jaccard coefficient is given as:
+JC(S^⋆,S^') = |S^⋆∩ S^'|/|S^⋆∪ S^'|.
+Therefore, the MJC is computed by averaging JC metric over all samples in the test set.
+
+Baselines. To show our method can achieve better
+performance on real applications, we compare it with the following methods:
+
+    
+  * Random. The results are calculated based on random estimates, which provide a measure of how challenging the tasks are.
+    
+  * PGM <cit.>. PGM is a probabilistic greedy model (PGM) solves optimization Problem <ref> with a differentiable extension of greedy maximization algorithm. In our paper, we leverage the results of PGD conducted on various datasets as reported in the study of <cit.>.
+    
+  * DeepSet <cit.>. Here, we use DeepSet as a baseline by predicting the probability of which instance should be in S^⋆, i.e., learn an invariant permutation mapping 2^V ↦ [0, 1]^|V|.
+    It serves as the backbone in EquiVSet to learn set functions, and can also be employed as a baseline.
+    
+  * Set Transformer <cit.>. Set Transformer, compared with DeepSet, goes beyond by incorporating the self-attention mechanism to account for pairwise interactions among elements. This will make models to capture dependencies and relationships between different elements.
+    
+  * EquiVSet <cit.>. EquiVSet uses 
+    an energy-based model (EBM) to construct the set mass function P(S|V) from a probabilistic perspective, i.e, they mainly focus on learning a distribution P(S|V) monotonically growing with the utility function F(S,V). This requires to learn a conditional distribution P(Y|S,V) as approximation distribution. Actually, their framework is to approximate symmetric F(S) instead of symmetric F(S,V).
+
+
+
+
+
+
+Product recommendation results on all categories.
+
+
+
+
+Categories     Random     PGM     DeepSet     Set Transformer     EquiVSet     
+
+Toys          0.083     0.441 ± 0.004     0.421 ± 0.005     0.625 ± 0.020     0.684 ± 0.004     0.769 ± 0.005
+
+Furniture     0.065     0.175 ± 0.007     0.168 ± 0.002     0.176 ± 0.008     0.162 ± 0.020     0.169 ± 0.050
+
+Gear          0.077     0.471 ± 0.004     0.379 ± 0.005     0.647 ± 0.006     0.725 ± 0.011     0.808 ± 0.012
+
+Carseats      0.066     0.230 ± 0.010     0.212 ± 0.008     0.220 ± 0.010     0.223 ± 0.019     0.231 ± 0.034
+
+Bath          0.076     0.564 ± 0.008     0.418 ± 0.007     0.716 ± 0.005     0.764 ± 0.020     0.862 ± 0.005
+
+Health        0.076     0.449 ± 0.002     0.452 ± 0.001     0.690 ± 0.010     0.705 ± 0.009     0.812 ± 0.005
+
+Diaper        0.084     0.580 ± 0.009     0.451 ± 0.003     0.789 ± 0.005     0.828 ± 0.007    0.880 ± 0.007
+
+Bedding       0.079     0.480 ± 0.006     0.481 ± 0.002     0.760 ± 0.020     0.762 ± 0.005    0.857 ± 0.010
+
+Safety        0.065     0.250 ± 0.006     0.221 ± 0.004     0.234 ± 0.009     0.230 ± 0.030    0.238 ± 0.015
+
+Feeding       0.093     0.560 ± 0.008     0.428 ± 0.002     0.753 ± 0.006     0.819 ± 0.009    0.885 ± 0.005
+
+Apparel       0.090     0.533 ± 0.005     0.508 ± 0.004     0.680 ± 0.020     0.764 ± 0.005    0.837 ± 0.003
+
+Media         0.094     0.441 ± 0.009     0.426 ± 0.004     0.530 ± 0.020     0.554 ± 0.005    0.620 ± 0.023
+
+
+
+
+
+
+
+
+ §.§ Product Recommendation
+
+The task requires models to recommend the most interested subset for a customer given 30 products in a category. We use the dataset <cit.> from the Amazon baby registry for this experiment, which includes many product subsets chosen by various customers. Amazon classifies each item on a baby registry as being under one of several categories, such as “Health” and “Feeding”. Moreover, each product is encoded into a 768-dimensional vector by the pre-trained BERT model based on its textual description. Table <ref> reports the performance of all the models across different categories. Out of the twelve cases evaluated, performs best in ten of them, except for Furniture and Safety tasks. The discrepancy in performance can be attributed to the fact that our method is built upon the EquiVSet framework, with the main modification being the model structure for modeling F(S, V). Consequently, when EquiVSet performs poorly, it also affects the performance of . Nonetheless, it is worth noting that consistently outperforms EquiVSet and achieves significantly better results than other baselines in the majority of cases. The margin of improvement is substantial, demonstrating the effectiveness and superiority of .
+
+
+
+
+
+ §.§ Set Anomaly Detection
+ 
+We conduct set anomaly detection tasks on three real-world datasets: the double MNIST <cit.>, the CelebA <cit.> and the F-MNIST <cit.>. Each dataset is divided into the training, validation, and test sets with sizes of 10,000, 1,000, and 1,000, respectively. For each dataset, we randomly sample n ∈{2,3,4} images as the OS oracle S^*. The setting is followed by <cit.>. Let's take CelebA as an example. In this case, the objective is to identify anomalous faces within each set solely through visual observation, without any access to attribute values. The CelebA dataset comprises 202,599 face images, each annotated with 40 boolean attributes. When constructing sets, for every ground set V, we randomly choose n images from the dataset to form the OS Oracle S^*, ensuring that none of the selected images contain any of the two attributes. Additionally, it is ensured that no individual person's face appears in both the training and test sets. Regarding Table <ref>, it is evident that our model demonstrates a substantial performance advantage over all the baselines. Specifically, in the case of Double MNIST, our model shows a remarkable improvement of 23% compared to EquiVSet, which itself exhibits the best performance among all the baselines considered. This significant margin of improvement highlights the superior capabilities of our model in tackling the given task.
+
+
+
+
+    
+
+    
+        Set anomaly detection and compound selection results
+    
+    
+
+    0.9!
+    
+    
+             
+        3cAnomaly Detection    
+        2cCompound selection 
+
+        
+           
+        Double MNIST    
+         CelebA    
+        F-MNIST    
+
+         
+         PDBBind    
+         BindingDB
+        
+
+        
+
+         1*Random      
+         0.0816    
+         0.2187    
+         0.193    
+         0.099    
+         0.009
+         
+
+        
+        
+                
+
+         1*PGM      
+         0.300 ± 0.010    
+         0.481 ± 0.006    
+         0.540 ± 0.020    
+         0.910 ± 0.010    
+         0.690 ± 0.020
+         
+
+        
+        
+         
+
+         1*DeepSet      
+         0.111 ± 0.003    
+         0.440 ± 0.006    
+          0.490 ± 0.020    
+         0.901 ± 0.011    
+         0.710 ± 0.020
+         
+
+        
+                
+
+        1*Set Transformer      
+         0.512 ± 0.005    
+         0.527 ± 0.008    
+         0.581 ± 0.010    
+         0.919 ± 0.015    
+         0.715 ± 0.010
+         
+
+        
+        
+                
+
+         1*EquiVSet      
+         0.575 ± 0.018    
+         0.549 ± 0.005    
+         0.645 ± 0.010    
+         0.924 ± 0.011    
+         0.721 ± 0.009
+         
+
+        
+        
+                
+
+        1*INSET      
+         0.707 ± 0.010     
+         0.580 ± 0.012     
+         0.721 ± 0.021     
+         0.935 ± 0.008     
+         0.734 ± 0.010
+         
+
+               
+        
+        
+
+    
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+ §.§ Compound Selection in AI-aided Drug Discovery
+ 
+The screening of compounds with diverse biological activities and satisfactory ADME (absorption, distribution, metabolism, and excretion) properties is a crucial stage in drug discovery tasks <cit.>. Consequently, virtual screening is often a sequential filtering procedure with numerous necessary filters, such as selecting diverse subsets from the highly active compounds first and then removing compounds that are harmful for ADME. After several filtering stages, we reach the optimal compound subset. However, it is hard for neural networks to learn the full screening process due to a lack of intermediate supervision signals, which can be very expensive or impossible to obtain due to the pharmacy’s protection policy. Therefore, the models are supposed to learn this complicated selection process in an end-to-end manner, i.e., models will predict S^* only given the optimal subset supervision signals without knowing the intermediate process. However, this is out of the scope of this paper, since the task is much more complex and requires extra knowledge, and thus we leave it as future work.
+
+r0.5
+
+
+    
+
+    
+        Ablation Studies on CelebA with different parameters 
+    
+    
+    
+
+    
+             
+        MJC    
+       Parameters
+        
+
+        
+
+         1*Random  
+             
+         0.2187    
+           -
+         
+
+
+   
+
+         1*EquiVSet      
+         0.549±0.005    
+         1782680
+         
+
+
+        1*EquiVSet (v1)      
+          0.554±0.007    
+         2045080
+         
+
+
+        
+         1*EquiVSet (v2)      
+          0.560±0.005    
+          3421592
+         
+
+    1*INSET      
+         0.580±0.012     
+         2162181
+        
+
+          
+        
+
+    
+    
+
+
+
+
+To simulate the process, we only apply one filter: high bioactivity to acquire the optimal subset of compound selection following <cit.>. We conduct experiments using the following datasets: PDBBind <cit.> and BindingDB <cit.>. 
+Table <ref> shows that our method performs better than the baselines and significantly outperform the random guess, especially on the BindingDB dataset. Different from the previous tasks, the performance of these methods is closer to each other. That is because the structure of complexes (the elements in a set) can provide much information for this task. Thus, the model could predict the activity value of complexes well without considering the interactions between the optimal subset and the complementary. However, our method can still achieve more satisfactory results than the other methods.
+
+
+
+
+
+ §.§ Computation Cost
+
+The main difference between and EquiVSet is the additional information-sharing module to incorporate the representations of V. A possible concern is that the better performance of might come from the extra parameters instead of our framework proposed. To address this concern, we conducted experiments on CelebA datasets. We add an additional convolution layer in the encoders to improve the capacity of EquiVSet. According to the location and size, we propose two variants of EquiVSet, details can be found in the appendix. We report the performance of models with different model sizes in Table <ref>. It is evident that surpasses all the variants of EquiVSet, clearly demonstrating superior performance. Notably, the improvement achieved through the parameters is considerably less significant when compared to the substantial improvement resulting from the information aggregation process. This highlights the crucial role of information aggregation in driving the overall performance enhancement of .
+
+
+
+
+ §.§ Performance versus Training Epochs
+
+In addition to the notable improvement in the final MJC achieved by , we have also observed that incorporating more information from the superset leads to enhanced training speed and better overall performance. To illustrate this, we present two figures depicting the validation performance against the number of training epochs for the Toys and Diaper datasets. It is evident that achieves favorable performance in fewer training epochs. For instance, on the Toy dataset, reaches the best performance of EquiVSet, at approximately epoch 18. Furthermore, around epoch 25, approaches its optimal performance, while EquiVSet and Set Transformer attain their best performance around epoch 40. This highlights the efficiency and effectiveness of in achieving competitive results within a shorter training time.
+
+
+
+
+
+
+
+
+	       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+§ CONCLUSION
+
+In this study, we have identified a significant limitation in subset encoding methods, such as neural subset selection, where the output is either the subset itself or a function value associated with the subset. By incorporating the concept of permutation invariance, we reformulate this problem as the modeling of a conditional distribution P(Y|S,V) that adheres to Property <ref>. Our theoretical analysis further reveals that to accomplish this objective, it is essential to construct a neural network based on the invariant sufficient representation of both S and V. In response, we introduce , a highly accurate and theoretical-driven approach for neural subset selection, which also consistently outperforms previous methods according to empirical evaluations.
+
+Limitations and Future Work. is a simple yet effective method in terms of implementation, indicating that there is still potential for further improvement by integrating additional information, such as pairwise interactions between elements. Furthermore, our theoretical analysis is not limited to set-based tasks; it can be applied to more general scenarios with expanded definitions and theoretical contributions. We acknowledge that these potential enhancements and extensions are left as future work, offering opportunities for further exploration and development.
+
+
+
+
+
+
+
+    [!b]0.32
+        
+    < g r a p h i c s >
+
+    
+    [!b]0.30
+        
+    < g r a p h i c s >
+
+    
+    [!b]0.30
+        
+    < g r a p h i c s >
+
+    
+    Left: A sample from the Double MNIST dataset, comprising |S^*| images displaying the same digit (indicated by the red box).
+Right: The two figures on the right display the validation performance plotted against the number of epochs for Toys and Diaper datasets, respectively. The x-axis represents the epochs.
+
+
+
+
+
+§ ACKNOWLEDGEMENTS
+
+We thanks the reviewers for their valuable comments. Additionally, we extend our thanks to Zijing Ou for his assistance with the code and datasets. This work was supported by CUHK direct grant 4055146. BH was supported by the NSFC General Program No. 62376235, Guangdong Basic and Applied Basic Research Foundation No. 2022A1515011652, Tencent AI Lab Rhino-Bird Gift Fund.
+
+
+
+iclr2024_conference
+
+
+
+
+
+§ PROOF OF THEOREM 3.5
+
+
+
+ §.§ The Connection between Functional and Probabilistic Symmetries
+
+To prove Theorem <ref>, the main objective is to establish a relationship between the conditional distribution P(Y|S,V) and a functional representation of samples generated from P(Y|S,V) in terms of (S,V) and independent noise . This functional representation can be expressed as Y  f(, S,V), where f captures the underlying relationship between the variables.
+
+In order to achieve this goal, a valuable technique called the transducer <cit.> or Noise Outsourcing <cit.> comes into play. This technique allows us to effectively connect the conditional distribution with the functional representation by leveraging the concept of independent noise variables. By applying the transducer or Noise Outsourcing approach, we can establish a clear mapping between the observed variables (S,V), the independent noise , and the resulting output Y. More formally, we give the corresponding lemma as:
+
+0.15in
+ 
+  Let S,V,Y, Z be random elements in some measurable spaces , , ,, respectively, where  is Borel. Then Y_Z (S,V) if and only if Y  f(,Z) for some measurable function f : [0,1] ××→ and some uniform random variable (S,V,Z).
+
+In the main text, we put forth the idea of utilizing an invariant sufficient representation M(S,V) as an alternative to (S,V) to ensure compliance with symmetry groups. This representation captures the essential information while discarding unnecessary details, making it well-suited for addressing the challenges posed by symmetry.
+
+By employing the invariant sufficient representation M(S,V), we can redefine and refine the aforementioned lemma in a more concise and expressive manner. This approach allows us to establish a direct connection between the conditional distribution P(Y|S,V) and the functional representation f(, M(S,V)), where  represents independent noise variables. The use of M(S,V) as a replacement for (S,V) enables us to effectively model and analyze the relationship between the input variables and the desired output.
+0.15in
+ 
+  
+  Let S, V and Y be random variables with joint distribution P(S,V,Y). Assume there exists a mapping M : ×→, then M(S,V) d-separates (S,V) and Y if and only if there is a measurable function f : [0,1] ××→ such that
+  
+    (S,V,Y)  (S,V,f( ,M(S,V)))   where  ∼[0,1]   and   X  .
+
+  In particular, Y = f(, M(S,V)) has distribution P(Y|S,V).
+
+This lemma implies that if the invariant sufficient representation is capable of d-separating (S,V) and Y, it will yield the equation presented in Eq.<ref> of Theorem<ref>. Subsequently, we must establish why the conditional distribution P(Y|S,V) remains invariant under the group  if and only if an invariant sufficient representation M exists. This overarching concept can be succinctly summarized in the following lemma:
+0.15in
+ 
+  Let , and  be Borel spaces,  a compact group acting measurably on (,), and M : ×→ a invariant sufficient representation on (, ) under . If (S,V) is a random element of (,), then its distribution P(S,V) is -invariant if and only if
+  
+    P((S,V) ∈| M(S,V) = m) = q(,m)  ,
+
+  for some Markov kernel q : _××→_+. 
+  If P(S,V) is -invariant and Y is any other random variable, then P(Y|S,V) is -invariant if and only if Y _M(S,V) (S,V).
+
+This lemma serves as a refined version of Lemma 20 presented in <cit.>. Proving this lemma involves a comprehensive set of definitions and notations, which are beyond the scope of this paper. We encourage interested readers to refer to <cit.> for detailed proof.
+
+By leveraging the insights and techniques established above, we are able to establish Theorem <ref>. The theorem provides a formal characterization of the relationship between the invariance of the conditional distribution P(Y|S,V) under the group  and the existence of an invariant sufficient representation M(S,V).
+
+*
+
+
+    Lemma <ref> plays a crucial role in establishing the conditional independence relationship between Y and (S,V) based on the invariant sufficient representation M(S,V). This lemma demonstrates that when M(S,V) is employed, the variables Y and (S,V) become conditionally independent, meaning that knowledge of M(S,V) is sufficient to explain the relationship between Y and (S,V).
+
+    By leveraging the insights provided by Lemma <ref>, we can derive the conclusion of Theorem <ref> with the support of lemma <ref>. Lemma <ref> further strengthens the link between the conditional independence relationship and the existence of an invariant sufficient representation. It establishes the notion that the invariance of the conditional distribution P(Y|S,V) under the group  is directly related to the presence of an invariant sufficient representation M(S,V).
+
+
+Given the established conditional independence relationship Y_M(S,V) (S,V) as demonstrated in Lemma <ref>, we can now proceed to prove the following corollary by examining the definition of adequacy:
+
+*
+
+This corollary follows directly from the nature of the conditional independence relationship and the definition of adequacy. The fact that Y and (S,V) are conditionally independent given M(S,V) indicates that the representation M(S,V) contains all the necessary information to explain the relationship between Y and (S,V). In other words, the representation M(S,V) adequately captures the relevant features and factors that influence the conditional distribution of Y given (S,V).
+
+
+
+ §.§ Some Remarks
+
+Throughout the course of our proof, it is possible that some points may cause confusion. To address this, we present a set of remarks and additional propositions that aim to provide further clarity and insights. Specifically, we address the question of why Eq <ref> can lead to an invariant conditional distribution, considering its nature as a joint distribution scheme.
+
+In the probabilistic literature, it is often more convenient to establish the invariance of joint distributions as a starting point. In our case, we focus on the joint distribution P(S,V,Y), which can be considered invariant under certain conditions. This joint distribution is invariant if and only if:
+
+    (S,V,Y)  (g· (S,V), Y)   for all  g∈ .
+
+These conditions ensure that the joint distribution P(S,V,Y) possesses the desired invariance properties required for the subsequent analysis. By establishing an invariant joint distribution, we pave the way for investigating the properties of the conditional distribution P(Y|S,V).
+
+By leveraging the invariance of the joint distribution, we can derive the invariance of the conditional distribution P(Y|S,V). This arises from the fact that the joint distribution scheme inherently captures the relationship between Y and (S,V), allowing us to analyze their conditional distribution in an invariant manner <cit.>:
+
+Assume a group  acting on (,), and then P(Y|S,V) is -invariant if and only if (S,V,Y)  (g· (S,V),Y) for all g∈.
+
+This proposition establishes a direct correspondence between the invariance of the conditional distribution P(Y|S,V) and the symmetry of the joint distribution (S,V,Y) under the group action. Specifically, it states that the conditional distribution remains invariant if and only if the joint distribution exhibits the same structural patterns and properties when transformed by any element of the group .
+
+To address another potential source of confusion, we delve into the distinction between f(, S,V) and f(S,V), where the former represents a stochastic function and the latter a deterministic functional model. It is worth noting that deterministic functional models can be viewed as a special case of stochastic functions. In the context of an invariant stochastic function Y = f(, S,V), we can establish the following relationship:
+
+    [ Y | S,V] = ∫_[0,1] f(,S,V)  d = h(S,V)  ,
+ 
+Here, [ Y | S,V] denotes the conditional expectation of Y given S and V. By integrating the stochastic function f(,S,V) with respect to  over the range [0,1], we arrive at the invariant deterministic function h(S,V). Equation <ref> establishes a crucial connection between the invariant stochastic function f(,S,V) and the corresponding invariant deterministic function h(S,V). This relationship highlights the interplay between stochasticity and determinism in modeling invariant behavior. 
+
+
+
+
+
+§ PROOF OF PROPOSITION 3.7
+
+
+*
+It is important to note that the definition of the invariant sufficient representation is formulated with respect to the variables (S,V). To facilitate comprehension, let us revisit the definition of the invariant sufficient representation. Furthermore, to enhance clarity and ease of understanding, we will also provide the corresponding invariant sufficient representation for the marginal distribution X, which can represent either S or V.
+
+ For a group  of actions on any x∈ , we say M : → is a invariant sufficient representation for some space , if it satisfies: If M(x_1) = M(x_2), then x_2 = g· x_1 for some g∈; otherwise, there is no such g that satisfies x_2 = g· x_1. 
+
+
+*
+
+
+For any (s,v) 
+ Consider the function f(M_s(s), M_v(v)), where M_s and M_v represent the mappings from S and V to their corresponding invariant sufficient representations. We aim to show that f(M_s(S), M_v(V)) serves as the invariant sufficient representation of (S,V) under the group .
+
+First, let's examine the three possible cases. If s_1 ≠ s_2 while v_1 = v_2, it is evident that if f(M_s(s_1), M_v(v_2)) = f(M_s(s_2), M_v(v_2)), there must exist g = (h, e) ∈ such that (s_2,v_2) = g · (s_1,v_1), where e denotes the identity transformation. Similarly, if s_1 = s_2 but v_1 ≠ v_2, the same argument holds.
+
+Now, let's consider the case where s_1 ≠ s_2 and v_1 ≠ v_2. Since f is an injective function, if f(M_s(s_1), M_v(v_2)) = f(M_s(s_2), M_v(v_2)), it implies that M_s(s_1) = M_s(s_2) and M_v(v_1) = M_v(v_2). By the definition of the invariant sufficient representation, we can conclude that if f(M_s(s_1), M_v(v_1)) = f(M_s(s_2), M_v(v_2)), then (s_2,v_2) = g · (s_1,v_1) for some g ∈. Conversely, if no such g exists to satisfy (s_2,v_2) = g · (s_1,v_1), it implies that f(M_s(s_1), M_v(v_1)) ≠ f(M_s(s_2), M_v(v_2)).
+
+Therefore, we can conclude that f(M_s(S), M_v(V)) serves as the invariant sufficient representation of (S,V) under the group . This function captures the essential information required to explain the relationship between (S,V) and Y, ensuring that the conditional distribution P(Y|S,V) remains invariant under the group action.
+
+
+
+
+
+
+
+The statistics of Amazon product dataset, which is from <cit.>
+
+
+
+Categories     |𝒟|     |V|     ∑ |S^*|     𝔼[|S^*|]     min_S^* |S^*|     max_S^* |S^*|
+
+Toys     2,421      30     9,924     4.09     3     14 
+
+Furniture     280      30     892     3.18     3     6 
+
+Gear     4,277      30     16,288     3.80     3     10 
+
+Carseats     483      30     1,576     3.26     3     6 
+
+Bath     3,195      30     12,147     3.80     3     11 
+
+Health     2,995      30     11,053     3.69     3     9 
+
+Diaper     6,108      30     25,333     4.14     3     15 
+
+Bedding     4,524      30     17,509     3.87     3     12 
+
+Safety     267      30     846     3.16     3     5 
+
+Feeding     8,202      30     37,901     4.62     3     23 
+
+Apparel     4,675      30     21,176     4.52     3     21 
+
+Media     1,485      30     6,723     4.52     3     19 
+
+
+
+
+
+
+§ DETAILS OF NEURAL SUBSET SELECTION IN OS ORACLE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ §.§ The Objective of Neural Subset Selection in Optimal Subset Oracle
+
+
+Our formulation of the optimization objective is based on the framework established in <cit.>. Specifically, the optimization objective is to address Equation <ref> by adopting an implicit learning strategy grounded in probabilistic reasoning. This approach can be succinctly formulated as follows:
+
+
+    _θ 𝔼_ℙ(V, S) [log p_θ (S^* | V)] 
+       s.t.  p_θ (S | V) ∝  F_θ (S ; V), ∀  S ∈ 2^V,
+
+
+The important step in addressing this problem involves constructing an appropriate set mass function p_θ (S|V) that is monotonically increasing in relation to the utility function F_θ (S;V). To achieve this, we can employ the Energy-Based Model (EBM):
+
+    p_θ (S|V) = exp( F_θ (S; V))/Z,   Z := ∑_S'⊆ Vexp( F_θ (S'; V)),
+
+In practice, we approximate the EBM by solving a variational approximation
+
+    ϕ^* =  argmin_ϕ D(q(S|V;Y) || p_θ (S|V)),
+
+The expression of q(S|V;Y) is defined as follows:
+
+    q(S|V;Y) = ∏_i ∈ SY_i ∏_i ∉S(1-Y_i), Y∈[0,1]^|V|.
+
+Next, we would like to explain why q(S|V;Y) can approximate P(S|V). We have defined that Y ∈ [0, 1]^|V| and S = {0, 1}^|V|. In this case, Y can be viewed as a stochastic version of S since Y can also be generated as Y = {0, 1}^|V| while still satisfies the constraint Y ∈ [0, 1]^|V|.
+
+To facilitate comprehension, let us consider an illustrative scenario. Suppose we have a ground set V = {x_1, x_2, x_3}, and the optimal subset S^* is {x_1, x_2}, which can be represented as [1, 1, 0]. Specifically, we define P(S^*|V) = 1, indicating that S^* is the correct subset, while for any S ≠ S^*, we have P(S|V) = 0.
+
+Now, let's examine the case when Y = [1, 1, 0]. In this situation, we can calculate that q(Y|S^*,V) = 1. This implies that q(Y|S^*,V) accurately represents the probability of observing S^* given V, and it correctly assigns a high probability to the optimal subset.
+
+Moreover, to generate Y, we construct an EquiNet <cit.>, denoted as Y = EquiNet(V;ϕ): 2^V → [0,1]^|V|, which induces the distribution of P(Y|S,V) in our main text. This network takes the ground set V as input and outputs probabilities indicating the likelihood of each element x ∈ V being part of the optimal subset S^*. In the inference stage, EquiNet is employed to predict the optimal subset for a given ground set V, using a TopN rounding approach. Our approach aims to develop a more customized neural network architecture specifically designed for this process.
+
+
+
+
+§ EXPERIMENTAL DETAILS
+
+
+
+
+
+
+ §.§ Detailed Description of Datasets
+
+Amazon Baby Registry Dataset.
+The Amazon baby registry data <cit.> is collected from Amazon with several datasets in different categories, such as toys, furniture, etc. For each category, we are provided with |V| sets of products selected by different customers. We then construct a sample (S^*, V) as follows. We first removed any subset whose optimal subset size |S^*| is greater than or equal to 30. Then we divided the remaining subsets into the training, validation, and test folds with a 1:1:1 ratio. Finally, we randomly sampled additional 30-|S^*| products from the same category to construct (S^⋆,V). In this way, we constructed a data point (S^*,V). For completeness, We provide the statistics of the categories in Table. <ref> from <cit.>.
+
+
+
+
+  
+Double MNIST. This dataset includes 1000 photos, ranging from 00 to 99. To construct (S^*,V), we first sampled |S^*| ∈{2,…,5} images with the same digit as S^*. Then we selected 20 - |S^*| images with different digits to construct the set V \ S^*.
+
+
+
+  
+CelebA. The CelebA dataset contains 202,599 images and 40 attributes. We randomly chose two attributes to construct each set V with the size of 8. Then, for each set, we selected |S^⋆| ∈{2,3} images without the two attributes as the S^⋆. To facilitate comprehension, we have included an illustrative example of the dataset in Fig. <ref>, sourced from the work of <cit.>.
+
+
+
+  
+PDBBind. This dataset provides a comprehensive collection of experimentally measured binding affinity data for biomolecular complexes. We used the “refined” part of the whole PDBBind to construct our dataset of subsets, which contain 179 complexes. To construct a data point (V, S^⋆), we randomly sampled 30 complexes as the ground set V, and then S^⋆* was generated by the five most active complexes in V. We constructed 1000, 100, and 100 data points for the training, validation, and test split, respectively.
+
+
+
+  
+BindingDB. BindingDB is a public, web-accessible database of measured binding affinities consisting of 52,273 drug-targets with small, drug-like molecules. Same as PDBBind, We randomly sampled 300 drug-targets from the BindingDB database to construct the ground set V and select 15 most active drug-target pairs as S^⋆. Finally, we also generated the training, validation, and test set with the size of 1000, 100, and 100, respectively.
+
+
+
+
+    < g r a p h i c s >
+
+Here is an illustration of the CelebA dataset from the work by <cit.>. Each row in the dataset represents a sample, containing a combination of |S^*| anomaly images (highlighted in red boxes) and 8-|S^*| normal images. Notably, within each sample, normal images possess two specific attributes, which are indicated in the rightmost column. In contrast, anomalies lack both of these attributes. This clear distinction between normal images and anomalies allows for a comprehensive analysis and understanding of the dataset's characteristics.
+
+
+
+
+
+
+
+ §.§ The Architecture of 
+
+The structure of is similar to EquiVSet, while has an additional information-sharing component, i.e., EquiVSet uses only one DeepSets layer in the set function modelue, while uses two.
+
+For completeness, we also provide the detailed architectures of in this subsection. Firstly, the structure of DeepSets in is as follows:
+
+
+
+
+
+
+
+
+
+Detailed architectures of the DeepSets.
+
+
+1cSet Function 
+
+(lr)1-1
+(S,h)  
+
+  
+
+(h, h_d, )  
+
+(h_d, h_d, )  
+
+(h, 1, -)  
+
+
+
+
+Specifically, (S,d) encodes the set objects into vector representations. (d, h, f) is a fully-connected layer with activation function f. In particular, we set h as 256 and  h_d as 500, same as <cit.>.
+
+In all experiments, the structure of InitLayer will change based on the type of datasets.
+
+Synthetic datasets.
+The synthetic datasets consist of the Tow-Moons and Gaussian-Mixture datasets. Each instance of the set is a two-dimensional vector, which represents the corresponding Cartesian coordinates. In this dataset, the  is a one-layer feed-forward neural network (2, 256, -).
+
+Amazon Baby Registry.
+In this datasets, each product is encoded into a 768-dimensional vector by the
+pre-trained BERT model based on its textual description. Therefore, each element of the set is a 768-dimensional feature vector, and (768, 256, -) will be the  to process each embedding of the product.
+
+Double MNIST. The double MNIST dataset consists of different digit images with a shape of (64,64) and we transformed it as (4096,). Then, the  is also a fully connected layer as (4096, 256, -).
+
+CelebA. The CelebA dataset includes face images in the shape of (3,64,64). We used 3-depth convolutional neural networks as the . Specifically,
+
+    ModuleList([(32,3,2,), (64,4,2,), 
+    (128,5,2,), MaxPooling, (128, 256, -)]),
+
+where (d,k,s,f) is a convolutional layer with d output channels, k kernel size, s stride size, and activation function f.
+
+
+
+
+
+PDBBind.
+The PDBBind database consists of experimentally measured binding affinities for biomolecular complexes <cit.>. The
+atomic convolutional network (ACNN) <cit.> provides meaningful feature vectors for complexes by constructing nearest neighbor graphs based on the 3D coordinates of atoms and predicting binding free energies. In this work, we used ACNN as the pre-train model and used the output of the second to the lastlayer of the ACNN model to obtain the representations of complexes. Specifically, the  is defined as
+
+    ModuleList([ACNN[:-1], (1922, 2048, ), (2048, 256, -)]),
+
+where ACNN[:-1] denotes the ACNN module without the last prediction layer, whose output dimensionality is 1922.
+
+BindingDB.
+We employ the DeepDTA model <cit.> as the based-encoder to transform drug-target pairs as vector representations. The detailed architecture of  used in our code is defined as follows:
+
+Detailed architectures of InitLayer in the BindingDB dataset.
+
+
+Drug     Target 
+
+(lr)1-1 (lr)2-2
+(32,4,1,)     (32,4,1,) 
+
+(64,6,1,)     (64,8,1,) 
+
+(96,8,1,)     (96,12,1,) 
+
+MaxPooling     MaxPooling 
+
+(96, 256, )     (96, 256, ) 
+
+2cConcat 
+
+2c(512, 256, -) 
+
+
+
+
+
+
+
+ §.§ Training Details
+
+We applied the early stopping strategy to train both the baselines and our models as in EquiVSet. Specifically, if the best validation performance is not improved in the continuous 6 epochs, we will stop the training process. The maximum of epochs is set as 100 for each dataset.  We saved the models with the best validation performance and evaluated them on the test set. We repeated all experiments 5 times with different random seeds, and the average performance metrics and their standard deviations are reported as the final performances.
+
+
+
+
+
+
+
+
+
+
+
+The proposed models are trained using the Adam optimizer <cit.> with a fixed learning rate of 1e-4 and a weight decay rate of 1e-5. To accommodate the varying model sizes across different datasets, we select the batch size from the set {4, 8, 16, 32, 64, 128}. Notably, we choose the largest batch size that allows the model to be trained on a single GeForce RTX 2080 Ti GPU, ensuring efficient training.
+
+
+
+
+§ ADDITIONAL EXPERIMENTS
+
+
+
+ §.§ Synthetic Experiments
+
+We substantiate the effectiveness of our models by conducting experiments on learning set functions using two synthetic datasets: the two-moons dataset with additional noise of variance σ^2 = 0.1, and a mixture of Gaussians represented by 1/2𝒩( μ_0, Σ) + 1/2𝒩(μ_1, Σ).
+
+For the Gaussian mixture dataset, we specify the following data generation procedure:
+i) We first select an index, denoted as b, using a Bernoulli distribution with a probability of 1/2.
+ii) Next, we sample 10 points from the Gaussian distribution 𝒩(μ_b, Σ) to construct the set S^*.
+iii) Subsequently, we sample 90 points for V \ S^* from the Gaussian distribution 𝒩(μ_1-b, Σ).
+We repeat this process to obtain a total of 1,000 samples, which are then divided into training, validation, and test sets.
+
+Both the two-moon dataset and the Gaussian mixture dataset serve as valuable benchmarks for evaluating the performance of our models. By conducting experiments on these datasets and collecting the necessary data points, we are able to demonstrate the efficacy of our approach in learning complex set functions. The results are reported in Table <ref>.
+
+
+    
+        Results in the MJC metric on Two-Moons and Gaussian-Mixture datasets. we leverage the results of baselines as reported in the study by <cit.>.
+            
+        
+
+        
+        
+        Method     Two Moons     Gaussian Mixture  
+
+        Random     0.055     0.055 
+
+        PGM     0.360 ± 0.020     0.438 ± 0.009 
+
+        DeepSet     0.472 ± 0.003     0.446 ± 0.002 
+
+        Set Transformer     0.574 ± 0.002     0.905 ± 0.002 
+
+        EquiVSet      0.584 ± 0.003     0.908 ± 0.002 
+
+            0.590 ± 0.003     0.909 ± 0.002 
+
+        
+
+
+
+
+
+ §.§ Computation Cost
+
+
+One of the key distinctions between and EquiVSet lies in the inclusion of an information-sharing module, specifically a DeepSets Layer, in our architecture. However, a legitimate concern that arises is whether the improved performance of can be solely attributed to the additional parameters introduced by this module, rather than the underlying framework itself. To address this concern and gain deeper insights, we conducted experiments using the CelebA dataset.
+
+In order to enhance the capacity of EquiVSet and enable a fair comparison, we introduced an additional convolution layer within the . By doing so, we ensured that both EquiVSet and had comparable model sizes. The experimental results, including the performance of models with different model sizes, are reported in Table <ref>.
+
+Moreover, we further investigated and analyzed the specific architecture of the initial layer for EquiVSet in two different versions, denoted as EquiVSet(v1) and EquiVSet(v2). For EquiVSet(v1), the initial layer is structured as follows:
+
+    ModuleList([(32,3,2,), (64,4,2,),  (64,4,2,), 
+    (128,5,2,), MaxPooling, (128, 256, -)]),
+
+The initial layer for EquiVSet(v2) is:
+
+    ModuleList([(32,3,2,), (64,4,2,),  (128,5,2,), 
+    (128,5,2,), MaxPooling, (128, 256, -)]),
+
+
+
+
+
+
+  
+
+  [Toys]
+    < g r a p h i c s >
+
+  [Gear]
+    < g r a p h i c s >
+
+  [Bath]
+    < g r a p h i c s >
+
+  [Health]
+    < g r a p h i c s >
+
+
+  Sensitivity analysis of performance under varying numbers of Monte Carlo (MC) sampling.
+  
+
+
+
+
+
+ §.§ Compound Selection
+
+In the main text, we focused on the application of a single filter. However, to provide a more practical perspective, we extended our analysis by simulating the OS (Objective Selector) oracle of compound selection using two filters: the high bioactivity filter and the diversity filter. By incorporating these additional filters, we aimed to evaluate the performance of our approach in a more realistic scenario.
+
+The results of this extended analysis are presented in Table <ref>. These findings shed light on the effectiveness and applicability of our approach when considering multiple filters for compound selection. By incorporating both high bioactivity and diversity filters, we demonstrate the potential of our method to enhance the selection process and improve the overall quality and diversity of the selected compounds.
+
+
+
+
+Compound selection results.
+
+
+Method     PDBBind     BindingDB  
+
+Random     0.073     0.027 
+
+PGM     0.350 ± 0.009     0.176 ± 0.006
+
+DeepSet     0.323 ± 0.004     0.165 ± 0.005
+
+Set Transformer     0.355 ± 0.010     0.183 ± 0.004
+
+EquiVSet     0.357 ± 0.005     0.188 ± 0.006
+
+    0.371 ± 0.010     0.198 ± 0.005
+
+
+
+       
+
+    
+        Compared with EquiVSet with more parameters
+    
+    
+    
+
+    
+             
+        MJC    
+       Parameters
+        
+
+        
+
+         1*Random  
+             
+         0.2187    
+           -
+         
+
+
+        1*DeepSet  
+             
+         0.440±0.006    
+         651181 
+         
+
+
+         1*Set-Transformer  
+             
+         0.527±0.008    
+         1288686 
+         
+
+
+
+         1*EquiVSet      
+         0.549±0.005    
+         1782680
+         
+
+
+        1*EquiVSet (v1)      
+          0.554±0.007    
+         2045080
+         
+
+
+        
+         1*EquiVSet (v2)      
+          0.560±0.005    
+          3421592
+         
+
+    1*INSET      
+         0.580±0.012     
+         2162181
+        
+
+          
+        
+
+    
+    
+
+
+
+
+
+ §.§ Ablation Studies
+
+To further verify the robustness of INSET, we have now conducted ablation studies focusing on the Monte-Carlo (MC) sample numbers for each input pair {(V_i, S_i^*)}. In the context of neural subset selection tasks, our primary aim is to train the model  θ to predict the optimal subset S^*  from a given ground set V.  During training, we sample m subsets from V to optimize our model parameters θ, thereby maximizing the conditional probability distribution p_θ (S^* | V) among of all pairs of (S,V) for for a given V. In our main experiments, we adhere to EquiVSet's protocol by setting the sample number m to 5 across all the tasks. The empirical results depicted in Figure <ref> demonstrate that consistently achieves satisfactory results, even with decreasing values of m.
+
+
+
+
+
+ §.§ Experiments on Set Anomaly Detection.
+
+In this experiment, we further perform set anomaly detection on CIFAR-10. Following the setup of <cit.>, we randomly sample n ∈{2,3} images as the OS oracle S^*, and then select 8 - |S^*| images with different labels to construct the set V\ S^*. We finally obtain the training, validation, and test set with the size of 10,000, 1,000, 1,000, respectively. We report all the set anomaly detection results in Table <ref>. It is obviously that outperform the baselines significantly across different datasets on set anomaly detection tasks.
+
+
+
+    
+    
+        Empirical results of set anomaly detection Tasks
+    
+    
+
+    0.9!
+    
+    
+           
+        Double MNIST    
+         CelebA    
+        F-MNIST    
+         CIFAR-10 
+        
+
+        
+
+         1*Random      
+         0.0816    
+         0.2187    
+         0.1930    
+         0.1926
+         
+
+        
+        
+
+         1*PGM      
+         0.300 ± 0.010    
+         0.481 ± 0.006    
+         0.540 ± 0.020    
+         0.450 ± 0.020 
+         
+
+        
+        
+                
+
+         1*DeepSet      
+         0.111 ± 0.003    
+         0.440 ± 0.006    
+         0.490 ± 0.020    
+         0.320 ± 0.008
+         
+
+        
+
+        1*Set Transformer      
+         0.512 ± 0.005    
+         0.527 ± 0.008    
+         0.581 ± 0.010    
+         0.650 ± 0.023 
+         
+
+        
+        
+        
+
+         1*EquiVSet      
+         0.575 ± 0.018    
+         0.549 ± 0.005    
+         0.645 ± 0.010    
+         0.630 ± 0.012 
+         
+
+        
+        
+
+        1*INSET      
+         0.707 ± 0.010     
+         0.580 ± 0.012     
+         0.710 ± 0.021     
+         0.712 ± 0.020  
+         
+
+               
+        
+        
+
+    
+    
+    
+
+
+

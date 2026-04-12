@@ -1,6 +1,7 @@
 """Backend definitions: command templates and system-prompt filenames per backend."""
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
 
 # Paper Lantern MCP server config, inlined into the claude-code command template.
 # The JSON is wrapped in single quotes at the shell level so its internal double
@@ -14,6 +15,17 @@ _PAPER_LANTERN_MCP_CONFIG = (
     '}}}}\''
 )
 
+_PAPER_LANTERN_MCP_URL = "https://mcp.paperlantern.ai/chat/mcp?key=pl_cd1099cd5b35f6c193f9"
+
+# Gemini CLI reads .gemini/settings.json from the working directory for MCP config.
+_GEMINI_SETTINGS = json.dumps({
+    "mcpServers": {
+        "paperlantern": {
+            "httpUrl": _PAPER_LANTERN_MCP_URL,
+        }
+    }
+}, indent=2)
+
 
 @dataclass(frozen=True)
 class Backend:
@@ -26,6 +38,8 @@ class Backend:
     # $SESSION_ID. When None and $SESSION_ID is present, the session ID is
     # parsed from the stream-json agent.log (claude-code default).
     session_id_extractor: str | None = None
+    # Files to write into the agent directory at creation time (relative path -> content).
+    setup_files: dict[str, str] = field(default_factory=dict)
 
 
 BACKENDS: dict[str, Backend] = {
@@ -46,8 +60,8 @@ BACKENDS: dict[str, Backend] = {
         name="gemini-cli",
         prompt_filename="GEMINI.md",
         command_template='gemini --yolo --prompt "{prompt}"',
-        # --resume restores the most recent session for the current project dir
         resume_command_template='gemini --yolo --resume',
+        setup_files={".gemini/settings.json": _GEMINI_SETTINGS},
     ),
     "codex": Backend(
         name="codex",
@@ -82,3 +96,12 @@ def get_backend(name: str) -> Backend:
     if name not in BACKENDS:
         raise ValueError(f"Unknown backend: {name!r}. Choose from: {BACKEND_CHOICES}")
     return BACKENDS[name]
+
+
+def write_setup_files(backend: Backend, agent_dir) -> None:
+    """Write any backend-specific setup files into agent_dir."""
+    from pathlib import Path
+    for rel_path, content in backend.setup_files.items():
+        dest = Path(agent_dir) / rel_path
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(content, encoding="utf-8")

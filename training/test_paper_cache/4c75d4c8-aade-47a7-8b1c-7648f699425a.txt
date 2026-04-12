@@ -1,0 +1,812 @@
+DexMachina: Functional Retargeting for
+Bimanual Dexterous Manipulation
+ZhaoMandi1∗,YifanHou1,DieterFox2,YashrajNarang2,AjayMandlekar2,†,ShuranSong1,†
+1StanfordUniversity 2NVIDIA †equaladvising ∗workpartiallydoneatinternship
+Abstract: We study the problem of functional retargeting: learning dexterous
+manipulationpoliciestotrackobjectstatesfromhumanhand-objectdemonstra-
+tions. Wefocusonlong-horizon,bimanualtaskswitharticulatedobjects,which
+ischallengingduetolargeactionspace,spatiotemporaldiscontinuities,andem-
+bodiment gap between human and robot hands. We propose DexMachina, a
+novelcurriculum-basedalgorithm: thekeyideaistousevirtualobjectcontrollers
+withdecayingstrength: anobjectisfirstdrivenautomaticallytowardsitstarget
+states, such that the policy can gradually learn to take over under motion and
+contactguidance. Wereleaseasimulationbenchmarkwithadiversesetoftasks
+anddexteroushands,andshowthatDexMachinasignificantlyoutperformsbase-
+linemethods. Ouralgorithmandbenchmarkenableafunctionalcomparisonfor
+hardwaredesigns,andwepresentkeyfindingsinformedbyquantitativeandquali-
+Hand-Object Demonstrations Functional Retargeting Across A Variety of Dexterous Hands
+tativeresults. Withtherecentsurgeindexteroushanddevelopment,wehopethis
+workwillprovideausefulplatformforidentifyingdesirablehardwarecapabili-
+tiesandlowerthebarrierforcontributingtofutureresearch. Videosandmoreat
+project-dexmachina.github.io
+One Human Demonstration
+Bimanual Dexterous Manipulation Policy
+Keywords: DexterousManipulation,ReinforcementLearning,Simulation-based
+Learning
+Functional Retargeting Across Different Hands For Different Objects
+One Human Demonstration
+Bimanual Dexterous Manipulation Policy
+Figure1: FunctionalRetargeting.Westudytheproblemoffunctionalretargeting,wherethegoalistoretarget
+humanhanddemonstrationsintofunctionaldexterousrobotpoliciesthatmanipulateanobjecttofollowthe
+demonstratedtrajectory.Ourproposedalgorithm,DexMachina,achievesfunctionalretargetingfromonehuman
+demonstrationtoavarietyofexistingdexteroushandembodimentsoverarangeofarticulatedobjects.
+1 Introduction
+Dexterousrobothands,withtheirresemblancetohumanhands,sparktheexpectationforachieving
+human-level dexterity. Yet the reality presents many hardware and algorithmic challenges that
+bottlenecktheprogressindexterousmanipulation. Priorlearning-basedmethodshaveseensuccessin
+relativelysimpleandshort-horizontasks,butareoftenlimitedbymanualreward-engineering[1,2]or
+costlydata-collection[3,1]duetotheembodimentgapbetweenhumanhandsanddexteroushands.
+Humanhandsarehenceanaturalsourceforlearningguidance. Inthiswork,weformulatelearning
+fromhumanwithanemphasisontaskcapability. Wedenotetheproblemasfunctionalretargeting:
+5202
+yaM
+03
+]OR.sc[
+1v35842.5052:viXra
+givenahumandemonstration,thegoalistolearndexteroushandpoliciesthatcanmanipulatethe
+object to follow the demonstrated trajectory (see Fig. 1). This is distinguished from kinematic
+retargeting[3],whichproduceshuman-likemotionswithoutensuringfeasibility. Theproblemis
+evenmorecompellingforlong-horizon,bimanualdemonstrationswitharticulatedobjects,which
+encompassasignificantportionofdailyhumanactivities,butposeseveralkeychallenges:exploration
+isdifficultunderthehigh-dimensionalactionspace,theintricatecontactsequencesdemandstable
+andprecisehandmovements;duetotheembodimentgap,humanhandmotioncannotbedirectly
+mappedtofeasiblerobotactions,whichlimitsthescalabilityofimitationdatacollection.
+To address these challenges, we propose DexMachina1, a novel curriculum-based RL algorithm
+forfunctionalretargeting. Precisebimanualcoordinationisoftenrequiredtomanipulateanobject
+successfully(e.g. openingawaffleironmid-air,seeFig.1),butnaiveapproachesoftengetstuckin
+earlyfailuresorsuboptimalactions. Thismotivatesustodesignacurriculumtoallowthepolicyto
+exploreinalessfragilesetting. Ourkeyideaistousevirtualobjectcontrollers—theyapplycontrol
+forcesthatdriveanobjecttowardsitsdemonstratedtrajectory—andauxiliarymotionandcontact
+rewards,whichguidethepolicytolearntaskstrategiesasthevirtualcontrollerstrengthdecays. The
+policyfirstlearnstomimicthehumanmotionwithoutworryingaboutfailingthetask,thenlearnsto
+takeovermanipulationasthevirtualcontrollersfadeaway.
+Despitecontinuouseffortindevelopingnewhandsandsensingcapabilities[4,5,6,7,8,9],thereisa
+lackforstandardizedandaccessibleevaluationbenchmarks. Toaddressthis,webuildasimulation
+benchmark with a diverse set of 6 dexterous hands and 5 articulated objects [10], and provides
+aunifiedtestbedwherenewhandsandtaskscanbeeasilyaddedandquicklyevaluated. Onthis
+benchmark,weempiricallyshowthatDexMachinasignificantlyoutperformsbaselinemethods,and
+appliessuccessfullytoawidevarietyofhands,articulatedobjects,andlong-horizondemonstrations.
+Withaneffectivealgorithmandevaluationbenchmarkforfunctionalretargeting,itisnowpossibleto
+makefunctionalcomparisonsacrossdifferenthardware:informedbythepolicylearningperformance,
+weobtainameaningfulmeasureforboththehands’functionalityandreadinesstolearnfromhuman
+guidance. Thiscomparisonisgeneralizableandaccessible: ouralgorithmrequiresnohand-specific
+adaptations,andourtaskenvironmentsarefasttorunandeasytocustomize. Withtherecentsurgein
+thedevelopmentofrobotichandhardware,wehopethisfunctionalcomparisonwillbehelpfulfor
+makinginformeddecisionsforbothacquiringanddesigningnewhands.
+Ourcontributionsaresummarizedasfollows:
+•WestudyFunctionalRetargeting,wherewelearnfeasibledexterousmanipulationpoliciesfrom
+human hand-object demonstrations. We propose DexMachina, a novel algorithm for functional
+retargetingbasedonacurriculumovervirtualobjectcontrollersandmotionandcontactguidance.
+•WeintroducetheDexMachinabenchmarkwith6curateddexteroushandassetsand5articulated
+objects,forevaluatingbothdifferentfunctionalretargetingalgorithmsandrobotichanddesigns.
+•WedemonstrateDexMachinaachievesstate-of-the-artlearningperformanceacrossavarietyof
+robotichandsandtasks. Oursimulationenvironmentsandlearningalgorithmswillbeopen-sourced
+tofacilitatefutureresearch.
+2 RelatedWork
+ReinforcementLearningforDexterousManipulation.ReinforcementLearning(RL)hasbeenused
+fordexterousmanipulationtaskssuchasin-handobjectorientation[1,11,12,13,14]andsingle-hand
+grasping[2,15,16,17,18,19],butachievingmorecomplex,longer-horizonmanipulationremains
+challengingduetotheburdenofdesigningrewardstoguideexplorationforsuchtasks. Model-based
+methods have been applied to tasks such as ball dribbling [8] and Rubik’s cube turning [9], but
+theyrequirecarefulengineeringforeachobjectandtask. Inourwork,weseektostudybimanual
+long-horizontaskswhereitcanbedifficulttospecifyconcretegoalsordesignRLrewardstoguide
+exploration. Thismotivatesouruseofhumandemonstrations,whichbothactasagoalspecification
+1Deusexmachina(“godfromthemachine"),iswhenaseeminglyunsolvableproblemisconvenientlysolved
+byanexternalforce—muchlikehowouralgorithmmovesanobjectbyitselfbeforethepolicygraduallylearns
+totakeover,hencethenameDexMachina.
+2
+andprovideguidanceforhowtosolvethetask. Simulationisacommontooltotraindexteroushand
+policies[20]duetothehighexplorationcostofrunningRLonrealhardware[21]. Oursimulation
+benchmarksupportsevaluationacrossseveraldexteroushandsanddiversetasksdefinedbyhuman
+demonstrationdata,incontrasttoexistingRLbenchmarks[22,23]fordexterousmanipulation.
+ImitationLearningforDexterousManipulation. Imitationlearning(IL)isacompellingalternative
+toRL,sincethetheuseofdemonstrationscanmitigateoreliminatetheburdenofexploration,butit
+canrequireaccurateon-robotactiondatathatischallengingtocapturefordexteroushands. Most
+existing approaches [3, 24, 25, 26, 27, 28] require setting up a teleoperation system customized
+foraparticularrobothandembodiment. Humanhanddata(suchasvideos)areanothersourceof
+data. Priorworkhasusedhumanhanddataforlearningroughgraspaffordances[29], improved
+retargeting [30], or co-training with human hand data and teleoperation data [31, 32], but these
+approacheshavebeenlimitedforshort-horizonmanipulation(mainlygrasping). Instead,ourwork
+assumesaccesstoasingletrackedhand-objectdemonstrationpertaskandusesthedemonstrationto
+guideRLtraining. Similarapproacheshavebeenusedforhumanoidlocomotion[33],simplehand
+manipulation[34],anddexterousmanipulationonshort-horizontasks[35,36].
+CurriculumLearning. Itiscommonpracticeinoptimization-basedmotionplanningtowarmstartan
+optimizationfromrelaxedphysicalconstraints,resultinginabettersolutionatconvergence[37,38,
+39]. Thisideaoflearningusingacurriculum,whichmovesfromeasiertomoredifficultproblems,
+hasbeenadoptedbyRLmethods[40,41]. Somepriorworkusesthisapproachtorelaxphysical
+constraints, such as allowing force before making contact [42] or relaxing gravity, friction and
+constraint-solverparameters[36]. Ourapproachusesacurriculumoverobjectdynamics,allowing
+theagenttograduallylearnhowtomanipulatetheobjectovertime(Fig.2).
+3 FunctionalRetargetingFormulation
+Wedefinethefunctionalretargetingproblemasfollows: givenoneobjectη,onehumanhand-object
+demonstration sequence Dη, and a pair of dexterous robot hands ζ, the goal is to learn a robot
+policythatcanmanipulatetheobjecttotrackthedemonstratedobjectstates. Moreformally,one
+humandemonstrationDη = {G,H}containsT timestepsofdenselytrackedobjectstatesGand
+hand poses H. We focus on articulated objects, hence the object states include both part pose
+and revolute joint angle values. At any timestep t, given an achieved object state gˆ (position,
+t
+rotation,andarticulation)andthetargetobjectstatefromthedemonstrationg ={gP,gR,gJ},we
+t t t t
+denote the distance function as F (computes both rotation, position, and articulation joint error).
+Thelearnedpolicyfor(η,ζ)shouldminimizetheaccumulatedtrackingerroracrossalltimesteps:
+πη,ζ =argmin (cid:80)T (F(gˆ,g )).
+θ θ t=1 t t
+4 Method
+Overview. WeproposeDexMachina,acurriculum-basedRLalgorithmforfunctionalretargeting. In
+§4.1,webeginbyintroducingthetaskreward,whichencouragesobjecttrackinginbutisinsufficient
+foreffectivepolicylearning. In§4.2,weextractmotionandcontactinformationfromdemonstrations,
+whichweusetodefineresidualactionsandauxiliaryrewards. Whilethesecomponentsimprove
+learning,theystillfallshortincomplexlong-horizontasks. Thismotivatesourcurriculumstrategy,
+presented in §4.3, where we introduce an auto-curriculum based on virtual object controllers to
+achieveefficientfunctionalretargetingacrossdifferentdexteroushands.
+4.1 RLEnvironmentandTaskReward
+We train reinforcement learning (RL) policy to achieve the functional retargeting task. An RL
+environmentisconstructedbypairingonedemonstrationDη andonesetofbimanualdexterousrobot
+handsζ. Ateachtimestept,writeG ={gP,gR,gJ}fortherecordedobjectposition,rotationand
+t t t t
+joint angles at timestep t, and Gˆ = {gˆP,gˆR,gˆJ} for the object’s achieved states corresponding
+t t t t
+toeachterm. Thetaskrewardr istheproductofthreetermsmeasuringaccuracyineachstate
+task
+component,encouragingbalancedlearning[35]. Formally:
+d =||gˆT −gT|| ; d =2cos−1(|⟨gˆR,gR⟩|); d =||gˆJ −gJ||
+pos t t 2 rot t t ang t t 2
+3
+Task
+Reward
+Motion
+Reward
+Contact Early Training Mid Training Late Training
+Approximate Reward Strong VOC Weak VOC No VOC
+Contact Hand-Object
+Positions Demonstration RL Reward Terms Auto-Curriculum Learning
+Figure2: DexMachinaOverview.DexMachinaisacurriculum-basedRLalgorithmforfunctionalretargeting.
+Weprocessdensely-trackedhumanhanddemonstrationtoextractreferencerobotjointsandkeypoints(pink
+spheres)andapproximatedcontactpositionsonobjectmeshvertices(greenspheres),whichweusetodefine
+auxiliaryrewardsinadditiontothetaskreward. Wethenintroduceanauto-curriculumusingvirtualobject
+controllers,whichinitiallymovestheobjectonitsowntofollowthedemonstration,andarethendecayedover
+thecourseofRLtrainingasthepolicylearnstotakeovermanipulation.
+Task Motion Contact
+rRewa=rdr ∗rRew∗ardr =exRpew(−ardβ d )exp(−β d )exp(−β d )
+task pos rot angle pos pos rot rot ang ang
+whereβ ,β ,andβ arescalarweightsthatcontrolthedesirableerrorscaleforeachcomponent.
+pos rot ang
+Auto-Curriculum with Virtual Object Controllers
+4.2 ActionFormulationandAuxiliaryRewards
+RL Reward Terms
+Althoughtaskrewardspecifiesdesiredobjectstates,itdoesnotprovideusefulinformationforhow
+toachievethem. Toaddressthis,we(1)proposeahybridactionformulation,whichconstrainsthe
+wristactionspacetoalignmorewiththehumandemonstrators; and(2)defineauxiliaryrewards,
+which guide the policy to follow the human’s hand-object interaction strategy. As a preliminary,
+wefirstapplypre-processingonthedemonstrationdataDη toextractrelevantmotionandcontact
+information.
+DataPre-Processing. GivenDη withT timesteps,N objectparts,andadexteroushandζ withJ
+actuatedjointsandK collisionlinks,wefirstrunakinematics-onlyretargetingalgorithm[3]that
+matchesdexteroushandposeswithhumanhandmotion. Thenweobtain:
+1. Collision-aware kinematic retargeted joints Q ∈ RT×J and reference keypoints X ∈
+RT×K×3byreplayingtheretargetingresultsinsimulationandrecording(1)theachievedjoint
+valuesand(2)3Dkeypointpositionsofthedexteroushandlinks.Toeliminateobjectpenetrations,
+wereplaytheretargetedjointvaluesassoftcontroltargetsinsimulationwhilekeepingtheobject
+fixed—SeeAppendixA.2formoredetails.
+2. Approximated hand-object contact. Although kinematic retargeting produces human-like
+dexteroushandposes,themotionsoftenfailtomanipulatetheobject. Henceweextractcontact
+informationasadditionalguidanceforobjectinteraction. Weuseadistance-basedapproximation
+toobtainexactlywhenandwhereaspecificdexteroushandlinkshould bein contactwitha
+specificobjectpart(detailedinAppendixA.4). Theresultsareapproximatedcontactpositions
+C ∈R(T×N×K×3)andamaskM ∈R(T×N×K)thatindicateswhetherapairofobjectpartand
+handlinkhasvalidcontacts.
+HybridActionOutputs. GiventheretargetedjointresultsQ,weusethejointvaluesfor6-DoF
+wristjointsasbaseactions,whichareaddedtothepolicy’soutputresidualactions. Theremaining
+fingerjointsuseabsoluteactionsthatarenormalizedbytheirjointlimits(seeAppendixA.3forfull
+details). Thisformulationeffectivelyconstrainsthepolicy’sactionspace,andweempiricallyfindit
+tosignificantlyimprovethelearningefficiency.
+MotionImitationReward. Toencouragehuman-likehandmotions,wetakethemotionreference
+keypoints K and retargeted joint values Q, and define (1) motion imitation reward r based on
+imi
+keypointmatching,(2)behavior-cloningrewardr basedonjointangledistancestothereference.
+bc
+4
+Formally:
+K J
+1 (cid:88) 1 (cid:88)
+r = exp(−β ||xˆ −x || ); r = exp(−β ||qˆ −q || );
+imi K imi i i 2 bc J bc i i 2
+i=1 i=1
+where each (xˆ,x ) denotes the achieved and reference positions for the ith keypoint and (qˆ,q )
+i i i i
+denotestheachievedandretargetedvaluesfortheithjoint.
+Contact Reward. We read contact positions between each hand link and each object part, and
+compute contact reward by matching the policy contacts with the corresponding demonstration
+contacts. Foreachsideofthehand,wedenotethepolicy’sanddemonstration’scontactpositions
+andvaliditymasksasC,Cˆ ∈RN×K×3,M,Mˆ ∈RN×K×1,respectively. WecomputeL contact
+2
+distancemaskedbyvaliditymasksanduseittodefinecontactrewardr :
+con
+(cid:40)
+d , ifM(i,j) ̸=M(i,j)
+D =∥C−Cˆ∥ ∈RN×K; setD(i,j) = max demo policy (1)
+2 0, ifM(i,j) =M(i,j) =0
+demo policy
+N K N K
+r = 1 ( (cid:88)(cid:88) exp(−β D(i,j))+ (cid:88)(cid:88) exp(−β D(i,j))) (2)
+con 2NK con left con right
+i=1j=1 i=1j=1
+ThefinalRLrewardisaweightedsumoftheaboveterms:r =λ r +λ r +λ r +λ r .
+t task task imi imi bc bc con con
+SeeAppendixA.4forpreciseweightsandadditionalrewarddetails.
+4.3 Auto-CurriculumwithVirtualObjectControllers
+Motivation. Theaboverewardtermsandaction Algorithm1DexMachinaCurriculum
+constraints are sometimes sufficient short and
+Require: Rewardthresholdsσ ,σ ,σ ,σ
+task imi bc con
+simpletasks,butstruggleonlong-horizonclips
+Require: RewarddequesD ,D ,D ,D
+task imi bc con
+withcomplexcontacts. Thepolicyoftenexperi- Require: Initialgainsk ,k ,decayratiosϕ ,ϕ ,max
+p v p v
+encescatastrophicearly-stagefailures:e.g.after episodelengthL max
+lifting a box with both hands, it might fail to 1: foreachPPOiterationdo
+2: foreachenvironmentwhereepisodeisdonedo
+anticipatethatonehandwillneedtoreposition
+3: GetachievedepisodelengthL
+mid-airtoopenthelidwhiletheotherhandad-
+4: GetcumulativerewardsR ,R ,R ,R
+task imi bc con
+justs for single-handed grasping. The policy 5: foreachtermz∈{task,imi,bc,con}do
+wouldattemptdifferentactions,mostofwhich 6: Computenormalizedreward:r¯ = Rz
+z Lmax
+woulddroptheboxandterminatetheepisode. 7: Appendr¯ todequeD
+z z
+8: endfor
+Thismotivatesustoproposeourcurriculumap- 9: endfor
+proach,toletthepolicyexploredifferentstrate- 10: foreachrewardtypez∈{task,imi,bc,con}do
+gies in a less fragile setting. Our core idea is 11: Computemean:µ z =mean(D z )
+12: endfor
+usingvirtualobjectcontrollers: theydrivethe
+13: ifk =0then
+objecttofollowthetargetsonitsown,suchthat p
+14: continue//noneedtodecay
+thepolicycanlearnthroughtheentiresequence 15: endif
+andbediscouragedfrommyopicstrategies. 16: ifµ >σ ∀z∈{task,imi,bc,con}then
+z z
+17: //Learningisstable,applyinggaindecay
+Virtual Object Controllers. We treat the 18: k ←k ·ϕ
+p p p
+demonstrationstatesGascontrolgoalsandap- 19: ifk ≤0.01then
+p
+plyvirtualspring-damperconstraintsthatmove 20: k p ←0; k v ←0
+the object along its target trajectory. Initially, 21: endif
+22: k ←k ·ϕ
+thevirtualcontrollershandlemostoftheobject v v v
+23: endif
+movement;overtime,thecontroller’sinfluence 24: endfor
+isgraduallyreduced,requiringthepolicytoas-
+sumegreatercontroltocompletethetask. They
+controllersareimplementedusingprivilegedinformationinsimulation. Eachobjectisequippedwith
+sixvirtual1-DoFjointsforitsbaseposeanda1-DoFjointforarticulation,andalljointsareactuated
+byPDcontrollers[43]. Ateverytimestep,thesecontrollersapplyvirtualforcesbasedontheerror
+5
+betweenthecurrentobjectstateandcontroltargetsfromthedemonstration. Thecontrolstrength
+is parametrized by gain parameters (k , k ), which are decayed over time to enable a structured
+p v
+hand-offtothelearnedpolicy.
+Curriculum scheduling. Algorithm 1 describes our proposed curriculum. At the beginning of
+curriculumtraining,wesethighvirtualcontrollergainswithcriticaldamping;thenweexponentially
+decay the gains based on the policy’s learning progress, which is tracked with a history of past
+rewards. Asaresult,thepolicyinitiallywillconsistentlyachievehightaskreward;becauseitreceives
+aweightedsumoftaskandauxiliaryrewards, thepolicylearnsactionsthatimprovemotionand
+contact rewards while avoiding disrupting the object trajectory. Later, as the object controllers
+weaken,thepolicygraduallylearnstoadjustitsmotionstomaintainhightaskreward. Becausethe
+auxiliaryrewardsuseamuchsmallerweight,thepolicycandeviatefromthereferencehandmotions
+learnedattheearlierstagesinordertoprioritizeoptimizingforhightaskrewards.
+5 Experiments
+Experiment Setup. We use hand-object data from ARCTIC [10] (see §A), which includes 5
+articulatedobjects[44]and7demonstrationsconsistingofdiversemotionsequences(pickingupand
+reorientingobjects,opening/closinglids,etc.) Weevaluateouralgorithmonbothshort-(usedinprior
+work[35])andlong-horizondemonstrations. Wecurateassetsfor6open-sourcedexterousrobot
+handmodels,withvaryingsizesandkinematicdesigns. WeuseGenesis[45]forphysicssimulation,
+andPPO[46,47]asthebaseRLalgorithm. Thepoliciessharethesamestructureforstate-based
+inputobservationspacesforallhandsandtasks,andcontrolbothhandsatonce. SeeAppendixfor
+detailsonRLtraining(§B.1)andevaluationsetup§B.4.
+BaselineMethods. Duetovariousdifferencesinphysicssimulationandtrainingconfigurations,we
+re-implementbaselinemethodsinourtrainingframeworkandmakeseveraladaptationstoensurea
+faircomparison—see§B.3forimplementationdetails. Wecompareagainstthefollowingmethods:
+1. KinematicsOnly. Directlyusekinematicretargeting[3]resultsaspolicycontrollertargets.
+2. ObjDex[35]. learnsahigh-levelwristplannerforwristbaseactions,andalow-levelpolicywith
+taskrewardandthesamehybridactionsasours. Wevalidateourre-implementationbyshowing
+improvedperformanceonthesamedemonstrationsusedintheoriginalresults.
+3. Task + Auxiliary Rewards without curriculum. To evaluate the effect of our proposed
+curriculum,werunRLtrainingwithonlyourproposedmotionimitationandcontactrewards.
+Forafaircomparison,alltraininghyper-parametersareidenticalwithourcurriculumsetting.
+4. ManipTrans[36]. Aconcurrentworkthatfine-tunesamotionimitationmodelwithRLusing
+contactforcerewardsandacurriculumonerrorthresholdsandphysicsparameters. Sincethe
+originalmethodisevaluatedonrigidobjectsinadifferentphysicssimulator,were-implement
+theirproposedcurriculumwhileusingourhybridactionsandauxiliaryrewardterms.
+Overview of Experiments. We present empirical results that (1) evaluate the effectiveness of
+DexMachina against baselines and no-curriculum settings (§ 5.1); (2) ablate key components of
+our method (§ 5.2); (3) demonstrate DexMachina’s applicability across various dexterous hand
+embodimentsandutilityasanevaluationframeworkforcomparingdifferenthanddesigns(§5.3).
+5.1 DexMachinaMainResults
+WeevaluateDexMachinaandbaselinemethodsonfourrepresentativedexteroushands(Inspire[48],
+Allegro[49],Xhand[50],andSchunk[51])andsevendemonstrationclips(seeCforvisualization).
+AveragedsuccessratesforeachtaskarereportedinFigure3. Thekeytakeawaysarethefollowing:
+DexMachina consistently improves performance on all hands and tasks. We highlight the
+rightmostfourcolumnsinFig.3,whichcorrespondtolong-horizondemonstrationswithcomplex
+motionsequences2. Taskrewardalonefallsshortontheseclips; incorporatingauxiliaryrewards
+2Forinstance,‘Waffleiron-300’requiresthepolicytopickuptheobject,openandclosethelid,flipitback
+andforth,thenopenandclosethelidagain,allmid-air(seeAppendix§Cforavisualization)
+6
+Figure3: DexMachinaCoreResults.WeevaluateDexMachinaonfourrepresentativedexteroushandspaired
+withsevendemonstrationswithdiverseobjectsandmotionsequences.Wecomparebetweendirectreplayof
+kinematicretargetingresults(“KinematicOnly"),trainingwithonlyataskreward(“TaskRew(ObjDex)",i.e.,our
+re-implementationofObjDex[35]),trainingwithbothtaskandauxiliaryrewards(“Task+AuxReward"),and
+withourproposedauxiliaryrewardsandcurriculum(“Ours").Withrareexceptions,DexMachinademonstrates
+clearimprovementsoverbaselinemethods,especiallyonlong-horizontaskswithmorecomplexmotions.
+Allegro: 250, 272, 290 Schunk: 277
+Inspire: 74 195 205
+Notebook-300 Mixer300
+Figure4: DexMachinaHand-SpecificStrategies. DexMachinaenablesthepolicytolearntask
+xhand: 7s4 19t5 r20a0tegiesthatadapttotheirhardwareconstraints. Weshowsnapshotsoftrainedpolicyrolloutsfor
+differenthandsonthesametask: leftsideshowsXHandandInspireHandforNotebook-300task;
+rightsideshowsSchunkHandandAllegroHandforMixer-300task.
+(’Task+AuxRewards’)improvesperformanceonsometasks, butthegainsareinconsistent. In
+contrast,DexMachinasignificantlyoutperformsno-curriculumsettingdespiteusingthesamerewards.
+Task reward and hybrid actions can achieve reasonable performance on short-horizon tasks: our
+re-implementationofObjDex[35](‘TaskRew(ObjDex)’inFig.3)performsbetterthantheiroriginal
+reportingonthesamedemonstrations(leftthreecolumnsinFig.3,detailedin§B.3). Thekinematic
+retargetingresultsalonecannotcompletethetask(‘KinematicsOnly’)—ourvideosqualitatively
+showthattheyvisuallyalignwellwithhumanhands,buttheactionscannotachievemorethanslightly
+liftingupeachobject.
+DexMachina lets the policy learn task strategies that adapt to hardware constraints. The
+auxiliaryrewardsdonotalwaysalignwiththebesttaskstrategy,butinsteadactassoftguidance
+toservethecurriculum,givingthepolicyflexibilitytoexplore. Qualitatively,weobservethatthe
+policiesmaydeviatefromthemotionandcontactguidanceandlearndifferentstrategies: asshownin
+Fig.4: onNotebook-300,theXHandpolicyfollowsthehumandemonstratortousethelefthandto
+holduptheobjectandtherighthandtoclosethecover;however,forthesmaller,less-actuatedInspire
+Hand,thepolicylearnstousebothhandstostabilizetheobjectandclosethecover. OnMixer-300,
+theAllegroHandfingersarelongenoughtoclosethelideasily,buttheSchunkHandpolicyshows
+morewristmovementstoachievethesameeffect.
+7
+5.2 DexMachinaAblations
+ActionAblations. Wecompareourhybridactionformulationwith: (1)absoluteactionsonalljoints
+and(2)less-constrainedresidualactionsonwristjoints,inwhichthewristjointlimitsaresettocover
+themaximummotionrangeintheentiredemonstrationclip. Wetrainintheno-curriculumsetting,
+useasubsetoftasksandhandsandaverageoverthreeseedsforeachmethod. Resultsareshown
+inFig.8. Whileallmethodsbenefitfromusingauxiliaryrewards,usingmorerestrictiveboundson
+wristmotionresultsinthebestoverallperformance.
+CurriculumAblations. InFig.3,wecompareDexMachinawithManipTrans[36],whichusesa
+curriculumovererrorthresholdsformotionandobjectposesplusgravityandfrictionparameters.
+Weobservethatitachievesnoclearimprovementsovertheno-curriculumsetting,andtrainingisless
+stable: giventhesamebudgetofRLiterations,theManipTranspolicyinitiallyachieveshightask
+reward,butperformancedropsasthecurriculumprogressesandcannotrecover. Thisindicatesthat
+merelydecayingphysicsparametersisnotsufficientforlong-horizontaskswitharticulatedobjects,
+whichneedsastrongerguidancetocompletelysolvethetaskuntilthepolicygraduallytakesover.
+5.3 HandEmbodimentAnalysis
+AftervalidatingthatDexMachinaachievesfunctionalretargetingacrossvarioustasksandhands,we
+nowuseouralgorithmandbenchmarkforafunctionalcomparisonbetweendifferentdexteroushands.
+We focus on the four long-horizon tasks from §5.1, and evaluate DexMachina on two additional
+hands,Ability[52]andDexRobotHand(seeFig.5). Wediscussthefollowingkeyfindings:
+Larger,fully-actuatedhandsachievebothhigherfinalperformanceandbetterlearningeffi-
+ciency. TheAllegroHand,despitebeinglessanthropomorphicinappearance,issurprisinglycapable
+duetoitslongfingerlengthprovidingstabilityforin-hand/in-airmanipulations. Similarityinsize
+islessimportantthandegreesoffreedom. Forinstance,theInspire,Ability,andSchunkHandall
+havesimilarsizes,butSchunkhasactuatedfingertipsandafoldablepalm,andachievesonaverage
+betterperformancethanInspireandAbility. Althoughless-actuatedhandsaremoresimilarto
+humanhandsinappearance,learnedstrategiesarelesshuman-likethanthebiggerbutmore
+capablehands. Becauseallhandsusethesamesetofhumanhandmotionreferences(bothasbase
+wristactionsandmotionrewards),theextenttowhichapolicydeviatesfromhumanguidanceis
+determinedbytheirsizeandkinematicconstraints. Asaresult,handslikeInspireandAbilityoften
+needdifferentstrategiestocompletethetask.
+Naturally,ourconclusionsarelimitedbytheobjects
+and tasks that we test on: for instance, the larger
+handswillnotperformwellforsmallerobjects(e.g.,
+tweezers). However,ourevaluationframeworkcan
+beeasilyextendedtoaddnewdexteroushandsand
+testtasksorobjects.
+6 Conclusion
+WepresentDexMachina,acurriculum-basedRLal-
+gorithmforfunctionalretargeting,wherethekeyidea Figure5: Fullevaluationofallsixhandsusing
+istousevirtualobjectcontrollersthatletthepolicy DexMachinaonlong-horizontasks.
+easilyexploretaskstrategiesundermotionandcontactguidance. Inoursimulationbenchmarkwitha
+diversesetoftasksanddexteroushands,weshowDexMachinasignificantlyoutperformsbaseline
+methods and enables functional comparison across different dexterous hand designs. We hope
+ouralgorithmandbenchmarkenvironmentswillprovideusefulplatformforidentifyingdesirable
+dexteroushandcapabilitiesandlowerthebarrierforcontributingtofutureresearch.
+8
+7 Limitations
+DexMachinahasafewkeylimitations.First,ourpolicyusesstate-basedinputthatreliesonprivileged
+informationfromthephysicssimulator;thisinformationcanbechallengingtoacquireinthereal
+world. Thislimitationcanbeaddressedwitheithervision-basedRLpolicytraining[2], ormore
+practically,adistillationsetupthattrainsvisuomotorpoliciesusingdemonstrationdatagenerated
+from state-based policies, as seen in prior work [35]. Second, our problem formulation assumes
+accesstohigh-qualityhumanhand-objectdemonstrationdata,whichrequiresobjectreconstruction
+andaccurateposetrackingforbothhumanhandsandarticulatedobjects. Suchdatacanbeexpensive
+tocollectandrequirescarefulcuration(e.g. ARCTIC[10]usesamotion-capturesystemwithdense
+manual annotations and post-processing). Future work could investigate alternative methods to
+scaleupdatacollection: onedirectionisleveragingrecentprogressin3Dgenerativemodelsand
+reconstruction methods. Third, because we use open-source assets for the dexterous hands and
+estimatephysicalproperties(suchasmass,inertia,andcollisionshapes),thesimulatedhandsmight
+failtocapturesomeofthedynamicsandcapabilitiesoftherealhardware. Toaddressthis,more
+carefultuningwithrealreferencehardwarewillbeneeded;ideally,accuratesimulationmodelswould
+beprovideddirectlybymanufacturers. Lastly,ourlearnedRLpolicieshavenotyetbeenevaluatedin
+real-worldsettingsontheexaminedrangeofdexteroushandsduetolackofhardwareaccess. With
+inputsfromthecommunity,weaimforoursimulationbenchmarktoenableaccessibleresearchand
+evaluationofhanddesignswithoutrequiringphysicalhardware;furthermore,ourlearnedpolicycan
+beusedasteacherpoliciestobedistilledforsim-to-realtransfer,whichpriorworkinsimilarsettings
+hasdemonstrated[35,36].
+Acknowledgments
+This work was supported in part by NVIDIA, and by NSF Awards #2143601, #2037101, and
+#2132519. The views and conclusions contained herein are those of the authors and should not
+beinterpretedasnecessarilyrepresentingtheofficialpolicies,eitherexpressedorimplied,ofthe
+sponsors. TheauthorswouldliketothankcurrentandformercolleaguesatNVIDIA:KellyGuo,
+MiladRaksha,DavidHoeller,BingjieTangfortheirhelpwithphysicssimulationenvironmentsand
+insightfuldiscussionsduringalgorithmdevelopment;andallthemembersofREALabatStanford
+Universityforprovidingusefulfeedbackoninitialdraftsofthepapermanuscript.
+References
+[1] O.M.Andrychowicz,B.Baker,M.Chociej,R.Jozefowicz,B.McGrew,J.Pachocki,A.Petron,
+M.Plappert,G.Powell,A.Ray,etal. Learningdexterousin-handmanipulation. TheInterna-
+tionalJournalofRoboticsResearch,39(1):3–20,2020. 1,2
+[2] T.G.W.Lum,M.Matak,V.Makoviychuk,A.Handa,A.Allshire,T.Hermans,N.D.Ratliff,
+andK.V.Wyk.Dextrah-g:Pixels-to-actiondexterousarm-handgraspingwithgeometricfabrics,
+2024. URLhttps://arxiv.org/abs/2407.02274. 1,2,9
+[3] Y.Qin,W.Yang,B.Huang,K.VanWyk,H.Su,X.Wang,Y.-W.Chao,andD.Fox. Anyteleop:
+Ageneralvision-baseddexterousrobotarm-handteleoperationsystem. InRobotics: Science
+andSystems,2023. 1,2,3,4,6
+[4] M.Rakic´. Paper11: The‘belgradehandprosthesis’. ProceedingsoftheInstitutionofMechan-
+icalEngineers,ConferenceProceedings,183(10):60–67,1968. doi:10.1243/PIME_CONF_
+1968_183_179_02. URLhttps://doi.org/10.1243/PIME_CONF_1968_183_179_02. 2
+[5] C. Loucks, V. Johnson, P. Boissiere, G. Starr, and J. Steele. Modeling and control of the
+stanford/jpl hand. In Proceedings. 1987 IEEE International Conference on Robotics and
+Automation,volume4,pages573–578,1987. doi:10.1109/ROBOT.1987.1088031. 2
+9
+[6] S.Jacobsen,E.Iversen,D.Knutti,R.Johnson,andK.Biggers.Designoftheutah/m.i.t.dextrous
+hand. In Proceedings. 1986 IEEE International Conference on Robotics and Automation,
+volume3,pages1520–1532,1986. doi:10.1109/ROBOT.1986.1087395. 2
+[7] J. Butterfass, G. Hirzinger, S. Knoch, and H. Liu. Dlr’s multisensory articulated hand. i.
+hard- and software architecture. In Proceedings. 1998 IEEE International Conference on
+Robotics and Automation (Cat. No.98CH36146), volume 3, pages 2081–2086 vol.3, 1998.
+doi:10.1109/ROBOT.1998.680625. 2
+[8] D.Shiokata,A.Namiki,andM.Ishikawa. Robotdribblingusingahigh-speedmultifingered
+handandahigh-speedvisionsystem. In2005IEEE/RSJInternationalConferenceonIntelligent
+RobotsandSystems,pages2097–2102.IEEE,2005. 2
+[9] R. Higo, Y. Yamakawa, T. Senoo, and M. Ishikawa. Rubik’s cube handling using a high-
+speedmulti-fingeredhandandahigh-speedvisionsystem. In2018IEEE/RSJInternational
+ConferenceonIntelligentRobotsandSystems(IROS),pages6609–6614.IEEE,2018. 2
+[10] Z. Fan, O. Taheri, D. Tzionas, M. Kocabas, M. Kaufmann, M. J. Black, and O. Hilliges.
+ARCTIC:Adatasetfordexterousbimanualhand-objectmanipulation. InProceedingsIEEE
+ConferenceonComputerVisionandPatternRecognition(CVPR),2023. 2,6,9,14,15
+[11] A. Handa, A. Allshire, V. Makoviychuk, A. Petrenko, R. Singh, J. Liu, D. Makoviichuk,
+K.VanWyk, A.Zhurkevich, B.Sundaralingam, etal. Dextreme: Transferofagilein-hand
+manipulationfromsimulationtoreality. In2023IEEEInternationalConferenceonRobotics
+andAutomation(ICRA),pages5977–5984.IEEE,2023. 2
+[12] H.Qi,A.Kumar,R.Calandra,Y.Ma,andJ.Malik. In-handobjectrotationviarapidmotor
+adaptation. InConferenceonRobotLearning,pages1722–1732.PMLR,2023. 2
+[13] Z.-H.Yin,B.Huang,Y.Qin,Q.Chen,andX.Wang. Rotatingwithoutseeing: Towardsin-hand
+dexteritythroughtouch. arXivpreprintarXiv:2303.10880,2023. 2
+[14] T.Chen,M.Tippur,S.Wu,V.Kumar,E.Adelson,andP.Agrawal. Visualdexterity: In-hand
+reorientationofnovelandcomplexobjectshapes. ScienceRobotics,8(84):eadc9244,2023.
+doi:10.1126/scirobotics.adc9244. URL https://www.science.org/doi/abs/10.1126/
+scirobotics.adc9244. 2
+[15] V.Caggiano,S.Dasari,andV.Kumar. Myodex: Ageneralizablepriorfordexterousmanipula-
+tion. ArXiv,abs/2309.03130,2023. URLhttps://api.semanticscholar.org/CorpusID:
+260927595. 2
+[16] Z.Luo,J.Cao,S.J.Christen,A.Winkler,K.Kitani,andW.Xu. Graspingdiverseobjectswith
+simulatedhumanoids. ArXiv,abs/2407.11385,2024. URLhttps://api.semanticscholar.
+org/CorpusID:271217823. 2
+[17] P.MandikalandK.Grauman. Dexterousroboticgraspingwithobject-centricvisualaffordances.
+InInternationalConferenceonRoboticsandAutomation(ICRA),2021. 2
+[18] T. Zhu, R. Wu, J. Hang, X. Lin, and Y. Sun. Toward human-like grasp: Functional grasp
+by dexterous robotic hand via object-hand semantic representation. IEEE Transactions on
+Pattern Analysis and Machine Intelligence, 45:12521–12534, 2023. URL https://api.
+semanticscholar.org/CorpusID:258462924. 2
+[19] H.Yuan, B.Zhou, Y.Fu, andZ.Lu. Cross-embodimentdexterousgraspingwithreinforce-
+mentlearning. ArXiv,abs/2410.02479,2024. URLhttps://api.semanticscholar.org/
+CorpusID:273098035. 2
+[20] A. Rajeswaran, V. Kumar, A. Gupta, G. Vezzani, J. Schulman, E. Todorov, and S. Levine.
+Learningcomplexdexterousmanipulationwithdeepreinforcementlearninganddemonstrations,
+2018. URLhttps://arxiv.org/abs/1709.10087. 3
+10
+[21] K. Xu, Z. Hu, R. Doshi, A. Rovinsky, V. Kumar, A. Gupta, and S. Levine. Dexterous ma-
+nipulationfromimages: Autonomousreal-worldrlviasubstepguidance. 2023IEEEInter-
+national Conference on Robotics and Automation (ICRA), pages 5938–5945, 2022. URL
+https://api.semanticscholar.org/CorpusID:254877506. 3
+[22] C.Bao,H.Xu,Y.Qin,andX.Wang. Dexart: Benchmarkinggeneralizabledexterousmanipula-
+tionwitharticulatedobjects. In2023IEEE/CVFConferenceonComputerVisionandPattern
+Recognition(CVPR),pages21190–21200,2023. doi:10.1109/CVPR52729.2023.02030. 3
+[23] S. R. Company. Shadow hand official website. https://www.shadowrobot.com/
+dexterous-hand-series/,2025. Accessed: 2025-03-17. 3
+[24] C.Wang,H.Shi,W.Wang,R.Zhang,L.Fei-Fei,andC.K.Liu. Dexcap: Scalableandportable
+mocapdatacollectionsystemfordexterousmanipulation. arXivpreprintarXiv:2403.07788,
+2024. 3
+[25] S.Yang,M.Liu,Y.Qin,D.Runyu,L.Jialong,X.Cheng,R.Yang,S.Yi,andX.Wang. Ace:
+A cross-platfrom visual-exoskeletons for low-cost dexterous teleoperation. arXiv preprint
+arXiv:240,2024. 3
+[26] X.Cheng,J.Li,S.Yang,G.Yang,andX.Wang.Open-television:Teleoperationwithimmersive
+activevisualfeedback. arXivpreprintarXiv:2407.01512,2024. 3,14
+[27] K. Shaw, Y. Li, J. Yang, M. K. Srirama, R. Liu, H. Xiong, R. Mendonca, and D. Pathak.
+Bimanualdexterityforcomplextasks. In8thAnnualConferenceonRobotLearning,2024. 3
+[28] H. Zhang, S. Hu, Z. Yuan, and H. Xu. Doglove: Dexterous manipulation with a low-cost
+open-sourcehapticforcefeedbackglove. arXivpreprintarXiv:2502.07730,2025. 3
+[29] P.MandikalandK.Grauman. Learningdexterousgraspingwithobject-centricvisualaffor-
+dances. 2021 IEEE International Conference on Robotics and Automation (ICRA), pages
+6169–6176,2020. URLhttps://api.semanticscholar.org/CorpusID:233439776. 3
+[30] S.Park,S.Lee,M.Choi,J.Lee,J.Kim,J.Kim,andH.Joo. Learningtotransferhumanhand
+skillsforrobotmanipulations,2025. URLhttps://arxiv.org/abs/2501.04169. 3
+[31] K.Shaw,S.Bahl,andD.Pathak. Videodex: Learningdexterityfrominternetvideos,2022.
+URLhttps://arxiv.org/abs/2212.04498. 3
+[32] M.Xu,Z.Xu,C.Chi,M.Veloso,andS.Song. Xskill: Crossembodimentskilldiscovery. In
+Conferenceonrobotlearning,pages3536–3555.PMLR,2023. 3
+[33] X.B.Peng,P.Abbeel,S.Levine,andM.vandePanne. Deepmimic: Example-guideddeep
+reinforcementlearningofphysics-basedcharacterskills. ACMTrans.Graph.,37(4):143:1–
+143:14,July2018. ISSN0730-0301. doi:10.1145/3197517.3201311. URLhttp://doi.acm.
+org/10.1145/3197517.3201311. 3
+[34] Y.Wang,J.Lin,A.Zeng,Z.Luo,J.Zhang,andL.Zhang. Physhoi: Physics-basedimitationof
+dynamichuman-objectinteraction,2023. URLhttps://arxiv.org/abs/2312.04393. 3
+[35] Y.Chen,C.Wang,Y.Yang,andC.K.Liu. Object-centricdexterousmanipulationfromhuman
+motion data. ArXiv, abs/2411.04005, 2024. URL https://api.semanticscholar.org/
+CorpusID:273850263. 3,6,7,9,16,17
+[36] K.Li,P.Li,T.Liu,Y.Li,andS.Huang. Maniptrans:Efficientdexterousbimanualmanipulation
+transferviaresiduallearning. arXivpreprintarXiv:2503.21860,2025. 3,6,8,9,16,17
+[37] I.Mordatch,E.Todorov,andZ.Popovic´. Discoveryofcomplexbehaviorsthroughcontact-
+invariantoptimization. ACMTransactionsonGraphics(ToG),31(4):1–8,2012. 3
+11
+[38] T.PangandR.Tedrake. Aconvexquasistatictime-steppingschemeforrigidmultibodysystems
+withcontactandfriction. In2021IEEEInternationalConferenceonRoboticsandAutomation
+(ICRA),pages6614–6620.IEEE,2021. 3
+[39] T.Pang,H.T.Suh,L.Yang,andR.Tedrake. Globalplanningforcontact-richmanipulation
+vialocalsmoothingofquasi-dynamiccontactmodels. IEEETransactionsonrobotics,39(6):
+4691–4711,2023. 3
+[40] A. S. Chiappa, P. Tano, N. Patel, A. Ingster, A. Pouget, and A. Mathis. Acquiring mus-
+culoskeletal skills with curriculum-based reinforcement learning. bioRxiv, 2024. doi:
+10.1101/2024.01.24.577123. URL https://www.biorxiv.org/content/early/2024/
+01/25/2024.01.24.577123. 3
+[41] H.Zhang, S.Christen, Z.Fan, L.Zheng, J.Hwangbo, J.Song, andO.Hilliges. ArtiGrasp:
+Physicallyplausiblesynthesisofbi-manualdexterousgraspingandarticulation.InInternational
+Conferenceon3DVision(3DV),2024. 3
+[42] X.Mao,Y.Xu,Z.Sun,E.Miller,D.Layeghi,andM.Mistry. Learninglong-horizonrobot
+manipulationskillsviaprivilegedaction. arXivpreprintarXiv:2502.15442,2025. 3
+[43] G.F.Franklin,J.D.Powell,A.Emami-Naeini,andJ.D.Powell. Feedbackcontrolofdynamic
+systems,volume4. PrenticehallUpperSaddleRiver,2002. 5
+[44] X.Xu,D.Bauer,andS.Song. Robopanoptes: Theall-seeingrobotwithwhole-bodydexterity.
+arXivpreprintarXiv:2501.05420,2025. 6
+[45] G. Authors. Genesis: A universal and generative physics engine for robotics and beyond,
+December2024. URLhttps://github.com/Genesis-Embodied-AI/Genesis. 6,16
+[46] J.Schulman,F.Wolski,P.Dhariwal,A.Radford,andO.Klimov. Proximalpolicyoptimization
+algorithms,2017. URLhttps://arxiv.org/abs/1707.06347. 6
+[47] D.MakoviichukandV.Makoviychuk. rl-games: Ahigh-performanceframeworkforreinforce-
+mentlearning. https://github.com/Denys88/rl_games,May2021. 6,16
+[48] L. Beijing Inspire-Robots Technology Co. Inspire hand official website. https://
+inspire-robots.store/collections/the-dexterous-hands, 2025. Accessed: 2025-
+03-17. 6
+[49] W.Robotics. Allegrohandofficialwebsite. https://www.allegrohand.com/,2025. Ac-
+cessed: 2025-03-17. 6
+[50] ROBOTERA. Xhand1officialwebsite. https://www.robotera.com/en/goods1/4.html,
+2025. Accessed: 2025-03-17. 6
+[51] S. S. . C. KG. Schunk 5-finger hand official website. https://schunk.com/us/en/
+gripping-systems/special-gripper/svh/c/PGR_3161, 2025. Accessed: 2025-03-17.
+6
+[52] PSYONIC. Abilityhandofficialwebsite. https://www.psyonic.io/ability-hand,2025.
+Accessed: 2025-04-30. 8
+[53] J.Romero,D.Tzionas,andM.J.Black. Embodiedhands: Modelingandcapturinghandsand
+bodiestogether. ACMTransactionsonGraphics,(Proc.SIGGRAPHAsia),36(6),Nov.2017.
+14
+[54] V.Makoviychuk,L.Wawrzyniak,Y.Guo,M.Lu,K.Storey,M.Macklin,D.Hoeller,N.Rudin,
+A.Allshire,A.Handa,andG.State.Isaacgym:Highperformancegpu-basedphysicssimulation
+forrobotlearning,2021. 16
+12
+[55] B.Wen,W.Yang,J.Kautz,andS.Birchfield. Foundationpose: Unified6dposeestimationand
+trackingofnovelobjects. InCVPR,2024. 17
+[56] Y.Xiang,T.Schmidt,V.Narayanan,andD.Fox. Posecnn: Aconvolutionalneuralnetworkfor
+6dobjectposeestimationinclutteredscenes,2018. URLhttps://arxiv.org/abs/1711.
+00199. 17
+[57] S.Hinterstoisser,V.Lepetit,S.Ilic,S.Holzer,G.Bradski,K.Konolige,andN.Navab. Model
+based training, detection and pose estimation of texture-less 3d objects in heavily cluttered
+scenes. InComputerVision,ACCV2012-11thAsianConferenceonComputerVision,Revised
+SelectedPapers,numberPART1inLectureNotesinComputerScience(includingsubseries
+LectureNotesinArtificialIntelligenceandLectureNotesinBioinformatics),pages548–562,
+2013. ISBN9783642373305. doi:10.1007/978-3-642-37331-2_42. 11thAsianConferenceon
+ComputerVision,ACCV2012;Conferencedate: 05-11-2012Through09-11-2012. 17
+13
+Pleaseseeoursubmissionwebsite: dexmachina-submission.github.io
+A DemonstrationDataProcessingDetails
+A.1 ARCTICDemonstrationSelectionandCuration
+We use a subset of hand-object interaction clips from the ARCTIC dataset [10], which contains
+articulatedobjectscansandinteractionsequenceswithtrackedMANO[53]handposesandobject
+states. Eachselectedclipisdefinedbyanobject(e.g. ‘box’),asubjecttag(e.g. ‘s01-u01’)identifying
+thehumandemonstrator,anda(start,end)tupletotrimthesequencetoafixedlength,hencethe
+numberofusedframesT isdefinedasT =(end−start)
+DexterousHandAssetProcessing. Allofthedexteroushandsinourexperimentsarecuratedfrom
+open-sourceURDFmodelsandmanuallyeditedtoadd6-DoFwristjointsthatachievea‘floating
+hand’stylewristactuation. Someofthedexteroushandmodelsrequireadditionalprocessingfor
+stablesimulation,suchasmanuallychangingmassorinertiavalues,runningconvex-decomposition
+toimprovecollisionmeshquality,andaddingdummylinkstofingertipstorecordandtrackkeypoint
+positions. For each dexterous hand, we manually specify which finger links should match with
+whichMANO[53]handjoints(e.g. thumbtohumanthumb),whichisrequiredbythekinematic
+retargeting[26]algorithm. Thekinematicretargetingresultsarealsousedforcontrollergaintuning,
+whichensuresthedexteroushandcontrollersarestableandfastenoughtomatchthedesiredhuman
+handmovementandspeedwithinreasonableerror.
+A.2 Object-awareRetargetingPost-processing
+Because we use densely-tracked human hand
+andobjectinteractionasdemonstration,apurely
+kinematicretargetingalgorithm[26]onfingertip
+positionsresultsinfrequentpenetrationwiththe
+object, which leads to damaging base-actions
+duringpolicylearning,andinfeasiblekeypoint
+positions which we use for imitation reward
+computation. Toaddressthis,werunthesimu-
+lationforeachpairofdexteroushands,andfor
+each demonstrated timestep, we fixate the ob-
+Figure 6: We perform an improved retargeting
+jecttoitstargetstate(bothrootposeandobject
+schemeoverpurekinematicretargeting
+joint angle), and set retargeted joint values as
+controltargets. Thisprocessletsthesimulation
+toresolvecollisionand
+Thenwerecordtheachievedjointvaluesandkeypointstouseforpolicylearning. Inimplementation,
+thisprocesscanbeeasilyparallelizedinsimulation,whichweillustrateinFigure 6.
+A.3 HybridActionOutputs.
+Formally,weusethefollowingnotations:
+• clip(x,a,b): elementwiseclampofinputvaluexbetweenaandb
+• a ∈RJ:thepolicy’sjointactionoutputattimetclippedto[−1,1],i.e.a =clip(π (o ),−1,1)
+t t θ t
+• q(i): thetargetpositionforthei-thjointattimet
+t
+• I ⊂{1,...,J}: indicescorrespondingtothefingerDOFs
+f
+• IT ⊂{1,...,J}: indicesofthethreewristtranslationDOFs,|IT|=3
+w w
+• IR ⊂{1,...,J}: indicesofthethreewristrotationDOFs,|IR|=3
+w w
+14
+Figure7: Visualizationofthelong-horizontasksachievedbyourtrainedRLpolicy.Thebrownboxisusedas
+platformsurface,whichfollowstheoriginalARCTICdatacollectionsetupwhereobjectsareplacedonasquare
+cardboardboxonatablesurface[10].
+• q ∈RJ: theretargetedjointvaluesattimet
+t
+• s ,s : scalingfactorsfortranslationandrotationactionsrespectively
+T R
+• ℓ,u∈RJ: vectorsoflowerandupperjointlimits
+• qˆ ∈RJ: thejointtargetvaluessenttothepolicy’scontroller
+t
+Then,thejointtargetcomputationisdefinedas:
+awrist-T =a [IT]∈R3, qwrist-T =q [IT]+s ·awrist-T
+t t w t t w T t
+awrist-R =a [IR]∈R3, qwrist-R =q [IR]+s ·awrist-R
+t t w t t w R t
+u[I ]−ℓ[I ]
+afingers =a [I ], qfingers =ℓ + f f ·(afingers+1)
+t t f t If 2 t
+qˆ =concat(qwrist-T, qwrist-R, qfingers)
+t t t t
+A.4 ContactApproximation
+Let: V = {vo}No betheverticesofoneobjectpartmesh,V = {vh}Nh betheverticesofone
+o i i=1 h j j=1
+MANOhandmesh,γ bethecontactdistancethreshold,N bethemaximumnumberofrawcontact
+c
+approximations(weuseγ =0.01,N =50),andK bethenumberofcollisionlinksonadexterous
+c
+robothand.
+First, we do contact approximation by finding object mesh vertices that, their L distance to the
+2
+nearestneighborontheMANOmeshiswithinγ:foreachvo,wegetv∗ =argmin ∥vo−vh∥ ,and
+i j j i j 2
+markvo asanapproximatecontactpointif∥vo−vh ∥ <γ. Whenthere’smorethanN vertices
+i i j∗ 2 c
+withinthisthreshold,weusefarthestsub-samplingtogetthefinalsetofN contacts,denotedas
+c
+C ={vc}Nc ⊂V .
+k k=1 o
+Next,we“retarget"therawapproximatecontactstothedexterousrobothand: letL={ℓ }K be
+m m=1
+thecenterpositionsofthedexteroushandlinks,foreachcontactpointvc ∈C,assignittothenearest
+k
+link: m∗ =argmin ∥vc −ℓ ∥ Foreachlinkℓ ,computetheaveragepositionoftheassigned
+m k m 2 m
+contacts: v¯ = 1 (cid:80) vc whereC ⊂ C isthesubsetofcontactsassignedtolinkℓ . If
+m |Cm| v
+k
+c∈Cm k m m
+|C |=0,thenv¯ ismarkedasinvalid.
+m m
+Thefinaloutputsare:
+• AcontacttensorC ∈RT×N×K×3
+• AvaliditymaskM∈{0,1}T×N×K
+where T is the number of time-steps in the demonstration clip, N is the number of object parts
+(N =2forallourarticulatedobjectassets). Theexactsameprocedureisrepeatedforeachdexterous
+hand,henceeachbi-manualRLtaskenvironmenthastwocopiesofcontactinformationwiththe
+sameshapes.
+15
+B ExperimentDetails
+B.1 RLTrainingandEvaluationDetails
+We use Genesis for physics simulation [45] and PPO as the base RL algorithm implemented by
+the rl-games [47] package. In the reported results for both ours and baseline methods, we use
+12,000parallelenvironmentsforRLtrainingonallthedexteroushands,exceptforDexHandwhich
+uses10,000environmentsduetomemoryconstraints. Eachtrainingrunoccupieseitheronesingle
+NVIDIAL40sorH100GPU,andwerun5randomseedsforeachdemonstrationandeachpairof
+dexteroushandsforallcomparedmethods,exceptforactionablationexperimentsin§5.2whichuse
+3randomseeds.
+B.2 RLPolicyObservationandActionSpace
+We use state-based input for policy observation space: this include object states, joint targets,
+finger-to-objectdistances,andnormalizedhand-objectcontactforces.
+B.3 DetailsonBaselineReimplementation
+Ourmostrelevantbaselinemethods[35,36]arebuiltwithIsaac-Gym[54]withvarioussimulation-
+specificimplementationdetails. Toensureafaircomparison, wehavededicatedefforttoensure
+a faithful reimplementation using our training framework and RL environments. Some of our
+modifications can result in better performance for the baselines than their original reports: for
+example,Genesis[45]usesamorestablesimulationcontactmodelingandismorememoryefficient,
+whichenablestrainingupto12,000parallelenvironmentswithmuchhigherlearningefficiencythan
+theIsaacGymenvironmentsusedbybaselines(i.e. 2048forObjDex[35]and4096environmentsfor
+ManipTrans[36]). Wedescribefurtherdetailsourreimplementationforeachbaselinebelow:
+ObjDex [35] Reimplementation Details. To ensure a fair comparison, we have contacted the
+originalauthorstoobtaintheirsetupdetailsthatwerenotavailablepublicly,including: 1. Agood
+estimatefortheexactframestart-andend-parametersfortheARCTICclipsusedfortraining;2. A
+frameinterpolationmultiplierthateffectivelyextendstheepisodelengthforRLtrainingtobelonger
+thantheoriginaldemonstration(e.g. anARCTICclipwithT timestepsrequirestrainingRLon4T or
+7T episodesteps). Wereusetheircliprangebutchoosenottousetheinterpolationafterempirically
+findingittoincreasetrainingtimewithoutimprovingtaskperformance.
+Moreover,theoriginalObjDex[35]methodusesatwo-levelframework,whereahigh-levelwrist
+plannerisfirstlearnedacrossallARCTICdemonstrationclips,andalow-levelRLpolicyoutputs
+wristresidualactions. Weinsteaddirectlyusethekinematicretargetingresultsforthewristbase
+actions. The high-level wrist planner design assumes access to a bigger dataset and makes the
+low-levelRLpolicysensitivetothelearnedplanneroutputs—wehypothesizethisisthemain
+reasonforwhyourreimplementationcanachievebetterperformancethantheoriginalresults
+(e.g. OnKetchup-100,ourre-implementationachieves>90%successrateforallhands,whereasthe
+originalpaperreports41.2%;onMixer-170,oursachieves>70%successrateforthreeoutoffour
+hands,whereasthepaperreports57.6%).
+ManipTrans[36]ReimplementationDetails. Becausetheoriginalmethoddidnotdirectlyevalu-
+ateonARCTICdemonstrations(albeitthepaper’sappendixSectionA.1[36]reportedqualitative
+resultsforsomeARCTICobjects),wereimplementtheirproposedcurriculumwhilekeepingevery-
+thingelsealignedwithourbest-performingsetup(thisincludeshybridactionformulation,training
+withbothtaskandauxiliaryrewardsandthesameRLhyper-parameters,etc.). Wefollowtheoriginal
+method[36]todecayfourparametersduringtraining,namelythethresholdsforobjectposeerrors
+and hand keypoint error, the z-axis gravity value, and the friction parameter, which we write as
+ϵP ,ϵR ,ϵ ,g ,µ,respectively. WemodifiedGenesis[45]’srigidsolvertosupportmodi-
+object object finger gravity
+fyingthegravityvectorduringRLtraining. ManipTrans[36]doesnotdisclosetheexactdecaying
+16
+schedule for these parameters or the range for gravity and friction parameters, hence we choose
+thesameexponentialschedulertostayconsistentwithourvirtualobjectcontrollercurriculum,and
+choose a range of g ∈ [0,−9.81],µ ∈ [4.0,1.0]. More specifically, given a max iteration I,
+gravity
+desiredrangeofparameters,andadecayintervalv,theparameterisdecayedeveryviterations;after
+theparametersreachtheirfinalvalues,trainingproceedsforanotherfixednumberofiterations(this
+isalsoalignedwithourmethod). TheexponentialscheduledependsonthegivenmaxiterationsI,
+foreachparameterω ∈{ϵR ,ϵ ,g ,µ}: itsvalueatagiventrainingiterationcanbewritten
+object finger gravity
+(cid:16) (cid:17)t/I
+asω =ω · ωfinal . Notethatweuseapseudovalueg¯ ∈[9.81,0]becausethedecay
+current init ωinit gravity
+computationassumespositivebounds,andtheactualappliedgravityisg =9.81−g¯ .
+gravity gravity
+B.4 PolicyEvaluationSetup
+EvaluationAcrossRandomSeeds. Foreachmethodandtask,werun5randomseeds;eachseed
+runsavesabestpolicycheckpointbasedoncumulativetaskreward,andeachcheckpointisevaluated
+for20episodes. Foreachevaluationepisode,werecordtheachievedobjectstates(bothposeand
+revolutejointangle)andcompareagainstthedemonstrationtrajectory.
+PerformanceMetrics. Ourfunctionalretargetingtaskrequiresamanipulationpolicytoachieve
+articulatedobjecttracking,whichinvolvesbalancingbothposeandjointangleerrorsoverlongtime
+sequences. Forperformancereporting,priorworkhasexploredper-stepsuccessrate[35]ortracking
+error[36],butbothhaveclearshortcomings: successratereportingisbasedonhowmanytimesteps
+outoftheentiredemonstrationapolicycanmovetheobjecttotrackwithingivenerrorthresholds,
+hencetheresultsarehighlysensitivetothethresholdvalues(thiscaserequires3differentthresholds
+forposition,rotation,andjointangleerrors),whichalsodependontheobjectsizeandgeometries.
+Reportingtrackingerrorscanbeaccurate,butitshowsthreedifferenterrorsforeverytask,hence
+making it difficult to derive high-level comparisons and takeaways from experiment results. To
+addresstheselimitations,weproposetofollowpriorworkinobjectposetracking[55,56,57]and
+useasimilarADD-AUC3metricwiththekeydifferencethatwecomputeADDforeachobjectpart
+separately(toaccommodatearticulatedobjects)andaverageADDresultsbeforecomputingAUC.
+Wefoundthistobealess-sensitivemetricthatstillreportsonesuccessratevalueforeachmethod
+whilereflectiveofthequalitativeresultsfrompolicyroll-outs.
+C AdditionalExperimentResults
+Wevisualizekeyframesofourlong-horizonmanipulationtasksinFig.. Pleaseseesupplementary
+videosforadditionalqualitativeresultsforpolicyroll-outs. Thefigureinthenextpageshowsresults
+forouractionablationexperimentsdescribedin§5.2.
+3ADDstandsforAverageDistance,AUCstandsforAreaUnderCurve,wedon’tuseADD-Sbecausewe
+havetheexactmatchingtargetsfromthedemonstration
+17
+Figure8: HandActionAblation. Weablateonactionoutputformulationsonasubsetofdexterous
+handsandobjectsandtrainedwithoutcurriculum. Hybridactionswithmorerestrictivebounds(light
+anddarkgreenbars)showsbetterlearningperformancethanabsoluteactionsandfullresidualactions
+withlesswristconstraints,bothintrainingwithtaskrewardsorwithbothtaskplusauxiliaryrewards
+settings
+18

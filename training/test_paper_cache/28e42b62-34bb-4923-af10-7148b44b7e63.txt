@@ -1,0 +1,1949 @@
+GTPO and GRPO-S:
+Token and Sequence-Level Reward Shaping with Policy Entropy
+HongzeTan*12 ZihanWang*13 JianfeiPan*1 JinghaoLin*13 HaoWang*14
+YifanWu*5 TaoChen1 ZhihangZheng1 ZhihaoTang†16 HaihuaYang♠†1
+Abstract 2015;Aminietal.,2024;Christianoetal.,2017;OpenAI
+SpinningUp,2018;Gaoetal.,2023)tostreamlined,value-
+Reinforcement Learning (RL) is pivotal for
+function-free paradigms. Exemplified by methods such
+enhancing Large Language Model (LLM)
+asGRPO,thisapproachbypassesexplicitcriticmodelsby
+reasoning, yet mainstream algorithms such as
+leveragingoutcome-basedgroupbaselines,therebyreducing
+GRPOandDAPOremainconstrainedbyacoarse-
+thecomputationaloverheadformassivemodels(Shaoetal.,
+grained credit assignment paradigm, where all
+2024;Yuetal.,2025;Fengetal.,2025b;a).
+tokens within the same response receive the
+identical reward. In this paper, we propose Despite the remarkable performance of algorithms like
+Dynamic Entropy Weighting, systematically GRPOinmathematicalandlongChain-of-Thought(CoT)
+defineentropy-basedweightratios (cid:80)n k H =1 i, H t k,t and reasoning tasks, a critical bottleneck remains: coarse-
+similar variants to redistribute rewards and get grainedcreditassignment(Uesatoetal.,2022;Weietal.,
+fine-grainedrewardsthroughtwonewalgorithms: 2022). Algorithms like GRPO assign a uniform reward
+Group Token Policy Optimization (GTPO), to every token in a sequence based solely on the final
+whichassignsanentropy-weightedrewardtoeach outcome (Shao et al., 2024). This limitation becomes
+token and synthesizes token-specific advantage profoundintasksrequiringlong-chainreasoning(Cuietal.,
+function to drive the model toward optimal 2025a;Rafailovetal.,2024). Forinstance,asequencewith
+path, and the analogous algorithm Sequence- dozensofcorrectlogicalstepsmayreceivezerorewardfora
+Level GRPO (GRPO-S), which extends this singlefinalerror,penalizingcorrectandincorrectreasoning
+design to the sequence level and exhibits alike(Yangetal.,2025;Wangetal.,2025b). Conversely,
+superiorstabilityinlongChain-of-Thought(CoT) a sequence that reaches a correct answer through flawed
+reasoningtasks. Unlikemethodsusingentropyas orguessedintermediatestepsisfullyrewarded(Sutton&
+mereregularization,GTPOandGRPO-Sestablish Barto,2018;Zhangetal.,2025).
+anewstate-of-the-artonAIMEandMATH500,
+Weidentifypolicyentropyasanintrinsicanchorforfine-
+outperformingpriorentropy-guidedbaselinesand
+grained credit assignment, distinguishing our work from
+validatingourweightingmechanism.
+recent approaches that treat it merely as a regularization
+constraint (Cui et al., 2025b) or a binary selection mask
+(Wangetal.,2025b). Whilethesemethodsrecognizethat
+1.Introduction
+highentropysignalspivotalreasoningsteps(Chengetal.,
+Large-scaleReinforcementLearning(RL)propelsLLMs 2025), they perform passive filtering and fail to address
+from pattern recognition to complex reasoning, enabling thebottleneckofcoarse-grainedrewards. Incontrast,our
+dynamic, multi-step problem-solving (Guo et al., 2025; framework repurposes entropy for active reward shaping.
+Wei et al., 2022; Zhang et al., 2022; Achiam et al., Insteadofdiscardingtokens,wedynamicallyredistribute
+2023; Kimi et al., 2025; Jin et al., 2025). Standard RL therewardsignal. Byreinforcinghigh-entropyexploration
+approaches optimize policies by maximizing cumulative in correct solutions while penalizing confident errors in
+rewards,typicallyrelyingonavaluefunctiontoestimate incorrectones,weachieveprecisetoken-levelsupervision
+expectedfuturereturns. However,duetothecomputational withoutanexplicitvaluenetwork.
+burdenofmaintainingsuchcriticmodels,thefieldevolves
+The central observation is that moments of high policy
+fromresource-intensivePPO-basedpipelines(Mnihetal.,
+entropywithinareasoningsequencearenotrandomnoise
+1ByteDance China 2HKUST 3Northeastern University butstrongcorrelatesofpivotalreasoningjunctures(Cheng
+4CityUHK 5SUSTech 6BUPT *Equal Contribution et al., 2025; Cui et al., 2025b). When a model selects
+†CorrespondingAuthors ♠ProjectLeader. betweenmultiplevalidmathematicaltheoremsorconstructs
+1
+6202
+beF
+5
+]LC.sc[
+6v94340.8052:viXra
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+(a) Traditional Method Uniform Reward (GRPO/DAPO) (c) Our Method: Dynamic Entropy Weighting (GRPO-S)
+Entropy Correct Rollout 1 Entropy Correct Rollout 2 1. P 5 ositive Reward Entropy Correct Rollout 1 Entropy Correct Rollout 2 Avg. Po 1 s .5 itive Reward
+Entropy
+Avg. Entropy Rollout 2 Reward
+Rollout 1 Reward
+Reward Reward
+Token1 2 3 4 5 6 7 8 9 10 Token1 2 3 4 5 6 7 8 9 10 1 Token1 2 3 4 5 6 7 8 9 10 Token1 2 3 4 5 6 7 8 9 10 1
+Token1 2 3 4 5 6 7 8 9 10 Token1 2 3 4 5 6 7 8 9 10 -1.5 Token1 2 3 4 5 6 7 8 9 10 Token1 2 3 4 5 6 7 8 9 10 -1.5
+Reward Reward
+Avg. Entropy Rollout 1 Reward
+Avg.
+ Rollout 2 Reward
+Entropy Incorrect Rollout 1 Entropy Incorrect Rollout 2 -1 Negative Reward Entropy Incorrect Rollout 1 Entropy Incorrect Rollout 2 Entropy N - e 1 gative Reward
+(b) Our Method: Dynamic Entropy Weighting (GTPO) (d) Performance of GTPO/GRPO-S
+Entropy Correct Rollout 1 Entropy Correct Rollout 2 Positive Reward
+1.5
+Reward Reward
+Token1 2 3 4 5 6 7 8 9 10 Token1 2 3 4 5 6 7 8 9 10 1
+Token1 2 3 4 5 6 7 8 9 10 Token1 2 3 4 5 6 7 8 9 10 -1.5
+Reward Reward
+Entropy Incorrect Rollout 1 Entropy Incorrect Rollout 2 -1 Negative Reward
+Figure1.Conceptualillustrationofrewardassignment.(a)Previousmethodsassignauniformrewardbasedonthefinaloutcome.In
+contrast,ourmethodsuseDynamicEntropyWeightingtorefinecreditassignment:(b)GTPOrewardshigh-entropytokensincorrect
+sequenceswhilesuppressingtheminincorrectones,and(c)GRPO-Srewardscorrectsequenceswithhigheraverageentropywhile
+penalizingincorrectpaths,yieldingsuperiorperformanceonAIME2024(left)andAIME2025(right)(d).
+acomplexlogicalconnective,itsuncertainty,asmeasured • We propose Group Token Policy Optimization
+byentropy,naturallyincreases. Thispolicyentropy,viewed (GTPO),anoveltoken-levelalgorithmthatintroduces
+asameasureofmodelindecision,canberepurposedasa a dynamic, entropy-weighted reward mechanism to
+powerfulheuristicforcognitiveeffort(Haarnojaetal.,2018; achieveprecise,per-tokencreditassignmentwithinthe
+Lindsay, 2020). In successful paths, it signals a moment efficientGRPOframework.
+of valuable exploration to be reinforced; in unsuccessful
+• WedevelopSequence-LevelGroupRelativePolicy
+paths,itcanhelpthepolicybreakfromincorrectthinking.
+Optimization(GRPO-S)asananalogoussequence-
+ThisprinciplemotivatestheproposalofDynamicEntropy
+level algorithm that uses the dynamic, entropy-
+Weighting, a novel framework that reshapes the reward
+weightedrewardmechanismtocapturetheexploratory
+signaltobeproportionaltotoken-levelorsequence-level
+valueofanentiresequence.
+entropy,therebyfocusingthepolicygradientonthemost
+criticaldecisionpoints. • We provide a theoretical analysis of unbiasedness
+andconvergencetomotivateourobjectivefunctions
+We operationalize this framework through a suite of two
+design and conduct comprehensive experiments on
+complementaryalgorithms. Thefirst,GroupTokenPolicy
+challengingreasoningbenchmarks,showingthatour
+Optimization (GTPO), is a novel token-level algorithm
+methodssignificantlyoutperformstrongbaselines.
+that assigns a unique, entropy-weighted reward to every
+token, achieving the first true, fine-grained, per-token
+credit assignment within the efficient GRPO framework. 2.DynamicEntropyWeightingForPolicy
+Complementing this, Sequence-Level Group Relative Optimization
+Policy Optimization (GRPO-S) is a lightweight variant
+that modulates the global reward for an entire sequence WenowpresenttheDynamicEntropyWeightingframework
+basedonitsaverageentropy.Together,thesemethodsoffera indetail. MotivatedbythestatisticallimitationsofGRPO
+principledtrade-offbetweenmicro-levelgranularprecision (§2.1),wepresentthedetailedformulationsofGTPO(§2.2)
+andmacro-levelsequencestability,asillustratedinFig.1, andGRPO-S(§2.3)withatheoreticalanalysisregarding
+whichconceptuallydemonstrateshowentropymodulation theunbiasednessandconvergence(§2.4).
+at both token and sequence levels leads to more nuanced
+creditassignmentandimprovedperformance. 2.1.FromCoarse-GrainedCreditAssignmentto
+DynamicEntropyWeighting
+Thispapermakesthefollowingprincipalcontributions:
+Background: GroupRelativePolicyOptimizationand
+ItsLimitations. OurworkbuildsupontheGroupRelative
+• We demonstrate that GRPO still performs coarse- Policy Optimization (GRPO) framework (Shao et al.,
+grainedcreditassignment,andmotivatedbythis,we 2024),avalue-function-freealgorithmthatsimplifiespolicy
+fundamentallyoptimizetheGRPOframework. optimizationforLLMs. Givenapromptq,GRPOsamples
+2
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+GRPO/DAPO GTPO GRPO-s
+Correct Correct Correct
+Reward Model Incorrect Reward Model Policy Model Incorrect Reward Model Policy Model Incorrect
+Entropy Reward Entropy Reward
+r 1 r 1.1 r 1.2 r 1.3 r 1.4 r 1.l r 1 H1.1H1.2 H1.3H1.4 H1.l 1.5 r 1.1 r 1.2 r 1.3 r 1.4 r 1.l r 1 H1.1H1.2 H1.3H1.4 H1.l H1 1.5 r1
+r 2 r 2.1 r 2.2 r 2.3 r 2.4 ... r 2.l r 2 H2.1H2.2 H2.3H2.4 ...H2.l r 2.1 r 2.2 r 2.3 r 2.4 r 2.l r 2 H2.1H2.2 H2.3H2.4...H2.l H2 r2
+r n r n.1 r n.2 r n.3 r n.4 r n.l r n Hn.1Hn.2 Hn.3Hn.4 Hn.l 1 r n.1 r n.2 r n.3 r n.4 r n.l r n Hn.1Hn.2 Hn.3Hn.4 Hn.l Avg. Hn 1 rn
+r 1 r 1.1 r 1.2 r 1.3 r 1.4 r 1.l r 1 H1.1H1.2 H1.3H1.4 H1.l -1.5 r 1.1 r 1.2 r 1.3 r 1.4 r 1.l r 1 H1.1H1.2 H1.3H1.4 H1.l H1 -1.5 r1
+r 2 r 2.1 r 2.2 r 2.3 r 2.4 ... r 2.l r 2 H2.1H2.2 H2.3H2.4 ... H2.l r 2.1 r 2.2 r 2.3 r 2.4 r 2.l r 2 H2.1H2.2 H2.3H2.4 ...H2.l H2 r2
+r m r m.1 r m.2 r m.3 r m.4 r m.l r m Hm.1Hm.2Hm.3Hm.4 Hm.l r m.1 r m.2 r m.3 r m.4 r m.l r m Hm.1Hm.2Hm.3Hm.4 Hm.l Hm rm
+-1 -1
+Reward Reward Entropy Weight Reward Entropy Weight Avg. Entropy
+Figure2.Ahigh-levelcomparisonoftherewardsignalingprocess.MethodssuchasGRPOandDAPOuseastaticrewardmodeltoassign
+auniformrewardtoanentiresequence.Ourframework,encompassingGTPOandGRPO-S,introducesaDynamicEntropyWeighting
+modulethatreshapesthissignalintofine-grainedrewardsateitherthetokenorsequencelevelbeforeitisusedbythepolicymodel.
+a group of G sequences, {o ,o ,...,o }, from a policy Sequence-levelmeanRˆ ,butaccordingtotheanalysisin
+1 2 G 1
+π . Each sequence o receives a terminal reward r (e.g., AppendixB.1&B.2,weknowthatToken-levelmeanRˆ is
+θ i i 2
+1forcorrect,0forincorrect). Theadvantagefunctionfor better.However,thisexposesacriticalissue:GRPOexhibits
+alltokenswithinasequenceo isdefinedasthesequence’s a dependency on the length of the response sequence.
+i
+rewardnormalizedrelativetothegroup’saveragereward: Specifically, for a correct response, it implies that "the
+longer,thebetter",whichisobviouslyincorrect.Therefore,
+Aˆ =Aˆ = r i −mean({r k }G k=1 ) . (1) in a sense, GRPO still performs coarse-grained credit
+i,t i std({r }G ) assignment. Theunderlyingcauseofthisissueisthatthe
+k k=1
+designoftherewardsignalleadstoanadvantagefunction
+TheGRPOobjectivethenappliesthisuniformadvantage
+thatfailstocapturethespecificityofeachtoken.
+estimatetoeverytokeninthesequencewithinaPPO-style
+clippedlossfunction: Solution: TheDynamicEntropyWeightingFramework.
+Tofullyexploitthisgranularity,aprincipledreshapingof
+JGRPO(θ)=E (cid:20) G 1(cid:88)
+i=
+G
+1
+|o 1 i| (cid:88)
+t
+|o
+=
+i
+1
+| min (cid:18) wi,t(θ)Aˆ i,t,clip(wi,t(θ),1−ϵ,1+ϵ)Aˆ i,t (cid:19)(cid:21) . t d h y e n r a e m w i a c rd en s t i r g o n p a y li w ts e e i l g f h is ti e n s g s , e w nt h ia i l c . h T , h a i s s i i l s lu a s c t h ra ie te v d ed in th F ro ig u . g 2 h ,
+(2)
+focuses the policy gradient on critical decision points to
+While simple and effective, this uniform application of createafarmoreinstructiveandfine-grainedlearningsignal
+the advantage is the central mechanism of GRPO, and thanuniformcreditassignmentapproaches.
+it also represents the core limitation that motivates our
+Theframeworkpartitionssequences(inO,whereOisthe
+work: coarse-grainedcreditassignment. Thisapproach
+set consists of all response sequences) by their terminal
+is not only conceptually imprecise but, as will now be rewardintosuccessful(O+)andunsuccessful(O−)sets,
+demonstrated,alsostatisticallysuboptimal.
+enablingadualstrategyforcreditassignment.High-entropy
+Motivation: The Statistical Case for Finer-Grained tokensinsuccessfulsequence(o i ∈O+)receiveareward
+Advantage Estimation. A key motivation for our shift bonustoreinforcevaluableexploration. Conversely,low-
+towards a token-level objective stems from a variance entropy tokens in unsuccessful sequence (o j ∈ O−) are
+reduction argument concerning the baseline term in the assignedrelativelylargerpenaltiestodiscourageconfident
+advantagefunction(i.e.,thegroup’saveragereward). When butincorrectreasoning. Thisprecisemodulationfocuses
+sequence lengths |o | are unequal, there are two primary thepolicygradientonthemostinformativesteps.
+i
+waystoestimatethisbaseline:
+2.2.GroupTokenPolicyOptimization(GTPO)
+G
+Sequence-levelmean: Rˆ = 1 (cid:88) r . Group Token Policy Optimization (GTPO) is the most
+1 G i
+direct and granular implementation of our framework.
+i=1
+(cid:80)G
+|o |r
+It introduces a fine-grained, entropy-weighted credit
+Token-levelmean: Rˆ = i=1 i i. assignmentmechanismthatoperatesatthetokenlevel.
+2 (cid:80)G
+|o |
+i=1 i
+Token-LevelRewardShaping. Foranytokeno withina
+i,t
+While a token-level reward baseline provably reduces successfulsequenceo ∈O+,o withinanunsuccessful
+i j,t
+variance for more stable gradients ( Var(Rˆ 2 ) ≤ Var(Rˆ 1 ), sequenceo j ∈O−,thefollowingentropy-weightedreward
+see Appendix B.1 for a formal proof ). It is easy to see
+that the design of GRPO essentially estimates reward by
+3
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+isdefined: thetotalnumberoftokens,1/
+(cid:80)G
+|o |:
+k=1 k
+H
+r˜ i + ,t =α 1 r i +α 2(cid:80)n
+k=1
+i, H t
+k,t
+·d t , r˜ j + ,t =0. (3) JGTPO(θ)=E (cid:20)
+(cid:80)G
+k=
+1
+1
+|ok|
+(cid:18)(cid:88)
+i=
+n
+1
+(cid:88)
+t
+|o
+=
+i
+1
+| min(cid:0)wi,t(θ)A˜+
+i,t
+,clip(wi,t(θ),1−ϵ,1+ϵ)A˜+
+i,t
+(cid:1)
+This reward is composed of the original binary success + (cid:88)G (cid:88) |oj| min(cid:0)wj,t(θ)A˜− j,t ,clip(wj,t(θ),1−ϵ,1+ϵ)A˜− j,t (cid:1) (cid:19)(cid:21) ,
+j=n+1t=1
+signal r (where r = 1) and a dynamic entropy bonus, (7)
+i i
+balanced by hyperparameters α ,α > 0. The bonus is wherew (θ)= πθ(oi,t|q,oi,<t) isthestandardimportance
+proportionaltothetoken’sgenera
+1
+tion
+2
+entropy sampling
+i,t
+weight.
+πθold (oi,t|q,oi,<t)
+(cid:88)
+H =− π (v|q,o )logπ (v|q,o ). (4) 2.3.ASequence-LevelVariantofGTPO(GRPO-S)
+i,t θold i,<t θold i,<t
+v∈V
+While GTPO offers maximal granularity, it incurs
+computationaloverheadforper-tokenentropyandreward
+Crucially,thisentropyisnormalizedacrossallnsuccessful
+calculation. Additionally, since some tasks are result-
+sequences at timestep t, creating a relative signal that
+oriented,thegoalistodevelopacorrespondingsequence-
+rewardsvaluableexploration,specificallytargetingtokens
+levelalgorithmbyfollowingtheapproachofGTPO,and
+generatedwithhigheruncertaintycomparedtoalternative
+perform further refinement. Hence GRPO-S is proposed
+successfulpaths(ifasequenceo haslengthlessthant,its
+i asananalogousmethodthatappliesourentropy-weighting
+H istreatedas0).Thisrelativebonusisthenscaledbyd ,
+k,t t principleatthesequencelevel. Thecoreideaistomodulate
+thecountofsuccessfulsequenceswithlength≥ t,which
+the reward for an entire sequence based on its overall
+dynamically adjusts the reward magnitude to account for
+exploratoryvalue,ascapturedbyitsaverageentropy.
+thediminishingnumberofactivereasoningpathsovertime.
+Sequence-LevelRewardShaping. Foranysequenceo ∈
+k
+Foranytokeno withinanunsuccessfulsequenceo ∈
+j,t j O,rewardsareshapedbasedonasequence’saveragetoken
+O−,thegoalistopenalizeconfidentmistakesmoreheavily.
+entropy,
+The reward r˜− is thus defined using inverse entropy to
+j,t
+assignrelativelylargerpenaltiestolow-entropy(i.e.,high-
+confidence)tokens: Hˆ = 1 (cid:88)
+|ok|
+H . (8)
+k |o | k,t
+k
+t=1
+1/H
+r˜− =α ·(−1)+α j,t ·h ·(−1),
+j,t 1 2(cid:80)m k=1 (1/H n+k,t ) t (5) For any successful sequence o ∈ O+, the reward
+i
+r˜− =0. is augmented with an entropy-based bonus to reinforce
+i,t
+valuable exploration. Conversely, for any unsuccessful
+sequence o ∈ O−, an additional penalty proportional is
+j
+whereh isthecountofunsuccessfulsequenceswithlength
+t appliedtoitsaverageinverseentropy,thuspenalizinghigh-
+≥ t (if a sequence o has length less than t, its 1/H is
+j j,t confidencemistakesmoreseverely. Formally:
+treated as 0). This formulation encourages the model to
+be uncertain when it is incorrect, promoting exploration
+awayfromfailuremodes. Basedontheseshapedrewards, rˆ+ =β r +β
+Hˆ
+i ·n,
+separateadvantagefunctionsarecomputedforthepositive i 1 i 2(cid:80)n Hˆ
+and negative sets, both normalized over all tokens in the k=1 k (9)
+1/Hˆ
+entirebatchtoensureaconsistentscale: rˆ− =β ·(−1)+β j ·m·(−1).
+j 1 2(cid:80)m (1/Hˆ )
+k=1 n+k
+r˜+ −mean(R˜+) r˜− −mean(R˜−)
+A˜+ = i,t and A˜− = j,t .
+i,t std(R˜+) j,t std(R˜−) whereβ
+1
+,β
+2
+> 0arehyperparametersandrˆ
+i
+− = rˆ
+j
++ = 0.
+(6) Thisformulationrewardssuccessfulsequencesthatare,on
+Here, R˜+ and R˜− represent the collections of all shaped average, more exploratory, while penalizing confidently
+tokenrewardsacrossallpositiveandnegativesequencesin incorrectsequences.
+thegroup,respectively.
+The GRPO-S Objective Function. The advantage
+The GTPO Objective Function. The final objective functions Aˆ+ and Aˆ− are computed analogously to
+i j
+function for GTPO integrates these components into a Eq. (1), but using the sequence-level shaped rewards and
+unified,token-levelPPO-styleloss.Theexpectationistaken normalizingovertheGsequencesinthegroup. Thefinal
+overalltokensinthebatch,weightedbythereciprocalof objectivefunctionforGRPO-Smirrorsthestructureofthe
+4
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+originalGRPOloss,butwithourshapedadvantages: Algorithm1GTPOandGRPO-STrainingProcedure
+Input: Initial policy model π ; Task prompts D;
+J GRPO-S (θ)=E
+(cid:20)
+G
+1(cid:18)
+(cid:88)
+n
+min (cid:0) wˆi(θ)Aˆ+ i ,clip(wˆi(θ),1−ϵ,1+ϵ)Aˆ+ i (cid:1) Hyperparametersα,β,G,ϵ;Le
+θ
+arningrateη
++ i= (cid:88) G 1 min (cid:0) wˆj(θ)Aˆ−
+j
+,clip(wˆj(θ),1−ϵ,1+ϵ)Aˆ−
+j
+(cid:1) (cid:19)(cid:21) , 1 2 : : I fo n r it i i t a e l r i a z t e i : on π θ k old = ← 1, π 2 θ ,... do
+j=n+1 Step1: DataCollection&EntropyCalculation
+(10)
+wherewˆ (θ)isthesequence-levelimportanceweightthat 3: {o 1 ,...,o G }∼π θold (·|q) #SampleGoutputs
+averages i thetoken-levelweights: 4: r i ←R(o i )∈{0,1},∀i #Getterminalrewards
+5: O+,O− ←Partition(O) #Splitbasedonoutcome
+(cid:80)
+wˆ (θ)= 1 (cid:88) |oi| w (θ)= 1 (cid:88) |oi| π θ (o i,t |q,o i,<t ) . 6: H i,t ←− π θold logπ θold #Token-levelentropy
+i |o | i,t |o | π (o |q,o ) Step2: RewardShaping&Optimization
+i
+t=1
+i
+t=1
+θold i,t i,<t
+7: ifMethodisGTPO(Token-Level)then
+(11)
+Remark 2.1. Note that the definitions of our new 8: r˜ i + ,t ,r˜ j − ,t ←Eq.(3),(5) #ShaperewardsviaH i,t
+9: A˜+,− ←r˜+,− #TokenAdvantage(Eq.6)
+algorithmsinvolvemultiplefractionalterms. Inpractical ∗,t ∗,t
+implementation, a small positive constant ϵ needs to be 10: L←J GTPO (θ;A˜+ ∗, , t −) #LossviaEq.(7)
+addedwherenecessarytoensurenumericalstability. For 11: elseifMethodisGRPO-S(Sequence-Level)then
+thesakeofbrevityandtoavoidclutteringthedefinitions, 12: Hˆ i ←Avg(H i,t ) #Sequenceentropy
+weomitexplicitnotationofthisconstantinthetext. 13: rˆ i +,rˆ j − ←Eq.(9) #ShaperewardsviaHˆ i
+14: Aˆ+ ∗ ,− ←rˆ ∗ +,− #SequenceAdvantage
+2.4.ImplementationandTheoreticalGuarantees 15: wˆ i ←Eq.(11) #Sequenceimportanceweight
+16: L←J GRPO-S (θ;Aˆ i ,wˆ i ) #LossviaEq.(10)
+2.4.1.IMPLEMENTATIONDETAILS
+17: endif
+This section consolidates the practical details required to 18: θ ←θ+η∇ θ L #GradientUpdate
+implementourframework,includingacriticalmechanism 19: π θold ←π θ #Syncpolicy
+for ensuring theoretical guarantees and a detailed 20: endfor
+Output: π
+algorithmicprocedure. θold
+Algorithmic Procedure. To clearly illustrate the
+implementationflowofGTPOandGRPO-S,thecomplete
+bias introduced by the entropy-weighted reward shaping,
+training procedure is provided in Algorithm 1. The whereJ+ (θ)isthepositiverewardcomponentofGTPO.
+procedurehighlightsthesharedstepsandthekeydifferences GTPO
+Assume the policy π satisfies the Entropy Consolidation
+θ
+betweenthetoken-levelandsequence-levelapproaches.
+Condition: as training iteration k → ∞, the variation
+in token entropy among successful sequences diminishes,
+2.4.2.THEORETICALGUARANTEES
+i.e., for any two successful sequences o ,o ∈ O+,
+i1 i2
+W un e bia p s r e o d v n i e d s e s a a nd th c e o o n r v e e t r i g c e a n l ce an o a f ly o s u is r fr e a s m ta e b w lis o h rk in , g usi t n h g e l ϵ im > k 0 → p ∞ rev H H e i i n 1 2 t , , t t ss = ing 1 u ( l a a l r m it o y) s . t T su h r e e n l , y, th a e ss g u ra m d i i n e g nt re b g ia u s la v r a i n za is t h io e n s
+GTPO as a representative case. Detailed proofs and a asymptotically:
+parallelanalysisforGRPO-SaredeferredtoAppendicesB.3
+andB.4. lim ∥∆J(θ )∥=0. (13)
+k
+k→∞
+Proposition2.2(ConservationofPositiveRewardMass-
+GTPO). LetO+ bethesetofsuccessfulsequencesactive
+t
+attimesteptwithinasampledgroup,withcardinalityd = Theorem2.4(TheSameGlobalOptimum-GTPO). GTPO
+t
+|O+|. UndertheGTPOrewardshapingmechanismdefined sharesthesameglobaloptimumasDAPO.
+t
+inEq.(3),ifthehyperparameterssatisfyα +α =1,then
+1 2 Proof. Proposition2.2establishesthatthepositivereward
+thesumoftheshapedpositiverewardsequalsthesumof
+mass of GTPO is identical to that of GRPO. It is
+theoriginalbinaryrewardsateverytimestep:
+worth noting that, from a mathematical perspective, the
+(cid:88) (cid:88) design of DAPO is nearly identical to GRPO, with the
+r˜+ = r . (12)
+i,t i primary distinction being the assignment of a reward of
+i∈O t + i∈O t + -1 to incorrect answers rather than the 0 reward used in
+GRPO.Consequently,followingaderivationanalogousto
+Proposition 2.3 (Asymptotic Consistency - GTPO). Let Proposition2.1,wecanconcludethatthetotalrewardmass
+∆J(θ) = ∇J+ (θ) − ∇J (θ) be the gradient ofGTPOisequivalenttothatofDAPO.Theconservationof
+GTPO GRPO
+5
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+Table1.Comparisonofdifferentmethodsonvariousbenchmarks.
+AIME2024 AIME2025 MATH500
+Method Mean@32 Pass@4 Pass@32 Mean@32 Pass@4 Pass@32 Mean@32
+Qwen2.5-7B
+GRPO 28.36 36.15 46.01 15.00 19.03 20.00 78.62
+DAPO 21.2 30.04 35.51 13.33 16.28 16.67 78.85
+DAPOw/ForkingTokens 30.77 41.34 54.16 15.21 19.82 21.67 79.25
+GTPO 34.23 48.03 64.89 16.67 25.51 26.67 80.16
+GRPO-S 34.67 47.18 64.76 18.33 22.76 23.33 80.07
+Qwen2.5-32B
+GRPO 29.17 37.18 46.30 17.71 25.95 28.85 84.16
+DAPO 34.06 46.64 59.02 21.67 25.76 26.67 84.45
+DAPOw/ForkingTokens 34.68 47.81 64.12 23.19 27.99 32.02 85.21
+GTPO 35.21 49.41 68.91 26.89 33.49 36.67 85.72
+GRPO-S 35.52 51.12 67.19 25.11 29.75 34.33 85.79
+rewardmassimpliesthattheGTPOobjectiveisanunbiased Remark2.6. NotethatwhileProposition2.2assumesα +
+1
+augmentationoftheDAPOobjectiveintermsofthetotal α =1,thisconditionisnotstrictlynecessary. Theproofs
+2
+learningsignal. remain valid even if α +α ̸= 1, as the term α +α
+1 2 1 2
+merelyactsasaconstantscalingfactorthatdoesnotaffect
+Note that the gradient estimator for the positive reward
+the validity of the derivation. In our experimental setup,
+componentofGTPOcanbeconceptuallydecomposedinto:
+thesumα +α isconfiguredtobecloseto1, butstrict
+1 2
+equalityisnotenforced.
+E[∇J+ ]=E[∇J ]+E[Cov(∆ ,∇logπ )],
+GTPO GRPO entropy θ
+(cid:124) (cid:123)(cid:122) (cid:125) Remark 2.7. The theoretical analysis of GRPO-S is
+ExplorationTerm
+(14) analogous. SeeAppendixB.4.
+where ∆ represents the zero-sum redistribution of
+entropy
+rewards based on uncertainty. Since the total positive
+3.Experiments
+rewardremainstiedtothegroundtruthr ,themodelcannot
+i
+maximizetheobjectivesolelybymanipulatingentropy;it
+3.1.ExperimentalSetup
+musteventuallyincreasethelikelihoodofcorrectanswers
+togainmoretotalrewardmass. Furthermore, ask →∞, Tasks and Datasets. Methods are evaluated on the
+the entropy term H ,H → 0 and become uniform AIME 2024, AIME 2025, and MATH 500 benchmarks
+i1,t i2,t
+acrosssuccessfulpaths,causing H H i i 1 2 , , t t → 1andr˜ i + ,t → r i . ( c H ha e l n le d n ry g c in k g s e m t a a t l h ., em 20 a 2 ti 1 c ; al L d ig a h ta tm se a ts n r e e t q a u l i . r , e 20 lo 2 n 3 g ) - . ho T r h iz e o s n e
+BasedonProposition2.3,weknowthatthepositivereward
+thinking(Cobbe et al., 2021), making them a rigorous
+component of GTPO shares the same global optimum as
+testbedforassessingadvancedreasoningcapabilities.
+GRPO. By extension, given that DAPO corresponds to
+GRPOsubjecttoasimplerewardshiftforincorrectanswers Evaluation Metrics. Our primary metric is Pass@k
+thatpreservestheoptimalpolicy,whichisamodification (k ∈{2,4,8,16,32}),whichencouragessolutiondiversity
+consistentwithourownrewarddesignforincorrectanswers, over the more conservative Pass@1. Mean@32 is also
+it follows that GTPO shares the same global optimum as reported. ImprovementsarequantifiedbyAbsolute(APG)
+DAPO. andRelative(RPG)PerformanceGainsoverthebaseline.
+Models and Baselines. Experiments are conducted on
+Remark 2.5. Our analysis focuses on the reward
+Qwen2.5-7B/32B(Qwenetal.,2025)models.Comparisons
+redistributionmechanism,whichgeneratesagranular,token-
+aremadeagainstfaithfulimplementationsofGRPO(Shao
+awarelearningsignal. Thisshapingissign-consistentwith
+et al., 2024) and DAPO (Yu et al., 2025), as well as the
+theoriginalobjective,amplifyingpositiveoutcomeswhile
+advancedDAPOw/ForkingTokens(Wangetal.,2025a),
+penalizingnegativeones. Furthermore,astheentropyterm
+toensureacomprehensiveevaluationofbaselines.
+isdetachedfromthegradientcomputation,itreshapesthe
+rewardlandscapetofavorexploration. Consequently,our ImplementationDetails. Experimentsarerunon64GPUs
+analysisconfirmsthatwhilethesemodificationsinfluence withaglobalbatchsizeof128, agroupsizeof16, anda
+trainingdynamics,theyensureoptimizationtowardsavalid learningrateof1×10−6. Forgeneration,atemperature1.0
+policyoptimum. andtop-p1.0areused,withmaxlengthsof2048(prompt)
+6
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+0.30
+0.25
+0.20
+0.15
+0.10
+50 100 150 200
+Step
+23@naeM
+0.40
+0.35
+0.30
+0.25
+DAPO 0.20
+GTPO
+GRPO-S 0.15
+50 100 150 200
+Step
+MeanReward.
+2@ssaP
+0.5
+0.4
+0.3
+DAPO
+GTPO
+GRPO-S 0.2
+50 100 150 200
+Step
+MeanRewardofPass@2.
+8@ssaP
+0.6
+0.5
+0.4
+DAPO 0.3
+GTPO
+GRPO-S 0.2
+50 100 150 200
+Step
+MeanRewardofPass@8.
+23@ssaP
+DAPO
+GTPO
+GRPO-S
+MeanRewardofPass@32.
+0.20
+0.15
+0.10
+0.05
+50 100 150 200
+Step
+23@naeM
+0.25
+0.20
+0.15
+DAPO 0.10 GTPO
+GRPO-S
+0.05
+50 100 150 200
+Step
+MeanReward.
+2@ssaP
+0.30
+0.25
+0.20
+0.15
+DAPO GTPO 0.10
+GRPO-S
+50 100 150 200
+Step
+MeanRewardofPass@2.
+8@ssaP
+0.30
+0.25
+0.20
+0.15
+DAPO GTPO 0.10
+GRPO-S
+0.05
+50 100 150 200
+Step
+MeanRewardofPass@8.
+23@ssaP
+DAPO GTPO
+GRPO-S
+MeanRewardofPass@32.
+0.14
+0.12
+0.10
+0.08
+0.06
+0.04
+50 100 150 200
+Step
+23@naeM
+DAPO 0.16
+GTPO GRPO-S 0.14
+0.12
+0.10
+0.08
+0.06
+0.04
+50 100 150 200
+Step
+MeanReward.
+2@ssaP
+DAPO 0.200
+GTPO 0.175 GRPO-S
+0.150
+0.125
+0.100
+0.075
+0.050
+0.025
+50 100 150 200
+Step
+MeanRewardofPass@2.
+8@ssaP
+DAPO 0.200
+GTPO GRPO-S 0.175
+0.150
+0.125
+0.100
+0.075
+0.050
+0.025
+50 100 150 200
+Step
+MeanRewardofPass@8.
+23@ssaP
+DAPO
+GTPO GRPO-S
+MeanRewardofPass@32.
+Figure3.Meanrewardtrajectoriesonthetestsets.Allcurvesaresmoothedforvisualclarity.Eachrowcorrespondstoadifferent
+experimentalsetting:(Top)AIME2024withQwen2.5-32B,(Middle)AIME2025withQwen2.5-32B,and(Bottom)AIME2025with
+Qwen2.5-7B.Columnsshowdifferentmetricsfromlefttoright:MeanReward,MeanRewardofPass@2,Pass@8,andPass@32.For
+brevityandtomaintainvisualclarity,thecorrespondingresultsforPass@4andPass@16,whichexhibitsimilartrends,aredeferredto
+AppendixE.3,seeFig.8andFig.9.
+and4096(response). Keyrewardshapinghyperparameters significantly elevate exploration-sensitive scores. This
+are α = β = 1, α = β = 0.1, and entropy efficacyismostpronouncedonsmallermodels;specifically,
+1 1 2 2
+is clipped at ϵ = 0.2,ϵ = 0.28. Furthermore, regarding the Pass@32 metric on AIME 2024, GTPO
+low high
+to mitigate length bias, we employ the Group Relative achieves a massive absolute performance gain (APG) of
+OverlongPunishmentmechanismdetailedinAppendixD, +29.4pointsonthe7Bmodel,comparedto+9.9pointson
+whichadaptivelypenalizesexcessivetokenlengthsbasedon the32Bmodel,confirmingthatentropy-weightingprovides
+theclassificationofproblemdifficulty(e.g.,easyvs. hard). avitallearningsignaltopreventprematureconvergence.
+3.2.ComparativePerformanceAnalysis 3.3.RewardTrajectoriesandSampleEfficiency
+As presented in Table 1, our methods, GTPO and The mean reward trajectories on the test set (Fig. 3)
+GRPO-S, establish a new state-of-the-art by consistently illuminatethebenefitsofourapproach,demonstratingthat
+outperforming GRPO, DAPO, and the advanced DAPO our methods not only achieve a significantly higher final
+w/ForkingTokensacrossallconfigurations,includingthe reward ceiling but do so with strong sample efficiency.
+rigorous MATH 500 benchmark. Notably, our approach The models largely converge within 210 training steps,
+fundamentally differs from DAPO w/ Forking Tokens, a finding substantiated by the training set reward curves,
+which rigidly discards low-entropy tokens via a binary which are deferred to Appendix E.4 for brevity. This
+mask. Instead, we employ a continuous entropy-based rapidconvergenceindicatesthatthebenefitsofenhanced
+rewardshapingmechanismthatfullyleveragesthelearning explorationdonotcomeatthecostofslowerlearning.
+signal across the distribution. This strategy successfully
+Ourmethodsfostersustainedexplorationandpreventpolicy
+resolves the stability-exploration trade-off: while DAPO
+collapse,establishingaclearcausalchainfromourentropy-
+achieves stability at the cost of exploration (plateauing
+weighted reward to superior performance. A detailed
+on challenging tasks like AIME 2025), our methods
+analysis and the empirical evidence for this mechanism
+7
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+Method1(Column-wise): Method2(Row-wise): Method3(Matrix-wise):
+H ... H ... H  H ... H ... H  H ... H ... H 
+1,1 1,t 1,l 1,1 1,t 1,l 1,1 1,t 1,l
+H 2,1 ... H 2,t ... H 2,l H 2,1 ... H 2,t ... H 2,l H 2,1 ... H 2,t ... H 2,l
+ 
+
+. .
+.
+... . .
+.
+... . .
+.
+ 
+
+ 
+
+. .
+.
+... . .
+.
+... . .
+.
+ 
+
+ 
+
+. .
+.
+... . .
+.
+... . .
+.
+ 
+
+     
+H i,1 ... H i,t ... H i,l H i,1 ... H i,t ... H i,l H i,1 ... H i,t ... H i,l
+ 
+
+. .
+.
+... . .
+.
+... . .
+.
+ 
+
+ 
+
+. .
+.
+... . .
+.
+... . .
+.
+ 
+
+ 
+
+. .
+.
+... . .
+.
+... . .
+.
+ 
+
+H ... H ... H H ... H ... H H ... H ... H
+n,1 n,t n,l n,1 n,t n,l n,1 n,t n,l
+Figure4.Comparisonofthreedifferentmethods.
+0.175
+0.150
+0.125
+0.100
+0.075
+0.050
+0.025
+0.000
+(1= 1=0.9; 2= 2=0.1)(1= 1=1; 2= 2=0.1) (1= 1=1; 2= 2=0.2)
+23@naeM
+0.25
+0.20
+0.15
+0.10
+0.05
+0.00
+23@ssaP
+GTPO and GRPO-S: Hyperparameter Sensitivity Analysis frontier of the model’s capabilities. As the model gains
+proficiency, the entropy of these problems decreases,
+causingthelearningfocustoautomaticallyshifttothenext
+setofchallengingtasks. Thisdesignleveragesthemodel’s
+ownuncertaintyasadynamicsignalforlearningpriority,
+thusavoidingtheneedforcurriculumdesign.
+Future Work. The concept of relative entropy itself
+warrantsdeeperexploration. Whilethisworkhighlightsits
+importance,theoptimalmethodforcomparisonremainsan
+openquestion. Threedistinctapproachesformeasuringthis
+relativityareidentified. Visualizingthetokenentropiesasa GTPO (Mean@32) GTPO (Pass@32)
+GRPO-S (Mean@32) GRPO-S (Pass@32) matrixH,whereH istheentropyofthet-thtokeninthei-
+DAPO (Mean@32) DAPO (Pass@32) i,t
+thresponse,thesemethodscanbeunderstoodas: acolumn-
+wisecomparison,whichcomparestheentropyoftokensat
+Figure5.Hyperparametercomparison.
+thesamepositionacrossdifferentresponses(i.e.,withina
+columnofH);arow-wisecomparison,whichcompares
+arepresentedinAppendixE.1.
+tokensatdifferentpositionswithinthesameresponse(i.e.,
+withinarowofH);andamatrix-wisecomparison,which
+3.4.HyperparameterSensitivityAnalysis
+compares all tokens from all responses collectively (i.e.,
+Rewardshapingaddsextradegreesoffreedomthatcontrol across the entire matrix H). Further experimentation is
+the trade-off between exploration and optimizing the neededtoverifywhichoftheseapproachesissuperior. The
+primaryobjective. Totestthisbalancebetweenexploration conceptualdifferenceisillustratedinFig.4.
+and exploitation. We conduct a sensitivity analysis on
+the key reward shaping hyperparameters for GTPO and 5.Conclusion
+GRPO-S,withresultspresentedinFig.5. Acrossalltested
+configurations,bothofourmethodsdemonstraterobustand In this paper, we address the fundamental challenge of
+significantperformancegainsovertheDAPObaselineon coarse-grainedcreditassignment,acriticalflawinaligning
+Mean@32andPass@32metrics. Amongthem,GRPO-S largelanguagemodelsforcomplexreasoning. Wepropose
+exhibitshigherstabilityacrosssettings, providingaclear anovelframeworkcenteredondynamicentropyweighting,
+view of the performance dynamics. As the weight of the whichintroducestwonewalgorithms: GroupTokenPolicy
+entropybonus(β )increasesfrom0.1to0.2,weobserve Optimization(GTPO)forprecise,token-levelsupervision,
+2
+a clear decline in overall performance for GRPO-S. This and a computationally efficient variant, Sequence-Level
+finding confirms that while exploration is beneficial, an GRPO(GRPO-S).Ourapproachrepurposespolicyentropy
+excessive entropy bonus can detract from optimizing the as a proxy for model uncertainty to concentrate the
+primarytaskobjective. learningsignalatcriticaldecisionpoints,therebyenabling
+principled, fine-grained credit assignment. Extensive
+experiments demonstrate that our methods consistently
+4.Discussion
+outperform strong DAPO and GRPO baselines across
+Batch-Level Entropy Comparison as Implicit multiplereasoningbenchmarks,confirmingtheefficacyof
+Curriculum Learning. Our current implementation the proposed entropy-weighting mechanism. Ultimately,
+operatesatthebatchlevel,whichcomparesentropyacross our findings suggest that harnessing and directing model
+differentproblems,creatinganefficientimplicitcurriculum. uncertainty is a promising frontier for developing the
+The algorithm naturally directs larger gradients towards next generation of powerful and reliable AI systems, as
+solvable but high-entropy problems that represent the demonstratedqualitativelyinthecasestudyinAppendixF.
+8
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+References Haarnoja,T.,Zhou,A.,Abbeel,P.,andLevine,S.Softactor-
+critic: Off-policymaximumentropydeepreinforcement
+Achiam,J.,Adler,S.,Agarwal,S.,Ahmad,L.,Akkaya,I.,
+learning with a stochastic actor. In International
+Aleman,F.L.,Almeida,D.,Altenschmidt,J.,Altman,S.,
+conference on machine learning, pp. 1861–1870. Pmlr,
+Anadkat,S.,etal. Gpt-4technicalreport. arXivpreprint
+2018.
+arXiv:2303.08774,2023.
+Hendrycks,D.,Burns,C.,Kadavath,S.,Arora,A.,Basart,
+Amini, A., Vieira, T., and Cotterell, R. Direct
+S., Tang, E., Song, D., and Steinhardt, J. Measuring
+preference optimization with an offset. arXiv preprint
+mathematical problem solving with the math dataset.
+arXiv:2402.10571,2024.
+InAdvancesinNeuralInformationProcessingSystems,
+2021.
+Cheng,D.,Huang,S.,Zhu,X.,Dai,B.,Zhao,W.X.,Zhang,
+Z.,andWei,F. Reasoningwithexploration: Anentropy HuggingFace. PreferenceTuningLLMswithTRL. https:
+perspective. arXivpreprintarXiv:2506.14758,2025. //huggingface.co/blog/pref-tuning,2024.
+Christiano, P. F., Leike, J., Brown, T., Martic, M., Legg, Jin, B., Zeng, H., Yue, Z., Yoon, J., Arik, S., Wang, D.,
+S.,andAmodei,D. Deepreinforcementlearningfrom Zamani, H., and Han, J. Search-r1: Training llms to
+human preferences. Advances in neural information reasonandleveragesearchengineswithreinforcement
+processingsystems,30,2017. learning. arXivpreprintarXiv:2503.09516,2025.
+Cobbe,K.,Kosaraju,V.,Bavarian,M.,Chen,M.,Jun,H., Kilcher,Y. Deepseek-R1’sGRPOexplained. https://www.
+Kaiser,L.,Plappert,M.,Tworek,J.,Hilton,J.,Nakano, youtube.com/watch?v=bAWV_yrqx4w,2024.
+R.,etal. Trainingverifierstosolvemathwordproblems.
+Kimi,Bai,Y.,Bao,Y.,Chen,G.,Chen,J.,Chen,N.,Chen,
+arXivpreprintarXiv:2110.14168,2021.
+R.,Chen,Y.,Chen,Y.,Chen,Y.,etal. Kimik2: Open
+Cui, G., Yuan, L., Wang, Z., Wang, H., Li, W., He, B., agentic intelligence. arXiv preprint arXiv:2507.20534,
+Fan, Y., Yu, T., Xu, Q., Chen, W., et al. Process 2025.
+reinforcementthroughimplicitrewards. arXivpreprint
+Lightman,H.,Kosaraju,V.,Burda,Y.,Edwards,H.,Baker,
+arXiv:2502.01456,2025a.
+B., Lee, T., Leike, J., Schulman, J., Sutskever, I., and
+Cobbe, K. Let’s verify step by step. In The Twelfth
+Cui,G.,Zhang,Y.,Chen,J.,Yuan,L.,Wang,Z.,Zuo,Y.,Li,
+International Conference on Learning Representations,
+H., Fan, Y., Chen, H., Chen, W., et al. The entropy
+2023.
+mechanism of reinforcement learning for reasoning
+language models. arXiv preprint arXiv:2505.22617, Lindsay, G. W. Attention in psychology, neuroscience,
+2025b. and machine learning. Frontiers in Computational
+Neuroscience, 14:29, 2020. ISSN 1662-
+Feng, L., Xue, Z., Liu, T., and An, B. Group-in-group
+5188. doi: 10.3389/fncom.2020.00029. URL
+policyoptimizationforllmagenttraining. arXivpreprint
+https://www.frontiersin.org/articles/10.3389/
+arXiv:2505.10978,2025a.
+fncom.2020.00029.
+Feng, W., Zhao, P., Jiang, G., Hao, C., Zhang, Y., Liu,
+Mnih,V.,Kavukcuoglu,K.,Silver,D.,Rusu,A.A.,Veness,
+G., and Wang, H. Pvpo: Pre-estimated value-based
+J., Bellemare, M. G., Graves, A., Riedmiller, M. A.,
+policyoptimizationforagenticreasoning. arXivpreprint
+Fidjeland, A. K., Ostrovski, G., Petersen, S., Beattie,
+arXiv:2508.21104,2025b.
+C., Sadik, A., Antonoglou, I., King, H., Kumaran, D.,
+Wierstra, D., Legg, S., and Hassabis, D. Human-level
+Gao,L.,Schulman,J.,andHilton,J.Scalinglawsforreward
+controlthroughdeepreinforcementlearning. Nature,518
+modeloveroptimization. InInternationalConferenceon
+(7540):529–533,022015.
+MachineLearning,pp.10835–10866.PMLR,2023.
+OpenAI Spinning Up. Proximal Policy Optimization.
+Guo, D., Yang, D., Zhang, H., Song, J., Wang,
+https://spinningup.openai.com/en/latest/
+P., Zhu, Q., Xu, R., and Zhang, Ruoyu, e. a.
+algorithms/ppo.html,2018.
+DeepSeek-R1incentivizesreasoninginLLMsthrough
+reinforcement learning. Nature, 645(8081):633–638, Qwen, :, Yang, A., Yang, B., Zhang, B., Hui, B., Zheng,
+September 2025. ISSN 1476-4687. doi: 10.1038/ B.,Yu,B.,Li,C.,Liu,D.,Huang,F.,Wei,H.,Lin,H.,
+s41586-025-09422-z. URLhttps://www.nature.com/ Yang, J., Tu, J., Zhang, J., Yang, J., Yang, J., Zhou, J.,
+articles/s41586-025-09422-z. Publisher: Nature Lin, J., Dang, K., Lu, K., Bao, K., Yang, K., Yu, L.,
+PublishingGroup. Li, M., Xue, M., Zhang, P., Zhu, Q., Men, R., Lin, R.,
+9
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+Li, T., Tang, T., Xia, T., Ren, X., Ren, X., Fan, Y., Su, Song,Y.,Wei,X.,Zhou,H.,Liu,J.,Ma,W.-Y.,Zhang,
+Y.,Zhang,Y.,Wan,Y.,Liu,Y.,Cui,Z.,Zhang,Z.,and Y.-Q.,Yan,L.,Qiao,M.,Wu,Y.,andWang,M.Dapo:An
+Qiu, Z. Qwen2.5 technical report, 2025. URL https: open-sourcellmreinforcementlearningsystematscale,
+//arxiv.org/abs/2412.15115. 2025. URLhttps://arxiv.org/abs/2503.14476.
+Rafailov, R., Hejna, J., Park, R., and Finn, C. From r to Zhang, J., Huang, J., Yao, H., Liu, S., Zhang, X., Lu, S.,
+q∗: Yourlanguagemodelissecretlyaq-function. arXiv andTao,D. R1-vl: Learningtoreasonwithmultimodal
+preprintarXiv:2404.12358,2024. largelanguagemodelsviastep-wisegrouprelativepolicy
+optimization. arXivpreprintarXiv:2503.12937,2025.
+Rafailov, R. et al. Direct preference optimization: Your
+languagemodelissecretlyarewardmodel.arXivpreprint Zhang, S., Roller, S., Goyal, N., Artetxe, M., Chen, M.,
+arXiv:2305.18290,2023. Chen, S., Dewan, C., Diab, M., Li, X., Lin, X. V.,
+etal.Opt:Openpre-trainedtransformerlanguagemodels.
+Shao, Z. et al. DeepSeekMath: Pushing the Limits of
+arXivpreprintarXiv:2205.01068,2022.
+Mathematical Reasoning in Open Language Models.
+arXivpreprintarXiv:2402.03300,2024.
+Sutton,R.S.andBarto,A.G. Reinforcementlearning: An
+introduction. MITpress,2ndedition,2018.
+Uesato, J., Kushman, N., Kumar, R., Song, F., Siegel,
+N., Wang, L., Creswell, A., Irving, G., and Higgins, I.
+Solvingmathwordproblemswithprocess-andoutcome-
+basedfeedback. arXivpreprintarXiv:2211.14275,2022.
+Wang,S.,Yu,L.,Gao,C.,Zheng,C.,Liu,S.,Lu,R.,Dang,
+K., Chen, X., Yang, J., Zhang, Z., Liu, Y., Yang, A.,
+Zhao,A.,Yue,Y.,Song,S.,Yu,B.,Huang,G.,andLin,
+J. Beyondthe80/20rule: High-entropyminoritytokens
+driveeffectivereinforcementlearningforllmreasoning,
+2025a. URLhttps://arxiv.org/abs/2506.01939.
+Wang,S.,Yu,L.,Gao,C.,Zheng,C.,Liu,S.,Lu,R.,Dang,
+K., Chen, X., Yang, J., Zhang, Z., et al. Beyond the
+80/20rule: High-entropyminoritytokensdriveeffective
+reinforcementlearningforllmreasoning. arXivpreprint
+arXiv:2506.01939,2025b.
+Wang,Z.,Xu,X.,Wang,H.,Ye,Y.,Li,Y.,Wang,L.,Tan,
+H., Wang, P., Feng, S., Chen, G., et al. A survey on
+entropymechanisminlargereasoningmodels. Authorea
+Preprints,2025c.
+Wei,J.,Wang,X.,Schuurmans,D.,Bosma,M.,Xia,F.,Chi,
+E.,Le,Q.V.,Zhou,D.,etal.Chain-of-thoughtprompting
+elicitsreasoninginlargelanguagemodels. Advancesin
+neuralinformationprocessingsystems,35:24824–24837,
+2022.
+Yang,Z.,Luo,X.,Wang,Z.,Han,D.,He,Z.,Li,D.,andXu,
+Y. Do not let low-probability tokens over-dominate in
+rlforllms,2025. URLhttps://arxiv.org/abs/2505.
+12929.
+Yu,Q.,Zhang,Z.,Zhu,R.,Yuan,Y.,Zuo,X.,Yue,Y.,Dai,
+W.,Fan,T.,Liu,G.,Liu,L.,Liu,X.,Lin,H.,Lin,Z.,Ma,
+B., Sheng, G., Tong, Y., Zhang, C., Zhang, M., Zhang,
+W.,Zhu,H.,Zhu,J.,Chen,J.,Chen,J.,Wang,C.,Yu,H.,
+10
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+A.BackgroundandRelatedWork
+A.1.TheEvolutionofLLMAlignmentAlgorithms
+LLMalignmenttechniquesaimtomakemodelbehaviorconformtohumanexpectationsandvalues. Thefieldisinitially
+dominatedbyPPO-basedRLHF.Thisclassicparadigmconsistsofthreestages: supervisedfine-tuning(SFT),rewardmodel
+training,andreinforcementlearningoptimization. Despiteitspower,itsprocessiscomplex,sensitivetohyperparameters,
+and often unstable during training. To overcome these challenges, the research community shifts towards more direct
+optimizationmethods. DirectPreferenceOptimization(DPO)isalandmarkworkthatcleverlytransformedthereward
+maximizationproblemintoasimpleclassificationloss,completelybypassingexplicitrewardmodelingandtheRLprocess
+(Rafailovetal.,2023). ThesuccessofDPOspawnsaseriesofvariants,suchasODPO(Aminietal.,2024),whichconsiders
+thestrengthofpreferences,andPreferenceTuningLLMswithTRL(HuggingFace,2024),whichaimstosolveoverfitting,
+collectivelyadvancingtheRL-freealignmentparadigm.
+A.2.TheRiseofValue-Function-FreePolicyOptimization
+Our work builds directly on value-function-free policy optimization methods. Group Relative Policy Optimization
+(GRPO),introducedbyDeepSeekMath,isarepresentativeofthisdirection(Shaoetal.,2024). Thecoremechanismof
+GRPOis: foragivenprompt,sampleagroupofGsequencesfromthecurrentpolicy,andthenusetheaveragereward
+withinthisgroupasabaselinetocalculatetheadvantageforeachsequence(Kilcher,2024). Thisdesigneliminatestheneed
+foraseparatevaluefunctionnetwork,greatlyreducingmemoryconsumptionandcomputationalcomplexity,whichledsto
+greatsuccessintaskslikemathematicalreasoning. However,theoriginalGRPOisalsosensitivetorewardnoiseandcanbe
+unstableduringtraining,whichpromptssubsequentresearchforimprovements.
+A.3.ATechnicalComparisonwiththeDAPOBaseline
+DecoupledClipandDynamicsAmplingPolicyOptimization(DAPO)(Yuetal.,2025)iscurrentlythestate-of-the-art
+(SOTA)methodforGRPO-styletrainingintheopen-sourcecommunity. DAPOsignificantlyimprovestheperformanceand
+stabilityofGRPObyintroducingfourkeytechniques: 1)Clip-Higher: Encouragesmodelexplorationandpreventsentropy
+collapsebyrelaxingtheupperboundofthePPOclippingrange. 2)DynamicSampling: Filtersoutsamplegroupsthat
+areeitherallsuccessfulorallfailures,ensuringthateachtrainingbatchcontainseffectivegradientsignals,thusimproving
+trainingefficiency. 3)Token-LevelPolicyGradientLoss: AcoreimprovementofDAPO,itsobjectivefunctionaverages
+thelossoveralltokensinabatch,ratherthanfirstsummingwithinasequenceandthenaveragingacrosssequencesasinthe
+originalGRPO(Yuetal.,2025). 4)OverlongRewardPenalty: Penalizesexcessivelylonggeneratedsequencestoreduce
+rewardnoise.
+OurworksharessomemotivationswithDAPO.Specifically,inAppendixB,throughvarianceanalysis,itisproventhat
+thetoken-levellossnormalizationmethodusedbyDAPO(i.e.,asingleaverageoveralltokens)isstatisticallysuperior
+to GRPO’s two-stage averaging method. This provides a theoretical basis for our adoption of a similar loss function
+structure. However,ourcorecontributionisfundamentallydifferentfromDAPO’s. DAPO’stoken-levellossaddressesthe
+normalizationofthelosscalculation,butitsadvantagetermAˆ remainsconstantforalltokenstwithinagivensequence
+i,t
+i. ThismeansDAPOdoesnotsolvethefundamentalcreditassignmentproblemraisedintheintroduction. Ourwork,
+particularly the GTPO algorithm, directly reconstructs the reward signal itself by introducing a dynamic, non-uniform
+token-levelrewardr˜ ,therebyachievingtruefine-grainedcreditassignment. Inshort,DAPOoptimizeshowtosumthe
+i,t
+losses,whilethecontentofthelosstermsthemselvesisoptimized.
+A.4.EntropyasaHeuristicforCognitiveEffortinLLMs
+Usingmodelentropyasameasureofuncertaintyhasalonghistoryinthemachinelearningfield(Wangetal.,2025c).Recent
+researchshowsthatduringthereasoningprocessofLLMs,theentropyofthemodel’sgeneratedprobabilitydistribution
+ishighlycorrelatedwithcognitiveuncertainty. Forexample,Chengetal.(2025)findthatinsuccessfulreasoningpaths,
+high-entropyregionsoftencorrespondtostepswherethemodelengagesinmeaningfulexplorationandcriticallogical
+reasoning. Thisfindingprovidesstrongsupportforouruseofentropyasaheuristicforcreditassignmentandformsthe
+cornerstoneofourmethodology.
+11
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+B.TheoreticalAnalysisandProofs
+For the purpose of theoretical variance analysis, we assume the reward signals associated with individual tokens are
+independentandidenticallydistributed(i.i.d.). Whiletokengenerationisauto-regressive,thissimplificationallowsusto
+formallyderivethevariancereductionpropertiesoftheglobalmeanestimator.
+B.1.VarianceComparisonofTwoMeanCalculationMethods
+Thissectionprovidesadetailedprooftoshowthatwhenestimatingthemeanofarandomvariable,directlytakingthetotal
+meanofallsamples(Method2)issuperiortofirstcalculatingsubgroupmeansandthenaveragingthem(Method1).
+LettherebearandomvariableXwithmeanE[X]=µandvarianceVar(X)=σ2.Therearemindependentgroups,andfor
+thei-thgroup,n independentandidenticallydistributedsamplesaredrawntoobtainthesampleset{x(1),x(2),...,x(ni)}.
+i i i i
+Method1: FirstComputeSubgroupMeans,ThenAverage Foreachsubgroupi(1 ≤ i ≤ m),itssamplemeanis
+computedasfollows:
+x = 1 (cid:88)
+ni
+x(j) (15)
+i n i
+i
+j=1
+Theexpectationofeachx isE[x ]=µ,anditsvarianceisVar(x )= σ2 . Then,themeanofX isestimatedastheaverage
+i i i ni
+ofthesesubgroupmeans:
+m
+Xˆ = 1 (cid:88) x (16)
+1 m i
+i=1
+TheexpectationofXˆ isE[Xˆ ]= 1 (cid:80)m E[x ]=µ,whichisanunbiasedestimator. Itsvarianceis:
+1 1 m i=1 i
+Var(Xˆ )= σ2 (cid:88) m 1 (17)
+1 m2 n
+i
+i=1
+Method2: DirectlyComputetheGrandMeanofAllSamples ThetotalnumberofsamplesisN =
+(cid:80)m
+n . The
+i=1 i
+meanofallsamplesiscomputeddirectly:
+Xˆ = 1 (cid:88)
+m
+(cid:88)
+ni
+x(j) (18)
+2 N i
+i=1j=1
+TheexpectationofXˆ isE[Xˆ ]=µ,alsoanunbiasedestimator. Itsvarianceis:
+2 2
+σ2 σ2
+Var(Xˆ )= = (19)
+2 N (cid:80)m n
+i=1 i
+ComparingVar(Xˆ )andVar(Xˆ ) AccordingtotheArithmeticMean-HarmonicMean(AM-HM)inequality,forany
+1 2
+setofpositivenumbersn ,...,n ,thefollowingholds:
+1 m
+(cid:80)m
+n m
+i=1 i ≥ (20)
+m (cid:80)m 1
+i=1 ni
+Thismeansthearithmeticmeanisgreaterthanorequaltotheharmonicmean,withequalityholdingifandonlyifalln are
+i
+equal. SinceA≥H,itfollowsthat 1 ≤ 1. Therefore,
+A H
+Var(Xˆ )≤Var(Xˆ ) (21)
+2 1
+ItshowsthatMethod2isstatisticallysuperiorbecauseitprovidesanestimatorwithsmaller(orequal)variance. Inthe
+contextofRLtrainingforLLMs,mcorrespondstothenumberofsequencesinabatch,G,andn correspondstothelength
+i
+ofthei-thsequence,|o |. Sincegeneratedsequencelengthsaretypicallydifferent,Var(Xˆ )<Var(Xˆ ).
+i 2 1
+12
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+B.2.UnifyingtheobjectivefunctionofGRPOatToken-Level
+However,thepreviousproofisbasedontheassumptionthattherandomvariablesareuniformlydistributed. Foramore
+preciseproof,asubstitutionneedstobeperformedontherandomvariables.
+ContinuingfromtherandomvariableX above,considertherandomvariableY =f(X),wheref doesnothaveaspecific
+functionalform,butgivenavalueofX,adeterministicvalueofY (analogoustoaneuralnetwork)canbeobtained. Fora
+specificsamplex(j),thecorrespondingvalueofY canbeobtainedas:
+i
+π (o |q,o )
+y(j) =f(x(j))= θ i,j i,<j (x(j)−c),
+i i π (o |q,o ) i
+θold i,j i,<j
+wherecisaconstant,correspondingtomean({R }G ).
+i i=1
+Ify¯ = 1 (cid:80)ni y(j)isdefinedandusethetwomethodsfromabovetoestimate[Y],anidenticalproofallowsustoobtain:
+i ni j=1 i
+Var(Yˆ )≤Var(Yˆ ).
+2 1
+Thiscompletestheproof,leadingtothefollowingconclusion.
+ConclusionB.1. IfunifyingGRPOatthetoken-levelisconsidered,asingleaverage 1 (cid:80) shouldbeusedratherthana
+two-stageaverage 1 (cid:80) 1 (cid:80) . Therefore,theleadingcoefficientofGTPO, 1 ,i
+(cid:80)
+ss
+|
+u
+o
+p
+i|
+eriortothatofGRPO.
+G |oi| (cid:80)|oi|
+Next,themean({R }G )partoftheGRPOobjectivefunctionisanalyzed. First,theidealstateoftheadvantagefunctionis
+i i=1
+knowntobeA=Q−V,whereQistheaction-valueandV isthestate-value. Therefore,duringsampling,QandVneed
+tobeestimatedasaccuratelyaspossible. TheanalysisinA.1forY isactuallyananalysisoftheestimationmethodforQ.
+DAPOalreadymodifythis,butchangingtheestimationmethodforV canbeconsidered. Thetermmean({R }G )isthe
+i i=1
+estimateforV. Theoretically,thereisamoreaccurateestimationmethod,whichisprovenbelow.
+Currently,thewayGRPOandDAPOassignrewardstoeachtokeninasequenceisbytakingtherewardfromthelasttoken
+andassigningittoallprecedingtokensinthatsequence. Thefinalsamplingresultisequivalenttotheresultobtainedfrom
+thefollowingsamplingmethod: Ggroupsofsamplesaresampled,whereeachgroupo correspondstoasetofsamples
+i
+{r(1),r(2),...,r(|oi|)}. Thearithmeticmeanforeachgroupisthentakentogetr¯ = 1 (cid:80)|oi| r(j),andthenthecollected
+i i i i |oi| j=1 i
+sampleforeachgroupisassumedtobe{r¯,r¯,...,r¯}(|o |times).
+i i i i
+Withoutconfusion,thenotation{r(1),...,r(|oi|)}isstillusedtotorepresentthesetofsamplescorrespondingtoo ,butit
+i i i
+mustbenotedthattherelationr(1) =r(2) =···=r(|oi|) =r¯ holds.
+i i i i
+Sincetheproblemisconsideredatthetoken-level,theR(reward)inmean(R)shouldalsobeatthetoken-level,notsimply
+atthesequence-level. Thelengthofthesequence(i.e.,thenumberoftokens)cannotbeignoredjustbecausethedefault
+samplevalueswithineachsequenceareidentical. Thereasonisasfollows: sincethesamplingofrewardshereisalli.i.d.,it
+iscompletelyequivalenttotheanalysisoftherandomvariableX inAppendixB.1. Here,i.i.d. samplesofRarebeingdealt
+with. Letthefollowingbeset:
+Rˆ := 1 (cid:88)
+G
+r¯, Rˆ := 1 (cid:88)
+G
+(cid:88)
+|oi|
+r(j).
+1 G i 2 (cid:80) |o | i
+i
+i=1 i=1j=1
+Iftherewardcorrespondingtothelasttokenisdefinedasr ,thefollowingnotationconsistentwithGRPOisused:
+i
+G (cid:80)
+Rˆ = 1 (cid:88) r , Rˆ = |o i |r i.
+1 G i 2 (cid:80) |o |
+i
+i=1
+BasedonthepreviousproofforX,itcanbeeasilyconcludedthatVar(Rˆ )≤Var(Rˆ ). Thiscompletestheproof,leading
+2 1
+tothefollowingconclusion.
+ConclusionB.2. IfunifyingGRPOatthetoken-levelisconsidered,mean({R }G )inGRPOshouldbereplacedwith
+i i=1
+(cid:80)G
+|o |r
+mean(R):= i=1 i i.
+(cid:80)G
+|o |
+i=1 i
+13
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+B.3.TheoreticalAnalysisofRewardConservationandConvergence
+Inthissection,weprovideaformalproofdemonstratingthattheDynamicEntropyWeightingmechanisminGTPOpreserves
+thetotalpositiverewardmassoftheoriginalGRPOobjective. Thisconservationpropertyensuresthattheexpectedpolicy
+gradientdirectionremainsconsistentwiththeground-truthrewardmaximization,therebyguaranteeingthatthepositive
+rewardcomponentofGTPOoptimizestowardsthesameglobalobjectiveasthebaseline.
+PropositionB.3(ConservationofPositiveRewardMass). LetO+bethesetofsuccessfulsequencesactiveattimestept
+t
+withinasampledgroup,withcardinalityd =|O+|. UndertheGTPOrewardshapingmechanismdefinedinEq.(3),ifthe
+t t
+hyperparameterssatisfyα +α =1,thenthesumoftheshapedpositiverewardsequalsthesumoftheoriginalbinary
+1 2
+rewardsateverytimestep:
+(cid:88) (cid:88)
+r˜+ = r . (22)
+i,t i
+i∈O+ i∈O+
+t t
+Proof. Recallthedefinitionoftheshapedtokenrewardforasuccessfulsequenceo ∈O+attimestept,asprovidedinthe
+i
+GTPOformulation:
+H
+r˜+ =α r +α i,t ·d , (23)
+i,t 1 i 2(cid:80) H t
+k∈O+ k,t
+t
+wherer =1forallsuccessfulsequences,H isthepolicyentropy,andthesummationinthedenominatoristakenoverall
+i i,t
+activesuccessfulsequencesattimestept.
+Wecomputethesumofshapedrewardsoverallsequencesi∈O+:
+t
+(cid:32) (cid:33)
+(cid:88) r˜+ = (cid:88) α ·1+α H i,t ·d (24)
+i,t 1 2(cid:80) H t
+i∈O+ i∈O+ k∈O t + k,t
+t t
+(cid:32) (cid:33)
+= (cid:88) α + (cid:88) α d H i,t . (25)
+1 2 t(cid:80) H
+i∈O+ i∈O+ k∈O t + k,t
+t t
+Thefirsttermsimplifiesdirectlysincethereared terms:
+t
+(cid:88)
+α =α d . (26)
+1 1 t
+i∈O+
+t
+Forthesecondterm,wefactorouttheconstantsα andd ,observingthatthesumofthenormalizedentropiesisunity:
+2 t
+(cid:32) (cid:33) (cid:80)
+(cid:88) α d H i,t =α d i∈O t + H i,t =α d ·1=α d . (27)
+2 t(cid:80) H 2 t(cid:80) H 2 t 2 t
+i∈O+ k∈O t + k,t k∈O t + k,t
+t
+Combiningtheseresults:
+(cid:88)
+r˜+ =α d +α d =(α +α )d . (28)
+i,t 1 t 2 t 1 2 t
+i∈O+
+t
+Giventheconstraintα +α =1,wearriveat:
+1 2
+(cid:88) (cid:88)
+r˜+ =d = r . (29)
+i,t t i
+i∈O+ i∈O+
+t t
+Sincetheoriginalrewardr isuniformly1forallsuccessfulsequences,itssumisexactlythecountd . Thisprovesthatthe
+i t
+totalpositiverewardmassdistributedateachtimestepisstrictlyconserved.
+14
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+PropositionB.4(AsymptoticConsistency). Let∆J(θ)=∇J+ (θ)−∇J (θ)bethegradientbiasintroducedby
+GTPO GRPO
+theentropy-weightedrewardshaping,whereJ+ (θ)isthepositiverewardcomponentofGTPO.Assumethepolicyπ
+GTPO θ
+satisfiestheEntropyConsolidationCondition: astrainingiterationk →∞,thevariationintokenentropyamongsuccessful
+sequences diminishes, i.e., for any two successful sequences o ,o ∈ O+, lim Hi,t = 1 (almost surely, assuming
+i j k→∞ Hj,t
+regularizationϵ>0preventssingularity). Then,thegradientbiasvanishesasymptotically:
+lim ∥∆J(θ )∥=0. (30)
+k
+k→∞
+Proof. RecallthattheGTPOrewardr˜ isdefinedas:
+i,t
+H
+r˜ =α r +α i,t d . (31)
+i,t 1 i 2(cid:80) H t
+p∈O+ p,t
+t
+Sincer =1forallsuccessfulsequences,theoriginalGRPOrewardisconstant1. Thedeviationterm(explorationbias)for
+i
+aspecificsequenceo is:
+i
+H
+δ =r˜ −r =α +α d i,t −1. (32)
+i,t i,t i 1 2 t(cid:80)dt
+H
+p=1 p,t
+Substitutingα =1−α :
+1 2
+(cid:32) (cid:33)
+H d H
+δ =(1−α )+α d i,t −1=α t i,t −1 . (33)
+i,t 2 2 t(cid:80) H 2 (cid:80) H
+p p,t p p,t
+LetH¯ = 1 (cid:80) H bethearithmeticmeanofentropiesforsuccessfulsequencesatstept. Thetermcanberewritten
+t dt p∈O
+t
++ p,t
+as:
+(cid:18) (cid:19)
+H
+δ =α i,t −1 . (34)
+i,t 2 H¯
+t
+UndertheEntropyConsolidationassumption,ask → ∞,theentropiesofsuccessfulpathsconvergetoauniformlevel
+(typicallyapproaching0duetopolicycollapse,orstabilizingataintrinsicuncertaintylevel). Ineithercase,theratioof
+individualentropytothegroupmeanapproachesunity:
+H
+lim i,t =1. (35)
+k→∞
+H¯
+t
+Consequently,therewarddeviationvanishes:
+lim δ =α (1−1)=0. (36)
+i,t 2
+k→∞
+Thegradientdifferenceistheexpectationofthisdeviationweightedbythescorefunction:
+(cid:34) (cid:35)
+(cid:88)
+∆J(θ)=E δ ∇logπ (o |·) . (37)
+τ∼πθ i,t θ i,t
+t
+Sinceδ →0uniformlyforallsuccessfulsequences,bythelinearityofexpectation(andassumingboundedgradients),we
+i,t
+conclude:
+lim ∆J(θ )=0. (38)
+k
+k→∞
+ThisconfirmsthatwhilethepositiverewardcomponentofGTPOencouragesexplorationduringthetransientphasewhere
+entropyvarianceishigh,itasymptoticallyreducestothestandardGRPOobjective,ensuringvalidconvergence.
+15
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+B.4.AnalysisofGRPO-S
+AnalogoustothetheoreticalanalysisofGTPOinAppendixB.3,wenowpresenttheanalysisforGRPO-S.Similartothe
+token-levelanalysis,weestablishthatthesequence-levelrewardshapinginGRPO-Spreservesthefundamentalproperties
+ofthebaselineestimator: rewardmassconservationandasymptoticgradientconsistency.
+PropositionB.5(Sequence-LevelRewardConservation). LetO+ ={o ,...,o }bethesetofnsuccessfulsequencesina
+1 n
+sampledgroup. LetHˆ denotetheaverageentropyofsequenceo . UndertheGRPO-SrewardshapingdefinedinEq. (9),if
+i i
+β +β =1,thenthesumofshapedpositivesequencerewardsequalsthesumoforiginalrewards:
+1 2
+n n
+(cid:88) (cid:88)
+rˆ+ = r =n. (39)
+i i
+i=1 i=1
+Proof. TheGRPO-Sshapedrewardforasuccessfulsequenceo isgivenby:
+i
+Hˆ
+rˆ+ =β r +β i ·n, (40)
+i 1 i 2(cid:80)n Hˆ
+k=1 k
+wherer =1forallo ∈O+. Summingoverallnsuccessfulsequences:
+i i
+(cid:88)
+n
+rˆ+ = (cid:88)
+n (cid:32)
+β ·1+β n
+Hˆ
+i
+(cid:33)
+(41)
+i 1 2 (cid:80)n Hˆ
+i=1 i=1 k=1 k
+=nβ +β n (cid:88)
+n Hˆ
+i . (42)
+1 2 (cid:80)n Hˆ
+i=1 k=1 k
+Observingthatthesummationterm
+(cid:80)n Hˆ
+i =
+(cid:80)Hˆ
+i =1,wehave:
+i=1 (cid:80)n
+k=1
+Hˆ
+k
+(cid:80)Hˆ
+k
+n
+(cid:88)
+rˆ+ =nβ +nβ =n(β +β ). (43)
+i 1 2 1 2
+i=1
+Withtheconstraintβ +β =1,itfollowsthat (cid:80) rˆ+ =n,whichmatchesthesumoftheground-truthrewards (cid:80) r . Thus,
+1 2 i i
+thetotalpositiverewardsignalusedfortheadvantagecalculationisconservedatthegrouplevel.
+PropositionB.6(AsymptoticGradientConsistencyofGRPO-S). LetJ (θ)andJ (θ)betheexpectedobjective
+GRPO GRPO-S
+functionsundertheoriginalandshapedrewards,respectively. Assumethefollowingregularityconditions:
+1. Boundedness: Thepolicyscorefunction∥∇ logπ (o)∥isboundedbyaconstantM forallfeasibleo.
+θ θ
+2. EntropyConsolidation: Astrainingprogresses(k →∞),therelativeentropyvarianceamongsuccessfulsequences
+vanishes: sup
+|Hˆ
+i −1|−→
+p
+0.
+i∈O+ H¯
+Then,thegradientoftheGRPO-SobjectiveconvergestotheGRPOgradientinL norm:
+1
+lim ∥∇J+ (θ )−∇J (θ )∥ =0. (44)
+k→∞
+GRPO-S k GRPO k L1
+Proof. LetO ={o ,...,o }bethesampledgroup. ThegradientestimatorforGRPOis:
+1 G
+G
+g(θ)= 1 (cid:88) A ∇ logπ (o ), whereA = r i −µ . (45)
+G i θ θ i i σ
+i=1
+16
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+Similarly,thegradientestimatorforGRPO-Sis:
+G
+gˆ(θ)= 1 (cid:88) Aˆ ∇ logπ (o ), whereAˆ = rˆ i −µˆ . (46)
+G i θ θ i i σˆ
+i=1
+Here,µ,σarethemeanandstandarddeviationoftheoriginalrewards{r},andµˆ,σˆ areoftheshapedrewards{rˆ}.
+Step1: ConvergenceoftheRewardSignal. RecallfromPropositionB.5thattheshapedrewardisrˆ
+i
+=β
+1
+r
+i
++β
+2
+H
+H
+ˆ
+¯
+ir
+i
+(sincer =0forincorrectanswers,thisformholdsgenerallyifwedefinedeviationonthecorrectsubset). Thedeviationis
+i
+δ i =rˆ i −r i =β 2 r i (H H ˆ ¯ i −1). UndertheEntropyConsolidationassumption,foranyϵ>0,thereexistsastepK suchthat
+forallk
+>K,|Hˆ
+i −1|<ϵ. Thus,theshapedrewardsconvergepointwisetotheoriginalrewards:
+H¯
+lim |rˆ −r |=0. (47)
+i i
+k→∞
+Step2: ContinuityoftheAdvantageFunction. TheAdvantagefunctionA(r) = r−mean(r) isacontinuousmapping
+std(r)
+withrespecttotheinputvectorr∈RG,providedstd(r)>0(whichistrueinpracticeaswesamplediversegroupsoruse
+ϵ-regularization). Sincerˆ →r foralli,bytheContinuousMappingTheorem:
+i i
+lim |µˆ−µ|=0 and lim |σˆ−σ|=0. (48)
+k→∞ k→∞
+Consequently,theshapedadvantageconvergestotheoriginaladvantage:
+lim |Aˆ −A |=0. (49)
+i i
+k→∞
+Step3: ConvergenceoftheExpectedGradient. Considerthenormofthedifferencebetweentheexpectedgradients:
+∥∆J∥ :=∥∇J+ (θ )−∇J (θ )∥ (50)
+L1 GRPO-S k GRPO k L1
+= (cid:13) (cid:13) (cid:13)E (cid:34) 1 (cid:88) G (Aˆ −A )∇ logπ (o ) (cid:35)(cid:13) (cid:13) (cid:13) (51)
+(cid:13) O∼π G i i θ θ i (cid:13)
+(cid:13) (cid:13)
+i=1
+(cid:34) G (cid:35)
+≤E 1 (cid:88) |Aˆ −A |·∥∇ logπ (o )∥ . (52)
+O∼π G i i θ θ i
+i=1
+BytheBoundednessassumption,∥∇logπ∥≤M. Thus:
+(cid:34) G (cid:35)
+∥∆J∥ ≤M ·E 1 (cid:88) |Aˆ −A | . (53)
+L1 O∼π G i i
+i=1
+LetX = 1 (cid:80) |Aˆ −A |betherandomvariablerepresentingtheaverageadvantagedeviationatstepk. Weestablishedin
+k G i i
+a.s.
+Step2thatX −−→0. Sincetherewardsandadvantagesarebounded(clippedinimplementation),X isdominatedbya
+k k
+boundedconstant. BytheLebesgueDominatedConvergenceTheorem,wecaninterchangethelimitandtheexpectation:
+(cid:20) (cid:21)
+lim ∥∆J∥ ≤M ·E lim X =M ·E[0]=0. (54)
+k→∞
+L1
+k→∞
+k
+ThisprovesthatthegradientofthepositiverewardcomponentofGRPO-Sisanasymptoticallyconsistentestimatorofthe
+GRPOgradient.
+BasedonPropositionsB.5&B.6,andfollowingaproofanalogoustothatofTheorem2.4,wederivethefollowingtheorem:
+TheoremB.7(TheSameGlobalOptimum-GRPO-S). GRPO-SsharesthesameglobaloptimumasDAPO.
+RemarkB.8. NotethatwhilePropositionB.5assumesβ +β = 1,thisconditionisnotstrictlynecessary. Theproofs
+1 2
+remainvalidevenifβ +β ̸=1,asthetermβ +β merelyactsasaconstantscalingfactorthatdoesnotaffectthevalidity
+1 2 1 2
+ofthederivation. Inourexperimentalsetup,thesumβ +β isconfiguredtobecloseto1,butstrictequalityisnotenforced.
+1 2
+17
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+C.AlternativeDefinitionsviaGeometricMean
+RecallthatweusedEq.(11)todefinethesequence-levelimportanceweightwˆ (θ),whichisanarithmeticmean. Infact,we
+i
+candefinethesequence-levelimportanceweightviageometricmean: wˆ
+i
+(θ)=( (cid:81)|
+t
+o
+=
+i
+1
+| w
+i,t
+(θ))1/|oi|.Wecanemploythe
+geometricmeanasalow-varianceproxyforthesequence-levelimportanceweight. Althoughthisintroducesbias,itacts
+asageometricbaselinethatstabilizestrainingforlongsequences. Similarly,wehavealternativedefinitionsforotherkey
+conceptsviageometricmean:
+H 1/H
+r˜+ =α r +α i,t , r˜− =α (−1)+α j,t (−1),
+i,t 1 i 2 ( (cid:81)n
+k=1
+H
+k,t
+)1/dt j,t 1 2 ( (cid:81)m
+k=1
+1/H
+k,t
+)1/ht
+Hˆ 1/Hˆ
+rˆ+ =β r +β i , rˆ− =β (−1)+β j (−1),
+i 1 i 2 ( (cid:81)n Hˆ )1/n j 1 2 ( (cid:81)m 1/Hˆ )1/m
+k=1 k k=1 k
+Hˆ
+k
+=(
+|
+(cid:89)
+ok|
+H
+k,t
+)1/|ok|, wˆ
+i
+(θ)=( (cid:89)
+|oi|
+w
+i,t
+(θ))1/|oi|.
+t=1 t=1
+Crucially, wenoteaspecificdistinctionhere: ifasequenceo haslengthlessthant, itsH or1/H istreatedas1,
+∗ ∗,t ∗,t
+insteadof0,toensurethedenominatorremainsnon-zero.
+D.GroupRelativeOverlongPunishment: AHeuristicforLengthControl
+Tosolvetheproblemofdecliningaccuracyonsimpletasksandconsistentfailuresoncomplexones,adifferentialpenaltyis
+proposedtobeappliedtotheresponselengthbasedontheclassifieddifficultyofeachtask. Detailsareasfollows.
+First,foragivenquestionq,agroupofresponses{o }G issampled. Followingthepreviousnotation,thisgroupisassumed
+i i=1
+toconsistofncorrectresponsesandmincorrectresponses. EasyQuestionandHardQuestioncanthenbedistinguished.
+EasyQuestion: If n ≥γ ,thenqiscalledaneasyquestion. Where0<γ <1.
+n+m 1 1
+HardQuestion: If n ≤γ ,thenqiscalledahardquestion. Whereγ =1−γ .
+n+m 2 2 1
+ThentheGroupRelativeOverlongPunishmentcanbedefined:
+• LetL+ =min{|o |, 1≤i≤n},andletL+ =max{|o |, 1≤i≤n}. Thenwedefine
+1 i 2 i
+L++L+
+L+ =max{ 1 2 ,L¯+},
+2
+whereL¯+ = (cid:80)n i=1 |oi| . Thenforqisaneasyquestion,aGroupRelativeOverlongPunishmentissetforthecorrect
+n
+responsesasfollowing:
+(cid:40) −1|oi|−L+ if L+ ≤|o |<2L+,
+R+(i)= 2 L+ i
+−1 if 2L+ ≤|o |.
+2 i
+• Forhardquestions,noresponselengthpunishmentisset,orthesamepunishmentasDAPOisset. Thisisbecausethe
+goalistopreservethepolicymodel’sabilitytoproducecorrectanswerstothegreatestextentpossible.
+• LetL− =min{|o |, 1≤i≤G},andletL− =max{|o |, 1≤i≤G}. Thendefine
+1 i 2 i
+L−+L−
+L− =max{ 1 2 ,L¯−},
+2
+where L¯− = (cid:80)G i=1 |oi| . For q is a question that is neither easy nor hard, if n > m, a Group Relative Overlong
+G
+Punishmentissetforthecorrectresponsesasfollows:
+(cid:40) −1|oi|−L− if L− ≤|o |<2L−,
+R−(i)= 2 L− i
+−1 if 2L− ≤|o |.
+2 i
+18
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+Ifn≤m,aGroupRelativeOverlongPunishmentissetfortheincorrectresponsesasfollowing:
+(cid:40) −1|oj|−L− if L− ≤|o |<2L−,
+R−(j)= 2 L− j
+−1 if 2L− ≤|o |.
+2 j
+1.0
+0.8
+0.6
+0.4
+0.2
+50 100 150 200
+Step
+yportnE
+DAPO 0.8
+GTPO
+GRPO-S
+0.6
+0.4
+0.2
+50 100 150 200
+Step
+EntropyRebound(AIME2024,Qwen2.5-32B).
+yportnE
+DAPO 0.8
+GTPO 0.7
+GRPO-S
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+50 100 150 200
+Step
+EntropyRebound(AIME2025,Qwen2.5-32B).
+yportnE
+DAPO
+GTPO
+GRPO-S
+EntropyRebound(AIME2025,Qwen2.5-7B).
+2000
+1750
+1500
+1250
+1000
+750
+500
+50 100 150 200
+Step
+htgnel_esnopseR
+DAPO 2000
+GTPO
+GRPO-S 1750
+1500
+1250
+1000
+750
+500
+50 100 150 200
+Step
+ResponseLength(AIME2024,Qwen2.5-32B).
+htgnel_esnopseR
+DAPO
+GTPO 1600
+GRPO-S
+1400
+1200
+1000
+800
+50 100 150 200
+Step
+ResponseLength(AIME2025,Qwen2.5-32B).
+htgnel_esnopseR
+DAPO
+GTPO
+GRPO-S
+ResponseLength(AIME2025,Qwen2.5-7B).
+Figure 6. The Entropy Rebound Phenomenon and its Effect on Response Length. Top Row: The policy entropy trajectories for
+experimentson(lefttoright)AIME2024withQwen2.5-32B,AIME2025withQwen2.5-32B,andAIME2025withQwen2.5-7B.Our
+methods(GTPO,GRPO-S)exhibitadistinctentropyreboundafteraninitialdip,successfullycounteractingthepolicycollapseobserved
+intheDAPObaseline.BottomRow:Thecorrespondingaverageresponselengthtrajectories.Thesustainedexplorationenabledbythe
+entropyrebounddirectlymanifestsasanincreaseintheaverageresponselength,indicatingmorethoroughanddiversereasoning.
+E.AdditionalExperimentalResultsandAnalysis
+E.1.AnalysisofTrainingDynamics: EntropyReboundandExploration
+Figure6providesempiricalevidenceforthecoremechanismofourproposedmethods. Thetoprowillustratesthe"entropy
+rebound"phenomenon. Whileallmethodsinitiallyexhibitadecreaseinpolicyentropyastheylearntoexploitcorrect
+strategies,theDAPObaseline’sentropycontinuestodecline,indicatingconvergencetoanarrow,deterministicpolicy,often
+termedpolicycollapse. Incontrast,bothGTPOandGRPO-Sshowadistinctreboundinentropy. Thisisdirectevidencethat
+ourentropy-weightedrewardshapingsuccessfullyincentivizesthemodeltomaintainexploration. Byrewardinguncertainty
+onsuccessfulpaths,ourmethodsencouragethemodeltoescapelocaloptimaandexploreamorediversesetofreasoning
+pathways. Thissustainedexploration,asshowninthebottomrow,directlyresultsinlonger,moredetailedresponsesas
+themodelattemptsmorethoroughlinesofreasoning. Thisestablishesaclearcausallinkfromourrewardmechanismto
+superiorproblem-solvingcapabilities,asvalidatedbytheresultsinTable1.
+E.2.AnalysisofGenerationCharacteristics: ResponseLengthandClipping
+Figure7displaystheresponselengthclipratio,whichisthefractionofgeneratedsequencesthatreachthemaximumtoken
+limit. ThesignificantlyhigherclipratioforGTPOandGRPO-Sservesasfurtherevidenceofenhancedexploration. This
+indicatesthatourmethodsencouragethemodeltogeneratemoreelaborateanddetailedreasoningchains,oftenexhausting
+theavailablegenerationbudget. ThiscontrastswiththeDAPObaseline, whereprematurepolicyconvergenceleadsto
+shorter,lessexploratoryresponses.
+19
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+0.08
+0.06
+0.04
+0.02
+0.00
+50 100 150 200
+Step
+oitar_pilc/htgnel_esnopseR
+DAPO GTPO 0.05
+GRPO-S
+0.04
+0.03
+0.02
+0.01
+0.00
+50 100 150 200
+Step
+ResponseLengthClipRatio(AIME2024,
+Qwen2.5-32B).
+oitar_pilc/htgnel_esnopseR 0.05
+DAPO GTPO
+GRPO-S 0.04
+0.03
+0.02
+0.01
+0.00
+50 100 150 200
+Step
+ResponseLengthClipRatio(AIME2025,
+Qwen2.5-32B).
+oitar_pilc/htgnel_esnopseR
+DAPO GTPO
+GRPO-S
+ResponseLengthClipRatio(AIME2025,
+Qwen2.5-7B).
+Figure7.ResponseLengthClipRatioTrajectories.Theplotsshowthefractionofgeneratedsequencesthatreachedthemaximumlength
+limitof4096tokensforexperimentson(lefttoright)AIME2024withQwen2.5-32B,AIME2025withQwen2.5-32B,andAIME2025
+withQwen2.5-7B.TheconsistentlyhigherclipratioforGTPOandGRPO-S(around10%)comparedtoDAPOprovidesfurtherevidence
+ofenhancedexploration,asourmethodsencouragethemodeltogeneratemorethoroughresponsesthatoftenutilizethefullgeneration
+budget.
+0.45
+0.40
+0.35
+0.30
+0.25
+0.20
+0.15
+50 100 150 200
+Step
+4@ssaP
+0.30
+0.25
+0.20
+0.15
+DAPO 0.10
+GTPO
+GRPO-S
+50 100 150 200
+Step
+MeanRewardofPass@4(AIME2024,
+Qwen2.5-32B).
+4@ssaP
+0.175
+0.150
+0.125
+0.100
+0.075
+DAPO
+GTPO 0.050
+GRPO-S
+0.025
+50 100 150 200
+Step
+MeanRewardofPass@4(AIME2025,
+Qwen2.5-32B).
+4@ssaP
+DAPO
+GTPO
+GRPO-S
+MeanRewardofPass@4(AIME2025,
+Qwen2.5-7B).
+Figure8.MeanRewardTrajectoriesforPass@4onTestSets.Theplotsshowthemeanrewardofthetop4generationsforexperiments
+on(lefttoright)AIME2024withQwen2.5-32B,AIME2025withQwen2.5-32B,andAIME2025withQwen2.5-7B.Thetrendsare
+consistentwiththosereportedinthemainpaper,withGTPOandGRPO-SachievingahigherrewardceilingthantheDAPObaseline.
+E.3.CompleteRewardTrajectoriesonTestSets
+Figures8and9presentthemeanrewardtrajectoriesforPass@4andPass@16,respectively. Theseplotscompletethe
+picturepresentedinFigure3ofthemainpaper. TheobservedtrendsarehighlyconsistentacrossallPass@kmetrics: GTPO
+andGRPO-SconsistentlyachieveahigherfinalrewardceilingthantheDAPObaseline,demonstratingtherobustnessofour
+performancegains.
+E.4.RewardTrajectoriesonTrainingSets
+Figure10showsthemeanrewardtrajectoriesonthetrainingsets. Thesecurvesarecrucialforevaluatingsampleefficiency.
+Theplotsindicatethatallmodels,includingourproposedmethodsandthebaseline,largelyconvergewithin210training
+steps. This demonstrates that the substantial performance improvements achieved by GTPO and GRPO-S are not the
+resultoflongertrainingbutareduetoamoreeffectiveandefficientlearningsignalderivedfromourentropy-weighting
+mechanism.
+F.QualitativeCaseStudy
+WepresentaqualitativecasestudytodemonstratethesuperiorityofourGTPOandGRPO-Salgorithms,formulatedunder
+theDynamicEntropyWeightingframework,overDAPO.Below,weillustratetheactualproblem-solvingtrajectoriesof
+thesethreealgorithmsonamathematicalproblemrequiringlong-chainreasoning.
+20
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+0.6
+0.5
+0.4
+0.3
+0.2
+50 100 150 200
+Step
+61@ssaP
+0.30
+0.25
+0.20
+0.15
+DAPO
+GTPO 0.10
+GRPO-S
+0.05
+50 100 150 200
+Step
+MeanRewardofPass@16(AIME2024,
+Qwen2.5-32B).
+61@ssaP
+0.200
+0.175
+0.150
+0.125
+0.100
+0.075
+DAPO
+GTPO 0.050
+GRPO-S
+0.025
+50 100 150 200
+Step
+MeanRewardofPass@16(AIME2025,
+Qwen2.5-32B).
+61@ssaP
+DAPO
+GTPO
+GRPO-S
+MeanRewardofPass@16(AIME2025,
+Qwen2.5-7B).
+Figure9.MeanRewardTrajectoriesforPass@16onTestSets.Theplotsshowthemeanrewardofthetop16generationsforexperiments
+on(lefttoright)AIME2024withQwen2.5-32B,AIME2025withQwen2.5-32B,andAIME2025withQwen2.5-7B.Theseresults
+furtherdemonstratetherobustandconsistentperformanceimprovementsofourmethodsacrossdifferentevaluationmetrics.
+0.6
+0.5
+0.4
+0.3
+0.2
+50 100 150 200
+Step
+sdraweR
+0.6
+0.5
+0.4
+0.3
+DAPO
+GTPO
+GRPO-S
+0.2
+50 100 150 200
+Step
+MeanRewardofTrainingSet(AIME2024,
+Qwen2.5-32B).
+sdraweR
+0.50
+0.45
+0.40
+0.35
+0.30
+DAPO 0.25
+GTPO
+GRPO-S 0.20
+50 100 150 200
+Step
+MeanRewardofTrainingSet(AIME2025,
+Qwen2.5-32B).
+erocS
+DAPO
+GTPO
+GRPO-S
+MeanRewardofTrainingSet(AIME2025,
+Qwen2.5-7B).
+Figure10.MeanRewardTrajectoriesonTrainingSets.Theplotsshowthemeanrewardonthetrainingdataforexperimentson(leftto
+right)AIME2024withQwen2.5-32B,AIME2025withQwen2.5-32B,andAIME2025withQwen2.5-7B.Therewardcurvesdemonstrate
+thatallmodelsapproachconvergenceonthetrainingdatabyapproximately210steps,supportingtheclaimthattheperformancebenefits
+ofourmethodsdonotcomeatthecostofreducedsampleefficiency.
+Problem.
+AlicechoosesasetAofpositiveintegers.ThenBoblistsallfinitenonemptysetsBofpositiveintegerswiththepropertythatthe
+maximumelementofBbelongstoA.Bob’slisthas2024sets.FindthesumoftheelementsofA.
+SolutionofGTPO:
+ForagivensetA={a ,a ,...,a },wherea <a <···<a ,andforanysubsetB ⊂A,themaximumelementofBmust
+1 2 n 1 2 n
+belongtoA.Forafixedmaximumelementa ∈B ⊂A,thesetBcanincludeanysubsetoftheelements{1,2,...,a −1}along
+i i
+witha .Thus,foragivena ,thenumberofpossiblesetsBwithmaximumelementa isthenumberofsubsetsof{1,2,...,a −1}
+i i i i
+plustheelementa
+i
+itself. Thisis2ai−1. Therefore,thetotalnumberofsuchsetsB isthesumof2ai−1 foralla
+i
+∈ A,giving
+(cid:80)n
+i=1
+2ai−1 =2024.ThetaskisthentofindasetA={a
+1
+,a
+2
+,...,a
+n
+}thatsatisfiestheaboveequation.TofindsuchA,wecan
+express2024asasumofpowersof2.
+Then2024isconvertedtoitsuniquebinaryrepresentation:
+2024 =11111101000
+10 2
+=210+29+···+26+25+23.
+Sincethebinaryrepresentationofanyintegerisunique,wehave
+n=7,a −1=10,a −1=9,a −1=8,a −1=7,a −1=6,a −1=5,a −1=3.
+7 6 5 4 3 2 1
+Then···,weget
+(cid:80)n
+a =4+6+7+8+9+10+11=55.
+i=1 i
+Hence,wegetthesumoftheelementsofAis 55 . ✓
+21
+GTPOandGRPO-S:TokenandSequence-LevelRewardShapingwithPolicyEntropy
+SolutionofGRPO-S:
+Step1:UnderstandingtheSetsB.DenotetheelementsofAas{a ,a ,...,a },wherea <a <···<a .Accordingtothe
+1 2 n 1 2 n
+problemstatement,weknowthatthemaximumelementofBmustbelongtoA.
+Step2:CountingtheSetsB.Foreacha ∈A,considerthesetsBwherea isthemaximumelement.Notethata isthemaximum
+i i i
+elementofB,thentheotherelementsofBcanbeanysubsetof{1,2,...,a −1}.Thenumberofsubsetsof{1,2,...,a −1}is
+i i
+2ai−1.Sincea
+i
+isthemaximumelementofB,a
+i
+∈B,whichmeansBisnonempty.Thus,thereare2ai−1possiblesetsBforeach
+a .
+i
+Step3:TotalNumberofSetsB.SincethesetsBaredisjointbasedontheirmaximumelements,thetotalnumberofsetsBisthe
+sumofthenumberofsetsforeacha
+i
+.Thisgives (cid:80)n
+i=1
+2ai−1 =2024.
+Step4:FindingtheSetA.ThenthetaskistofindasetA={a
+1
+,a
+2
+,...,a
+n
+}suchthatthesumof2ai−1foralliequals2024.This
+isequivalenttofindingasetofexponentssuchthatthesumofthecorrespondingpowersof2equals2024.
+Let’sexpress2024inbinaryuniquelytoidentifytheexponents:
+2024 =11111101000 .
+10 2
+Theuniquebinaryrepresentationtellsusthat:
+n=7,a −1=10,a −1=9,a −1=8,a −1=7,a −1=6,a −1=5,a −1=3.
+7 6 5 4 3 2 1
+Then···,whichget
+(cid:80)n
+a =4+6+7+8+9+10+11=55.
+i=1 i
+Hence,thesumoftheelementsofAis 55 . ✓
+SolutionofDAPO:
+DenoteAas{a ,a ,...,a },wherea <a <···<a .Foreacha ,thesetsBwherethemaximumelementisa canbeformed
+1 2 n 1 2 n i i
+bytakinganysubsetof{1,2,...,a
+i
+−1}andaddinga
+i
+toit.Thenumberofsuchsetsis2ai−1becausethereare2ai−1subsetsof
+{1,2,...,a
+i
+−1}.Thus,thetotalnumberofsetsBisthesumof2ai−1foralla
+i
+∈A:
+2024=2a1−1+2a2−1+···+2an−1
+=210+29+···+23+22+20
+ThismeansAcanbechosensuchthata −1correspondstotheexponentsintheright-handsideoftheaboveequation. Thus,it
+i
+followsthat:
+a =1, a =3, a =4, a =5,a =6, a =7, a =8, a =9,a =10, a =11.
+1 2 3 4 5 6 7 8 9 10
+Therefore,
+(cid:80)n
+a =1+3+4+5+6+7+8+9+10+11=64.
+i=1 i
+Hence,thesumoftheelementsofAis 64 . ✗ >>>55
+Analysis Thiscasestudyprovidesacompellingqualitativeillustrationofthepracticaldifferencebetweencoarse-grained
+andfine-grainedcreditassignment. TheDAPOmodel’sfailureischaracteristicofasystemthatlearnsthegeneralstructure
+ofasolution(the"template")butlackslogicalrigorinitsexecution. Itscoarse-grainedrewardsignal(asingle+1or-1
+fortheentiresequence)isinsufficienttopenalizesubtlebutcriticalerrorsliketheincorrectbinarydecomposition. The
+model can thus become overconfident in a flawed reasoning path. In contrast, the success of the GTPO and GRPO-S
+models highlights the benefit of an entropy-aware reward signal. Our methods are designed to penalize low-entropy
+(high-confidence)mistakes,whichwoulddirectlydiscouragethekindofconfidentbutincorrectdecompositionmadebythe
+DAPOmodel. Simultaneously,byrewardingexplorationinsuccessfulpaths,ourmethodsencourageamorecarefuland
+deliberatereasoningprocess,leadingtothediscoveryofthecorrect,logicallysoundsolution. Thiscasedemonstratesthat
+ourframeworkiskeytomovingLLMsbeyondmerepatternimitationtowardsrobust,verifiablereasoning.
+22

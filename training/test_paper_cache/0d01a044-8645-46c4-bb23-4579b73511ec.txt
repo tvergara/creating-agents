@@ -1,0 +1,2897 @@
+PublishedasaconferencepaperatICLR2026
+SINGLE INDEX BANDITS: GENERALIZED LINEAR CON-
+TEXTUAL BANDITS WITH UNKNOWN REWARD FUNC-
+TIONS
+YueKang , MingshuoLiu , BongsooYi , JingLyu ,
+†∗ ‡ § ‡
+ZhiZhang , DoudouZhou , YaoLi
+¶ ∥ §
+Microsoft UniversityofCalifornia,Davis UniversityofNorthCarolinaatChapelHill
+† ‡ §
+UniversityofCalifornia,LosAngeles NationalUniversityofSingapore
+¶ ∥
+yuekang@microsoft.com
+{mshliu,jjlyu}@ucdavis.edu
+{bongsoo,yaoli}@unc.edu
+zzh237@g.ucla.edu
+ddzhou@nus.edu.sg
+ABSTRACT
+Generalizedlinearbanditshavebeenextensivelystudiedduetotheirbroadappli-
+cabilityinreal-worldonlinedecision-makingproblems. However,thesemethods
+typicallyassumethattheexpectedrewardfunctionisknowntotheusers,anas-
+sumptionthatisoftenunrealisticinpractice. Misspecificationofthislinkfunction
+can lead to the failure of all existing algorithms. In this work, we address this
+criticallimitationbyintroducinganewproblemofgeneralizedlinearbanditswith
+unknownrewardfunctions,alsoknownassingleindexbandits. Wefirstconsider
+the case where the unknown reward function is monotonically increasing, and
+proposetwonovelandefficientalgorithms,STORandESTOR,thatachievedecent
+regretsunderstandardassumptions. Notably,ourESTORcanobtainthenearly
+optimalregretboundO˜ (√T)1intermsofthetimehorizonT.Wethenextendour
+T
+methodstothehigh-dimensionalsparsesettingandshowthatthesameregretrate
+canbeattainedwiththesparsityindex. Next,weintroduceGSTOR,analgorithm
+thatisagnostictogeneralrewardfunctions,andestablishregretboundsundera
+Gaussiandesignassumption. Finally,wevalidatetheefficiencyandeffectiveness
+ofouralgorithmsthroughexperimentsonbothsyntheticandreal-worlddatasets.
+1 INTRODUCTION
+Themulti-armedbanditmodelssequentialdecision-makingwithpartialfeedbackandhasfoundbroad
+applicabilityinareassuchasonlinerecommendation(?),clinicaltrials(?),precisionmedicine(?),
+andhyperparameterlearning(??). Toincorporatethesideinformation(contexts)ofarms,onewidely
+adoptedextensionisthelinearcontextualbanditmodel(??),whichassumestheexpectedrewardisa
+linearfunctionoftheobservedfeaturewithsomeunknownparameter. However,manyreal-world
+applicationsinvolveinherentlynon-linearrewardstructures,suchasbinaryclicksordiscretecounts,
+renderinglinearmodelsinadequate. Generalizedlinearbandits(GLBs)(??) werethennaturally
+introducedtoaddressthislimitationbyapplyinganon-linear(inverse)linkfunctiontothelinear
+predictor,enablingcompatibilitywithabroaderrangeofrewardtypes.WhileGLBsmaintainmuchof
+thetraceabilityandtheoreticalguaranteesoflinearmodels,theyfundamentallyrelyontheassumption
+thatthelinkfunctionisknowninadvance. Inpractice,however,thisassumptionisoftenunrealistic,
+astheunderlyingparametricformistypicallyunknownandimpossibletoidentify. Ithasbeenshown
+thatmodelmisspecificationcanseverelydegradethepracticalperformance(??),andevenminor
+deviationscanleadtolinearregretforallexistingGLBmethods(?). Thisfundamentallimitation
+motivatesthedevelopmentofamorerobust,agnosticapproach.
+∗YueKangisthecorrespondingauthor.
+1O˜ hidespolylogarithmicfactors.AsubscriptT onasymptoticnotations(e.g.,O T)indicatesthatthebound
+isexpressedonlyintermsofT,withdependenceonotherproblemparameterssuppressed.
+1
+PublishedasaconferencepaperatICLR2026
+Toaddressthiscriticallimitation,weintroducethesingleindexbandit(SIB)problem,wherethe
+expectedrewardisanunknownfunctionofthelinearpredictor. Tothebestofourknowledge,this
+is the first work to advance GLBs without assuming access to the reward function. Our setting
+isinspiredbysingleindexmodels(SIMs)fromstatisticallearning(?),whichextendgeneralized
+linearmodels(GLMs)byremovingtheneedforaknownlinkfunction. Despitetheirflexibilityand
+effectivenessinofflinesettings,SIMshaveneverbeenexploredinthebanditliterature,primarilydue
+tothesubstantialtheoreticalchallengestheyposeinonlinelearning. WeproposeafamilyofSIB
+algorithmsthatachievestrongtheoreticalguaranteesanddemonstrategreatempiricalperformance
+inthiswork,allwithoutknowingtheformoftherewardfunction. Notably,althoughGLBshave
+beenextensivelystudiedinrecentyears,noneoftheexistingresultscanbeappliedorextendedto
+oursetting: BothUpperConfidenceBound(UCB)-basedmethods(??) andThompsonSampling
+(TS)-basedapproaches(??) requiresolvinga(quasi-)maximumlikelihoodestimatorfortheunknown
+parameter,whichessentiallyreliesonexplicitknowledgeoftherewardfunction. Anotherclassof
+GLBalgorithmsimprovescomputationalefficiencyviasecond-orderonlineoptimization(??),while
+thesemethodsalsopresumeaknownlinkfunctionforonlineNewtonupdatesateachround. More
+fundamentally,allexistingGLBanalysesdependonconcentrationboundsforsomevector-valued
+martingales involving the noise terms across the time horizon T, whose construction inherently
+requires the explicit form of the reward function, and these analytical techniques collapse in the
+agnosticsetting. Ontheotherhand,anotherlineofresearchconsidersthegeneralcontextualbandit
+problemundertherealizabilityassumption,i.e.,theexpectedrewardbelongstosomeknownfunction
+class (???),andtheseapproachescriticallyassumeaccesstoapowerfulsquare-lossregression
+F
+oraclewithstrongnon-asymptoticguarantees. However,suchanoracleisimpossibletorealizein
+singleindexmodels: mostexistingSIMestimatorsarebasedonmaximumlikelihoodmethodsand
+provideonlyasymptoticguarantees(???),whilethefewresultswithfinite-sampleratesrequirehighly
+restrictivedistributionalassumptions(e.g., i.i.d. Gaussiancovariates)(??). Theseconditionsare
+fundamentallyincompatiblewithallcontextualbanditalgorithmsundertherealizabilityassumption,
+wherethefullrewardfunctionanditsparametermustbelearnedjointlyfromadaptivelycollected
+dataratherthanfromafixedandrestrictivesamplingstrategy. Adetailedexplanationofthisintrinsic
+incompatibilityisprovidedinAppendixA.Inconclusion,thesingleindexbanditsettingweintroduce
+liesbeyondthereachofallexistingapproaches,andtacklingthischallengingproblemnecessitates
+thedevelopmentofentirelynewalgorithmictechniquesandtheoreticaltools.
+Toovercometheaforementionedchallenges,weintroduceanovelestimatorbasedonStein’smethod,
+whichoffersafundamentallydifferentapproachtoestimatingtheunknownparameter. WhileStein’s
+methodhasrecentlybeenappliedinlow-rankmatrixbandits(?),itremainsunexploredinthecontext
+oflinearorgeneralizedlinearbandits. Wefirstleveragethistooltostudythecasewheretheunknown
+rewardfunctioniscontinuouslydifferentiableandmonotonicallyincreasing,andproposetwoefficient
+algorithmsthatachievestrongperformanceundermildconditions. Notably,GLMswiththecanonical
+formalsoinducemonotonicallyincreasingrewardfunctions(?),whichindicatesthatthissetting
+strictly encompasses the classic GLB framework. Furthermore, we extend our framework to the
+sparsehigh-dimensionalregimeandgeneralizeourapproachtohandlearbitrary(non-monotonic)
+rewardfunctions. Thecontributionsaresummarizedasfollows:
+• WeproposeanovelandefficientestimatorbasedonStein’smethodthatrequiresonlytheexistence
+ofthesecondmomentofthenoiseandattainstheminimaxerrorrate. Moreover,ourestimatoris
+highlyefficient: itrequiresnooptimization,andcanbecomputedinO(nd)timeandO(d)space
+from n contextual samples in Rd. We further show that this estimator extends naturally to the
+sparsehigh-dimensionalregimewiththesameerrorboundintermsofthesparsityindex. These
+resultsalsoconstituteanotableadvancementintheestimationofSIMsaswell.
+• Asawarm-up,weintroduceSTOR,anExplore-then-Commit(EtC)stylealgorithm,andshowthat
+itachievesaregretboundoforderO˜
+T
+(T2 3). Buildingonthis,weproposeanewalgorithmnamed
+ESTORthatleveragesanovelepoch-basedschedule,andprovethatitachievesanearly-optimal
+regretboundoforderO˜
+T
+(T2 1)underoursignificantlymorechallengingproblemsetting.
+• Next,weextendourresultstothehigh-dimensionalsettingandshowthatthesameregretbounds
+holdwhentheambientdimensionisreplacedbythesparsitylevelofthetrueparameter,making
+ourapproachwell-suitedformodernapplicationswithsparsehigh-dimensionalfeaturespaces.
+• Furthermore,weproposeGSTOR,anewmethodthatextendsSTORtothegeneralcasewherethe
+rewardfunctionsarenotnecessarilymonotonic. Weintroduceadouble-exploration-then-exploit
+2
+PublishedasaconferencepaperatICLR2026
+methodologythatcombinesourStein’smethod-basedestimatorwithakernelregressionprocedure
+toapproximatetheunknownlinkfunction. UnderastandardGaussiandesignassumption, our
+GSTORachievestheregretoforderO˜
+T
+(T4 3).
+• Finally,wevalidateourtheoreticalresultsthroughextensiveexperimentsonbothsyntheticand
+real-worlddatasets,illustratingtheeffectivenessofourmethodsacrossdiverserewardstructures.
+Due to space constraints, we defer the full related work with discussion to Appendix A. There,
+weprovideacomprehensiveoverviewofpriorresearchongeneralizedlinearbandits,singleindex
+models,andcontextualbanditsundertherealizabilityassumption.Wefurtherexplainwhyallexisting
+approachesarefundamentallyunabletoaddressthesingleindexbanditsettingindetail,andillustrate
+thattheSIM/SIBissignificantlymorechallengingthantheGLM/GLB.
+2 PRELIMINARIES
+We present the setting of single index bandit (SIB) problem and introduce the assumptions used
+inouranalysis. DenoteT asthetimehorizonand asthearmsetavailabletotheagentateach
+t
+roundt [T],where = x Rd :a [K] c X onsistsofK (K 3)featurevectorssampled
+t t,a
+∈ X { ∈ ∈ } ≥
+i.i.d. from some d-dimensional continuous distribution with the multivariate density p(). At
+D ·
+time t, the agent chooses an arm x and observes the associated stochastic reward y such
+t t t
+thaty = f(x θ )+η ,whereθ
+∈RdX
+isanunknownparametervectorandη isthezero-mean
+noise
+t
+withfini
+⊤t
+te∗varianc
+t
+eσ2. Not∗e ∈ thatouranalysisonlyrequiresaboundedvar
+t
+ianceassumption,
+whichisstrictlyweakerthanthesub-GaussiannoiseconditionimposedinmostGLBliterature(?).
+Additionally, unlike the GLB setting where the reward function f() is known to the agent, we
+·
+consider a more challenging problem in which f() is an unknown, continuously differentiable
+·
+function. Thisagnosticrelaxationsignificantlyincreasesthedifficultyoftheproblemandinvalidates
+thetheoreticalguaranteesofallexistingGLBmethods,asdiscussedinSection1andAppendixA.
+Furthermore,welet θ = 1formodelidentifiability. Definex := argmax x θ asthe
+featurevectorofthe ∥ op∗ti ∥ m 1 alarmatroundt,andthegoalistomin t i , m∗ izethecumu x l∈aXti t ve ⊤ reg∗retR
+T
+acrossthetimehorizonT definedas,
+T
+R = f(x θ ) f(x θ ).
+T ⊤t,
+∗ ∗ −
+⊤t
+∗
+t=1
+X
+Next,wepresentthefollowingkeydefinitionofthescorefunctionusedinStein’smethod.
+Definition2.1. Letp:Rd RbeaprobabilitydensityfunctiondefinedonRd. Thescorefunction
+Sp :Rd Rdassociatedw → iththedensity(pdf)p()isgivenby:
+→ ·
+Sp(x)= log(p(x))= p(x)/p(x), x Rd,
+x x
+−∇ −∇ ∈
+andSp(x), i [d]isdefinedastheithentryofthescorefunctionvectorSp(x) Rd.
+i ∈ ∈
+Wewillomitthesubscriptxin andthesuperscriptpinS whentheunderlyingdistributionisclear
+∇
+fromcontext. Withthisdefinition,wethenintroducetwostandardassumptions.
+Assumption 2.2. There exists some constant M > 0 such that E(S (X)2) M for all j [d]
+j
+≤ ∈
+whereX isarandomvariablesampledfromthedistribution .
+D
+Assumption2.3. ThereexistssomevalueL>0suchthat x Lforalli [d],t [T]. And
+t,i
+∥ ∥ ≤ ∈ ∈
+theunknownrewardfunctionf()anditsderivativef ′ ()haveco∞nstantupperboundsL f ,L f′ >0,
+· ·
+i.e. f(x) L
+f
+, f
+′
+(x) L f′,forany x L.
+| |≤ | |≤ | |≤
+Assumption2.2ismildandappliestoabroadclassofdistributions,includingmanynon-sub-Gaussian
+orevennon-zero-meancases,whichenablesustohandlepreviouslyintractablecases. Furthermore,
+itislessrestrictivethantheconditionsinthestate-of-the-artliteratureonStein’smethodandrobust
+estimationliterature(??),whichtypicallyrequireatleastafinitefourthmomentofthescorefunction.
+Assumption2.3isalsostandardandwidelyusedinexistinglinearcontextualbanditalgorithms.While
+someexistingmethodsassumeboththearmvectorxandtheparameterθ haveanl -normboundof
+2
+S (?????),whichmayappeardifferentfromourAssumption2.3,bothfo∗rmulationsensurethatthe
+innerproductx θ isboundedbyL,maintainingthesamefundamentalconstraint. Moreover,our
+⊤
+mainresultsremain∗ validunderbothsettings,andweadoptourassumptionbecauseitiscommonly
+3
+PublishedasaconferencepaperatICLR2026
+Algorithm1Stein’sOracleSingleIndexBandit(STOR)
+Input: T,theprobabilityrateδ,parametersT ,λ,τ
+1
+1: fort=1toT do
+1
+2: Pullanarmx uniformlyrandomlyandobservethestochasticrewardy .
+t t t
+∈X
+3: endfor
+4: Obtaintheestimatorθˆwith x ,y T1 basedonEqn.(1).
+{ i i }i=1
+5: fort=T +1toT do
+1
+6: Choosethearmx =argmax x θˆ,breaktiesarbitrary.
+7: endfor
+t x ∈Xt ⊤
+usedinsparselinearbanditliterature(??),allowingustomaintainconsistencyinourdiscussion
+ofbothlinearandsparselinearbandits. Amoredetaileddiscussiononthismatterisprovidedin
+AppendixH.Additionally,weallowLtoremainataconstantscaleuptologarithmicfactors,i.e.
+L = O˜(1),whileensuringourresultsremainvalid. Thisflexibilityaccommodatesabroadrange
+ofdistribution ,includinganysub-Gaussianorsub-Exponentialdistribution,andmoretechnical
+D
+detailsareprovidedinAppendixH.
+3 METHODS
+Inthissection,weintroduceourSIBalgorithms,beginningwiththecaseofmonotonicallyincreasing
+reward functions. We then extend our approach to the high-dimensional regime and ultimately
+generalizetonon-monotonicsettings. WefirstutilizeanovelStein’s-method-basedestimatorforthe
+unknownparameterθ undergeneralcontinuouslydifferentiablerewardfunctions,andshowthatit
+∗
+achievestheoptimalerrorrateundermildassumptions. Wefurtherextendthisestimatortothesparse
+high-dimensionalsettingbyincorporatinganl regularizer,anddemonstratethattheoptimalerror
+1
+rateiswellpreservedintermsofthesparsitylevelofthetrueparameter.
+3.1 SINGLEINDEXMODELESTIMATOR
+Supposewecollectnpairsofsamples x ,y n wherethefeaturevectorx isi.i.d. sampledfrom
+{ i i }i=1 i
+thed-dimensionaldistribution . WeproposethefollowingminimizationprobleminEqn.(1).
+D
+n
+2
+θˆ=ar
+θ
+gm
+Θ
+inL(θ)+λ
+∥
+θ
+∥ 1
+, whereL(θ)=
+∥
+θ
+∥
+2
+2− n
+(ϕ
+τ
+(y
+i
+)
+·
+S(x
+i
+))⊤θ, (1)
+∈ X i=1
+wherewedenoteϕ ():R Rasthetruncationfunctionontherewardsuchthat
+τ
+· →
+ϕ (y)=sign(y) (y τ), y R,
+τ
+· | |∧ ∀ ∈
+forsomeparameterτ >0. θ isthel regularizerdesignedforsparsehigh-dimensionalsetting(?).
+1 1
+∥ ∥
+Notably,insteadofdirectlyusingtherewardy ,weemployacarefultruncationony tocontrolthe
+i i
+varianceoftheestimatorwhilemanagingbias. Thetruncationisgovernedbyaparameterτ,which
+explicitlybalancesbiasinducedbydiscardingextremevaluesagainstvariancereductiontoachieve
+optimalstatisticalguarantee. Whilethisthresholdingtechniquehasbeenwidelyadoptedinstatistical
+andonlinelearningtohandleheavy-tailedrewards(???),wedemonstrateitsnovelapplicabilityto
+mitigate the ambiguity from misspecification of the reward function f() in this work. Next, we
+·
+establishthefollowingstatisticalguaranteesfortheestimatorinEqn.(1). Notably,ourℓ andℓ
+1 2
+errorboundsmatchtheminimaxratesofclassicallinearregression? uptologarithmicterms,and
+sincelinearregressionisaspecialcaseofoursetting,theseboundsarenearlyoptimal.
+Theorem 3.1. (Bound of SIM) For any single index model defined in Section 2 with samples
+x ,...,x drawnfromsomedistribution . Wedenoteµ :=E(f (X θ )), X andassume
+1 n ′ ⊤
+µ = 0. Under Assumption 2.2, 2.3, by D solving the opti∗mization proble∗m in Eq ∼ n. D (1) with τ =
+∗ ̸
+4
+PublishedasaconferencepaperatICLR2026
+3(σ2+L2)Mn/log(2d/δ)andλ=0,withprobabilityatleast(1 δ)itholdsthat:
+f −
+q
+2√3 dM(σ2+L2)log(2d/δ) d
+θˆ µ θ +√2 f =O˜ ,
+− ∗ ∗ 2 ≤ 3 !·s n r n !
+(cid:13) (cid:13)
+(cid:13) (cid:13)
+(cid:13) (cid:13) 2√3 M(σ2+L2)log(2d/δ) d
+θˆ µ θ +√2 d f =O˜ .
+(cid:13) − ∗ ∗ (cid:13) 1 ≤ 3 ! ·s n (cid:18) √n (cid:19)
+(cid:13) (cid:13)
+(cid:13) (cid:13)
+ProofsketchofTheorem3.1: WebeginbyapplyingStein’sidentitytoshowthatE[y S(x )]=
+i i
+µ θ ,whichmotivatesourestimator. Toanalyzeitsaccuracy,weupperboundtheoptimizationgap
+L
+∗ (θˆ∗
+) L(µ θ )byboundingthegradientnorm L(µ θ ) . Wecontroltheheavy-tailednature
+ofy v − iaatr∗un∗cationfunctionϕ (y),whichlimit ∥ s ∇ theinfl∗u∗en ∥ c∞eofextremevalueswhileintroducing
+i τ
+acontrollablebias. Weshowthatthebiastermfromtruncationissmall(viaTaylorexpansion)and
+thevarianceisconcentratedusingBernstein’sinequality. Finally,byapplyingfirst-orderconvexity
+arguments, we obtain high-probability bounds on both θˆ θ and θˆ θ that match the
+2 1
+minimaxrate,allwithoutrequiringknowledgeoftherewa ∥ rd − fun∗c ∥ tionf() ∥ . − ∗∥
+·
+ThefullproofofTheorem3.1isdeferredtoAppendixC.Notably,ourestimatorishighlycomputa-
+tionallyefficient. Inthelow-dimensionalregime,thelossinEqn.(1)reducestoasimplequadratic
+formL(θ)withλ = 0,andthesolutionadmitsaclosed-formexpressionas n ϕ (y S(x ))/n.
+i=1 τ i i
+Thissolutionrequiresnoiterativeoptimizationandisobtainedbyasingleaveragingoperationover
+the samples, resulting in only O(nd) time and O(d) space complexity. ThiPs is remarkably more
+efficientthansolvingtheMLEusedbymostGLBalgorithms,despiteoursettingbeingsignificantly
+harderduetotheunknownrewardfunction.
+While our method assumes that data is sampled from a fixed distribution , rather than being
+D
+adversariallychosen,whichmayappearstrongatfirstglance,weemphasizethatthisisareasonable
+conditioninthestudyofSIMsandisstillmilderthanthestrongerassumptionscommonlyimposed
+inpriorwork(seeAppendixA).NotethattheSIM/SIBsettingisfundamentallymoredifficultthan
+GLM/GLB,asitinvolvesjointlylearningboththeparameterandtheunknownlinkfunction. Tomake
+theproblemtractable,previousstudiesonSIMstypicallyimposeadditionaldistributionalassumptions,
+suchasassumingthecontextvectorisdrawnfromastandardGaussianandthelinkfunctionsatisfies
+certainregularityconditions(???).Incontrast,ourapproachavoidstheseassumptionsandalignswith
+priorbanditworkthatalsoemploysStein’smethod(??). Conclusively,weviewtheassumptionon
+Stein’sscoreasareasonableandnecessarycompromiseforaddressingasignificantlymorerealistic
+andchallengingsettingthanGLBs. AdetailedreviewofexistingSIMworksisgiveninAppendixA.
+AndweleavestudyingSIBswithadversariallychosenarmsasachallengingfuturedirection.
+3.2 WARM-UP: SIMPLEALGORITHMAGNOSTICTOINCREASINGREWARDFUNCTIONS
+Wefirstconsiderthecasewheretheunknownrewardfunctioniscontinuouslydifferentiableand
+monotonicallyincreasing. Notably,therewardfunctionofanyGLMinthecanonicalformisalso
+monotonicallyincreasing,implyingthatoursettingstillencompassestheexistingGLBliterature.
+Asawarm-up,wepresentourefficientSTein’sORaclesingleindexbandit(STOR)algorithm,which
+leveragestheExplore-then-Commit(EtC)methodology. EtChasbeenwidelyadoptedincontextual
+banditliterature,particularlyinthehigh-dimensionalregime(???) duetoitssimplicity. OurSTOR
+methodisshowninAlgorithm1. Specifically,STORbeginswithanexplorationphaseoflength
+T ,whereitrandomlyselectsactionsforafixednumberofroundstoestimatethedirectionofthe
+1
+unknownparameterθ . Itthenenterstheexploitationphaseandgreedilyselectsactionsthatare
+expectedtomaximize∗theestimatedreward.
+Theorem3.2. Foranysingleindexbanditwithanincreasingfunction,wesetT 1 =(dT)2 3 ln(2d/δ)3 1 ,
+τ = 3T /ln(2d/δ) and λ = 0 in Algorithm 1. Then under Assumption 2.2, 2.3, we have the
+1
+followingregretboundwithprobabilityatleast1 δ:
+p −
+R
+T
+=O d 2 3T3 2 (ln(d/δ)) 1 3 =O˜ d 2 3T3 2 .
+(cid:16) (cid:17) (cid:16) (cid:17)
+5
+PublishedasaconferencepaperatICLR2026
+Algorithm2EpochedStein’sOracleSingleIndexBandit(ESTOR)
+Input: T,epochschedulee =(2i 1)T ,theprobabilityrateδ,parametersT , λ ,τ
+i 0 0 i i i=2
+− { }
+Initialization:Setthedensityfunctionp =pcorrespondingtothedistribution .
+1
+D
+1: fort=1toe do
+1
+2: Pullanarmx uniformlyrandomlyandobservethestochasticrewardy .
+t t t
+∈X
+3: endfor
+4: forepochi=2,3,... do
+5: Obtain the estimator θˆ with x ,y ei−1 based on Eqn. (1), where we set λ = λ ,
+i { j j }j=ei−2+1 i
+τ =τ andS()asthescorefunctionassociatedwiththedensityp .
+i i 1
+6: fort=e · +1tomin e ,T do −
+i 1 i
+7: Choos − ethearmx = { argm } ax x θˆ,breaktiesarbitrary.
+8: endfor
+t x ∈Xt ⊤ i
+9: Updatethedensityfunctionp (x)=K p(x) F (x θˆ)K 1,whereF ()isthecumulative
+i i ⊤ i − i
+· · ·
+distributionfunctionoftherandomvariableX θˆ withX .
+⊤ i
+∼D
+10: endfor
+AlthoughourAlgorithm1providesthefirstsolutiontoSIBswithmonotonicallyincreasingfunctions,
+itsregretbounddoesnotmatchtheoptimalrateoforderO˜ (√T)forGLBs(?). Thisisduetothe
+T
+intrinsicsuboptimalityoftheEtCapproach,whichincursadditionalregretfromafixedexploration-
+exploitationsplit. Remarkably, weresolvethischallengeinthenextsubsectionbyproposingan
+improvedandnovelalgorithm,ESTOR,whichachievestheminimax-optimalregretboundoforder
+O˜ (√T)uptologarithmicfactors.
+T
+3.3 IMPROVEDALGORITHMAGNOSTICTOINCREASINGREWARDFUNCTIONS
+OurEpochedSTein’sORaclesingleindexbandit(ESTOR)algorithmispresentedinAlgorithm2. It
+employsacarefullydesignedepochschedulewithanepoch-specifichyperparameterconfiguration.
+Specifically,ESTORusesexponentiallyincreasingepochlengths,andatthebeginningofeachepoch,
+itleveragesdatacollectedfromtheprecedingepochtocomputeanupdatedestimateoftheunknown
+parameter(line5). Actionsareselectedgreedilyaccordingtothismostrecentestimatewithineach
+epoch(line7). Attheendofeachepochi,ESTORupdatesthedistributionp forarmselectionbased
+i
+ontheupdatedestimatorθˆ (line9),whichservesasthebasisforournovelparameterestimatorinthe
+i
+subsequentepoch. Althoughepochschedulingandgreedyselectionhavebeenstudiedindividually,
+theirintegrationwithasolidtheoreticalguaranteeremainslargelyunexploredintheliterature.
+Furthermore,whiletraditionalepoch-basedtechniqueslikethedoublingtrick(?) focusonadapting
+tounknowntimehorizons,ourmotivationdiffersfundamentally: wecarefullyselectepochlengths
+andutilizeepoch-specifichyperparametersthatgraduallyevolve,effectivelybalancingexploration
+andexploitationovertime. Shorterinitialepochsfacilitaterapidexplorationandcoarseestimation,
+whileprogressivelylongerepochsensurelaterstagesaccumulatesufficientlymanysamples,allowing
+ourparameterestimatestobecomeincreasinglyprecisewithdiminishingerror. Bycoordinatingthese
+components,ESTORisabletoovercometheinherentsuboptimalityofstandardEtCapproaches. We
+nowintroducethefollowingmildassumptionforourESTORtosupportourregretanalysis:
+Assumption3.3. ThereexistssomeconstantC > 0suchthatE(p (X v)2) C forallv Rd
+v ⊤
+≤ ∈
+with v =1whereX issampledfromthedistribution andp ()isthedensityofX v.
+v ⊤
+∥ ∥ D ·
+∞
+Remark3.4. Assumption3.3isquitemildandappliestoabroadclassofdistributions. Forexample,
+ifthedensityfunctionp ()isbounded,thenitssecondmomentisautomaticallyfiniteandhence
+v
+·
+Assumption 3.3 holds. This scenario encompasses many standard cases, including X sampled
+from any multivariate normal distribution. Furthermore, if the entries of X follow the common
+sub-Gaussianproperty,thenX visalsosub-Gaussianwithsomeparameter. Thisimpliesitsdensity
+⊤
+function exhibits exponentially decaying tails and thus is well-controlled and integrable in tails.
+Overall,theseobservationssuggestthatAssumption3.3iseasilysatisfiedinpractice,andadetailed
+discussionisdeferredtoAppendixI.Notably,ourAlgorithm2anditsregretanalysis(Theorem3.5)
+relyonlyonthevalidityofthisassumption,withoutrequiringknowledgeofthevalueC.
+NowwewillpresenttheregretboundofourESTORshowninAlgorihtm2:
+6
+PublishedasaconferencepaperatICLR2026
+Theorem 3.5. For any single index bandit with an increasing function, we set λ = 0,τ =
+i
+3(e e )/log(2dlog (T)/δ), andT toanyvalues.t. T d K3T log(2dlog (T)/δ)
+inAlg i o−r 1 it − hm i −2 2 . ThenunderA 2 ssumption2.2, 0 2.3,3.3,ourAlgorit 0 hm ≤ 2canattainfollowin 2 gregret
+p p
+boundwithprobabilityatleast1 δ:
+−
+R T =O dK 3 2 C · T · log(dlog 2 (T)/δ) =O˜ dK 3 2 √T =O˜ T (√T).
+(cid:16) p (cid:17) (cid:16) (cid:17)
+ProofsketchofTheorem3.5 : Webeginbycharacterizingthesamplingdistributionoverarms
+induced by greedy selection within each epoch of ESTOR. Leveraging this structure, we apply
+Stein’sidentitytorelateE[y S(x )]toθ andboundtheestimationerrorofθˆ usingsamplesfrom
+i i i
+thepreviousepoch,supportedbyanove∗lmomentanalysisofthescorefunctionundertheinduced
+distribution. We then show that the per-round regret within each epoch is upper bounded by the
+estimationerrorofθˆ,andthatduetotheexponentialgrowthofepochlengths,theseerrorterms
+i
+decay geometrically across epochs. Summing over all epochs yields the final regret bound of
+O˜(dK3/2√T).
+Remark3.6. TheregretboundderivedinTheorem3.5exhibitsaworst-casedependencyonKoforder
+K3/2underAssumption3.3,basedonaconservativeboundingtechnique. However,wecanshow
+thatundermanycommonscenarios,includingwhenthearmx issampledfromad-dimensional
+t,i
+normaldistribution,i.e. (µ ,Σ ),thedependencyonK improvestoO( log(K))whenK is
+X X
+N
+large. ItisnoteworthythatthisorderofK matchesthelowerbounddeducedin? forthesimpler
+p
+linearcontextualbanditproblem,despiteourstudyaddressingasignificantlymorechallengingsetting
+duetotheunknownrewardfunction. AdetaileddiscussionispresentedinAppendixJ.
+ItisessentialtohighlightthatT isthedominanttermasthebanditliteratureprimarilyfocuseson
+theorderofT (??),andourAlgorithm2achievesanearlyoptimaldependenceonT asO˜ (√T).
+T
+Furthermore,ESTORishighlyefficientinbothtimeandmemorycomplexity. Sincetheestimatoris
+computedviaasimpleaverageovereachepochandthealgorithmperformsgreedyactionselection
+ateachround,thetotaltimecomplexityisO(dT). Moreover,ESTORonlymaintainsthecurrent
+parameter estimate and another vector containing the sufficient statistics for the truncated mean,
+yieldingatotalstoragecomplexityofO(d). Beyonditsstrongtheoreticalguarantee,ESTORstands
+outasoneofthemostefficientalgorithms(?) intermsofbothcomputationandspaceamongGLB
+methods,despiteaddressingasubstantiallymoredifficultsettingwithunknownrewardfunctions.
+3.4 EXTENSIONTOSPARSEHIGH-DIMENSIONALBANDITSAGNOSTICTOINCREASING
+REWARDFUNCTIONS
+Withhigh-dimensionalsparsedatabecomingincreasinglyprevalentinmodernapplications,agrowing
+bodyofworkhasfocusedonsparselinearbandits,a.k.a. LASSObandits(??),whereeacharmis
+representedbyahigh-dimensionalfeaturevector,buttheunderlyingparameterθ isassumedtobe
+sparsewithatmosts dnonzeroentries. Toextendourmethodstothissparse∗high-dimensional
+≪
+regime,weincorporatel -regularizationintoourlossfunctiondefinedinEqn.(1),i.e. λ > 0. By
+1
+carefullychoosingtheregularizationparameterλ,weestablishTheorem3.7. Notably,weachievethe
+sameoptimalerrorboundasinthelow-dimensionalcase(Theorem3.1),withtheambientdimension
+dreplacedbythesparsityindexs,withouttheknowledgeofs.
+Theorem 3.7. (Bound of Sparse SIM) For any sparse single index model where θ has s
+nonzero entries, and samples x ,...,x are drawn from some distribution . We∗denote
+1 n
+µ := E(f (X θ )), X and assume µ = 0. Under Assumption 2.2, 2.3 D , by solving the
+′ ⊤
+∗ ∗ ∼ D ∗ ̸
+optimizationprobleminEqn. (1)withτ = 3(σ2+L2)Mn/log(2d/δ),and
+f
+q
+M(σ2+L2)log(2d/δ)
+f
+λ=11 ,
+·s n
+withprobabilityatleast(1 δ)itholdsthat:
+−
+3 s s
+θˆ µ θ λ√s=O˜ , θˆ µ θ 3λs=O˜ .
+− ∗ ∗ 2 ≤ 4 n − ∗ ∗ 1 ≤ √n
+(cid:13) (cid:13) (cid:18)r (cid:19) (cid:13) (cid:13) (cid:18) (cid:19)
+(cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13) (cid:13) (cid:13)
+7
+PublishedasaconferencepaperatICLR2026
+Remarkably, our efficient STOR and ESTOR algorithms can be directly applied to the sparse
+high-dimensionalSIBsettingbysimplyreplacingtheoriginalestimatorwiththesolutiontothel -
+1
+regularizedlossfunctioninEqn.(1)ateachepoch,i.e.line4ofAlgorithm1andline5ofAlgorithm2.
+Bothmethodsnotonlyretaintheiroptimalcomputationalandmemoryefficiency,butalsoinheritthe
+regretboundsestablishedinTheorem3.2andTheorem3.5,withtheambientdimensiondreplaced
+bythesparsityindexr,allwithoutrequiringthevalueofr. ThisfactisformalizedinCorollary3.8.
+Corollary3.8. Foranysparsesingleindexbanditwithanincreasingfunction:
+1. we set T 1 = (sT)2 3 log(2d/δ)3 1 , τ = 3(σ2+L2 f )MT 1 /log(2d/δ) and λ =
+11 (σ2+L2)Mlog(2d/δ)/n in Algorithm 1.qThen under Assumption 2.2, 2.3, we have
+f
+theqfollowingregretboundwithprobabilityatleast1 δ:
+−
+R T =O s3 2 T 2 3 (log(d/δ))3 1 =O˜ s3 2 T3 2 .
+(cid:16) (cid:17) (cid:16) (cid:17)
+2. we set τ = 3(σ2+L2)(CK3+MK)(e e )/log(2dlog (T)/δ), λ =
+i f i − 1 − i − 2 2 i
+11 (σ2+L2)(CK q3+MK)log(2d/δ)/(e e ) and T to any value s.t. T
+f i − 1 − i − 2 0 0 ≤
+d qK3T log(2dlog (T)/δ) in Algorithm 2. Then under Assumption 2.2, 2.3, 3.3, our Al-
+2
+gorithm2canattainfollowingregretboundwithprobabilityatleast1 δ:
+p −
+R T =O sK 3 2 T · log(dlog 2 (T)/δ) =O˜ sK 3 2 √T =O˜ T (√T).
+(cid:16) p (cid:17) (cid:16) (cid:17)
+Notably,bothourSIMestimatorandtheESTORalgorithmdonotrelyonthevalueofthesparsity
+levelsineithertheoryorimplementationunderthesparsehigh-dimensionalsetting. ForSTOR,the
+valueofsisusedsolelytosettheexplorationphaselengthT . Evenifweremovethisdependence
+1
+andsetT independentlyofs,STORcanstillachievearegretboundoforderO˜(sT2/3),wherethe
+1
+exponentofsincreasesfrom2/3to1.
+3.5 EXTENSIONTOARBITRARYREWARDFUNCTIONS
+Finally,westudytheSIBproblemwitharbitrarycontinuouslydifferentiablerewardfunctions. As
+thisproblemisverycomplicated,andmodernofflineworksongeneralSIMsstillrelyonrestrictive
+distributionalassumptions(?),wemakeasimilarchoiceinthisinitialexplorationoftheonlinesetting
+byassumingthateachfeaturevectorisdrawnfromaGaussiandistribution,i.e. =N(µ ,Σ ),for
+X X
+D
+somepositivedefinitematrixΣ . SimilartotheidentifiabilityassumptioninSection2,wemakea
+X
+slightlymodifiedassumptionpurelyforanalyticalconveniencewith Σ1/2θ =1.Additionally,for
+thegeneralSIBs,wehavetoassumeµ =E(f (X θ ))>0,X ∥ D X toa ∗ v ∥ o 1 idfurtheridentifiability
+′ ⊤
+issues,e.g.,f(x)=f( x)impliestha∗tθ and θ ar∗eindistingu ∼ ishable.
+− ∗ − ∗
+We first compute the estimator θˆbased on Eqn. (1) with λ = 0 in the low-dimensional setting,
+followedbyanormalizationstepθˆ = θˆ/ Σ1/2θˆ toscaletheestimatorontoafixedandstable
+0 ∥ X ∥ 1
+manifold. Wethenproposeanovelapproachtoestimatetheunknownlinkfunctionf()viakernel
+·
+regression(?): givenanotherindependentsetofsamples y ,x m ,thepredictorfˆ()isgivenby,
+{ i i }i=1 ·
+fˆ(z)= (0 P P , m i= m i= 1 1 y K iK h h (z (z − − x x ⊤ i ⊤ i θˆ θ 0 ˆ 0 ) ) , i o f th | z er − wi µ se ⊤X , θˆ 0 |≤ W, ∀ z ∈ R, whereK h (v)= h 1 1 {| v |≤ h } , (2)
+andW andharethebandwidthandtruncationparametersfortheuniformkernel,respectively. We
+adopttheconvention0/0 = 0. Tohandlethisfullyagnosticcasewitharbitraryrewardfunctions,
+weproposeanewalgorithm,GeneralSTein’sORaclesingleindexbandit(GSTOR),whichadopts
+adoubleexploration-then-commitstrategy. Duetospacelimit, thefullalgorithmispresentedin
+Algorithm3inAppendixK.Specifically,GSTORusestwoseparateexplorationphases: thefirst
+estimates the parameter via Eqn. (1) using T samples y ,x T1 , and the second approximates
+1 { i i }i=1
+therewardfunctionbasedonthekernelregressionviaEqn.2withanadditionalT independent
+1
+samples y ,x 2T1 . Remarkably, we prove that this design yields a prediction error bound
+{ i i }i=T1+1
+8
+PublishedasaconferencepaperatICLR2026
+Figure1:PlotsofregretsofSTOR,ESTOR,andthebaselinemethodsunderlinear(1)andgeneralized
+linear(2)-(4)scenarios. Misspecifiedmodelsareshownasdashedlinesin(3)and(4).
+O˜(√dT 1− 1/3), as formalized in Appendix K.3, through a novel integration of kernel smoothing
+analysisandperturbationarguments. Followingthedoubleexplorationphases,GSTORselectsarms
+greedily based on the estimated parameter and the approximated reward function. The expected
+regretboundofGSTORisgiveninTheorem3.9,withitsdetailedproofdeferredtoAppendixK.
+Theorem3.9. ForanySIBproblem,wesetT
+1
+= d3 8T4 3,τ = 3T
+1
+/log(2d/δ),W = 2log(T
+1
+),
+1
+h=T 1 3 andλ=0inAlgorithm3. ThenundertheGaussiande p signwithassumptions(i). | f(x) |≤
+L
+f
+, f
+′
+(x) L f′, x(partofAssumption2.3);(ii). d15 =O(T2),wehaveE(R
+T
+)=O(d8 3T4 3).
+| |≤ ∀
+OurGSTORprovidesthefirstsolutiontoSIBswithgeneralrewardfunctionsandachievesasublinear
+regretbound. Importantly,itremainsunclearwhetheraO˜(√T)regretboundisachievableinthis
+generalsetting. EveninthesimplerLipschitzbanditsetting,whichoptimizesanunknownLipschitz
+functionwithoutcontextualfeatures,theminimaxregretboundisknowntoexceed√T. Sinceour
+settingintroducesfurthercomplexitybyrequiringsimultaneousestimationofboththecontinuously
+differentiable reward function and the parameter, it suggests that achieving √T regret should be
+fundamentallyunattainablewithoutimposingadditionalstructuralassumptions.
+4 EXPERIMENTS
+In this section, we empirically validate that our proposed methods, especially ESTOR, perform
+efficientlyacrossdiverselinkfunctionsthroughsimulationsandreal-worldexperiments.
+Forthesimulationstudies,weconsiderfourtypesofincreasinglinkfunctionsandtheircorresponding
+models: (1). f(x)=xwithGaussiannoiseN(0,0.25)(linear);(2). f(x)=exp(x)withoutcomes
+sampledfromthePoissonregressionmodel(Poisson);(3). f(x)=sign(x) x2+2xwithGaussian
+noiseN(0,0.25)(square);(4). f(x)=x5withGaussiannoiseN(0,0.25)( · fifth). Forthelinearcase
+(1),weuseLinUCB(?) andLinTS(?) asbaselines. Forthegeneralizedlinearcases(2)–(4),we
+compareourmethodsagainstthewidelyusedUCB-GLM(?) andGLM-TSL(?) algorithms. Weset
+thetimehorizontoT =10,000,withdetailedexperimentalconfigurationsdeferredtoAppendixL
+duetospaceconstraints. Averageregretsover20repetitionsaredisplayedinFigure1. Notably,for
+cases(3)and(4),wefurtherevaluateUCB-GLMandGLM-TSLbyfittingthemunderonereward
+modelanddeployingthemundertheothertoassessrobustnessundermisspecification. Solidlines
+representcorrectlyspecifiedmodels,whiledashedlinesrepresentmisspecifiedones.
+FromtheresultsinFigure1,weobservethatESTORconsistentlyachievescomparableperformance
+to the best baselines across all four types of link functions, demonstrating its high efficiency. In
+contrast, STOR exhibits a clear exploration-then-exploitation pattern in its regret curve, which
+initiallygrowsandthenflattensout. Moreover,whenUCB-GLMandGLM-TSLarefittedunderan
+incorrectunderlyingrewardfunction,bothmethodssuffersignificantperformancedegradationand
+slowerconvergencerates. ThisobservationfurtherhighlightsthevulnerabilityoftraditionalGLB
+algorithmstomodelmisspecification,underscoringtheimportanceofdesigningagnosticapproaches
+likeoursthatcanmaintainrobustnessacrossdiverserewardstructures. Furthermore,wereportthe
+averagerunningtimeofdifferentmethodsfromFigure1inTable1(AppendixL).Alignedwithour
+timecomplexityanalysisinSubsection3.3,ESTORandSTORexhibitsubstantialcomputational
+advantages,performinghundredsoftimesfasterthanUCB-GLMandthousandsoftimesfasterthan
+GLM-TSL.Thisfactdemonstratestheirpracticalscalabilityforrealapplications. Wealsoincludethe
+performanceofGSTORacrossthefourcasesinTable2inAppendixL.WhileGSTORisdesigned
+forgeneralrewardfunctionsandisthusgenerallylessefficientthanSTORinthesemonotonesettings,
+9
+PublishedasaconferencepaperatICLR2026
+itconsistentlyoutperformsGLB-basedalgorithmsundermodelmisspecification,demonstratingits
+robustnessacrossabroaderrangeofrewardfunctions.
+Duetospaceconstraints,wedeferthesimulationsonthesparsehigh-dimensionalcaseintroduced
+in Subsection 3.4, as well as two real-world experiments on the Forest Cover Type dataset (?)
+and the Yahoo news dataset (?) involving the GSTOR method presented in Subsection 3.5, to
+AppendixL.AccordingtoTable3,allourproposedmethodsconsistentlyoutperformstate-of-the-art
+GLBmethods. Thisstemsfromthefactthattheunderlyinglinkfunctionistypicallyunknownin
+real-worldapplications,andGLBmethodsarevulnerabletomodelmisspecification. Theseresults
+firmlyunderscorethepracticalvalueofouragnosticapproachinreality.
+5 CONCLUSION
+In this work, we introduce a new problem of generalized linear bandits with unknown reward
+functions,a.k.a. singleindexbandits. Wedevelopafamilyofefficientalgorithms,startingwiththe
+caseofmonotonicrewardfunctionsandextendingtosparsehigh-dimensionalandnon-monotonic
+settingswithsolidregretanalysis. CentraltoourapproachisanovelStein’s-method-basedestimator
+achieving the optimal error rate under mild assumptions. We validate the effectiveness of our
+algorithmsthroughcomprehensivesimulationsandrealexperiments. Ourworklaysthefoundation
+forvariouspromisingdirectionsinfutureresearchontheSIBproblem.
+LimitationandFutureWork: Ouranalysisassumesthearmsetisdrawni.i.d. fromsomefixed
+distribution,ratherthanadversariallyselectedasinpartsoftheGLBliterature(?). Moreover,regret
+analysisofGSTORreliesontheGaussiandesignassumption,whichisstandardinstudiesofSIMs
+andkernelregressionduetotheinherentestimationdifficulty(?). Extendingtheseresultstomore
+generalsettingsremainsachallengingopendirection,evenintheofflinestatisticallearningcontext.
+ACKNOWLEDGEMENTS
+Weappreciatetheconstructivefeedbackfromtheanonymousreviewersandareachair. BongsooYi
+andYaoLiweresupportedinpartbytheNationalScienceFoundationundergrantsDMS-2152289
+andDMS-2134107. DoudouZhouwassupportedbytheNUSStart-UpGrant(A-0009985-00-00)
+andtheMOEAcRFTier1Grant(A-8003569-00-00).
+10
+PublishedasaconferencepaperatICLR2026
+REFERENCES
+11
+PublishedasaconferencepaperatICLR2026
+Appendix
+A RELATED WORK AND DISCUSSION
+GeneralizedLinearBandits: ?firstintroducedtheGLBproblem(?)byextendingthelinearbandit
+framework(??) andproposedGLM-UCBwitharegretboundoforderO˜(d√T),and ? subsequently
+developedimprovedUCB-stylealgorithmswithtighterregretbounds.Aparallellineofworkexplores
+TSapproachesforGLBs.? proposedLaplace-TSundertheGaussiandesign,andthen?? showed
+thatTScanbeanalyzedsimilarlytoUCBundergeneraldistributionbyboundingtheinformation
+ratio. Morerecently,? demonstratedthattheirrandomizedTS-basedmethodsachievenearlyoptimal
+regretbounds, uptologarithmicfactors. ToimprovethescalabilityofGLBs, ? and? proposed
+algorithmsbasedontheonlineNewtonstep,achievingO(√T)regretwithimprovedtimeandspace
+efficiency. ? introducedanotherefficientGLBalgorithmthatcombinesstochasticgradientdescent
+with the TS framework to enhance computational pereformance. Recently, ? briefly examined a
+closelyrelatedGLBproblemwithanunknownlinkfunctionaspartofabroaderstudy. However,they
+onlyconsidermorerestrictiveassumptions,includingfixedactionsets,Gaussiannoise,andstrong
+structuralconstraintsontherewardfunction.Theirmethodisalsocomputationallyintensiveandlacks
+empiricalvalidation.Incontrast,ourworkoffersamoregeneralandefficientframeworkthatsupports
+non-monotonelinkfunctions,handleshigh-dimensionalsparsity,andachievesoptimalstatisticaland
+computationalguarantees. Theveryrecentworkby? focusesonarelatedbutdifferentsetting,a
+batchedmulti-armedbanditwithcovariates,usingasingleindexmodelingapproachcombinedwith
+dynamicbinningandarmelimination. Thisworkrepresentsaconcurrentandindependenteffort. To
+thebestofourknowledge,ourworkprovidesthefirstcomprehensivetreatmentofthesingleindex
+banditproblemundermildassumptions.
+Single Index Models: The single index model (SIM) has been extensively studied in the low-
+dimensional setting (???), where most approaches estimated the unknown parameter via (quasi-
+)maximumlikelihoodestimationandestablishasymptoticguaranteesusingcentrallimittheorems.
+Fornon-asymptoticbounds,seminalworkssuchas???? employedtraditionalregressiontechniques
+suchasl -regularization. Theseresultsshowthat,understandardGaussiancovariatesandcertain
+1
+conditionsonthelinkfunction,theestimatorcanachievethesameerrorratesasourTheorem3.1
+andTheorem3.7. However,theseguaranteescruciallyrelyonrestrictivedistributionalassumptions
+suchasstandardGaussiancovariates. Morerecently,? relaxedthesedistributionalassumptionsby
+proposinganefficientestimator,and ? furtherextendeditwitharegularization-freeapproachbased
+onoverparameterizationthatachievesoptimalnon-asymptoticrates,butstillassumesthateachentry
+ofthecontextvectorisi.i.d. fromaknowndistributionandthatthenoisehasfinitefourthmoment. In
+summary,duetotheinherentchallengesofSIMestimation,priorstatisticalliteratureimposesstrong
+assumptionsonthedatadistribution,whereasourworkrequiresmilderconditions.
+Sincepartofourworkfocusonthecasewheretheunknownlinkfunctionismonotonicallyincreasing,
+wealsoexaminealineofrecentworkonstatisticalestimationinmonotoneSIMs.? proposealeast-
+squaresestimatorformonotoneSIMs,establishingaconvergencerateofn 1/3underasuiteofstrong
+−
+assumptionsonthenoiseandcovariatedistributions(seeassumptionsA1–A6therein). Toimprove
+uponthis,? proposeascore-basedestimatorwiththesamen 1/3 rateundermilderassumptions,
+−
+andachievestheoptimaln 1/2ratewhenthelinkfunctionispiecewiseconstant. Morerecently,?
+−
+extend this line to the sparse, high-dimensional setting, but their projection-based estimator still
+onlyguaranteesan 1/3rateundernontrivialdistributionalassumptions. Collectively,theseresults
+−
+underscorethestatisticalandalgorithmicchallengesofefficientmonotoneSIMestimationevenunder
+nontrivial assumptions, and motivate our pursuit of a computationally cheap and distributionally
+robustmethodwithoptimalconvergenceguarantees.
+ContextualBanditsundertheRealizabilityAssumption: Thegeneralcontextualbanditprob-
+lem under the realizability assumption was initiated by ?. A substantial line of work builds on
+thisassumptionbyreducingtheproblemtosolvingeitherofflineoronlinesquare-lossregression
+oracles(????????). However,asdiscussedinSection1,suchregressionoraclesareinfeasibleunder
+SIMsduetothecompositeandnonparametricstructureoftherewardfunction.Beyondthislimitation,
+theregretboundsofmodernworks(??) relyonsomecomplexitymeasureofthefunctionclass,such
+12
+PublishedasaconferencepaperatICLR2026
+astheeluderdimension(?). However,inourproposedSIBswithunknownrewardfunctions,the
+eluderdimensionbecomesunbounded,makingtheseresultsinapplicableagain.
+Toillustratethispoint,weuseFALCON+(?) asarepresentativestate-of-the-artexampletoexplain
+whycontextualbanditalgorithmsundertherealizabilityassumptionfailundertheSIBsettingin
+detail. FALCON+criticallyreliesontheirAssumption2,whichassumesaccesstoanofflineoracle
+thatcanestimatethefullrewardfunction,comprisingboththeunknownparametervectorandthe
+unknownrewardfunction,withaprovableerrorbound,usingdatacollectedviarandomizedsampling
+only from the previous epoch (i.e., line 6 of the algorithm). To achieve the optimal √T regret
+bound, this oracle must guarantee an estimation rate of the optimal order n 1/2. However, no
+−
+existingmethodforsingleindexmodelscomesclosetosatisfyingthisrequirement. Asdiscussed
+in our review of SIM and monotone SIM literature above, existing estimators rely on restrictive
+distributional assumptions (e.g., i.i.d. Gaussian features). Moreover, the randomized sampling
+schemeinFALCON+producescovariatedistributionsthatliefaroutsidetheregimeswhereexisting
+estimatorshaveanytheoreticalguarantee,letaloneachievetheoptimalrateofn 1/2. Asaresult,
+−
+althoughFALCON+isconceptuallyinsightful,itsrelianceonanidealizedregressionoraclerenders
+itinapplicabletotheSIBsettingwithanyprovabletheoreticalguarantees. Furthermore,existing
+methodsarecomputationallyexpensiveastheleastsquaressolverleadstoinfinite-dimensionaland
+non-convexoptimizationproblemsunderSIMs?. Thesechallengeshighlightthatexistingmethods
+arefundamentallyinadequatefortheSIBsetting,necessitatingthedevelopmentofacompletelynew
+solution.
+B SUMMARY OF TECHNICAL NOVELTY
+In this section, we summarize the technical contributions of our work in detail. We start from
+utilizing the novel Stein’s-method-based estimator in Eqn. (1), which enables us to estimate the
+parameterθ evenwhentherewardfunctionf()isunknown. Specifically,Stein’sidentityimplies
+thatE[f(X∗θ ) S(X)] = µ θ forsomescal · arµ = 0,undermildregularityconditions. Thus,
+⊤
+takinga(trunca∗ted · )averageof∗y∗S(x )yieldsanest∗im ̸ atorthatisdirectionallyalignedwithθ . The
+i i
+truncationfunctionϕ isessentia · ltocontrolthevarianceoftheestimatorinthepresenceofh∗eavy-
+τ
+tailedrewards,asweshowthroughthebias-variancetrade-offintheproof. Noteourestimatoris
+computationallyefficient,doesnotrequireknowledgeoftherewardfunction,andcrucially,achieves
+the optimal estimation rate under mild assumptions. Moreover, we extend this estimator to the
+high-dimensionalsparseregimewithasimpleℓ regularizer,anditstillachievestheminimax-optimal
+1
+ratewithoutrequiringknowledgeofthesparsitylevelsinTheorem3.7.
+TheproofofTheorem3.1followsaclassicalcomparisonargument. WefirstapplyStein’sidentity
+toshowthatE[y S(x )]=µ θ ,whichmotivatesourestimator. Wethenanalyzetheoptimization
+i i
+gapbetweentheempiricallo ∗ ss ∗ L(θˆ)andL(µ θ )byboundingthegradientnorm L(µ θ ) ,
+wherethebiasiscontrolledbytruncationandth∗e∗concentrationishandledviaBernste | i ∇ n’sine∗qu∗al | i∞ty.
+Finally,applyingafirst-orderTaylorexpansionandstandardconvexityargumentsyieldstheℓ and
+2
+ℓ estimationbounds. Notably,theestimatoradmitsaclosed-formsolutioninthelow-dimensional
+1
+setting,achievingO˜( d/n)ratewithoutrequiringknowledgeoff(). ForTheorem3.7,weadapt
+·
+thisargumenttothesparsehigh-dimensionalregimebyaddinganℓ -penaltytothelossandleveraging
+1
+p
+subgradientoptimalityconditions. WhilethecoreStein’s-method-basedstructureremainsintact,we
+useasupport-splittinganalysistodecoupleestimationoverthetruesupportversusitscomplement.
+Thisenablesustoobtainsparsity-adaptiveratesofO˜( s/n)inℓ normandO˜(s/√n)inℓ norm,
+2 1
+againwithoutrequiringpriorknowledgeofthelinkfunction.
+p
+Sinceourestimator,groundedinStein’sidentity,avoidstheneedtoexplicitlyestimatetheunknown
+rewardfunction,acentraladvantageofourSTORandESTORemergesinthemonotonicsetting:
+whenthelinkfunctionisassumedtobemonotoneincreasing, therelativeorderingoff(x θ)is
+⊤
+preservedbyx θˆ. Thisallowsthealgorithmtoperformgreedyactionselectionbasedsolelyonx θˆ,
+⊤ ⊤
+withoutrequiringknowledgeoftheexplicitformoff(). Asaresult,ourmethodachievessubstantial
+·
+gainsinsampleefficiencybysidesteppingtheadditionalexplorationcosttypicallyassociatedwith
+functionestimation. Importantly,thissettingsubsumestheentireclassofgeneralizedlinearbandits
+(GLB)withcanonicalexponentialfamilylinkfunctions,whichareinherentlymonotone(?). Inthis
+13
+PublishedasaconferencepaperatICLR2026
+way,ourestimatorleveragesstructuralpropertiesoftherewardfunctionclasstoimplicitlyhandle
+functionuncertainty,enablingprincipleddecision-makingwithoutdirectfunctionrecovery.
+Inparticular,ourESTORachievestheminimax-optimalregretboundofO˜(√T)withoutrequiring
+explicitknowledgeofthelinkfunction. Explore-then-Commit(EtC)algorithmsareknowntobe
+suboptimal in regret minimization, as parameter estimation is performed exclusively using data
+fromtheinitialexplorationphase,ignoringinformativesamplescollectedthereafter. ESTORisan
+epoch-basedvariantofSTORwithexponentiallygrowingepochlengths. InESTOR,theparameter
+estimateatthestartofeachepochiscomputedusingsamplesfromtheprecedingepoch,followedby
+greedyselectioninthecurrentepoch. Thisdesignensurescontinualrefinementoftheestimateand
+overcomestheinefficienciesoffixed-sampleEtCschemes. Notably,theSIMestimatorintegrates
+naturallyintothisframework: greedyselectioninducesatractablesamplingdistributionwithineach
+epoch,allowingStein’sidentitytobeappliedforefficientparameterestimation. Fortheproofof
+Theorem3.5,wecharacterizethisdistributionandboundtheestimationerrorateachepoch. Since
+epochlengthsgrowexponentially,theerrortermsdecaygeometricallyacrossepochs. Summingthe
+regretoverallepochsyieldsacumulativeregretofO˜(dK3/2√T).
+Finally,inthegeneralsettingwitharbitrarydifferentiablerewardfunctions,weintroduceGSTOR,
+whichemploysadoubleexplorationstrategy. Inthefirststage,weestimatetheparameterθ using
+ourStein-basedestimator. Inthesecondstage,weestimatetheunknownrewardfunctionf∗()via
+·
+kernelregressionoverthescalarprojectionsx θˆ. WethenapplyanExplore-then-Commit(EtC)
+⊤
+strategyusingtheestimatedfˆtoidentifythebestarm. Thistwo-phasedesigndecouplesparameter
+andfunctionestimation,enablingourSIBframeworkinamoregeneralclassofproblems.
+C PROOF OF THEOREM 3.1
+C.1 USEFULLEMMAS
+LemmaC.1. (GeneralizedStein’sLemma,?) Forad-dimensionalcontinuousrandomvariable
+X Rd with continuously differentiable density function p : Rd R, and any continuously
+diffe ∈ rentiablefunctionf :Rd R. DenoteS(X):Rd Rdasthes → corefunctionassociatedwith
+→ →
+X,i.e. S(X)= p(X)/p(X). Iftheexpectedvaluesofboth f(X)andf(X) S(X)interms
+X
+−∇ ∇ ·
+ofthedensitypexist,thenitholdsthat
+E[f(X) S(X)]=E[ f(X)].
+· ∇
+LemmaC.2. (Bernstein’sInequality,? Proposition2.14)LetX ,...,X bereal-valuedrandom
+1 n
+variablessuchthatX balmostsurelyforalli=1,...,n,thenforanyt>0wehavethat
+i
+≤
+n n
+bt
+P (X E(X )) √2t E(X2)+ 2e t.
+(cid:12) (cid:12)X i=1 i − i (cid:12) (cid:12) ≥ ·v u uX i=1 i 3≤ −
+LemmaC.3. Assum  e (cid:12) (cid:12) (cid:12)wehaveµ =E(f (cid:12) (cid:12) (cid:12)′ (X ⊤ θ )) t =0whereX deno  testherandomvectordrawn
+fromthedensityp(). Bysetting ∗ ∗ ̸
+·
+3n(σ2+S2)M
+f
+τ = ,
+s log(2d/δ)
+inthesingleindexmodelsettingtosolveθˆaccordingtoEqn.(1)withλ=0. Thenwithprobability
+atleast1 δ (0<δ <1),itholdsthat,
+−
+4√3 M(σ2+S2)log(2d/δ)
+L(µ θ ) +2√2 f .
+∥∇ ∗ ∗ ∥ ∞ ≤ 3 ! s n
+Proof. Recallthatwehave
+n
+2
+L(θ)= θ,θ ϕ (y ) S(x ),θ ,
+τ i i
+⟨ ⟩− n ⟨ · ⟩
+i=1
+X
+14
+PublishedasaconferencepaperatICLR2026
+whereϕ (y )=sign(y ) (y τ)andittruncatesthescalarreward. AccordingtoLemmaC.1,it
+τ i i i
+· | |∧
+holdsthatforanyi [n]
+∈
+E(y S(x ))=E(f(x θ )S(x ))=E(f (x θ )) θ =µ θ .
+i i i⊤ i ′ i⊤
+∗ ∗ · ∗ ∗ ∗
+Therefore,itholdsthat
+n
+2
+L(µ θ )=2µ θ ϕ (y ) S(x )
+τ i i
+∇ ∗ ∗ ∗ ∗− n ·
+i=1
+X
+n
+2
+=2E(y S(x )) ϕ (y ) S(x ).
+1 1 τ i i
+− n ·
+i=1
+X
+Basedontheaboveequation,wehavethat
+n
+2
+L(µ θ ) = 2E(y S(x )) ϕ (y ) S(x )
+⋆ 1 1 τ i i
+∥∇ ∗ ∥ ∞ (cid:13) − n · (cid:13)
+(cid:13) (cid:13) X i=1 (cid:13) (cid:13)∞ n
+(cid:13) (cid:13) 2
+2E(y S((cid:13)x )) 2E(ϕ (y ) S(x )) + 2E((cid:13)ϕ (y ) S(x )) ϕ (y ) S(x ) .
+1 1 τ 1 1 τ 1 1 τ i i
+≤∥ − · ∥ ∞ (cid:13) · − n · (cid:13)
+:=α 1 (cid:13) (cid:13) X i=1 (cid:13) (cid:13)∞
+(cid:13) :=α (cid:13)
+| {z } (cid:13) 2 (cid:13)
+| {z }
+Toboundα ,wefirstnotethatforeachindexj [d],itholdsthat
+1
+∈
+2E(y S (x )) 2E(ϕ (y ) S (x )) 2 E y S (x ) 1 .
+|
+1 j 1
+−
+τ 1
+·
+j 1
+|≤ · |
+1 j 1
+| {|
+y1| >τ
+}
+Andthenwecaneasilyboundtheabovevalueby (cid:0) (cid:1)
+(i)
+E y S (x ) 1 2 E y2S (x )2 E 12
+| 1 j 1 | {| y1| >τ } ≤ 1 j 1 · {| y1| >τ }
+(cid:0) E(cid:1)y2S (x(cid:0) )2 P(y(cid:1) > (cid:16) τ) (cid:17)
+≤ 1 j 1 · | 1 |
+(ii)
+E(cid:0) f(x θ )2(cid:1) S (x )2 +E η2 E S (x )2 P(y >τ)
+≤ ⊤1 ∗ j 1 1 j 1 · | 1 |
+(iii)(cid:2)
+σ
+(cid:0)2+L2
+M
+E
+|
+y 1(cid:1)
+|
+2 (cid:0) σ2(cid:1)
++L
+(cid:0)2 2 M2 (cid:1)(cid:3)
+,
+≤ f · · τ2 ≤ f · τ2
+wherewehavetheinequality((cid:0)i)duetoH(cid:1)older’sinequalit(cid:0)y,andwe(cid:1)candeducetheinequality(ii)
+basedonthefactthatthewhitenoiseη isindependentwiththearmx . Theinequality(iii)comes
+1 1
+fromChebyshev’sinequality. Sincetheaboveresultholdsforallindexj [d],whichindicatesthat
+∈
+2(σ2+L2)M
+α f . (3)
+1
+≤ τ
+Ontheotherhand,sincewehavethat y S(x ) n arei.i.d. samples,andforanyi [n],j [d]
+{ i i }i=1 ∈ ∈
+ϕ (y )S (x ) τ, Var(ϕ (y ) S (x )) E (ϕ (y )S (x ))2 E y2S (x )2 (σ2+L2)M,
+| τ i j i |≤ τ i · j i ≤ τ i j i ≤ i j i ≤ f
+thenbasedonBernstein’sinequalityinLemma(cid:0)C.2,wehavethat(cid:1)forany(cid:0)j [d], (cid:1)
+∈
+1 n 2(σ2+L2)Mlog(2/δ) 2τlog(2/δ)
+P 2 ϕ (y ) S (x ) E(ϕ (y ) S (x )) 2 f +
+τ i j i τ 1 j 1
+ (cid:12)n · − · (cid:12)≥ s n 3n 
+(cid:12) X i=1 (cid:12)
+(cid:12) (cid:12)
+ (cid:12) (cid:12) δ. (4)
+(cid:12) (cid:12) ≤
+Takingunionboundoverj [d]intheaboveEqn.(4)yieldsthat
+∈
+2(σ2+L2)Mlog(2d/δ) 2τlog(2d/δ)
+P α 2 f + δ. (5)
+2
+ ≥ s n 3n ≤
+ 
+15
+PublishedasaconferencepaperatICLR2026
+CombiningtheresultsinEqn.(3)andEqn.(5),withprobabilityatleast1 δ,itholdsthat,
+−
+2(σ2+L2)M 2(σ2+L2)Mlog(2d/δ) 2τlog(2d/δ)
+L(µ θ ) f +2 f + . (6)
+⋆
+∥∇ ∗ ∥ ∞ ≤ τ s n 3n
+Bytaking
+3n(σ2+S2)M
+f
+τ = ,
+s log(2d/δ)
+intoEqn.(6),wefinallyhavethatwithprobabilityatleast1 δ,
+−
+4√3 M(σ2+S2)log(2d/δ)
+L(µ θ ) +2√2 f .
+∥∇ ∗ ∗ ∥ ∞ ≤ 3 ! s n
+C.2 PROOFOFTHEOREM3.1
+Proof. TheproofisstraightforwardsinceourlossfunctionL(θ)isaquadraticfunctionwithλ=0.
+WehaveL(θˆ) L(µ θ )duetothechoiceofθˆ,thenbasedonthenatureofquadraticfunctions,it
+holdsthat ≤ ∗ ∗
+2
+L(θˆ) L(µ θ )= L(µ θ ) θˆ µ θ +2 θˆ µ θ .
+⊤
+− ∗ ∗ ∇ ∗ ∗ − ∗ ∗ − ∗ ∗ 2
+Therefore,itholdsthat (cid:16) (cid:17) (cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13)
+2
+2 θˆ µ θ L(µ θ ) θˆ µ θ
+⊤
+− ∗ ∗ 2 ≤∇ ∗ ∗ − ∗ ∗
+(cid:13) (cid:13) (cid:16) (cid:17)
+(cid:13) (cid:13) L(µ θ ) θˆ µ θ L(µ θ ) θˆ µ θ √d,
+(cid:13) (cid:13) ≤∥∇ ∗ ∗ ∥ ∞ − ∗ ∗ 1 ≤∥∇ ∗ ∗ ∥ ∞ − ∗ ∗ 2·
+(cid:13) (cid:13) (cid:13) (cid:13)
+and the last two inequalities are based(cid:13)on Holder(cid:13)’s inequality and Ca(cid:13)uchy-Schw(cid:13)arz inequality
+(cid:13) (cid:13) (cid:13) (cid:13)
+respectively. ThenbyusingtheresultsinLemmaC.3,wehavethatwithprobabilityofatleast1 δ,
+−
+2 4√3 M(σ2+S2)log(2d/δ)
+2 θˆ µ θ +2√2 f θˆ µ θ √d,
+− ∗ ∗ 2 ≤ 3 ! s n · − ∗ ∗ 2·
+(cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13) (cid:13) (cid:13)
+whichisi(cid:13)denticalto(cid:13) (cid:13) (cid:13)
+2√3 dM(σ2+S2)log(2d/δ)
+θˆ µ θ +√2 f .
+− ∗ ∗ 2 ≤ 3 ! s n
+(cid:13) (cid:13)
+(cid:13) (cid:13)
+Finally,wecanded(cid:13)ucethel -(cid:13)normbound:
+1
+2√3 M(σ2+S2)log(2d/δ)
+θˆ µ θ √d θˆ µ θ +√2 d f .
+− ∗ ∗ 1 ≤ · − ∗ ∗ 2 ≤ 3 ! ·s n
+(cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13) (cid:13) (cid:13)
+D PROOF OF THEOREM 3.2
+D.1 USEFULLEMMAS
+Lemma D.1. Let f be a continuously differentiable and non-decreasing function on an interval
+I R. Let X be a continuous random variable whose support is (or at least covers) the entire
+⊂
+intervalI. If
+E[f (X)]=0,
+′
+thenf isconstantonI.
+16
+PublishedasaconferencepaperatICLR2026
+Proof. First,becausef isnon-decreasing,wehavef (x)isanonnegativefunctiononI. Next,by
+′
+hypothesis,
+E[f (X)] = 0.
+′
+IntermsofintegrationagainstthedensityofX,thismeans
+f (x)dP (x) = 0.
+′ X
+ZI
+Sincef (x) 0forallx I, theintegral(orexpectation)ofanonnegativefunctionbeingzero
+′
+≥ ∈
+forces
+f (x)=0 foralmosteveryx I.
+′
+∈
+Becausef iscontinuouslydifferentiable,f (x)isactuallyacontinuousfunctiononI. Acontinuous
+′
+function that is zero almost everywhere on an interval must be zero everywhere on that interval.
+(Otherwise, if f (x ) = 0 for some x , continuity would force f (x) to be nonzero on an entire
+′ 0 0 ′
+̸
+neighborhoodaroundx ,contradictingthefactthatf (x)=0a.e.) Consequently,
+0 ′
+f (x)=0 forallx I.
+′
+∈
+Finally,afunctionwhosederivativeisidenticallyzeroonanintervalisnecessarilyaconstantfunction
+onthatinterval. Therefore,f mustbeconstantonI.
+D.2 PROOFOFTHEOREM3.2
+Proof. Ontheonehand,ifwehaveE(f (X θ ))=0,thenbasedonLemmaD.1weknowthatf()
+′ ⊤
+isconstantonthesupportofX θ . Therefore,∗theexpectedrewardforallpossiblearmsareconstan · t,
+⊤
+whichindicatesthatcumulativere∗gretR =0,andTheorem3.2naturallyholds.
+T
+Ontheotherhand,ifwehaveE(f (X θ ))=0,thenwecanutilizetheresultsfromTheorem3.1.
+′ ⊤
+Denoteµ =E(f (X θ ))asinTheorem∗ 3. ̸ 1. Thenforanyt>T ,wehavethat
+∗ ′ ⊤ 1
+∗
+θˆ θˆ
+f(x θ ) f(x θ )=f(x θ ) f x +f x f(x θ )
+⊤t,
+∗ ∗ −
+⊤t
+∗
+⊤t,
+∗ ∗ −
+⊤t,
+∗µ ∗!
+⊤t,
+∗µ ∗!−
+⊤t
+∗
+θˆ θˆ
+f(x θ ) f x +f x f(x θ )
+≤
+⊤t,
+∗ ∗ −
+⊤t,
+∗µ ∗!
+⊤t
+µ ∗!−
+⊤t
+∗
+θˆ θˆ
+≤(cid:12)
+L f′
+·
+x ⊤t,
+∗
+θ
+∗− µ ∗!(cid:12)
++
+(cid:12)
+L f′
+·
+x ⊤t θ
+∗− µ ∗!(cid:12)
+(cid:12) (cid:12) (cid:12) (cid:12)
+(cid:12) (cid:12) θˆ(cid:12) (cid:12) (cid:12) (cid:12) (cid:12) (cid:12)θˆ
+(cid:12)L f′ x t, θ (cid:12) (cid:12)+L f′ x t θ (cid:12) (7)
+≤ ·∥ ∗∥ ∞(cid:13) ∗− µ ∗(cid:13) ·∥ ∥ ∞(cid:13) ∗− µ ∗(cid:13)
+(cid:13) (cid:13)1 (cid:13) (cid:13)1
+L f′ x t, (cid:13) (cid:13) (cid:13)θˆ µθ (cid:13) (cid:13) (cid:13) + L f′ x t (cid:13) (cid:13) (cid:13)θˆ µθ (cid:13) (cid:13) (cid:13)
+≤ µ ∗ ·∥ ∗∥ ∞ − ∗ 1 µ ∗ ·∥ ∥ ∞ − ∗ 1
+(cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13) (cid:13) (cid:13)
+Mlog(2d/(cid:13)δ) (cid:13) (cid:13) (cid:13)
+≲d ,
+s T 1
+withprobabilityatleast1 δwherethelastinequalitycomesfromthel -normerrorboundproved
+1
+−
+inTheorem3.1. Therefore,basedonthechoiceofT wehavethat:
+1
+T1 T
+R = f(x θ ) f(x θ ) + f(x θ ) f(x θ )
+T ⊤t,
+∗ ∗ −
+⊤t
+∗
+⊤t,
+∗ ∗ −
+⊤t
+∗
+X
+t=1
+(cid:2) (cid:3)
+t=
+X
+T1+1
+(cid:2) (cid:3)
+≲2L
+f
+T
+1
++d log(2d/δ) T =O d3 2 T3 2 (log(2d/δ)) 1 3 =O˜ d3 2 T3 2 .
+s T 1 ·
+(cid:16) (cid:17) (cid:16) (cid:17)
+17
+PublishedasaconferencepaperatICLR2026
+RemarkD.2. Ourfinalregretboundincludesanadditionalmultiplicativefactorof1/µ accordingto
+Eqn.7ifµ isnotzero. Forspecialcasewhereµ =0wehaveshowninLemmaD.1∗thattheregret
+isindeedze∗ro. Whenµ >0,thisfactorisacons∗tantanddoesnotaffecttheorderofthefinalregret
+bound. Asaspecialcase∗,whenthederivativeoftheunknownrewardfunctionisassumedtobelower
+boundedbysomeconstantc>0,thefinalregretboundintheworstcaseinheritsanadditional1/c
+multiplierwithoutknowingthevalueofc. ThisfactalsoholdsforTheorem3.5andCorollary3.8.
+E PROOF OF THEOREM 3.5
+E.1 USEFULLEMMAS
+LemmaE.1. Foralla>b>0,thefollowinginequalityholds:
+√a √b √2a 2b.
+− ≤ −
+Proof. Dividingbothsidesby√b>0andsettingx= a/b>1,theinequalityreducesto
+x 1 2(x2p1).
+− ≤ −
+Squaringbothsides(whichisvalidsincebothsipdesarenonnegativeforx>1)yields
+(x 1)2 2(x2 1).
+− ≤ −
+Expandingandrearranginggives
+x2 2x+1 2x2 2 x2+2x 3.
+− ≤ − ⇐⇒ ≥
+Sincex>1,theinequalityx2+2x 3isalwayssatisfied. Thustheoriginalinequalityholds.
+≥
+Lemma E.2. Let x ,...,x be i.i.d. continuous random vectors in Rd drawn from a common
+1 K
+distributionD withprobabilitydensityfunctionp(x). Fixanarbitraryvectorθ Rd,anddefine
+0
+∈
+x = arg max x θ .
+∗ ⊤j
+1 j K
+≤ ≤
+(cid:0) (cid:1)
+Thenthedensityfunctionofx is
+∗
+K 1
+p θ (x) = Kp(x) F 0 (x ⊤ θ) − ,
+wherep ()andF ()arethedensityandcumulati(cid:0)vedistribu(cid:1)tionfunctionsofx θwithx D ,i.e.
+0 0 ⊤ 0
+· · ∼
+d
+F (m) =P x θ m and p (m) = F (m).
+0 ⊤ 0 0
+≤ dm
+Furthermore,thescorefunctionS(cid:0)pθ(x)= (cid:1)
+x
+logp
+θ
+(x)canbewrittenas
+−∇
+p x θ
+Spθ(x)=Sp(x) (K 1) 0 ⊤ θ.
+− − F x θ
+0(cid:0) ⊤ (cid:1)
+(cid:0) (cid:1)
+Proof. Letx ,...,x bei.i.d.samplesfromdistributionD. Foreachrealization,define
+1 K
+x = argmax x θ .
+∗ ⊤j
+1 j K
+≤ ≤
+(cid:0) (cid:1)
+Wecomputethedensityofx . Wehavethat
+∗
+K
+P(x dx)= P(x dx, x =x ).
+∗ ∗ ∗ i
+∈ ∈
+i=1
+X
+Sincex isdrawnfromsomecontinuousdistribution,theevent x dx occursexactlywhen:
+i ∗
+{ ∈ }
+1. Exactly one of the x ’s lies in dx. Since x p() and there are K such vectors, the
+j j
+∼ ·
+probabilitycontributionis
+Kp(x)dx.
+18
+PublishedasaconferencepaperatICLR2026
+2. Givenx dx,theremainingK 1vectorssatisfy x θ x θ. Byindependence,
+j
+∈ −
+⊤i
+≤
+⊤j
+P x θ x θ = F x θ ,
+⊤i
+≤
+⊤j 0 ⊤j
+so (cid:0) (cid:1) (cid:0) (cid:1)
+P x ⊤i θ
+≤
+x ⊤j θ foralli
+̸
+=j = F 0 (x ⊤ θ) K − 1 .
+(cid:16)(cid:0) (cid:1) (cid:17) (cid:0) (cid:1)
+Hence,
+P x ∗ dx = Kp(x) F 0 (x ⊤ θ) K − 1 dx,
+∈
+whichestablishes
+(cid:0) (cid:1) (cid:0) (cid:1)
+K 1
+p θ (x) = Kp(x) F 0 (x ⊤ θ) − .
+ForthescorefunctionSpθ(),takinglogarithmsyie
+(cid:0)
+lds
+(cid:1)
+·
+logp (x) = logK + logp(x) + (K 1) logF (x θ).
+θ 0 ⊤
+−
+Then
+p(x) 1
+x
+x logp θ (x) = ∇ + (K 1) x F 0 (x ⊤ θ).
+∇ p(x) − F (x θ)∇
+0 ⊤
+Moreover,bythechainrule, F (x θ)=p (x θ)θ.Thus,
+x 0 ⊤ 0 ⊤
+∇
+p(x) p (x θ)
+x 0 ⊤
+logp (x) = ∇ + (K 1) θ,
+x θ
+∇ p(x) − F (x θ)
+0 ⊤
+andso
+p(x) p (x θ) p (x θ)
+Spθ(x)= ∇ x (K 1) 0 ⊤ θ =Sp(x) (K 1) 0 ⊤ θ.
+− p(x) − − F (x θ) − − F (x θ)
+0 ⊤ 0 ⊤
+Thiscompletestheproof.
+LemmaE.3. LetX beacontinuousrandomvariablewithprobabilitydensityfunctionp and
+X
+cumulativedistributionfunctionF . Foranyconstantc>0,definetherandomvariableY =cX
+X
+withdensityp andCDFF . Then,
+Y Y
+1
+E p (Y)2 = E p (X)2 .
+Y c2 X
+(cid:2) (cid:3) (cid:2) (cid:3)
+Proof. SinceY =cX hasdensity
+1 y
+p (y)= p
+Y X
+c c
+evaluatingaty =cX yields: (cid:16) (cid:17)
+1
+p (cX)= p (X).
+Y X
+c
+TakingtheexpectationwithrespecttoX onbothsidescompletestheproof:
+1
+E p (Y)2 =E p (cX)2 = E p (X)2 .
+Y Y c2 X
+(cid:2) (cid:3) (cid:2) (cid:3) (cid:2) (cid:3)
+E.2 PROOFOFTHEOREM3.5
+Proof. Basedonourepochschedulee =(2i 1)T ,i 0,wecaneasilyverifythelengthofeach
+i 0
+epochdenotedas κ satisfyingthatκ = − e e ≥ =2i 1T . Therefore,thisresultindicates
+i i=1 i i i 1 − 0
+thatourepochlen { gth } followsanexponentialgrow − th−pattern,specificallydoublingeachtime. We
+denoteµ =E (f (X θ )). Sinceweknowthatthesupportofp ()isidenticaltothatofthe
+originalp i (),th X e∼n p i i fµ ′ = ⊤ 0f∗oranyi = 1,2,...,thenbasedonLemm i a · D.1weknowthatf()is
+i
+· ·
+contantonthesupportofX θ withX p(). Therefore,theexpectedrewardforallarmsisfixed
+⊤
+andwehavethecumulativereg∗retbound ∼ R = · 0. ThisindacatesthatourTheorem3.5simplyholds.
+T
+Sofortherestoftheproof,wewillfocusonthecasethatµ =0foranyi=1,2,....
+i
+̸
+19
+PublishedasaconferencepaperatICLR2026
+Atthebeginning,weassumethatthetimehorizonT exactlymatchestheendofsomeepochH >0,
+i.e. e =T. Hencewehavethat(2H 1) T =T.
+H 0
+− ·
+BasedonLemmaE.2,wehavefori 2,p (x)=K p(x) F (x θˆ)K 1istheactuallythedensity
+i i ⊤ i −
+≥ · ·
+functionofy =argmax y θˆ wherey ,...,y arerandomlysampledfrom . Sincewe
+y1,...,yK ⊤ i 1 K D
+assumethearmset ,t=1,2,... consistingofK randomsamplesdrawnfrom ,wecandeduce
+t
+X D
+thatallthechosenarmsatepochi(κ )followsthedistributionwithdensityfunctionp (x),i.e.
+i i
+x ei p , i=1,2,...
+{ i }i=ei−1+1 ∼ i
+hold,andthisindicatesthatwecanuseourStein’s-method-basedTheorem3.1toboundtheerror
+of θˆ at each epoch. For p , we know E(Sp1(X)) M for all j [d] with X p according
+i 1 j ≤ ∈ ∼ 1
+toAssumption 2.2. Toboundthe secondmomentofthe scorefunctionfor p , i > 1. Basedon
+i
+LemmaE.2,weknowthatfori>1
+p (x θˆ)
+p
+i
+(x)=K
+·
+p(x)
+·
+F
+i
+(x
+⊤
+θˆ
+i
+)K
+−
+1,Spi(x)=Sp(x)
+−
+(K
+−
+1)
+F
+i
+(x
+⊤
+θˆ
+i
+)
+θˆ
+i
+.
+i ⊤ i
+Therefore,forX p itholdsthat
+i
+∼
+p(x)2
+E(Sp(X))2 = ∇ p x (x)2 · Kp(x)F i (x ⊤ θˆ i )K − 1dx
+∞ (cid:13)Z (cid:13)
+(cid:13)
+(cid:13)
+(cid:13)
+(cid:13)
+(cid:13)
+(cid:13) x
+p(x)2 (cid:13)
+(cid:13)
+∞
+(cid:13)K ∇ p(x)dx KM, (cid:13)
+≤ p(x)2 · ≤
+(cid:13)Z (cid:13)
+(cid:13) (cid:13)∞
+basedonAssumption2.3. Ontheotherh(cid:13)and,wehavethatforX(cid:13) p andunderK >3,
+(cid:13) (cid:13)∼ i
+p (X θˆ)2 2 2 p (x θˆ)2
+E (K 1)2 i ⊤ i θˆ =(K 1)2 θˆ K i ⊤ i p(x)F (x θˆ)K 1dx
+− F i (X ⊤ θˆ i )2 · (cid:13) i (cid:13)∞ ! − (cid:13) i (cid:13)∞Z F i (x ⊤ θˆ i )2 · i ⊤ i −
+(cid:13) (cid:13) (cid:13) (cid:13) 2
+(cid:13) (cid:13) =K(K 1)(cid:13)2 (cid:13)θˆ p (x θˆ)2 p(x) F (x θˆ)K 3dx
+i i ⊤ i i ⊤ i −
+− · ·
+(cid:13) (cid:13)∞Z
+K3 θˆ i 2 (cid:13) (cid:13) p (cid:13) (cid:13)i (x ⊤ θˆ i )2 p(x)dx (8)
+≤ · ·
+(cid:13) (cid:13)∞ Z
+=K3(cid:13) (cid:13)θˆ i (cid:13) (cid:13) 2 E Y p p i (Y ⊤ θˆ i )2 .
+· ∼
+(cid:13) (cid:13)∞ (cid:16) (cid:17)
+(cid:13) (cid:13)2
+BasedonLemmaE.3,wecanconcludethat (cid:13)θˆ (cid:13) E p (Y θˆ)2 isinvarianttothescaleof
+i Y p i ⊤ i
+· ∼
+θˆ,andhencebasedonAssumption3.3,wek(cid:13)now(cid:13)∞ thistermi(cid:16)sactuallybo(cid:17)undedbysomeconstantC.
+i (cid:13) (cid:13)
+Therefore,itholdsthat (cid:13) (cid:13)
+p (X θˆ)2 2
+E (K 1)2 i ⊤ i θˆ K3C.
+− F
+i
+(X
+⊤
+θˆ
+i
+)2 ·
+(cid:13)
+i
+(cid:13)∞
+!≤
+(cid:13) (cid:13)
+Consequently,forX p (),wehavethat (cid:13) (cid:13)
+i
+∼ ·
+p (X θˆ)2 2
+E(Spi(X)2) 2 E(Sp(X))2 +2E (K 1)2 i ⊤ i θˆ
+(cid:13) (cid:13) (cid:13) (cid:13) ∞ ≤ K (cid:13) (cid:13)M +K3C := (cid:13) (cid:13) ∞ M 0 , − F i (X ⊤ θˆ i )2 · (cid:13) (cid:13) (cid:13) i (cid:13) (cid:13) (cid:13) ∞ !
+≤
+Furthermore,atepochi>1,basedonTheorem3.1wehavethat
+M log(2d/δ)
+θˆ θ ≲d 0 ,
+i
+− ∗ 1 s κ i 1
+(cid:13) (cid:13) −
+(cid:13) (cid:13)
+withprobabilityatleast1 δ. Ta(cid:13)kingthe(cid:13)unionwehavethatforallepochi=2,...,H,wehave
+−
+M log(2dlog (T)/δ)
+θˆ θ ≲d 0 2
+i
+− ∗ 1 s κ i 1
+(cid:13) (cid:13) −
+(cid:13) (cid:13)
+(cid:13) (cid:13)
+20
+PublishedasaconferencepaperatICLR2026
+holdssimultaneouslywithprobabilityatleast1 δ. Thenatsometimesteptinepochi, i>1,we
+−
+havethat
+θˆ θˆ
+f(x θ ) f(x θ )=f(x θ ) f x +f x f(x θ )
+⊤t,
+∗ ∗ −
+⊤t
+∗
+⊤t,
+∗ ∗ −
+⊤t,
+∗µ ∗!
+⊤t,
+∗µ ∗!−
+⊤t
+∗
+θˆ θˆ
+f(x θ ) f x +f x f(x θ )
+≤
+⊤t,
+∗ ∗ −
+⊤t,
+∗µ ∗!
+⊤t
+µ ∗!−
+⊤t
+∗
+θˆ θˆ
+≤(cid:12)
+L f′
+·
+x ⊤t,
+∗
+θ
+∗− µ ∗!(cid:12)
++
+(cid:12)
+L f′
+·
+x ⊤t θ
+∗− µ ∗!(cid:12)
+(cid:12) (cid:12) (cid:12) (cid:12)
+(cid:12) (cid:12) θˆ(cid:12) (cid:12) (cid:12) (cid:12) (cid:12) (cid:12)θˆ
+(cid:12)L f′ x t, θ (cid:12) (cid:12)+L f′ x t θ (cid:12)
+≤ ·∥ ∗∥ ∞(cid:13) ∗− µ ∗(cid:13) ·∥ ∥ ∞(cid:13) ∗− µ ∗(cid:13)
+(cid:13) (cid:13)1 (cid:13) (cid:13)1
+L f′ x t, (cid:13) (cid:13) (cid:13)µ ∗ θ (cid:13) (cid:13) (cid:13)θˆ + L f′ x t (cid:13) (cid:13) (cid:13) µ ∗ θ (cid:13) (cid:13) (cid:13)θˆ
+≤ µ ∗ ·∥ ∗∥ ∞ ∗− 1 µ ∗ ·∥ ∥ ∞ ∗− 1
+(cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13) (cid:13) (cid:13)
+≲d M 0 log(2d(cid:13)log 2 (T)/δ(cid:13)) , (cid:13) (cid:13)
+s κ i 1
+−
+Therefore,withprobabilityatleast1 δ,
+−
+H
+M log(2dlog (T)/δ)
+R ≲2L κ + d 0 2 κ
+T f 1 m
+s κ m 1 ·
+m X =2 −
+H
+=2L T + d M log(2dlog (T)/δ)2√κ
+f 0 0 2 m 1
+−
+m=2
+X p
+(√2)H 1 1
+−
+=2L T +2d M log(2dlog (T)/δ) T −
+f 0 0 2 · 0 · √2 1
+p p −
+(i)
+2L T +(2+√2)d M log(2dlog (T)/δ) (2H 2)T
+≤ f 0 0 2 · − 0
+2L T +(2+√2)dp(MK+CK3)log(2dlo q g (T)/δ) √T
+≤ f 0 2 ·
+=O T +d CK3logp(dlog (T)/δ)T ,
+0 2
+whereinequality(i)com(cid:16)esfrompLemmaE.1. Finally,based(cid:17)onthechoiceofT ,wehavethat
+0
+R T =O dK2 3 C · T · log(dlog 2 (T)/δ) =O˜ dK 3 2 √T .
+Ontheotherhand, iftheti(cid:16)mehoprizonT doesnotmatchthe(cid:17)endof(cid:16)anepoch(cid:17), i.e. wehavesome
+H >0suchthate <T <e . Sincewehavethate =(2i 1)T ,i 0,whichindicatesthat
+H H+1 i 0
+− ≥
+e >2e ,i 0. Therefore,itholdsthat
+i i+1
+≥
+e <2e <2T.
+H+1 H
+Therefore,itholdsthat
+3 3
+R
+T ≤
+R
+eH+1
+=O dK2 e
+H+1 ·
+log(dlog
+2
+(e
+H+1
+)/δ)
+≤
+O dK2 2T
+·
+log(dlog
+2
+(2T)/δ)
+(cid:16) p (cid:17) (cid:16) 3p (cid:17)
+=O dK2 T log(dlog (T)/δ) .
+· 2
+Andthisconcludesourproof. (cid:16) p (cid:17)
+NotethatthefinalregretboundoforderO˜ (√T)holdsaslongasC doesnotscalewithT,which
+T
+naturallyoccursasT growslarge. Consequently,Assumption3.3isnotrequiredtoestablishthis
+nearly-optimalregretbound,andthefinalregretboundwithC becomes
+R T ≤ O dK 3 2 C · T · log(dlog 2 (T)/δ) =O˜ dK2 3√C · T .
+However,asweemphasi(cid:16)zeintphemainpaper,assumingth(cid:17)atC is(cid:16)ofconstantsc(cid:17)aleisaverymild
+requirement, andinfactissatisfiedbymostpracticaldistributions. Forsimplicity, weadoptthis
+assumptionhere,whichweconsiderbothnaturalandreasonable.
+21
+PublishedasaconferencepaperatICLR2026
+F PROOF OF THEOREM 3.7
+TheproofofTheorem3.7buildsuponourpreviousproofofTheorem3.1andalsoreliesonLem-
+masC.1–C.3,whichweintroducedinAppendixC.Notably,LemmaC.3naturallyextendstothe
+high-dimensionalsingleindexmodel. However,toeliminatethedependencyondinthefinalestima-
+tionbound,weincorporateanl -normpenalizationinthelossfunction(Eqn.(1))andintroducea
+1
+noveltechnicalapproach.
+Proof. SinceθˆminimizesthelossfunctioninEqn.(1),basedonthepropertyofsub-gradientitholds
+that
+L(θˆ)+λϵ=0, whereϵ ∂ θˆ .
+∇ ∈ 1
+Therefore,basedonawidelyknownresult(?) onthel
+1
+norm,w(cid:13)
+(cid:13)
+e(cid:13)
+(cid:13)
+haveforanyj [d],
+(cid:13) (cid:13) ∈
+=sign(θˆ ), ifj supp(θˆ),
+ϵ j ∈
+j ( [ 1,1], ifj / supp(θˆ),
+∈ − ∈
+where we denote supp(θˆ) as the support of θˆ, i.e. supp(θˆ) = j [d] : θˆ = 0 . For some set
+j
+V [d]andvectorv Rd,weusev todenotead-dimensio { nal ∈ vectorwho ̸ sejt } hentryisequal
+V
+⊆ ∈
+to v if j V and 0 otherwise. For simplicity, we denote U := supp(θ ) and β = θˆ µ θ in
+j
+thefollow ∈ ingproof,andweknowthatϵ=ϵ +ϵ andthecardinalityo∗fU iss. Since − L(θ∗)∗isa
+U Uc
+quadraticfunctionforθ Rd,wehavethat
+∈
+2 β 2 = L(θˆ) L(µ θ ) ⊤β =( λϵ L(µ θ ))⊤β
+∥ ∥2 ∇ −∇ ∗ ∗ − −∇ ∗ ∗
+(cid:16) (cid:17)
+≤
+(
+−
+λϵ
+U −
+λϵ
+Uc
+)⊤β+
+∥∇
+L(µ
+∗
+θ
+∗
+)
+∥ ∞ ∥
+β
+∥1
+. (9)
+Duetothefactthat ϵ 1,itholdsthat
+U
+∥ ∥ ≤
+∞
+λϵ β = λϵ β λ β .
+− ⊤U − ⊤U U ≤ ∥ U ∥1
+Andbasedonthedefinitionsabove,wehavethat
+λϵ β = λϵ (θˆ µ θ )= λϵ θˆ= λ θˆ = λ β .
+− ⊤Uc − ⊤Uc − ∗ ∗ − ⊤Uc − Uc 1 − ∥ Uc ∥1
+(cid:13) (cid:13)
+BycombiningtheaboveresultswithEqn.(9),itholdsthat (cid:13) (cid:13)
+(cid:13) (cid:13)
+2 β 2 λ β +λ β + L(µ θ ) β .
+∥ ∥2 ≤− ∥ Uc ∥1 ∥ U ∥1 ∥∇ ∗ ∗ ∥ ∞ ∥ ∥1
+Ifwehaveλ 2 L(µ θ ) ,thenitholdsthat
+≥ ∥∇ ∗ ∗ ∥ ∞
+λ
+2 β 2 λ β +λ β + β
+∥ ∥2 ≤− ∥ Uc ∥1 ∥ U ∥1 2 ∥ ∥1
+λ
+λ β +λ β + ( β + β )
+≤− ∥ Uc ∥1 ∥ U ∥1 2 ∥ U ∥1 ∥ Uc ∥1
+λ 3λ
+β + β (10)
+≤−2 ∥ Uc ∥1 2 ∥ U ∥1
+3λ (i) 3λ 3λ
+β β √s √s β ,
+≤ 2 ∥ U ∥1 ≤ 2 ∥ U ∥2· ≤ 2 ∥ ∥2
+andtheinequality(i)isduetoCauchy-Schwarzinequalityand U =s. Therefore,wehave
+| |
+3λ
+β √s (11)
+∥ ∥2 ≤ 4
+Moreover,duetotheEqn.(10),wehavethat
+λ 3λ
+β + β 0,
+−2 ∥ Uc ∥1 2 ∥ U ∥1 ≥
+whichindicatesthat β β . Therefore,withEqn.(11),itholdsthat
+∥ Uc ∥1 ≤∥ U ∥1
+β = β + β 4 β 4 β √s 4√s β 3λs. (12)
+∥ ∥1 ∥ Uc ∥1 ∥ U ∥1 ≤ ∥ U ∥1 ≤ ∥ U ∥2· ≤ ∥ ∥2 ≤
+22
+PublishedasaconferencepaperatICLR2026
+AccordingtoLemmaC.3,bytaking
+3n(σ2+S2)M
+τ = f ,
+s log(2d/δ)
+wehavethatwithprobabilityatleast1 δ,
+−
+4√3 M(σ2+S2)log(2d/δ)
+L(µ θ ) +2√2 f .
+∥∇ ∗ ∗ ∥ ∞ ≤ 3 ! s n
+Therefore,bysettingthesamevalueforτ andtaking
+M(σ2+L2)log(2d/δ) 8√3 M(σ2+L2)log(2d/δ)
+λ=11 f +4√2 f ,
+·s n ≥ 3 !·s n
+thenwithprobabilityatleast1 δwehaveλ 2 L(µ θ ) . Finally,basedonEqn.(11)and
+(12),wecandeducethat − ≥ ∥∇ ∗ ∗ ∥ ∞
+3 s s
+θˆ µ θ λ√s=O˜ , θˆ µ θ 3λs=O˜ .
+− ∗ ∗ 2 ≤ 4 n − ∗ ∗ 1 ≤ √n
+(cid:13) (cid:13) (cid:18)r (cid:19) (cid:13) (cid:13) (cid:18) (cid:19)
+(cid:13) (cid:13) (cid:13) (cid:13)
+(cid:13) (cid:13) (cid:13) (cid:13)
+G PROOF OF COROLLARY 3.8
+Proof. Corollary3.8consiststwoparts,wherethefirstpartistheregretboundofAlgorithm1and
+thesecondpartistheregretboundofAlgorithm2. Wewillomitthedetailedproofheresincethey
+areasimplecombinationofourdeducedresultsabove. Specifically,theproofofthefirstpartisa
+combinationofresultsinTheorem3.7andtheproofofThemrem3.2,andtheproofofthesecond
+partisacombinationoftheresultsinTheorem3.7andtheproofprocedureofTheorem3.5. And
+comparedwiththeestimationerrordeducedunderthelow-dimensionalcaseunderTheorem3.1,
+theestimationboundunderthehigh-dimensionalcaseunderTheorem3.7dependsonthesparsity
+indexsinsteadofthedimensiondintermsofthenon-logarithmicfactors. Therefore,thefinalregret
+boundwillalsobeadjustedbyreplacingdbysinthenon-logarithmicterms. Inotherwords,ifwe
+ignorethelogarithmicfactorsinthefinalregretbound,thentheregretboundswillsimplyreplaced
+bys. Andalltheproofprocedurecanbeidenticallyreusedunderthehigh-dimensionalsparsecase.
+Therefore,wewillomitthedetailedproofduetoredundancy.
+ForSTOR,thevalueofsisusedonlytosettheexplorationphaselengthT . Evenifweremove
+1
+thisdependenceandsetT freeofs,wecanstillprovearegretboundoforderO˜(sT2/3),wherethe
+1
+exponentofschangesfrom2/3to1.
+H EXPLANATIONS ON ASSUMPTION 2.3
+H.1 EQUIVALENCEBETWEEN
+∥
+x
+t,i ∥ ≤
+LSETTINGAND
+∥
+x
+t,i ∥2 ≤
+LSETTING
+∞
+As we mentioned in Section 2 under Assumption 2.3, our main results hold regardless of the
+assumptionontypesofthenorms. Specifically,wehavethefollowingtwotypesofassumptions:
+• ConditionI: θ =1, x L, t [T],i [K]forsomeL>0.
+∥ ∗∥2 ∥ t,i ∥2 ≤ ∀ ∈ ∈
+• ConditionII: θ =1, x L, t [T],i [K]forsomeL>0.
+∥ ∗∥1 ∥ t,i ∥
+∞
+≤ ∀ ∈ ∈
+Notewesetthel (l )-normassomeconstantforθ duetotheidentifiabilityofthesingleindex
+2 1
+model. Theformeroneismorecommonlyusedinthe∗contextuallinearbanditliterature(??),while
+weusethelatteroneinthiswork. Asweexplained,bothofthesetwoassumptionsaremainlyusedto
+ensuretheinnerproductx θ canbeboundedbyLbasedonHolder’sinequality,andhencethey
+⊤t,i
+areidentical. Andweusethela∗tteronemerelytokeepconsistentwiththesparselinearbanditcasein
+23
+PublishedasaconferencepaperatICLR2026
+Section3.4wherel normiscommonlyassumedtobebounded. Furthermore,wewillclaimhereour
+1
+mainTheorem3.2,Theorem3.5andTheoremK.2stillhold:First,theestimationboundspresentedin
+Theorem3.1andTheoremK.1remainvalidirrespectiveoftheassumptions. Inparticular,theproof
+ofTheorem3.1doesnotdependonthemagnitudeofθ ,ensuringthatitsboundsholdunderboth
+ConditionIandConditionII.Moreover,thefinalresults∗ofTheoremK.1differatmostbyaconstant
+factorundertheseconditions,indicatingthattheboundsremainvalidaswell. Second,fortheregret
+boundsestablishedinthiswork,suchasTheorem3.2,Theorem3.5,andTheoremK.2,weshow
+thatthesameconclusionshold. Asanillustrativeexample,weexaminetheproofofTheorem3.2in
+AppendixD.2,asallregretanalysesfollowasimilarwayonleveragingtheestimationboundofthe
+parameter. Initsproof,weusetheestimationboundfrom3.1withHolder’sinequalityinEqn.(7).
+UnderconditionIIinourwork,wehavethat
+θˆ S 2√3 M(σ2+L2)log(2d/δ)
+x θ +√2 d f ,
+t,i
+∥ ∥ ∞ ·(cid:13) ∗− µ(cid:13) ≤ µ · 3 ! ·s n
+(cid:13) (cid:13)1
+(cid:13) (cid:13)
+whereM canbeconsi(cid:13)deredas(cid:13)aconstantsinceeachentryofx
+t,i
+isinaconstantscale. Specifically,
+(cid:13) (cid:13)
+foraGaussianrandomvariable (µ ,σ2),wecancalculatethatM =1/σ2. Ontheotherhand,if
+N 0 0 0
+wehaveConditionI,thenweshouldrewritetheaboveequationwith
+θˆ S 2√3 dM(σ2+L2)log(2d/δ)
+x θ +√2 f .
+∥ t,i ∥2·(cid:13) ∗− µ(cid:13) ≤ µ · 3 !·s n
+(cid:13) (cid:13)2
+(cid:13) (cid:13)
+Although the bound s(cid:13)eems to(cid:13)improve by a multiplier of √d explicitly, but here the value of M
+(cid:13) (cid:13)
+maynotbeinaconstantscale. Specifically, sincewehave x isboundedbysomeconstant
+∥ t,i ∥2
+L,theneachentrywillbeboundedbytheorder1/√dinmagnitudeonaverage. Assumetheentry
+follows (µ ,σ2)withσ2 =Ω(1/√d),thenitholdsthatM =Ω(d). Therefore,withM =Ω(d),
+N 0 0 0
+weactuallyobtainthesameboundoforderO˜(d log(d/δ)/n)underConditionII.Thisidentical
+argument can be used in the proof of all other Theorems with regret bounds, and hence we can
+p
+concludethattheregretboundsarethesameunderConditionIandConditionII.
+H.2 DETAILSOFL=O˜(1)
+AswementionedintheparagraphrightafterAssumption2.3,wecanactuallyletLbeinaconstant
+scaleuptosomelogarithmicterms,i.e. L = O˜(1),andourmaintheoremsinthisworkwillstill
+hold. This enables us to work with a wider range of distributions such as any sub-Gaussian or
+sub-Exponentialdistributions,andwewillexplainwhythisholds. Sincesub-Gaussiandistributionis
+aspecificcaseofsub-Exponential,wewillusethefollowingLemmaH.1toillustratethatL=O˜(1)
+witharbitraryhighprobabilityundersub-exponential ,andhenceitwillnotcontributetothefinal
+D
+regretboundafterignoringalllogarithmicterms. Wealsoassumezeromeanforsimplicityinthe
+followinglemmasincethefinalboundwillonlydifferbyaconstantmeanshift.
+LemmaH.1. LetX ,...,X bei.i.d.zero-meansub-Exponentialrandomvariables. Specifcially,
+1 n
+supposethereexistpositiveconstantsαandν suchthat
+E eλX1 exp ν2λ2 forall λ < 1.
+≤ 2 | | α
+Thenthereisaconstantc=c(cid:2)(α,ν)(cid:3)forwhic (cid:16) h,fore (cid:17) very0<δ <1,
+P max X c log n δ.
+1 i n| i | ≥ δ ≤
+(cid:16) ≤≤ (cid:0) (cid:1)(cid:17)
+Proof. Byastandardsub-exponentialtailestimate(?),thereexistconstantsC >0dependingonly
+1
+onαandν suchthatforallt 0,
+≥
+P X t 2exp t .
+| 1 |≥ ≤ −C1
+Aunionboundthenshows (cid:0) (cid:1) (cid:16) (cid:17)
+P max X t 2n exp t .
+1 i n| i |≥ ≤ −C1
+(cid:16) ≤≤ (cid:17) (cid:16) (cid:17)
+24
+PublishedasaconferencepaperatICLR2026
+Choosingt=c log n withasufficientlylargecabsorbsnandC insidetheexponential,making
+δ 1
+theaboveprobabilityatmostδ. Itholdsthat
+(cid:0) (cid:1)
+P max X clog n δ,
+1 i n| i |≥ δ ≤
+asclaimed. (cid:16) ≤≤ (cid:0) (cid:1)(cid:17)
+Thisresultindicatesthatwithassuming isanysub-Exponentialdistribution,wewillgetthesame
+D
+finalregretboundsuptologarithmicfactorswithhighprobability.
+I EXPLANATIONS OF REMARK 3.4
+Inthissection,weshowthatAssumption3.3isnotrestrictiveandholdsformanycommondistri-
+butions. Inparticular,tosupportRemark3.4,wedemonstratethatiftherandomvectorX Rdis
+∈
+drawnfromsomemultivariatenormaldistribution,thenAssumption3.3issatisfied. Firstly,basedon
+LemmaE.3,weknowthatthevalueofE p (X v)2 v 2 isfixedregardlessofthescaleofv. In
+v ⊤
+·∥ ∥
+otherwords,toproveAssumption3.3,itisequivalenttosho∞wthatforanyvwith v =1,wehave
+(cid:0) (cid:1) ∥ ∥2
+E p (X v)2 v 2 = v 2 p (x v)2p(x)dx C.
+v ⊤ v ⊤
+·∥ ∥ ∥ ∥ · ≤
+∞ ∞
+LemmaI.1. LetX h Rdbeara i ndomvectorsampled Z fromsomed-dimensioanlmultivariatenormal
+distributionwithexp ∈ ectedvalueµ Rd andcovariancematrixΣ Rd d. Andv Rd isan
+X X ×
+∈ ∈ ∈
+arbitraryvectorwith v >0. ThenwehaveAssumption3.3hold:
+∥ ∥2
+E p (X v)2 v 2 C forsomeconstantC >0,
+v ⊤
+·∥ ∥ ≤
+∞
+wherep
+v
+()isthedensit
+(cid:0)
+yofX
+⊤
+v.
+(cid:1)
+·
+Proof. Since X (µ ,Σ ), the univariate random variable Y := X v is itself normally
+X X ⊤
+distributed: Y ∼ (µ N v, v Σ v). Denoteσ2 :=v Σ v >0. ThenthedensityofY is
+∼N
+⊤X ⊤ X ⊤ X
+p v (t) = √2 1 πσ exp − (t − 2 µ σ ⊤ X 2 v)2 .
+(cid:16) (cid:17)
+WemustshowthatE[p (Y)2]isfinite. Sinceforeveryrealtwehave
+v
+1 1
+p (t) = p (t)2 .
+v ≤ √2πσ ⇒ v ≤ 2πσ2
+Hence
+1
+p (Y)2 .
+v ≤ 2πσ2
+Takingexpectationsonbothsidesyield(cid:12)s (cid:12)
+(cid:12) (cid:12)
+1
+E p (Y)2 < .
+v ≤ 2πσ2 ∞
+Sincewehavethat v v =(cid:2)1,weca(cid:3)ntakeC = 1 ,provingtheclaim.
+∥ ∥ ≤∥ ∥2 2πσ2
+∞
+Basedontheaboveproof,wecanfurtherconcludethatAssumption3.3issatisfiedoncethedensity
+functionofX visaboundedfunction,i.e. p () C forsomeC >0,thenwenaturallyhavethat
+⊤ v
+E((p (X v)2)) C2. Notethisfinitenessho · lds ≤ formostcommonly-useddistributions,suchas
+v ⊤
+≤
+GammadistributionΓ(k,θ)withk >1,Laplacedistribution,uniformdistribution,etc.
+Finally, If each entry of X is i.i.d. sub-Gaussian and v is a unit vector, then Y = X v is itself
+⊤
+sub-Gaussianwiththesametailparameter. Inparticular,thisguaranteestaildecayoftheform
+P(Y >r) exp( cr2)forsomec>0.
+| | ≤ −
+It is noteworthy that the square density p (y)2 inherits rapid decay (dominated by e 2cy2) at in-
+v −
+finity ensuring its integrability. Near y = 0, standard Sub-Gaussian distributions also typically
+2
+avoidpathologicaldensityspikes,so p (y) remainswellcontrolled. Consequently,oneexpects
+v
+E p (X v)2 tobefiniteforabroadclassofsub-Gaussianfamilies. Whileexoticsub-Gaussian
+v ⊤ (cid:2) (cid:3)
+distributionswithunboundedandnon-integrablesquareddensitiescouldtheoreticallyviolatethis,
+su(cid:2)chcasesare(cid:3)veryatypicalinappliedsettings.
+25
+PublishedasaconferencepaperatICLR2026
+J K DEPENDENCY OF THEOREM 3.5 IN REMARK 3.6
+NotethatweremovethetermF (x θˆ)K 1 directlyintheaboveproofinEqn.8sinceitmustbe
+i ⊤ i −
+less than 1. However, this is a very conservative step since F (x θˆ)K 1 is exponentially small
+i ⊤ i −
+andquicklyconvergesto0underalargevalueofK. Therefore,ourproofholdsunderworstcases,
+whereasthedependenceonK couldbesignificantlyimprovedunderlotsofcommonsettings. For
+example,ifx issampledfromsomed-dimensionalnormaldistribution,thenwecanprovethat
+t,i
+logK
+E K p(X)2 F(X)K 3 =Θ asK ,
+−
+· · K2 →∞
+(cid:18) (cid:19)
+(cid:2) (cid:3)
+andthisfactindicatesthatM isintheorderoflog(K)whenK islarge. Therefore,thefinalregret
+0
+boundofAlgorithm2exhibitsanorderofO(√M )=O( log(K)),asestablishedinourproofin
+0
+AppendixE.2bysettingT tobeanyvaluesuchthatT d T log(K)log(2dlog (T)/δ).
+0 0 ≤p 2
+InLemmaJ.1,weprovideaproofsketchunderthestandardnpormalassumptionforsimplicity,while
+notingthattheasymptoticorderremainsunchangedforanynormaldistribution,regardlessofits
+specificmeanorvariance.
+Lemma J.1. Let X (0,1) be a standard normal random variable with probability density
+functionp(x)= 1 e
+∼
+x
+N2/2andcumulativedistributionfunction(CDF)F(x)=Φ(x).
+ForK >3,
+√2π −
+theexpectation
+E K p(X)2 F(X)K 3
+−
+· ·
+satisfiestheasymptoticrelation:
+(cid:2) (cid:3)
+logK
+E K p(X)2 F(X)K 3 =Θ asK .
+−
+· · K2 →∞
+(cid:18) (cid:19)
+(cid:2) (cid:3)
+Proof. Theexpectationcanbeexpressedas:
+I =K ∞ p(x)3Φ(x)K 3dx.
+K −
+Z−∞
+Underthesubstitutionu=Φ(x),wetransformtheintegralas:
+1
+I =K p Φ 1(u) 2 uK 3du.
+K − −
+Z0
+(cid:0) (cid:1)
+ToanalyzetheasymptoticbehaviorasK ,wefirstnotethatthedominantcontributiontothe
+integral arises from values of u near 1. F → or ∞ u [0,1 δ] with fixed δ (0,1), the term uK 3
+−
+∈ − ∈
+decaysexponentiallyas(1 δ)K 3,andthesquareddensityp Φ 1(u) 2 isboundedby 1 . Thus,
+− − − 2π
+theintegralover[0,1 δ]satisfies:
+− (cid:0) (cid:1)
+1 δ
+K − p Φ 1(u) 2 uK 3du=O K(1 δ)K ,
+− −
+−
+Z0
+(cid:0) (cid:1) (cid:0) (cid:1)
+whichisexponentiallynegligiblecomparedtoanypolynomialdecayasK goestoinfinity.
+Forthedominantregionu [1 δ,1],letu=1 twitht [0,δ]. TheinverseCDFsatisfiesthe
+asymptoticexpansionast
+∈ 0+−
+:
+− ∈
+→
+log(4πlog(1/t)) 1
+Φ 1(1 t)= 2log(1/t) +O .
+−
+− − 2 2log(1/t) log(1/t)
+(cid:18) (cid:19)
+p
+Thedensityatthispointis: p
+1 t 1
+p Φ − 1(1 t) = e − 1 2 (2log(1/t) − log(4πlog(1/t))+ O (1)) = 4πlog(1/t) 1+O ,
+− √2π √2π log(1/t)
+(cid:18) (cid:18) (cid:19)(cid:19)
+(cid:0) (cid:1) p
+whichsimplifiesto:
+1
+p Φ 1(1 t) =t 2log(1/t) 1+O .
+−
+− log(1/t)
+(cid:18) (cid:18) (cid:19)(cid:19)
+(cid:0) (cid:1) p
+26
+PublishedasaconferencepaperatICLR2026
+Squaringthisgives:
+p Φ 1(1 t) 2 =2t2log(1/t) 1+O 1 .
+−
+− log(1/t)
+(cid:18) (cid:18) (cid:19)(cid:19)
+(cid:0) (cid:1)
+Substituting(1 t)K 3 e (K 3)t andextendingtheupperlimitto (withexponentiallysmall
+− − −
+− ≈ ∞
+error),wehave:
+I 2K ∞ t2log(1/t)e (K 3)tdt,
+K − −
+∼
+Z0
+where denotesasymptoticequivalence(exactleadingtermprecisionincludingconstants). Using
+∼
+thesubstitutions=(K 3)t,theintegralbecomes:
+−
+I K = (K 2K 3)3 ∞ s2log K s − 3 e − sds.
+− Z0 (cid:18) (cid:19)
+Expandinglog K 3 =logK logs+ (1/K),thedominanttermis:
+s−
+− O
+(cid:0) (cid:1) 2KlogK ∞ s2e sds= 4KlogK .
+−
+(K 3)3 (K 3)3
+− Z0 −
+Since
+0
+∞s2e
+−
+sds=2,weobtain:
+R 4logK logK
+I =Θ asK .
+K ∼ K2 K2 →∞
+(cid:18) (cid:19)
+Combiningthenegligiblecontributionfrom[0,1 δ]andthedominanttermfrom[1 δ,1], we
+− −
+conclude:
+logK
+E K p(X)2 F(X)K 3 =Θ asK .
+−
+· · K2 →∞
+(cid:18) (cid:19)
+(cid:2) (cid:3)
+K DETAILS AND THEORY OF GSTOR
+K.1 DETAILSOFGSTOR
+In this part, we present the pseudocode of our proposed GSTOR in Algorithm 3. As mentioned
+in Section 3.5, our GSTOR adopts a double exploration-then-commit strategy. Specifically, our
+algorithm uses T random samples to estimate the parameter θ and obtain the estimator θˆ(line
+1
+4). Afterward,wenormalizetheestimatorandobtainθˆ (line5) ∗ . Furthermore,wechooseanother
+0
+independentsetofT samples. Weleverageθˆ andthekernelregressiontoapproximatetheunknown
+1 0
+function,andobtainthefunctionpredictorfˆ(line9). Fortheremainingrounds,weselectthebest
+armgreedilybasedontheestimates(line11).
+K.2 USEFULLEMMAS
+Wefirstprovethatournormalizedestimatorθˆ holdsasimilarerrorboundastherateinTheorem3.1.
+0
+LemmaK.1. (BoundofSIM)FollowingthesamenotationofTheorem3.1. Foranysingleindex
+modeldefinedinwithsamplesx ,...,x drawnfromsomedistribution withcovariancematrix
+1 n
+D
+Σ . UnderAssumption2.2,2.3andtheidentifiabilityassumptionthat Σ1/2θ =1,µ >0,by
+X ∥ X ∗∥ 1 ∗
+solvingtheoptimizationprobleminEqn. (1)withτ = 3(σ2+L2)Mn/log(2d/δ)andλ = 0,
+f
+withtheprobabilityatleast(1 2δ)itholdsthat: q
+−
+θˆ d
+θ =O˜ .
+(cid:13) Σ1/2θˆ − ∗(cid:13) √n
+(cid:13)∥ X ∥ 1 (cid:13)1 (cid:18) (cid:19)
+(cid:13) (cid:13)
+Notethisresultholdsundergene(cid:13)raldistributions(cid:13) withouttheneedforaGaussiandesign.
+(cid:13) D(cid:13)
+27
+PublishedasaconferencepaperatICLR2026
+Algorithm3GeneralStein’sOracleSingleIndexBandit(GSTOR)
+Input: T,theprobabilityrateδ,parametersT ,λ,τ,W,h
+1
+1: fort=1toT do
+1
+2: Pullanarmx uniformlyrandomlyandobservethestochasticrewardy .
+t t t
+∈X
+3: endfor
+4: Obtaintheestimatorθˆwith x ,y T1 basedonEqn.(1).
+{ i i }i=1
+5: Getthenormalizedestimatorθˆ asθˆ =θˆ/ Σ1/2θˆ .
+0 0 ∥ X ∥ 1
+6: fort=T +1to2T do
+1 1
+7: Pullanarmx uniformlyrandomlyandobservethestochasticrewardy .
+t t t
+∈X
+8: endfor
+9: Approximatetheunknownrewardfunctionfˆ()withθˆ basedonEqn.(2).
+0
+·
+10: fort=2T +1toT do
+1
+11: Choosethearmx =argmax fˆ(x θˆ ),breaktiesarbitrary.
+12: endfor
+t x ∈Xt ⊤ 0
+Proof. Westartbycontrollingthedifferencebetween Σ1/2θˆ andµ . Whenthedimensiondis
+low,theeigenvaluesofΣ arebounded,andwedenot ∥ eC X ∥ a 1 ndC ∗ aretwopositiveconstants
+X min max
+such that C λ (Σ ) λ (Σ ) C . Notably, for sufficiently large n, since
+min min X max X max
+≤ ≤ ≤
+Σ1/2θ =1,wehave
+∥ X ∗∥ 2
+Σ1/2θˆ = Σ1/2θˆ Σ1/2µ θ +Σ1/2µ θ
+∥ X ∥ 1 ∥ X − X ∗ ∗ X ∗ ∗∥ 1
+µ Σ1/2(θˆ µ θ )
+≥ ∗−∥ X − ∗ ∗ ∥ 1
+µ √d Σ1/2(θˆ µ θ )
+≥ ∗− ∥ X − ∗ ∗ ∥ 2
+µ √d C θˆ µ θ (13)
+max 2
+≥ ∗− ∥ − ∗ ∗∥
+µ √dpC θˆ µ θ
+max 1
+≥ ∗− ∥ − ∗ ∗∥
+µ O˜
+pd2 3 µ
+∗,
+≥ ∗− √n ≥ 2
+(cid:16) (cid:17)
+holdswithprobabilityatleast1 δ,wherethetriangleinequalitygivesthefirstinequality,thesecond
+−
+inequalitycomesfromCauchy-Schwarz,thethirdinequalityisbecauseofλ (Σ ) C . The
+max X max
+≤
+lasttwoinequalitiesholdswiththesameprobabilityasindicatedbyTheorem3.1. Usingthesimilar
+reasonwiththetriangleinequlityfortheotherdirection,wehave
+∥
+Σ1
+X
+/2θˆ
+∥ 1 ≤
+µ
+∗
++O˜
+√
+d2 3
+n ≤
+3µ
+2
+∗, (14)
+(cid:16) (cid:17)
+holdwithprobabilityatleast1 δ. CombiningEqn. (13)and(14)givesustheresultthat
+−
+∥
+Σ1
+X
+/2θˆ
+∥ 1 −
+µ
+∗ ≤
+O˜
+√
+d2 3
+n ≤
+µ
+2
+∗. (15)
+(cid:12) (cid:12) (cid:16) (cid:17)
+holdswithprobabilityatleast1(cid:12) 2δ. Weproce(cid:12)edwith
+(cid:12)− (cid:12)
+θˆ θˆ Σ1/2θˆ θ
+θ = ∥ X ∥ 1 ∗
+(cid:13) Σ1/2θˆ − ∗(cid:13) (cid:13) Σ1/2θˆ − Σ1/2θˆ (cid:13)
+(cid:13)∥ X ∥ 1 (cid:13)1 (cid:13)∥ X ∥ 1 ∥ X ∥ 1 (cid:13)1
+(cid:13) (cid:13) (cid:13) (cid:13) (cid:13) (cid:13)θˆ µ θ µ Σ1/(cid:13) (cid:13) 2θˆ θ
+(cid:13) (cid:13) (cid:13)∥ − ∗ ∗∥ 1 + ∗−∥ X(cid:13) ∥ 1 ∥ ∗∥ 1
+≤
+∥
+Σ1
+X
+/2θˆ
+∥ 1 (cid:12) (cid:12) ∥
+Σ1
+X
+/2θˆ
+∥ 1(cid:12) (cid:12)
+θˆ µ θ µ Σ1/2θˆ θ
+∥ − ∗ ∗∥ 1 + ∗−∥ X ∥ 1 ∥ ∗∥ 1
+≤
+∥
+Σ1
+X
+/2θˆ
+∥ 1 (cid:12) (cid:12) ∥
+Σ1
+X
+/2θˆ
+∥ 1(cid:12) (cid:12)
+θˆ µ θ µ Σ1/2θˆ √d
+∥ − ∗ ∗∥ 1 + ∗−∥ X ∥ 1
+≤ ∥ Σ1 X /2θˆ ∥ 1 (cid:12) (cid:12) C min ∥ Σ1 X /2θˆ ∥ (cid:12) (cid:12) 1
+O˜ d 2 +O˜ d3 2 2√d =O˜ d2 ,
+≤ √n µ √n C µ √n
+min
+(cid:16) (cid:17) ∗ (cid:16) (cid:17) ∗ (cid:16) (cid:17)
+28
+PublishedasaconferencepaperatICLR2026
+where the third inequality comes from the fact that ∥ θ ∗∥ 1 ≤ √d ∥ θ ∗∥ 2 ≤ √d · ∥ Σ C 1 X / m 2θ in ∗ ∥2 ≤
+√d∥
+Σ1
+X
+/2θ∗
+∥1 = √d ,andthelastinequalityisobtainedaftercombiningresultsofTheorem3.1and
+Cmin Cmin
+Eqn. (15).
+K.3 KERNELREGRESSIONERRORBOUND
+Weslightlyabusethenotationsforeasypresentationinthissection. Specifically,weuse y ,x n
+{ i i }i=1
+todenotethesamplesforthekernelregressionaftertheparameterestimationandnormalization.
+TheoremK.2. (FullBoundofSIM)Weusenpairsofsamplestoobtainthenormalizedestimator
+θˆ basedonEqn.(1). Andweuseanothernpairsofsamples y ,x n forthekernelregression
+0 { i i }i=1
+with θˆ based on Eqn. (2). Assume that d6 = O(n). With M = 2 log(n) and h = n 1/3,
+0 −
+X =N(µ ,Σ ),wehave
+X X
+∼D p
+E fˆ(X θˆ ) f(X θ ) =O
+d2 1
+,
+⊤ 0 − ⊤ ∗ n1 3
+wheretheexpectationistakenw (cid:12) (cid:12)ithrespecttoX and x (cid:12) (cid:12),y n (cid:16) . (cid:17)
+{ i i }i=1
+Proof. Thecoreofouranalysisreliesondecomposingthepredictionerrorintoapproximationand
+statistical components. We first bound the deviation between the predicted and true rewards by
+separatingthepredictionerrorintocontrollabletermsusinganovelindicator-basedpartitioning. We
+thenapplyGaussianconcentrationinequalitiestocontroltailevents,andinnovativelyleverageStein’s
+methodandaperturbation-styleargumenttopreciselycontroltherelationshipbetweenZ andZ .
+∗
+Fornotationsimplicity,withi [n],wedenote
+∈
+Z =x θ , Z =x θˆ , Z =x θˆ , Z =x θ . (16)
+i∗ ⊤i i ⊤i 0 ⊤ 0 ∗ ⊤
+∗ ∗
+BasedonTheoremK.1andtheassumptionthatd6 =O(n),itholdsthat
+θˆ θ =O(n 1/3). (17)
+0 1 −
+∥ − ∗∥
+Notably, ∥ Z Σ − 1 X / µ 2 ⊤ X θˆ 0 θˆ ∥ 0 2 = (X ∥ Σ −1 X µ /2 X θˆ ) 0 ⊤ ∥2 θˆ 0 is a random variable which follows the Gaussian distribution
+N(0,1)underoursettingsgivenintheassumption,thenwegetatailboundforZ as
+Z µ θˆ
+P | − ⊤X 0 | t 2exp t2/2 . (18)
+Σ1/2θˆ ≥ !≤ −
+∥ X 0 ∥ 2 (cid:0) (cid:1)
+Inotherwords,bylettingt=2√logninEqn. (18),withprobability1 2/n2,wehave | Z − µ⊤ X θˆ 0|
+− ∥ Σ1 X /2θˆ 0∥2 ≤
+2√logn. Since Σ1/2θˆ Σ1/2θˆ holdsalmostsurely,and Σ1/2θˆ =1inourassumption,
+∥ X 0 ∥ 2 ≤∥ X 0 ∥ 1 ∥ X 0 ∥ 1
+wecontinuetohave Z µ θˆ 2√lognwiththesamehighprobability.
+| −
+⊤X 0
+|≤
+Next,weseparateourℓ predictionerrorintotwoparts
+1
+E fˆ(Z) f(Z )
+∗
+−
+(cid:12) (cid:12)
+=(cid:12)E fˆ(Z) f((cid:12)Z ) I +E fˆ(Z) f(Z ) I . (19)
+(cid:12) − (cid:12) ∗ · {| Z − µ⊤ X θˆ 0 |≤ W } − ∗ · {| Z − µ⊤ X θˆ 0 | >M }
+h(cid:12) (cid:12) i h(cid:12) (cid:12) i
+(cid:12) ((cid:12)I) (cid:12) (I(cid:12)I)
+(cid:12) (cid:12) (cid:12) (cid:12)
+Forterm|(II),byourdefini{tizonoffˆ()givenin}Eqn|. (2)(itis0when{thzeevent Z µ }θˆ W
+· {| −
+⊤X 0
+|≤ }
+holds),andAssumption2.3,wehave
+1
+E fˆ(Z) f(Z ) I L P Z µ θˆ >M ≲ .
+− ∗ {| Z − µ⊤ X θˆ 0 | >M } ≤ f − ⊤X 0 n2
+h(cid:12) (cid:12) i (cid:16)(cid:12) (cid:12) (cid:17)
+(cid:12) (cid:12) (cid:12) (cid:12)
+Forterm(I),w(cid:12)efurtherseparat(cid:12)eitinto(III)and(IV),which(cid:12)canberega(cid:12)rdedasintegratedmean(III)
+errorandapproximationerror(IV)respectively. Afterdefiningthefunctiong(z)=E(y Z =z)for
+|
+29
+PublishedasaconferencepaperatICLR2026
+z R,wecontinuetohave
+∈
+(I) E fˆ(Z) g(Z) I +E g(Z) f(Z ) I . (20)
+≤ − {| Z − µ⊤ X θˆ 0 |≤ W } | − ∗ | {| Z − µ⊤ X θˆ 0 |≤ W }
+h(cid:12) (cid:12) i h i
+(cid:12) (I(cid:12)II) (IV)
+(cid:12) (cid:12)
+Tohandletheterm(III),wedefineg (Z)as
+| {z 0 } | {z }
+n f(Z )K (Z Z )
+g (Z)= i=1 i h − i ,
+0 n K (Z Z )
+P i=1 h − i
+andweproceedtocontrol(III)by
+P
+(III) E fˆ(Z) g (Z) I +E g (Z) g(Z) I . (21)
+≤ − 0 {| Z − µ⊤ X θˆ 0 |≤ W } | 0 − | {| Z − µ⊤ X θˆ 0 |≤ W }
+h(cid:12) (cid:12) i h i
+(cid:12) (V(cid:12)) (VI)
+(cid:12) (cid:12)
+CombiningEqn. (19),Eqn. (20)andEqn. (21),wecanseethatℓ predictionerrorcanbebounded
+| {z } | 1 {z }
+bythesumof(II),(IV),(V)and(VI).Next,wewillboundthesetermsseparately.
+Step1(bound(IV)):Accordingtothedatadistributionassumption,Z µ θˆ followsN(0,θˆ Σ θˆ )
+−
+⊤X 0 0⊤ X 0
+and Z µ θ follows N(0,θ Σ θ ). Moreover, for two random variables following normal
+distribu
+∗
+t − ions
+⊤X
+,th∗ereexiststhegen∗era
+X
+lre∗sultthat
+θˆ Σ θ (X µ ) θˆ θˆ Σ θ
+Z ∗ =µ ⊤X θ ∗ + ∥ Σ1 X /2θ ∗∥ 2  ∥ Σ1 X /2θˆ 0 0 ∥ 2 X ∥ Σ ∗ 1 X /2θ ∗∥ 2 ∥ Σ − 1 X /2 X θˆ 0 ∥ ⊤ 2 0 + v u u 1 − ∥ Σ1 X /2θˆ 0 0 ∥ 2 X ∥ Σ ∗ 1 X /2θ ∗∥ 2 ζ 
+ Z µ θˆ t 
+:=µ ⊤X θ ∗ + ∥ Σ1 X /2θ ∗∥ 2 cosα · Σ − 1/2θˆ ⊤X 0 +sinα · ζ ! ,
+∥ X 0 ∥ 2
+whereαisarealnumberwithin[0,π/2],andζ N(0,1)isindependentofZ. Inaddition,notice
+∼
+theequalitythat
+a b a,b ( a b )2+ a b 2
+∥ ∥ 2 ∥ ∥ 2 −⟨ ⟩ = − ∥ ∥ 2 −∥ ∥ 2 ∥ − ∥2
+a b 2 a b
+2 2 2 2
+∥ ∥ ∥ ∥ ∥ ∥ ∥ ∥
+and a b a b foranyrealvectorsa,b Rd. IfweletΣ1/2θˆ andΣ1/2θ playthe
+roles ∥ of ∥ a 2 a − nd ∥ b ∥ r 2 esp ≤ ec ∥ tive − ly, ∥ th 2 enbyEqn. 17,itholdsth ∈ at X 0 X ∗
+(cid:12) (cid:12)
+(cid:12) (cid:12) Σ1/2θˆ Σ1/2θ 2 C2 θˆ θ 2
+sin2α ∥ X 0 − X ∗∥2 max∥ 0 − ∗∥2
+≤ Σ1/2θˆ Σ1/2θ ≤ Σ1/2θˆ Σ1/2θ
+∥ X 0 ∥ 2 ∥ X ∗∥ 2 ∥ X 0 ∥ 2 ∥ X ∗∥ 2 (22)
+dC2 θˆ θ 2
+≤ Σ1/ m 2θˆ ax∥ 0 Σ − 1/2 ∗ θ ∥1 =dC m 2 ax∥ θˆ 0 − θ ∗∥ 2 1 =O(dn −3 2 ),
+∥ X 0 ∥ 1 ∥ X ∗∥ 1
+wherethethirdinequalitycomesfromCauchy-Schwarzinequality,andthelastorderequalitycomes
+fromEqn. 17. Thus,thesingleindexmodelcanbeequivalentlywrittenas
+Z µ θˆ
+Y =f(Z ∗ )+ϵ, Z ∗ = ∥ Σ1 X /2θ ∗∥ 2 cosα · Σ − 1/2θˆ ⊤X 0 +sinα · ζ ! +µ ⊤X θ ∗ .
+∥ X 0 ∥ 2
+Forsimplicity,wedenoteZ˜(z)=cosα · ∥ ∥ Σ Σ 1 X 1 X / / 2 2 θ θˆ ∗ 0∥ ∥ 2 2(z − µ ⊤X θˆ 0 )+µ ⊤X θ ∗ ,Z˜ =cosα · ∥ ∥ Σ Σ 1 X 1 X / / 2 2 θ θˆ ∗ 0∥ ∥ 2 2(Z −
+µ θˆ )+µ θ ,andaccordingtothedefinitionofg(z),wehave
+⊤X 0 ⊤X
+∗
+g(z)=E(y Z =z)=E f(Z˜(z)+ Σ1/2θ sinα ζ)Z =z
+| ∥ X ∗∥ 2 · |
+h i (23)
+= f(Z˜(z)+ Σ1/2θ sinα ζ) ϕ(ζ)dζ,
+R ∥ X ∗∥ 2 · ·
+Z
+whereϕisthedensityofthestandardnormaldistribution.Itisobviousthatg(z) L byAssumption
+f
+≤
+2.3. Tobound(IV),wefirstusef(Z˜)toapproximatef(Z )aswellasg(Z),then(IV)isboundedas
+∗
+E f(Z ) g(Z) I E f(Z ) f(Z˜) I
+| ∗ − | {| Z − µ⊤ X θˆ 0|}≤ W ≤ ∗ − {| Z − µ⊤ X θˆ 0|≤ W } (24)
+h i h(cid:12) (cid:12) i
++E(cid:12) f(Z˜) g(Z(cid:12)) I .
+(cid:12) − (cid:12) {| Z − µ⊤ X θˆ 0|≤ W }
+h(cid:12) (cid:12) i
+(cid:12) (cid:12)
+(cid:12) (cid:12)
+30
+PublishedasaconferencepaperatICLR2026
+ForthefirsttermontherightsideofEqn. (24),bymeanvaluetheorem
+f(Z ) f(Z˜)=f(Z˜+ Σ1/2θ sinα ζ) f(Z˜)
+∗ − ∥ X ∗∥ 2 · −
+=f (Z˜+t (Z,ζ) Σ1/2θ sinα ζ) Σ1/2θ sinα ζ,
+′ 1 ∥ X ∗∥ 2 · ·∥ X ∗∥ 2 ·
+wheret (Z,ζ)isaconstantbetween[0,1]dependingonZ andζ. Wecontinuetohave
+1
+E f(Z ) f(Z˜) I
+∗ − {| Z − µ⊤ X θˆ 0|≤ W }
+h(cid:12) (cid:12) i
+=(cid:12)Σ1/2θ sinα(cid:12) f (Z˜+t (Z,ζ) Σ1/2θ sinα ζ)ζϕ(ζ) dζdF(Z) (25)
+(cid:12) ∥ X ∗∥ 2 (cid:12) Z| Z − µ⊤ X θˆ 0|≤ W Z R (cid:12) ′ 1 ∥ X ∗∥ 2 · (cid:12)
+≲L f′ ∥ Σ1 X /2θ ∗∥ 2 sinα=O(√dn − 1 3) (cid:12) (cid:12), (cid:12) (cid:12)
+wheretheinequalityisduetoAssumption2.3thatf ()isbounded,andthelastequalitycomesfrom
+′
+·
+Eqn. (22)andEqn. 17that Σ1/2θ Σ1/2θ =1. Forthesecondtermontherightsideof
+Eqn. (24),bythedefinitiono ∥ fg X (z)∗in ∥ 2 E ≤ qn ∥ . (2 X 3),w∗∥ e 1 have
+f(Z˜) g(Z)=f(Z˜) f(Z˜+ Σ1/2θ sinα ζ)ϕ(ζ)dζ
+− − R ∥ X ∗∥ 2 ·
+Z
+= Σ1/2θ sinα f (Z˜+t (Z,ζ) Σ1/2θ sinα ζ)ζϕ(ζ)dζ,
+∥ X ∗∥ 2 R ′ 2 ∥ X ∗∥ 2 ·
+Z
+wheret (Z,ζ)isaconstantbetween[0,1]dependingonZ andζ,andthisfurtherimpliesthat
+2
+E f(Z˜) g(Z) I
+− {| Z − µ⊤ X θˆ 0|≤ W }
+h(cid:12) (cid:12) i
+(cid:12)Σ1/2θ sin(cid:12)α f (Z˜+t (Z,ζ) Σ1/2θ sinα ζ)ζ ϕ(ζ)dζdF(Z) (26)
+≤ (cid:12) ∥ X ∗∥ 2 (cid:12) Z| Z − µ⊤ X θˆ 0|≤ W Z R (cid:12) ′ 2 ∥ X ∗∥ 2 · (cid:12)
+=O(√dn − 1 3), (cid:12) (cid:12) (cid:12) (cid:12)
+wherethelastequalityisduetoAssumption2.3thatf (x)isbounded,Eqn. 17that Σ1/2θ
+Σ1/2θ =1andEqn. (22).
+′ ∥ X ∗∥ 2 ≤
+∥ X ∗∥ 1
+CombiningEqn. (25)andEqn. (26)giveusthat
+(IV)=O(√dn
+−
+1 3).
+Step2(bound(V)):Forterm(V),wehave
+(V)= E fˆ(Z) g (Z) Z ,...,Z ,Z dF(Z ,...,Z )dF(Z).
+0 1 n 1 n
+Z| Z − µ⊤ X θˆ 0|≤ W Z h | − | (cid:12) i
+For any fixed Z, we let B n (Z) to be the event (cid:12) (cid:12) nP n (B(Z,h))>0 , where P n (B(Z,h)) =
+1 n I ,thenwefurtherhave { }
+n i=1
+{|
+Zi− Z
+|≤
+h
+}
+EPfˆ(Z) g 0 (Z) Z 1 ,...,Z n ,Z E 2 1 (fˆ(Z) g 0 (Z))2 Z 1 ,...,Z n ,Z
+| − | ≤ −
+h (cid:12) (cid:12) (cid:12) i =E 2 1 h n i=1 (y i n − g I (Z (cid:12) (cid:12) (cid:12) i ))I {| Zi− Z |≤ h } i 2 Z 1 ,...,Z n ,Z
+"(cid:18)P i=1 {| Zi− Z |≤ h } (cid:19) (cid:12) #
+=
+n
+i=1 n
+V
+2
+a
+P
+r(YP
+( i B |
+Z
+( i Z
+)I
+, { h | Z )) i− 2 Z |≤ h } 2
+1 (cid:12)
+(cid:12)
+P n
+(cid:16) (cid:17)
+1
+≲ I .
+nP (B(Z,h)) Bn(Z)
+n
+For the last inequality, we can further prove that Var(Y Z ) E(Y2 Z ) ≲ 1. Specifically, by
+i | i ≤ i | i
+definition,weknowthat
+Var(Y Z =z) E(Y2 Z =z) 2 f2(Z˜(z)+ Σ1/2θ sinα ζ)ϕ(ζ)dζ+2σ2 ≲1,
+| ≤ | ≤ R ∥ X ∗∥ ·
+Z
+31
+PublishedasaconferencepaperatICLR2026
+wherethelastinequalityholdssincef isboundedandσ2isfinite.
+When conditional on Z, we have nP (B(Z,h)) = n I Binomial(n,q), with
+q = P(Z B(Z,h)Z),andB(Z,h) n representsthebal i l = c 1 en{t|e Z r i e−d Z a|≤t h Z }w ∼ iththeradiusR. Thus,
+1
+∈ | P
+whenconditionalonZ,weobtain
+I I
+nP ( B B n ( (Z Z ) ,h)) dF(Z 1 ,...,Z n )= { n n P P n( ( B B ( ( Z Z ,h , ) h )> )) 0 }dF(Z 1 ,...,Z n ) ≤ n 1 q ,
+Z n Z n
+wherethelastinequalityfollowsfromLemma4.1in?. Wefurthergetoneupperboundfor(V)as
+dF(Z)
+(V)≲ .
+Z| Z − µ⊤ X θˆ 0|≤ W nP(Z 1 ∈ B(Z,h) | Z)
+As Z µ θˆ W isaboundedarea,wecanchoosea ,...,a suchthat Z µ θˆ W
+{| −
+⊤X 0
+|≤ }
+1 R
+{| −
+⊤X 0
+|≤ }
+iscoveredby R B(a ,h/2)withR cW/hforsomeconstantc>0. Thenwefinallyboundthe
+∪i=1 i ≤
+term(V)as
+dF(Z) R I dF(Z)
+(V)≲ Z| Z − µ⊤ X θˆ 0|≤ W nP(Z 1 ∈ B(Z,h) | Z) ≤ X i=1Z n {P
+Z
+( ∈ Z
+B
+1
+(a
+∈
+i,h
+B
+/2
+(
+)
+Z } ,h) | Z) (27)
+R I dF(Z) R cW log(n)
+≤ n
+{P
+Z
+(
+∈
+Z
+B(ai,h
+B
+/
+(
+2
+a
+)
+}
+,h/2)) ≤ n ≤ nh
+≲
+n2/3
+,
+i=1Z 1 ∈ i p
+X
+wherethelastinequalityisduetothesetthath n 1/3.
+−
+≍
+Step3(bound(VI)):Wefirstshowcasethatfunctiong(z)definedinEqn. (23)isaLipschitzfunction,
+withLipschitzconstantboundedbytheorderof√d: foranyz ,z R,bythemeanvaluetheorem,
+1 2
+∈
+wehave
+Σ1/2θ
+|
+g(z
+1
+)
+−
+g(z
+2
+)
+|≤(cid:12)
+cosα∥
+Σ
+X
+1/2θˆ
+∗∥ 2 (z
+2 −
+z
+1
+)
+(cid:12)·
+(cid:12) ∥ X 0 ∥ 2 (cid:12)
+(cid:12)
+(cid:12)
+(cid:12)
+(cid:12)
+Σ1/2θ
+R (cid:12) (cid:12) f ′ (Z˜(z 1 )+ ∥ Σ1 X /2θ ∗∥ 2 sin(cid:12)α · ζ)+t(ζ)cosα∥ Σ X 1/2θˆ ∗∥ 2 (z 2 − z 1 ) (cid:12) ϕ(ζ)dζ
+Z (cid:12) ∥ X 0 ∥ 2 (cid:12)
+(cid:12) (cid:12)Σ1/2θ (cid:12)
+(cid:12)
+≤ (cid:12)∥ Σ X 1/2θˆ ∗∥ 2 | z 2 − z 1 | L f′ ≤ √d | z 2 − z 1 | L f′ ≲√d | z 2 − z 1 | , (cid:12)
+∥ X 0 ∥ 2
+wherethesecondinequalityusestheboundnessoff()andf (),andthethirdinequalityutilizes
+′
+· ·
+thefactthat Σ1/2θ Σ1/2θ =1,and√d Σ1/2θˆ Σ1/2θˆ =1. Todealwithterm
+(VI),wefirst ∥ bo X und∗t ∥ h 2 e ≤ dif ∥ fere X nce∗b ∥ e 1 tweeng (Z)a ∥ nd X g(Z 0 ) ∥ , 2 ≥∥ X 0 ∥ 1
+0
+g (Z) g(Z) = g (Z)I g(Z)I g(Z)I
+|
+0
+− | |
+0 Bn(Z)
+−
+Bn(Z)
+−
+Bn(Z)c
+|
+n (g(Z ) g(Z))K (Z Z )
+= i=1 i − h − i I +g(Z)I
+n K (Z Z ) Bn(Z) Bn(Z)c
+(cid:12)P i=1 h − i (cid:12)
+≤
+√ (cid:12) (cid:12)
+(cid:12)
+dh+gP(Z)I Bn(Z)c , (cid:12) (cid:12)
+(cid:12)
+32
+PublishedasaconferencepaperatICLR2026
+wherethelastinequalityfollowsfromtheLipschitznessofg(),whichyieldsthatgisaLipschitz
+·
+functionwiththeLipschitzconstantboundedby√d. Weproceedtohave
+E g (Z) g(Z)I
+| 0 − | | Z − µ⊤ X θˆ 0|≤ W
+h i
+√dh+ g(Z)E(I Z)dF(Z)
+≤ Z| Z − µ⊤ X θˆ 0|≤ W
+Bn(Z)c
+|
+√dh+L 1 P(Z B(Z,h)Z) n dF(Z)
+f 1
+≤ Z| Z − µ⊤ X θˆ 0|≤ W (cid:0) − ∈ | (cid:1) nP(Z B(Z,h)Z)
+√dh+L exp( nP(Z B(Z,h)Z)) 1 ∈ | dF(Z)
+≤ f Z| Z − µ⊤ X θˆ 0|≤ W − 1 ∈ | nP(Z 1 ∈ B(Z,h) | Z)
+1
+≲√dh+ sup ue u dF(Z)
+u ∈ [0,1] { − } Z| Z − µ⊤ X θˆ 0|≤ W nP(Z 1 ∈ B(Z,h) | Z)
+≲O(√dn
+−
+1 3),
+wherethethirdinequalityisdueto(1 x)n e nxforanyx [0,1],andthelastinequalitycomes
+−
+from the fact that sup ue u − 1 an ≤ d the result in Eq ∈ n. (27). We finish the proof of the
+theorem. u ∈ [0,1]{ − } ≤
+K.4 PROOFOFTHEOREM3.9
+First,notethattheGaussiandistributionnaturallyfollowsAssumption2.2withconstantM. Andthe
+proofofTheorem3.1onlyreliesontheboundnessoftheunknownfunctionf(). Therefore,based
+·
+onTheorem3.1andLemmaK.1,itholdsthat
+M(σ2+L2)log(2d/δ) d d
+θˆ µ θ 3d f =O˜ , θˆ µ θ =O˜ .
+0
+(cid:13) − ∗ ∗ (cid:13) 1 ≤ ·s T 1 (cid:18) √T 1(cid:19) (cid:13) − ∗ ∗ (cid:13) 1 (cid:18) √T 1(cid:19)
+Fu(cid:13)rthermore,(cid:13)we can deduce that d6 = O(T ). Then based on(cid:13)Theorem K(cid:13).2 for X =
+(cid:13) (cid:13) 1 (cid:13) (cid:13)
+∼ D
+N(µ ,Σ ),wehave
+X X
+E fˆ(X θˆ ) f(X θ ) =O
+d2 1
+.
+⊤ 0 − ⊤ ∗ T 1 3!
+1
+(cid:12) (cid:12)
+Sincethearmateachroundisra(cid:12)ndomlysampledfromD(cid:12),thenweknowthatforanyt [T],k [K],
+∈ ∈
+itholdsthat
+E fˆ(x θˆ ) f(x θ ) =O
+d2 1
+.
+⊤t,k 0 − ⊤t,k ∗ T 1 3!
+1
+(cid:12) (cid:12)
+(cid:12) (cid:12)
+Thenforanyt>2T ,wehavethat
+1
+E f(x θ ) f(x θ ) =E f(x θ ) fˆ x θˆ +E fˆ x θˆ f(x θ )
+⊤t,
+∗ ∗ −
+⊤t
+∗
+⊤t,
+∗ ∗ −
+⊤t,
+∗
+⊤t,
+∗ −
+⊤t
+∗
+(cid:0) (cid:1) E (cid:16) f(x θ ) fˆ (cid:16) x θˆ (cid:17)(cid:17) +E (cid:16) fˆ (cid:16) x θˆ (cid:17) f(x θ ) (cid:17)
+≤
+⊤t,
+∗ ∗ −
+⊤t,
+∗
+⊤t
+−
+⊤t
+∗
+(cid:16) d2 1 (cid:16) (cid:17)(cid:17) (cid:16) (cid:16) (cid:17) (cid:17)
+≲ .
+1
+T3!
+1
+Therefore,basedonthechoiceofT wehavethat:
+1
+2T1 T
+E(R )= E f(x θ ) f(x θ ) + E f(x θ ) f(x θ )
+T ⊤t,
+∗ ∗ −
+⊤t
+∗
+⊤t,
+∗ ∗ −
+⊤t
+∗
+X
+t=1
+(cid:2) (cid:3)
+t=
+X
+2T1+1
+(cid:2) (cid:3)
+d1
+2 3 3
+≲2L
+f
+T
+1
++
+T3
+1 !·
+T =O d8T4 .
+1 (cid:16) (cid:17)
+33
+PublishedasaconferencepaperatICLR2026
+Table1: Averagerunningtime(inseconds)ofeachmethodunderdifferentlinkfunctionsinour
+simulationsinFigure1andreal-dataexperimentsinTable3.
+Dataset ESTOR STOR GSTOR UCB-GLM GLM-TSL LinUCB LinTS
+(1). Linear 0.69 0.20 0.79 – – 0.39 0.71
+(2). Poisson 0.72 0.26 0.81 131.24 364.89 – –
+(3). Square 0.76 0.28 0.89 249.01 707.95 – –
+(4). Five 0.76 0.29 0.91 1151.08 3276.35 – –
+ForestCover 4.61 1.88 5.01 662.09 1512.92 3.64 3.39
+YahooNews 0.43 0.16 0.52 57.80 121.35 0.28 0.42
+Figure2: PlotofregretofSTOR,ESTOR,LinUCB,LinTSandDRLassounderthesparsehigh-
+dimensionalcases(left: identityrewardfunction,right: squarerewardfunction).
+L EXPERIMENTAL DETAILS
+L.1 ADDITIONALDETAILSOFSIMULATIONS
+We first report the hyperparameter configuration used in our experiments. We use the false rate
+δ =0.05,thedimensiond=15andthenumberofarmsateachroundK =20. Eachentryofthe
+contextualvectorisi.i.d. sampledfromastandardnormaldistribution. Ineachofthe20repetitions,
+theparametervectorθ isgeneratedbyindependentlysamplingeachentryfromastandardnormal
+distributionandthenn∗ormalizingthevectortohaveanl normequalto1,inaccordancewithour
+1
+problemsettinginSection2. Toensureafaircomparison,weusethetheoreticallyrecommended
+valuesforkeyhyperparametersineachalgorithm,suchastheexplorationrateforUCB-basedmethods,
+andparametersτ ,T ,andT forourESTORandSTORalgorithms. Foreachmethod,weconduct
+i 0 1
+twosetsofexperimentsbymultiplyingthekeyhyperparametersby1andby2,respectively. Each
+configurationisrunover20repetitions,andwereportthebetterregretcurveovertwodifferentsettings
+foreachmethod. Specifically,forUCB-basedmethodssuchasLinUCBandUCB-GLM,thekey
+hyperparameteristheexplorationratescalingtheconfidencebound.ForTS-basedmethods,including
+LinTSandGLM-TSL,thekeyparameteristhevariancemultiplieroftheposteriordistribution,which
+plays a role analogous to the exploration rate in UCB by influencing the spread of the posterior
+distribution. ForESTOR,themainhyperparameteristhethresholdvalueτ usedinestimatingthe
+i
+unknownparameterθ . Weadoptthetheoreticalvalueτ = 3(e e )/log(2dlog (T)/δ)
+and evaluate two vers∗ions of the algorithm using multip i liers 1 an i d− 1 2 − on i τ− 2 , respectively. 2 We set
+i
+p
+T =50sinceitcanbeanyvaluelessthanaboundinthetheoreticalresult. ForSTOR,weconsider
+0
+theexplorationphaselengthT asthekeyhyperparameter. Inspiredbyourtheoreticalanalysis,we
+1
+usetheformulaT =(dT)2/3log(2d/δ)1/3/8andapplymultipliersof1and2tothisvalueaswell.
+1
+WealsoconductedexperimentswithGSTOR,butdidnotincludeitsresultsinFigure1,asthatfigure
+focusesonthemonotonesetting,whereGSTOR,designedforgeneralrewardfunctions,iscomparably
+lessefficient. Instead,wereportGSTOR’sperformancealongwithallotherimplementedmethods
+in Table 2. Compared to STOR, GSTOR performs slightly worse in the first three cases, likely
+34
+PublishedasaconferencepaperatICLR2026
+Table 2: Average final cumulative regret of each method under different link functions in our
+simulations in Figure 1. For entries in the format a/b, the first value corresponds to the case
+wherethemodeliscorrectlyspecified,whilethesecondvaluerepresentsperformanceundermodel
+misspecification.
+Dataset ESTOR STOR GSTOR UCB-GLM GLM-TSL LinUCB LinTS
+Linear 289.37 571.62 604.45 – – 309.35 405.21
+Poisson 993.99 2036.94 2199.01 830.68 1148.02 – –
+Square 482.92 1331.41 1397.26 713.36/1314.54 875.12/1692.19 – –
+Five 198.51 611.11 519.18 136.14/415.05 213.87/648.23 – –
+becauseSTORavoidstheadditionalexplorationoverheadrequiredforrewardfunctionestimation,
+whileGSTORincurssomeefficiencylossinthatprocess. However,GSTORclearlyoutperforms
+GLB-basedalgorithmsundermodelmisspecification,demonstratingitsrobustnessacrossarange
+ofrewardfunctions. Moreover,inthefinalcase,GSTORoutperformsSTOR,suggestingthatwhen
+therewardfunctionissufficientlycomplex,explicitestimationmayimproveoverallapproximation
+accuracyandleadtobetterperformance.
+WealsoreporttheaveragerunningtimeofdifferentmethodsacrossthefourcasesinFigure1over
+20 repetitions. All simulations were conducted on a machine equipped with the Apple M3 chip.
+Consistentwithourtimecomplexityanalysisinsection3.3,ourproposedmethodsaresignificantly
+fasterthanthecommonlyusedGLBalgorithms. Specifically,STOR,ESTORandGSTORareall
+hundredsoftimesfasterthanUCB-GLMandthousandsoftimesfasterthanGLM-TSL,demonstrating
+theirstrongpracticalscalability. Thisefficiencystemsfromthefactthatourmethodsavoidsolving
+computationallyintensiveoptimizationproblemsateachiteration. Moreover,ourmethodsexhibit
+stablerunningtimesacrossallsettings. Incontrast,therunningtimesofUCB-GLMandGLM-TSL
+vary depending on the reward functions, which is due to the varying difficulty of solving their
+respectiveoptimizationproblems. Insummary,ourmethodsarenotonlyrobusttounknownreward
+functionsbutalsosubstantiallymoreefficientthanthesestate-of-the-artGLBalgorithms.
+Furthermore, we evaluate the sparse high-dimensional setting (Section 3.4) by setting K = 30,
+d = 60, and sparsity level r = 10, where the indices of non-zero entries are sampled uniformly
+withoutreplacement. Weincludetheclassicsparselinearbanditalgorithm,DRLassoBandit(?),
+forafaircomparison. InthefirstplotofFigure2,weconsiderthelinearcasewithidentityreward
+function;inthesecondplot,weadoptthesamenonlinearsquarefunctionf(x)=sign(x) x2+2x
+·
+usedinourmainexperiments. SinceLinUCB,LinTS,andDRLassoBanditareonlydesignedfor
+linearsettingsandfacesignificantcomputationalchallengesundernonlinearrewards,westillfitthem
+withalinearrewardmodeltoassesstheirrobustnessundermodelmisspecification.
+Allthehyperparameterconfigurationsarethesameastheformersimulationsonlow-dimensional
+settings. FortheregularizerparameterλinEqn.(1),weleverageitsexacttheoreticalvaluededuced
+from Theorem 3.7. We showcase the average cumulative regret over 20 repetitions in Figure 2.
+Comparedtothelow-dimensionalresultsinFigure1(1),ourmethodsESTORandSTORoutperform
+LinUCBandLinTS,andESTORinparticularperformsbetterthanDRLassoBandit. Underthe
+nonlinearsquarereward,allthreebaselinessufferfrommisspecificationandexhibitlinearregret
+growth,whileourmethodsretainasublinearregretcurvewithstrongerperformance. Theseresults
+demonstratethatouralgorithmsarenotonlyagnostictotherewardfunctionandhighlyefficient,
+butalsoextendeffectivelytothesparsehigh-dimensionalregime,maintainingrobustandaccurate
+performance.
+L.2 ADDITIONALDETAILSOFREAL-WORLDEXPERIMENT
+Forourreal-worldexperiment,weusetheForestCoverTypedataset(?) fromtheUCIrepositoryand
+thebenchmarkYahooTodayModuledatasetonnewsarticlerecommendation(?). Weapproximate
+the arm feature vector distribution by fitting a normal distribution using the estimated mean and
+covariance matrix from a small subset of the data, since our proposed methods further rely on
+thedistributionofthefeaturevector. Wewillshowthatthisapproximationworkseffectively, as
+ourmethods demonstratesuperiorand consistentperformance, highlightingtheirrobustnessand
+35
+PublishedasaconferencepaperatICLR2026
+Table3: ResultsontheForestCoverTypeandtheYahoonewsrecommendationdataset.
+Dataset Metric ESTOR STOR GSTOR UCB-GLM GLM-TSL LinUCB LinTS
+Forest Regret 844.78 1101.28 1278.91 1497.39 2330.80 5506.45 4081.33
+Yahoo Reward 349.8 302.7 344.6 255.6 248.1 221.0 219.3
+efficiencyinreal-worldapplications. However,wedonotprovidetheoreticalguaranteesunderthis
+approximationforreal-worldapplications,astheresultingerrorwouldintroduceadditionaltermsin
+thefinalregretbound. Allthealgorithmicsettingsandhyperparameterconfigurationsareidenticalto
+thesimulationspresentedabove. TheForestCoverTypedatasetconsistsof581,012sampleswith
+55features. Thelabelofeachinstancedenotesaspecifictypeofforestcover. Followingthesetup
+in ?, we assign a binary reward to each data point: a reward of 1 if the point belongs to the first
+class(Spruce/Firspecies),and0otherwise. Weextractfeaturevectorsfromthedatasetandpartition
+thedataintoK = 32clusters,eachrepresentinganarm. Therewardofaclusterisdefinedasthe
+proportionofdatapointswithintheclusterthathavearewardof1. Ateveryround,wesamplea
+featurevectorrandomlyfromeachclustertorepresentitsobservation. Table3reportstheaverage
+cumulativeregretatthefinaltimestepT =10,000,averagedover10independentruns. ForGLB
+algorithmsUCB-GLMandGLM-TSL,weadoptthelogisticbanditsettingforboth,asthisisthe
+defaultandmostcommonmodelingassumptioninbinaryrewardscenarios. Wereporttheaverage
+cumulativeregretsofeachmethodoverrepetitionsinTable3.
+TheYahoonewsrecommendationdatasetcomprisesover40millionuservisitstotheYahooToday
+ModulebetweenMay1andMay10,2009. Ineachvisit,theuserispresentedwithanewsarticle
+andchoosestoclick(reward1)ornotclick(reward0). Bothusersandarticlesarerepresentedby
+featurevectorsofdimension5withanadditionalconstantfeature,constructedviaconjointanalysis
+withabilinearmodel(???). Forourexperiment,wediscardarticlefeaturesandusedatafromMay1
+andMay2,2009. Duetotheheavyclickresponseimbalance,wesubsamplethedatabyremoving
+aportionofthenon-click(reward0)events. WesetthetimehorizontoT = 5,000, andateach
+round,randomlyselectK =10armswithoutreplacement. Foreachmethod,wecomputethetotal
+rewardasthenumberofclicksaccumulatedoverthetimehorizonT (highervaluesindicatebetter
+performance). Resultsareaveragedover10independentrunsandreportedinTable3. Theaverage
+runningtimeofeachalgorithmonthesetworealdatasetsisalsodisplayedinTable1.
+It is evident that all our proposed algorithms consistently outperform the other methods on both
+datasets. Thisstrongperformancestemsfromthefactthat,inreal-worldsettings,thetrueunderlying
+linkfunctionisunknownandpotentiallycomplex. Unlikeothermethods,ourmethodsdonotrelyon
+theexplicitknowledgeofthelinkfunction,againhighlightingtheadvantageofadoptingagnostic
+approachesinpractice. Incontrast,GLBmethodsrequiretherewardfunctiontobespecifiedapriori.
+Whilethelogisticmodeliscommonlyusedunderthebinaryrewardcase,thischoiceisinappropriate
+in many real-world applications, making such methods susceptible to model misspecification. It
+is also worth noting that GSTOR demonstrates strong performance on both real-world datasets,
+particularlyontheYahooNewsdataset. Thissuggeststhattheunderlyingrewardfunctioninthe
+Yahoosettingmaynotexhibitamonotonicstructure,makingGSTOR’sflexibilityadvantageous. In
+contrast,ontheForestCoverTypedataset,ESTORandSTORoutperformGSTOR,indicatingthat
+therewardfunctioninthisenvironmentislikelymonotonic. Nonetheless,allthreeproposedmethods
+consistentlyoutperformtheGLBbaselinesacrossbothdatasets.
+Moreover, although our methods assume knowledge of the covariate distribution for theoretical
+analysis,weapproximateitusinganormaldistributionfittedfromasmallsubsetofthedatainour
+realdataexperiments. Thestrongresultsobtainedunderthisapproximationfurtherdemonstratethe
+robustnessandfeasibilityofourmethodsinreal-worldapplications.
+36

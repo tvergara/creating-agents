@@ -1,0 +1,1348 @@
+5202
+nuJ
+2
+]LC.sc[
+1v23710.6052:viXra
+Common Corpus: The Largest Collection of
+Ethical Data for LLM Pre-Training
+Pierre-Carl Langlais Carlos Rosas Hinostroza Mattia Nee
+Catherine Arnett Pavel Chizhov Eliot Krzystof Jones Irène Girard
+David Mach Anastasia Stasenko Ivan P. Yamshchikov
+PleIAs, Paris, France https://pleias.fr/
+Abstract
+Large Language Models (LLMs) are pre-trained on large amounts of data
+from different sources and domains. These data most often contain trillions
+of tokens with large portions of copyrighted or proprietary content, which
+hinders the usage of such models under AI legislation. This raises the need
+for truly open pre-training data that is compliant with the data security
+regulations. In this paper, we introduce Common Corpus1, the largest open
+dataset for language model pre-training. The data assembled in Common
+Corpusareeitheruncopyrightedorunderpermissiblelicensesandamountto
+about two trillion tokens. The dataset contains a wide variety of languages,
+ranging from the main European languages to low-resource ones rarely
+present in pre-training datasets; in addition, it includes a large portion
+of code data. The diversity of data sources in terms of covered domains
+and time periods opens up the paths for both research and entrepreneurial
+needs in diverse areas of knowledge. In this technical report, we present the
+detailed provenance of data assembling and the details of dataset filtering
+and curation. Being already used by such industry leaders as Anthropic
+and multiple LLM training projects, we believe that Common Corpus will
+become a critical infrastructure for open science research in LLMs.
+1 Introduction
+Large Language Models have been defined by large training data. While there are several
+candidates for the first modern language model based on transformer architecture, including
+GPT-1 (Radford et al.), ULMFIT (Howard and Ruder, 2018), or Sentence Neuron (Radford
+et al., 2017), it is commonly acknowledged that “large” models start with GPT-3 (Brown
+et al., 2020). Requiring a corpus of 300 billion tokens, GPT-3 introduced a standard training
+data pipeline shared by nearly all language models to date: large-scale processing of web
+datasets (45 TB of compressed source data from Common Crawl) and additional digitized
+sources (e.g. Books3). Until 2025, LLM training data has grown on a logarithmic curve. The
+latest generation of publicly documented language models including DeepSeek v3 (DeepSeek-
+AI, 2025), Gemma 3 (Google, 2025), Llama 4 (Meta AI, 2025) or Qwen 3 (Qwen, 2025) have
+been trained on 14-36 trillion tokens. Even the gaining popularity sub-category of small
+1https://huggingface.co/datasets/PleIAs/common_corpus
+Preprint.
+language models (Wang et al., 2025) relies on large amounts of training data to fit scaling
+laws: Qwen 3 0.6B was trained on 36 trillion tokens, about 3,000 times more data than
+recommended by the original Chinchilla laws (Hoffmann et al., 2022).
+Asdatacurationalsobecameaprimaryconcern,thecollection,maintenance,processing,and
+filtering of data became one of the primary cost of standard language model training. This
+does not factor in even larger hidden costs: the negative externalities affecting competing
+markets, the digital commons, and society at large.
+While data scraped from the web is publicly available, it is not always in the public domain.
+Most web data do not have sufficient metadata to determine whether it is permissively
+licensed. NLP practitioners have relied on the protection of fair use, claiming that the
+transformative nature of the use of the data allows them to use this data to train language
+models. There are increasingly more legal challenges to the use of this data. The New York
+Times sued Open AI for copyright infringement, alleging that Open AI trained their models
+on their articles (Roth, 2023; Pope, 2024). Due to concerns about indirect commercial
+exploitation, many rightholders have implemented either hard technical measures or legal
+provisions against model training. In 2024, it was estimated that for Terms of Service
+crawling restrictions, a full 45% of C4 is now restricted (Longpre et al., 2024b) and 5% is
+fullyblockedforscrapingwithadisproportionateimpactoverqualitysources(Longpreetal.,
+2024b). Restrictions not only affect language model pre-training but also the quality of
+search engine indexation and a variety of research projects analyzing and collecting content
+at scale. Even projects dedicated to knowledge access have faced significant pressure from
+AI crawlers and implemented protections that negatively impact access and user experience.
+Theselegaluncertaintieshavesignificantlyimpededthedevelopmentofopenscienceresearch
+on LLMs. Previously reproducible research artifacts have been removed or taken down,
+impactingpre-trainingdata,continuouspre-trainedmodels,andevaluationdatasets. Books3,
+which has been used in datasets like the Pile (Gao et al., 2020) and by multiple AI labs,
+includingMetaandMicrosoft,facedlegalchallenges(Brittain,2023),andtheoriginaldataset
+was ultimately removed (Van der Sar, 2023). The LAION dataset was demonstrated to
+contain CSAM (Birhane et al., 2021; Thiel, 2023), and then was taken down (LAION,
+2023). Later, it was re-released once suspected CSAM was removed (LAION, 2024). The
+Dutch-focused model GEITje was taken down (Rijgersberg, 2025) due to complaints about
+it having been trained on the Dutch Gigacorpus, in order to avoid legal disputes. Finally,
+the widely used benchmark, the Mathematics Aptitude Test of Heuristics (MATH) dataset
+(Hendrycks et al., 2021), was removed from Hugging Face via a DMCA takedown. All of
+these artifacts, which were released to further open development and evaluation of language
+models, were removed suddenly, making previous work unreplicable. These takedowns and
+legal challenges also represent a sizeable loss of investment for developers, who are often
+independent or small research organizations.
+In part, as a reaction to the use of publicly available but not permissively licensed data, web
+text is becoming increasingly more difficult to acquire and use. In an analysis of popular
+datasets such as C4 (Raffel et al., 2020), RefinedWeb (Penedo et al., 2023), and Dolma
+(Soldainietal.,2024), Longpreetal.(2024c)foundthatjustinthelastyear, 5%ofalltokens
+in C4 now have restricted use, with a disproportionate number of those tokens coming from
+the best-maintained, most critical sources. This is largely due to changes in content owners’
+and hosts’ preferences, which are changing to no longer allow scraping, especially for the
+purposes of training AI models.
+Since 2024, several initiatives have emerged to collect open data with clear licensing and
+in the English language. This includes: C4C, Open License Corpus, a 228 billion token
+corpus from a mix of public domain texts and open source code under free licenses not
+requiring attribution (Min et al., 2024), KL3M, a 1.2 trillion tokens corpus of administrative
+texts and structured data mostly from the US federal public domain (Bommarito et al.,
+2025), Common Pile, an ongoing data collection of 1 trillion tokens from a variety of recent
+sources, including a filtered version of Common Crawl data (Creative Commons Common
+Crawl) (Kandpal and Raffel, 2025). These projects are all monolingual, restricting in effect
+the reach of open-data language models to the English-speaking audience. In contrast,
+the most ambitious multilingual collection of permissive content pre-dates Large Language
+2
+4 5 6 7 8
+Total number of documents (log-scale, 10^N)
+Figure 1: A schematic world map of languages in Common Corpus with a log-scaled
+distribution of document counts. For each language, we chose a city that is located in the
+region where this language is most specific to. To avoid outliers, we show only languages
+with 1000+ documents.
+Models: C4C (2016), containing 12 million web pages in more than 50 languages filtered by
+Creative Commons Licenses (Habernal et al., 2016).
+Inthispaper,wepresentCommonCorpus,whichhasbeenanongoingeffortsince2024(see
+Appendix A for the development history). It has grown to become the largest open dataset
+for pre-training Large Language Models at about 2 trillion tokens and the only one in its
+sizerangeavailableinmultiplelanguages. Thus,CommonCorpusisasignificantcontribution
+to the AI Commons. Through the release of this dataset, we show that open LLM research
+and development is possible while meeting legal and regulatory requirements—even in the
+EU, where AI regulations are currently the strictest. Here, we detail the composition of
+Common Corpus (Section 3), as well as the data provenance, license verification, and further
+processing (Section 4). Next, we describe the early impact of Common Corpus on the AI
+community (Section 5) and highlight the limitations of the work that has been done at the
+time of publication. Despite its size, Common Corpus is still far from covering the entire
+range of available resources for pre-training commons: we attribute this discrepancy to an
+open data paradox as major sources of open content are paradoxically little visible online
+and even more so in the leading sources currently used for pre-training. By describing the
+uniquechallengescomingwiththeaggregationoflargeopensource, weaimtoinspirefurther
+responsible data collection initiatives.
+2 About Common Corpus
+WhentalkingaboutCommonCorpusdata,weusetheword“open”inthestrongestpossible
+sense. Not only is the data available, but we also provide essential details about the data
+provenance, data processing, and important information about the contents of each dataset.
+FollowingtheOpenSourceInitiative’sdefinitionofopen-sourceAI,ourdataisopeninterms
+of openness of use, meaning that use is permitted for “any purpose and without having to
+ask for permission” (Open Source Initiative, 2024). To achieve this, models must be trained
+on datasets that are free from copyright or other relevant legal limitations. This is currently
+a limitation of existing open datasets for training LLMs.
+Common Corpus, therefore, provides valuable training tokens that will not be subject to
+the same restrictions. Additionally, the data in Common Corpus are different from other
+3
+107
+106
+105
+104
+103
+102
+101
+100
+1500 1600 1700 1800 1900 2000
+Year
+tnuoC
+tnemucoD
+60
+Open Culture
+Open Science
+40
+Open Government
+Open Source
+Open Web 20
+0
+20
+40
+60
+60 40 20 0 20 40 60
+t-SNE Component 1
+(a) A timeline of the main collections with their
+numbers of documents in the Common Corpus.
+2 tnenopmoC
+ENS-t
+Open Culture
+Open Government
+Open Science
+Open Source
+Open Web
+Open Semantic
+(b) A two-component t-SNE visualization of a
+subset of the Common Corpus.
+Figure 2: Temporal and semantic overview of the Common Corpus collections.
+Dataset Documents Words Tokens
+Open Government 74,727,536 257,233,670,261 406,581,454,455
+Open Culture 93,156,602 549,608,763,966 885,982,490,090
+Open Science 19,220,942 147,305,783,453 281,193,563,789
+Open Code 202,765,051 77,669,169,092 283,227,402,898
+Open Web 96,165,348 33,208,509,065 73,217,485,489
+Open Semantic 30,072,707 23,284,201,782 67,958,671,827
+Other 925,462 328,160,421 486,099,734
+Total 517,033,648 1,088,638,258,040 1,998,647,168,282
+Table 1: Dataset composition of Common Corpus. For each collection, we report the total
+number of documents, words (whitespace-separated), and tokens.
+corpora, primarily composed of web text. Common Corpus contains multilingual data in a
+variety of high- and low-resource languages (see Figure 1 for language distribution), covering
+diverse genres, time periods, and domains (in Section 3, we detail each part of the dataset).
+Therefore, Common Corpus contributes to data diversity in the open pre-training data
+ecosystem. This is important for developing powerful and generalizable model performance.
+Common Corpus can be used on its own or in conjunction with existing open datasets,
+according to one’s needs and the desired use case of a language model.
+Common Corpus was developed with consideration for ongoing conversations about best
+practices for open-source LLM development (The AI Alliance, 2024; Longpre et al., 2024a;
+Duprieu and Berkouk, 2024; Baack et al., 2025). As PleIAs was one of the contributors at
+the Dataset Convening, we highlight our adherence to the best practices that were suggested
+by Baack et al. (2025):
+• Provide useful documentation. We provide information about dataset prove-
+nance and processing (Sections 3 and 4) and share key statistics to help potential
+users understand the applications of the dataset. This is crucial, as dataset doc-
+umentation improves reproducibility, helps prevent misuse, and aids downstream
+users to best utilize the dataset (Longpre et al., 2024a).
+• Follow and record preference signals. In the metadata, we include the source
+URL and license information for the vast majority of the corpus.
+• Increase diversity and involve local communities to identify relevant data
+sources. This dataset includes data from a variety of languages, coming from
+high-quality sources, and the multilingual part was never machine-translated.
+4
+• Share advancements to foster reciprocity and give back. In addition to
+the dataset, we release many of the tools we developed in order to create the final
+dataset (Section 4).
+• Do not use openly licensed data without regard for its quality or fitness
+for purpose. In particular, for the dataset in the public domain, we engage in
+extensive OCR correction and toxicity filtering in order to bring datasets up to
+standard (Section 4).
+• Do not capture highly sensitive data. We remove personally identifiable
+information from our datasets (Section 4.4).
+Common Corpus aims to support the pre-training of fully open and auditable LLMs by
+making it legal to release the source even without the provision of fair use. It has been
+used to create a wider range of language model artifacts, including multimodal datasets,
+classifiers, synthetic datasets, and benchmarks. Beyond the main dataset, Common Corpus
+works as an open science infrastructure dedicated to the entire lifecycle of language models.
+As defined by UNESCO, it is a shared research infrastructure that is needed to support open
+science and serve the needs of different communities (Unesco, 2021). We argue this is the
+first point in time where there has been sufficient knowledge and infrastructure to collect
+and clean a dataset on this scale, which meets the legal and ethical criteria we have outlined.
+2.1 Composition
+Common Corpus is available on HuggingFace as an aggregation of 10,000 parquet files and
+is composed of six collections: Open Government, Open Culture, Open Science, Open Web,
+Open Code, and Open Semantic. In total, the number of tokens in Common Corpus is
+1,998,647,168,282. The token counts2 in each collection are listed in Table 1. We visualize
+the timeline of the collected documents and embeddings of a subsample in Figure 2. Each
+collection is composed of multiple datasets, for which we provide details about provenance
+and other key information in the corresponding subsections. Each data object contains a
+license, language(s), a collection/domain of specialization, and other metadata, allowing one
+to filter out a desired subset.
+Language Tokens License type Tokens
+English 968,757,721,747 Public Domain 1,138,508,375,958
+French 275,358,437,630 CC-By 287,749,264,457
+German 112,127,458,251 MIT 142,694,227,607
+Spanish 46,514,142,421 CC-By-SA 74,768,060,836
+Latin 36,031,591,540 Apache-2.0 68,750,977,037
+Italian 24,681,637,575 BSD-3-Clause 18,483,944,333
+Polish 12,146,688,669 Open license 10,432,513,767
+Greek 11,376,498,056 BSD-2-Clause 5,497,145,480
+Portuguese 10,262,747,943 CC-BY-4.0 2,110,966,243
+Russian 9,439,453,633 CC0-1.0 1,877,206,195
+Table 2: Token counts for the ten most rep- Table 3: Token counts for the ten most com-
+resented languages in Common Corpus. mon licenses in Common Corpus.
+The majority of the data in Common Corpus is in the public domain (see Table 3). The
+license for each document is provided in the metadata, so the dataset can be easily filtered
+by license as needed for a particular use case.
+Common Corpus is multilingual (see Figure 1 and Table 2 for language coverage). Unlike
+many pretraining mixes, which are coposed mostly of English and code data, our dataset has
+strong representation for several languages, with the top nine languages constitute at least
+2WereporttokencountsintermsofthePleiasbasetokenizerhttps://huggingface.co/PleIAs/
+Pleias-350m-Preview trained on a subsample of Common Corpus.
+5
+10B tokens each3. While we highlighted some of the issues faced in making open datasets
+above, all of these issues are exacerbated for languages other than English. Even in relatively
+high-resource languages like French, these problems are compounded by the fact that there
+is much less data available, and most tools generalize poorly to languages other than English.
+Additionally, Kreutzer et al. (2022) showed that many multilingual datasets contain a lot of
+low-quality or entirely unusable data. Many of the datasets they analyzed contained less
+than 50% of usable text, with 15 sources containing no usable data at all.
+3 Provenance
+In this section, we present the details about collections that comprise the Common Corpus,
+accompanied by the detailed information about the data sources, token count breakdowns,
+and the main included languages in Appendix B.
+3.1 Open Government
+Open Government is a set of financial, legal, and administrative data in the public domain.
+In total, the dataset contains more than 406B tokens and comprises two main datasets:
+Finance Commons and Legal Commons. See Appendix B.1 for detailed data composition.
+Finance Commons. This is the largest collection of financial documents in the public
+domain,comprisingmorethan14billionwords(morethan23billiontokens). Thedocuments
+come from a wide time range, from the mid-20th century all the way to 2024. Like many
+of our other datasets, Finance Commons is also multilingual. Most of the documents are
+in English, French, and German, but there are also texts in languages such as Romanian,
+Bulgarian, and Latvian. Additionally, this is a multimodal dataset. It includes more than
+1.36 million original PDF documents from AMF and the WTO. The documents constitute a
+wide coverage of in-house layouts and formats produced by industrial and economic sectors.
+This makes this dataset ideal for developing the next generation of open-data multimodal
+models. One application for this dataset is to develop vision-language models (VLMs)
+for advanced document segmentation and processing. These documents also contain vast
+amountsofstructureddata,whichisalsoapromisingareaofresearchthatFinanceCommons
+can help drive forward.
+Legal Commons. This is a collection of legal and administrative datasets. The datasets
+come mostly from the EU and the US and cover a wide range of languages. These datasets
+are useful for developing language models with legal knowledge, as well as models that are
+ideal for document processing in official administrative applications.
+3.2 Open Culture
+OpenCultureisanaggregationofvastculturalheritagedatasetscontainingbothmonographs
+andperiodicalsforover13languages: French, English, German, Spanish, Portuguese, Italian,
+Dutch, Luxembourgish, Danish, Swedish, Serbian, Czech, and Greek. There are also small
+portions of data in a wide variety of other languages, including Arabic, Bengali, Latin,
+Persian, Russian, Sanskrit, and Urdu.
+A large part of Open Culture is compiled from Collections As Data (CAD) — large dumps
+of texts, datasets, PDFs, and even raw XML output (METS/ALTO). CAD initiatives,
+thus, considerably simplify dataset aggregation and are a major contribution to the digital
+commons ecosystem. All other parts of Open Culture have been collected on a resource-by-
+resource basis using APIs and other standard retrieval methods whenever available. The
+largest extractions of this kind include Internet Archive (about 2 million monographs in
+multiplelanguages)andDelpher(50,000Dutchmonographsandperiodicalsfilteredtomatch
+the Dutch copyright law for public domain). We managed to compile a large multilingual
+collection despite such challenges, as poor OCR quality, which we partly solved through the
+developmentofOCRcorrectiontools(seeSection4),textsegmentationissues,andsometimes
+3Language distribution was computed using the fastText language identification model.
+6
+irrecoverable deterioration of the original support. For the detailed dataset composition,
+refer to Appendix B.2.
+All Open Culture documents are in the public domain, which means their copyright has
+expired after a given term and there are no limitations on their reuse. For certain content, or
+incaseswherewecouldnotrelyontheguaranteeofestablishedculturalheritageinstitutions,
+we implemented our own internal rights verification process. This process follows specific
+criteria, including author life and data object creation time, and takes into account that we
+only collected cultural heritage content from institutions based in the US or the EU (see the
+complete criteria list in Appendix C).
+Open Culture data is also rich from a cultural and stylistic standpoint and can be used
+to train multilingual language models with more diverse and creative writing styles. As
+LLMs are trained on extremely large corpora to maximize next-word prediction accuracy,
+LLM-generatedtextcanoftenlackinpersonalityandbeboringorgeneric(JonesandBergen,
+2024). This feature of language models stands in contrast with one of their most common
+uses. In an analysis of WildChat (Zhao et al., 2024), a dataset of 1 million user interactions
+withChatGPT,Longpreetal.(2024c)foundthatover30%ofuserrequestsinvolvedcreative
+compositions such as fictional stories, role-play, or poetry generation. At the same time,
+creative writing is poorly represented among datasets used to train LLMs, which mainly
+comprise web text (Longpre et al., 2024c). Therefore, Open Culture contributes data that
+can be used to train models for creative writing without violating copyright law. In addition,
+as many of the Open Culture datasets are historical (coming from the 18th-19th centuries,
+or even earlier; see Figure 2a), this collection also enables the development of historical
+language models. The metadata includes document creation year, which enables researchers
+to develop language models with a cutoff of the training data creation date.
+3.3 Open Science
+The Open Science collection includes scientific papers and other documents (theses, book
+reviews, clinical trials, etc). Following on the development of a global open access movement,
+these documents have been made increasingly available in open archives (preprints) or
+directly through open science publishers and infrastructure. Scientific content has become a
+primary focus for training data curation, due to its impact on performance on reasoning and
+advanced world knowledge tasks. Yet, the lack of licensing information has until now partly
+hindered reuse. The Semantic Scholar Open Research Corpus from Allen AI includes 81.1
+million articles in English under an Open Data Commons Attribution License, allowing for
+the free reuse of the aggregated metadata while still acknowledging the remaining copyright
+of individual authors (Lo et al., 2020). The Pile incorporated dumps made available by
+arXiv and PubMed Central, also exclusively in English (Biderman et al., 2022). Finally, the
+BigScience project assembled several curated multilingual scientific datasets like the French
+HAL as part of the training data for BLOOM (Workshop et al., 2023).
+The Open Science collection was made possible largely due to the recent development of
+OpenAlex4, the largest open catalogue of scientific documents. OpenAlex maintains an
+expansive API search engine tracking detailed metadata for each indexed item, including
+the licensing, as well as a link to the original resource, which is generally in PDF format.
+We filtered OpenAlex on the three following licenses: CC-By, Public Domain/CC0, and
+CC-By-SA. The largest share of resources is available under CC-By, which is currently the
+recommended license by the Open Access definition. Open Science also includes smaller
+subsets, such as a direct extraction of arXiv articles available in CC-By and some European-
+specific resources not currently well indexed on OpenAlex (the exact distribution of token
+counts can be found in Appendix B.3).
+Due to the specificity of open scientific publishing, the Open Science collection has less
+linguistic diversity, with nearly 85% of documents currently available in English.
+4https://openalex.org/
+7
+3.4 Open Code
+The Open Code collection comprises code data under a vast variety of free licenses, which
+allowsNLPpractitionerstotrainmodelsonpublicdomaincodeforeithercodingapplications
+or in order to improve certain model performance on natural language reasoning, world
+knowledge tasks, mathematics, and structured output tasks (Aryabumi et al., 2024; Petty
+et al., 2024; MA et al., 2024). The code data we use comes from the Stack v1 and v2
+(Kocetkovetal.,2023;Lozhkovetal.,2024). TheStackv1contains6.4TBofdataandcovers
+30 programming languages, while the Stack v2 is approximately ten times bigger at 67.5TB
+and covers over 600 programming languages. All the code data is made available with a
+direct link to the original resource on GitHub. In total, Open Code contains 283,227,402,898
+tokens (see most common languages in Appendix B.4).
+To prepare the collection, we ran a pipeline of varied filters. We first removed files that
+were not in our desired set of languages and formats according to their file extensions,
+including SVG files containing mostly encoded shapes, data storage formats: csv, json,
+json5,jsonld,andotherfiletypeswithnon-informativecontent,typicallyinsmallamounts:
+python-traceback, unity3d-asset, numpy, and http. We then filtered out the licenses to
+keep only permissible ones. To discard the low-quality data, we ran a series of manual filters
+described by Lozhkov et al. (2024). In addition to those, we removed files consisting of 75%
+or more of digits, which are mostly files containing raw numeric data. Before the filters,
+we also replaced sequences of [\r]+\n with \n and recalculated line lengths to avoid false
+positives by maximum line length.
+3.5 Open Web
+In accordance with the general focus of Common Corpus on curated content, the Open Web
+collection currently includes four major web sources:
+Wikipedia and Wikisource. Wikimedia projects have always been major sources for
+language model training due to their reliability, extensive coverage, and textbook-like style.
+Despite this centrality, there is still a range of unresolved challenges with the most common
+versions available for training. The raw source of Wikimedia projects is made available in a
+specific mediawiki syntax, including a lot of project-specific models, tags, and conventions.
+The parsing of models is especially not straightforward, as they can either format existing
+text or remove or include external content (transclusion). As part of Wikimedia Enterprise,
+the Wikimedia Foundation created entirely new dumps from the rendered HTML sources,
+which in effect ensure that they include all the text made available to readers.
+Youtube Commons. YouTubeCommonsisourcollectionofaudiotranscriptsof2,063,066
+videos uploaded on YouTube under a standardized CC-By license5.
+StackExchange. This is a collection of user-generated forums and Q&A made available
+under the CC-By-SA license. We reused the version from The Pile (Biderman et al., 2022).
+A major objective will be the integration of web archives filtered by permissive license. Since
+2016, several projects have attempted to reidentify Creative Commons licenses from web
+archives at scale including C4C (multilingual) (Habernal et al., 2016) and more recently
+CCCC (from Allen AI - in English) and most recently Common Crawl Creative Commons
+Corpus (C5; the first multilingual C4 derivative)6 All theses projects struggled with license
+identification. While license mentions are frequently normalized with a direct link or logo to
+Creative Commons, there is no guarantee they really concern the entire content: “a blog
+page contains many photos and each photo is licensed under different CC-license type or a
+blog home page with many articles and each article is licensed under different CC-license
+type.”(Habernal et al., 2016). We hope this limitation could be overcome by a combination
+of web domain curation and fine-grained curation and annotation by a language model.
+5https://huggingface.co/datasets/PleIAs/YouTube-Commons
+6https://huggingface.co/datasets/BramVanroy/CommonCrawl-CreativeCommons
+8
+3.6 Open Semantic
+Semantic data is the latest set added to Common Corpus and currently includes only one
+collection: Wikidata. Firstcreatedin2011,Wikidatahosts100milliondocumenteditemsand
+several billion factual statements encoded as RDF triples. It has grown to become a critical
+web infrastructure, used by Google for search disambiguation and currently embodying Tim
+Berners-Lee’s ambitious vision for “a web of data”. Despite the rising interest in mixed
+LLM/knowledge graph methods, Wikidata has hardly been used in language models. The
+largest initiative to date is Kelm, a collection of 15 million synthetic sentences generated
+by Google from English-speaking statements (Agarwal et al., 2021). A persistent challenge
+has been the exclusive availability of Wikidata dumps under formats optimized for data
+exchange rather than language model training.
+Thanks to a collaboration with Wikimedia Deutschland, the entire set of Wikidata has been
+adaptedinnaturallanguageandaddedtoCommonCorpus. Thisistodatetheonlyavailable
+textual collection of Wikidata covering the entire range of 300 languages. Data processing
+involved the translation of items and properties into formal language sequences as simple
+natural language sequences, without textual synthesis: “Q41309 | P:27 | Q171150” becoming
+“Franz Liszt country of citizenship Kingdom of Hungary”. Within each entry, we provide all
+the available translations as consecutive blocks separated by a newline, anticipating that
+this may contribute to language alignment.
+4 Cleaning and Curation
+4.1 Text Segmentation
+For text segmentation, we developed Segmentext7 (see example in Appendix D.1). It
+was trained to be resilient to broken and unstructured texts with digitization artifacts and
+ill-recognized layout formats. Given the diversity of the training data, Segmentext should
+work correctly on diverse document formats in the main European languages.
+4.2 OCR Error Detection
+We developed two pipelines to determine the digitization quality of different datasets in
+order to determine the appropriate treatment before datasets can be used for pre-training:
+OCRoscope8. This is a tool based on the language identification tool cld29. As cld2
+cannotattributenon-recognizedstringstoanylanguage,OCRoscopeworksbymeasuringthe
+number of non-recognized 7-grams. OCRoscope provides a standardized rate of OCR quality
+and rate of non-character content for at least 80 languages. An example of OCPoscope work
+is presented in Appendix D.2. Complete processing by OCRoscope yielded a rate of 41%
+non-recognized 7-grams, which results in an OCR quality rate of 59%. In comparison, the
+self-estimated rate of OCR valid words by the French National Library is significantly higher
+(85%) for the whole document.
+OCRerrcr10. This is a DeBERTa-v2-style language model with 400M parameters.
+OCRerrcr achieves higher accuracy than OCRoscope, but is more computationally intensive.
+4.3 OCR Correction
+We developed OCRonos11 model based on Llama 3 8B (Grattafiori et al., 2024). OCRonos
+is versatile and supports the correction of OCR errors, wrong word cuts or merges, and
+overall broken text structures. The training data includes a highly diverse set of OCR-ed
+texts in multiple languages, mostly coming from uncorrected versions of Open Culture
+7https://huggingface.co/PleIAs/Segmentext
+8https://github.com/Pleias/OCRoscope
+9https://pypi.org/project/pycld2/
+10https://huggingface.co/PleIAs/OCRerrcr
+11https://huggingface.co/PleIAs/OCRonos
+9
+and Open Government. On highly deteriorated content, OCRonos can act as a synthetic
+rewritingtoolratherthanastrictcorrectiontool. AnexampleofOCRonosworkispresented
+in Appendix D.3. OCRonos contributes to making challenging resources usable for LLM
+applications and, more broadly, search retrieval. It is especially fitting in situations where
+the original PDF sources are too damaged for correct OCR or are not possible to retrieve.
+OCRonos is generally faithful to the original material, provides sensible restitution of
+deterioratedtext,andwillrarelyrewritecorrectwords. AcommonissuewithOCRcorrection
+has been language switching: due to the inherent noise in the input text, an LLM will
+transcribe in a different language or script. The issue has been especially observed in smaller
+generalist models like GPT-3.5 or Claude-Haiku. OCRonos largely mitigates this issue.
+4.4 PII Removal
+Personally Identifiable Information (PII), which is any information that can be used to
+distinguish or trace an individual’s identity, is protected under legislation such as GDPR.
+Consequently, the new reguations put restrictions on LLM training data. In an analysis of
+large open datasets, there is a staggering amount of personal data in widely used datasets,
+e.g., large quantities of phone numbers in RedPajama, email addresses in S2ORC and peS2o,
+and IP addresses in the Stack (Elazar et al., 2024).
+To identify and replace PII, we use Microsoft’s Presidio12, an open-source state-of-the-art
+tool. With the base settings, Presidio identified on average 55-60% of texts that included
+phone numbers due to different possible number formats. By applying custom regular
+expression patterns that include most phone numbers, we increased this accuracy to 85%.
+Typical methods of handling PII include removing it, replacing it with tags, and partial
+anonymization. These transformations substantially alter the format of PII, which could
+undermine the model’s understanding of the text or interfere with its ability to process text
+with real PII. Instead, we replace PII with fictuous but realistic values.
+4.5 Toxicity Detection
+In addition to posing legal and regulatory issues, web data is a major source of harmful
+and biased content (Common Crawl was shown to contain sexual content, hate speech, and
+racialandgenderbiases(LuccioniandViviano,2021))andoftensuffersfromlow-qualityand
+machine-generated text (Dodge et al., 2021). Public Domain data, e.g., in Open Culture, do
+not pose the same legal challenges but introduce new ones. Many texts there are historical
+periodicals and monographs from at least 80 years ago. Cultural norms surrounding the
+discussion of certain ethnic groups, women, and themes such as violence have changed
+dramatically. Manyofthesetexts,therefore,donotmeetmodernethicalstandards. Training
+models on these texts would lead to the reproduction and circulation of harmful language.
+Toaddressthis,wedevelopedapipelinetofilterthepublicdomaintrainingdata. Weidentify
+documents containing harmful language and either remove it or synthetically rewrite the
+document without the harmful language. With this approach, we aim to mitigate some of
+the potential biases and harms in the dataset, while still leveraging the high-quality and
+stylistically diverse data for high model performance. We created a multilingual toxicity
+classifier, Celadon13, a DeBERTa-v3-small model (∼140M parameters), which we trained
+from scratch on 2M annotated samples. Celadon identifies toxic and harmful content along
+five dimensions: race and origin-based bias, gender and sexuality-based bias, religious bias,
+ability bias, and violence and abuse. Celadon and the training dataset14 were released as
+parts of a separate work (Arnett et al., 2024).
+12https://microsoft.github.io/presidio/
+13https://huggingface.co/PleIAs/celadon
+14https://huggingface.co/datasets/PleIAs/ToxicCommons
+10
+5 Impact
+As early as August 2024, the first version of Common Corpus was highlighted as a “massive”
+part of pre-training data commons in European languages, especially contributing to making
+Frenchahigh-resourcelanguage(AliandPyysalo,2024). InFebruary2025,CommonCorpus
+was acknowledged as one of the main deliverables of the Paris AI Summit, as the “largest
+open database to train Large Language Models”15.
+Common Corpus has already been incorporated in a wide range of LLM projects. As of
+May 2025, seven European SLMs and LLMs have been trained on at least some part of
+Common Corpus, and more will come throughout the year 2025. Among these are the
+models in the Pleias 1.0 family, including three SLMs (350 million, 1.2 billion, and 3 billion
+parameters), which were exclusively trained on Common Corpus. As such, they are fully
+reproducible in Europe. They were trained on the Jean Zay supercomputer in France (using
+H100 GPUs, under a Grand Challenge compute grant), and, specifically for the 1.2B model
+on the TractoAI’s cloud platform16. They come with a new tokenizer with 65,536 unique
+tokens, also trained on a representative sample of the Common Corpus for increased training
+efficiency and better multilingual support. During training, we experimented with different
+data mixtures of Common Corpus and derived a “refined” version for late training of about
+1 trillion tokens, with more intensive, curation-based filtering. Two models derived from
+Pleias 1.0, Pleias-RAG-350M and Pleias-RAG-1B, are currently leading evaluations in their
+size range for retrieval augmented evaluation. Part of the performance can be attributed
+to the solid coverage of the main European language in Common Corpus, as well as a very
+extensive proportion of PDF-extracted sources that are very close to content commonly
+processed in the RAG production setting.
+InJanuary2025,BarcelonaSupercomputingCenterreleasedtheSalamandraseriesofmodels
+under three different sizes: 2, 7, and 40 billion parameters (Gonzalez-Agirre et al., 2025). A
+major objective was enhanced support for a wide range of European languages, including
+lower-resource languages. The French part of Open Culture, French-PD, was incorporated
+into the overall data mixture. It was the main French dataset and the second-largest curated
+source. A French 7 billion parameters SLM, Lucie, incorporated a wider range of French
+sources from Common Corpus, not only the cultural heritage part but also some of the
+administrative sources (Gouvert et al., 2025). In addition, NeKo, a generalist language
+correction model trained by Nvidia, used the OCR-corrected part of Common Corpus both
+for training and evaluation (Lin et al., 2024). Anthropic also used Common Corpus in their
+experiments for feature visualization (Ameisen et al., 2025).
+Common Corpus is also being used to create new datasets. For instance, YouTube Commons
+was used to create two major multimodal datasets: FineVideo (43000 YouTube videos)17
+and Mosel (1 million audio hours, half from YouTube Commons) (Gaido et al., 2024), which
+was used to train the FAMA series of speech foundational models (Papi et al., 2025).
+6 Conclusion
+Common Corpus is a significant contribution to the open LLM research community. Since
+the release of the first version, the data from Common Corpus has been used in numerous
+LLM projects by several European labs and industry leaders like Anthropic. Through the
+release of Common Corpus and this paper with thorough documentation of data collection
+and curation, we show that LLM development is possible while strictly adhering to the
+regulatory norms. We hope that Common Corpus will grow as a critical infrastructure for
+open science LLM research and development and inspire future initiatives in the open.
+15https://www.elysee.fr/admin/upload/default/0001/17/373d6bcd8ea7f84a701c050bb9cab
+ccf3ed95c2b.pdf
+16https://tracto.ai/
+17https://huggingface.co/datasets/HuggingFaceFV/finevideo
+11
+Limitations
+Common Corpus is far from collecting the whole range of available open data, which we
+call the open data paradox. Continuing the work, we are currently collecting more data in
+European languages as part of the LLMs4EU project18. In addition to this, even though the
+language diversity of the data is large, the coverage for low-resource languages is still shallow.
+We are developing in this direction, planning for enlargement of the corpora in African
+languages (e.g., Swahili, Wolof, Bambara). Furthermore, the amount of collected data (2
+trillion tokens) is suitable for pre-training of models of limited size, as in the Pleias model
+family (see Section 5). Larger models, however will require significantly larger amounts of
+data. Therefore, future collection of permissible data is highly encouraged by this work.
+In addition, Common Corpus naturally does not contain data for instruction-tuning and any
+forms of specialized tasks. Therefore, it is not directly suitable for task-specific fine-tuning.
+However, due to the multilingual, temporal, and semantic diversity of data, Common Corpus
+opens the opportunities for the creation of ethical fine-tuning datasets, as we did for the
+RAG models (see Section 5).
+InSection4,wedescribedthetoolsweusedforthedatacuration,filtering,andediting. Even
+though we used these methods responsibly and mitigated many issues overlooked by the
+counterparts (e.g., with toxicity detection and PII removal), none of the curation methods
+couldnaturally facilitatea hundred-percentaccuracy. However, some issues, like OCRerrors,
+present considerable challenges to the models and might even account for better handling of
+typos in the future. We would also like to mention that each data object is accompanied by
+sufficient metadata, and, if desired, LLM practitioners are free to filter out collections that
+might contain potential issues (as described in Section 4).
+Acknowledgments and Disclosure of Funding
+Common Corpus is part of the Current AI initiative to accelerate the development of the
+buildingblocksofopenAI—notablydata—thatservesandisshapedbythepublicinterest.
+It was built up with the support and concerted efforts of AI Alliance, the state start-up
+LANGU:IA (start-up d’Etat), supported by the French Ministry of Culture and DINUM, as
+part of the prefiguration of the service offering of the Alliance for Language technologies
+EDIC (ALT-EDIC). The creation of the OpenCulture datasets was made possible by the
+support of LANGU:IA. The Wikidata and Wikipedia datasets were made in partnership
+with Wikimedia Enterprise and Wikidata/Wikimedia Germany. The corpus was stored and
+processedwiththegeneroussupportofGenci(Jean-Zay,Idris,Eviden),Scaleway,andTracto
+AI. The collection of the corpus has been largely facilitated thanks to major organizations
+committed to an open science approach for AI, namely AI Alliance, Mozilla, HuggingFace,
+Occiglot, and Eleuther AI.
+References
+Oshin Agarwal, Heming Ge, Siamak Shakeri, and Rami Al-Rfou. Knowledge Graph Based
+Synthetic Corpus Generation for Knowledge-Enhanced Language Model Pre-training. In
+Kristina Toutanova, Anna Rumshisky, Luke Zettlemoyer, Dilek Hakkani-Tur, Iz Beltagy,
+Steven Bethard, Ryan Cotterell, Tanmoy Chakraborty, and Yichao Zhou, editors, Pro-
+ceedings of the 2021 Conference of the North American Chapter of the Association for
+Computational Linguistics: Human Language Technologies, pages 3554–3565, Online, June
+2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.naacl-main.278.
+URL https://aclanthology.org/2021.naacl-main.278/.
+WazirAliandSampoPyysalo. ASurveyofLargeLanguageModelsforEuropeanLanguages,
+August 2024. URL http://arxiv.org/abs/2408.15040. arXiv:2408.15040 [cs].
+Emmanuel Ameisen, Jack Lindsey, Adam Pearce, Wes Gurnee, Nicholas L. Turner, Brian
+Chen, Craig Citro, David Abrahams, Shan Carter, Basil Hosmer, Jonathan Marcus,
+18https://www.openaire.eu/llms4eu
+12
+Michael Sklar, Adly Templeton, Trenton Bricken, Callum McDougall, Hoagy Cunningham,
+Thomas Henighan, Adam Jermyn, Andy Jones, Andrew Persic, Zhenyi Qi, T. Ben Thomp-
+son, Sam Zimmerman, Kelley Rivoire, Thomas Conerly, Chris Olah, and Joshua Batson.
+Circuit tracing: Revealing computational graphs in language models. Transformer Cir-
+cuits Thread, 2025. https://transformer-circuits.pub/2025/attribution-graphs/
+methods.html.
+Catherine Arnett, Eliot Jones, Ivan P Yamshchikov, and Pierre-Carl Langlais. Toxicity of
+the commons: Curating open-source pre-training data. arXiv preprint arXiv:2410.22587,
+2024.
+Viraat Aryabumi, Yixuan Su, Raymond Ma, Adrien Morisot, Ivan Zhang, Acyr Locatelli,
+Marzieh Fadaee, Ahmet Üstün, and Sara Hooker. To code, or not to code? exploring
+impact of code in pre-training. CoRR, abs/2408.10914, 2024. URL https://doi.org/10.
+48550/arXiv.2408.10914.
+Stefan Baack, Stella Biderman, Kasia Odrozek, Aviya Skowron, Ayah Bdeir, Jillian Bommar-
+ito, Jennifer Ding, Maximilian Gahntz, Paul Keller, Pierre-Carl Langlais, et al. Towards
+best practices for open datasets for llm training. arXiv preprint arXiv:2501.08365, 2025.
+Stella Biderman, Kieran Bicheno, and Leo Gao. Datasheet for the Pile, January 2022. URL
+http://arxiv.org/abs/2201.07311. arXiv:2201.07311 [cs].
+StellaBiderman,HaileySchoelkopf,QuentinGregoryAnthony,HerbieBradley,KyleO’Brien,
+Eric Hallahan, Mohammad Aflah Khan, Shivanshu Purohit, Usvsn Sai Prashanth, Edward
+Raff, Aviya Skowron, Lintang Sutawika, and Oskar Van Der Wal. Pythia: A suite for
+analyzing large language models across training and scaling. In Andreas Krause, Emma
+Brunskill, Kyunghyun Cho, Barbara Engelhardt, Sivan Sabato, and Jonathan Scarlett,
+editors, Proceedings of the 40th International Conference on Machine Learning, volume
+202 of Proceedings of Machine Learning Research, pages 2397–2430. PMLR, 23–29 Jul
+2023. URL https://proceedings.mlr.press/v202/biderman23a.html.
+Abeba Birhane, Vinay Uday Prabhu, and Emmanuel Kahembwe. Multimodal datasets:
+misogyny, pornography, and malignant stereotypes. arXiv preprint arXiv:2110.01963,
+2021.
+Michael J. Bommarito, Jillian Bommarito, and Daniel Martin Katz. The KL3M Data
+Project: Copyright-Clean Training Resources for Large Language Models, April 2025.
+URL http://arxiv.org/abs/2504.07854. arXiv:2504.07854 [cs].
+Blake Brittain. Authors sue meta, microsoft, bloomberg in latest ai copyright clash.
+Reuters, October 18 2023. URL https://www.reuters.com/legal/litigation/
+authors-sue-meta-microsoft-bloomberg-latest-ai-copyright-clash-2023-10-18/.
+TomB.Brown,BenjaminMann,NickRyder,MelanieSubbiah,JaredKaplan,PrafullaDhari-
+wal,ArvindNeelakantan,PranavShyam,GirishSastry,AmandaAskell,SandhiniAgarwal,
+Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh,
+Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric
+Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam
+McCandlish, Alec Radford, Ilya Sutskever, and Dario Amodei. Language Models are Few-
+Shot Learners, July 2020. URL http://arxiv.org/abs/2005.14165. arXiv:2005.14165
+[cs].
+Ilias Chalkidis, Emmanouil Fergadiotis, Prodromos Malakasiotis, and Ion Androutsopou-
+los. Large-scale multi-label text classification on EU legislation. In Anna Korhonen,
+David Traum, and Lluís Màrquez, editors, Proceedings of the 57th Annual Meeting of
+the Association for Computational Linguistics, pages 6314–6322, Florence, Italy, July
+2019. Association for Computational Linguistics. doi: 10.18653/v1/P19-1636. URL
+https://aclanthology.org/P19-1636.
+Team DeepSeek-AI. DeepSeek-V3 Technical Report, February 2025. URL http://arxiv.
+org/abs/2412.19437. arXiv:2412.19437 [cs].
+13
+JesseDodge,MaartenSap,AnaMarasović,WilliamAgnew,GabrielIlharco,DirkGroeneveld,
+Margaret Mitchell, and Matt Gardner. Documenting large webtext corpora: A case study
+on the colossal clean crawled corpus. In Marie-Francine Moens, Xuanjing Huang, Lucia
+Specia, and Scott Wen-tau Yih, editors, Proceedings of the 2021 Conference on Empirical
+Methods in Natural Language Processing, pages 1286–1305, Online and Punta Cana,
+Dominican Republic, November 2021. Association for Computational Linguistics. doi:
+10.18653/v1/2021.emnlp-main.98. URL https://aclanthology.org/2021.emnlp-main.
+98.
+Henri Duprieu and Nicolas Berkouk. Techniques d’audit des grands modèles de langage.
+Technical report, Commission Nationale Informatique et Libertés (CNIL), November 2024.
+URL https://hal.science/hal-04782667.
+YanaiElazar,AkshitaBhagia,IanHelgiMagnusson,AbhilashaRavichander,DustinSchwenk,
+Alane Suhr, Evan Pete Walsh, Dirk Groeneveld, Luca Soldaini, Sameer Singh, Hannaneh
+Hajishirzi, Noah A. Smith, and Jesse Dodge. What’s in my big data? In The Twelfth
+International Conference on Learning Representations, 2024. URL https://openreview.
+net/forum?id=RvfPnOkPV4.
+Marco Gaido, Sara Papi, Luisa Bentivogli, Alessio Brutti, Mauro Cettolo, Roberto Gretter,
+Marco Matassoni, Mohamed Nabih, and Matteo Negri. MOSEL: 950,000 Hours of Speech
+Data for Open-Source Speech Foundation Model Training on EU Languages, October
+2024. URL http://arxiv.org/abs/2410.01036. arXiv:2410.01036 [cs].
+LeoGao,StellaBiderman,SidBlack,LaurenceGolding,TravisHoppe,CharlesFoster,Jason
+Phang, Horace He, Anish Thite, Noa Nabeshima, et al. The pile: An 800gb dataset of
+diverse text for language modeling. arXiv preprint arXiv:2101.00027, 2020.
+Aitor Gonzalez-Agirre, Marc Pàmies, Joan Llop, Irene Baucells, Severino Da Dalt, Daniel
+Tamayo, José Javier Saiz, Ferran Espuña, Jaume Prats, Javier Aula-Blasco, Mario Mina,
+IñigoPikabea,AdriánRubio,AlexanderShvets,AnnaSallés,IñakiLacunza,JorgePalomar,
+Júlia Falcão, Lucía Tormo, Luis Vasquez-Reina, Montserrat Marimon, Oriol Pareras, Valle
+Ruiz-Fernández, and Marta Villegas. Salamandra Technical Report, February 2025. URL
+http://arxiv.org/abs/2502.08489. arXiv:2502.08489 [cs].
+Gemma Team Google. Gemma 3 Technical Report, March 2025. URL http://arxiv.org/
+abs/2503.19786. arXiv:2503.19786 [cs].
+OlivierGouvert,JulieHunter,JérômeLouradour,ChristopheCerisara,EvanDufraisse,Yaya
+Sy, Laura Rivière, Jean-Pierre Lorré, and OpenLLM-France community. The Lucie-7B
+LLMandtheLucieTrainingDataset: Openresourcesformultilinguallanguagegeneration,
+March 2025. URL http://arxiv.org/abs/2503.12294. arXiv:2503.12294 [cs].
+Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian,
+AhmadAl-Dahle,AieshaLetman,AkhilMathur,AlanSchelten,AlexVaughan,AmyYang,
+Angela Fan, Anirudh Goyal, Anthony Hartshorn, Aobo Yang, Archi Mitra, Archie Sra-
+vankumar,ArtemKorenev,ArthurHinsvark,ArunRao,AstonZhang,AurelienRodriguez,
+Austen Gregerson, Ava Spataru, Baptiste Roziere, Bethany Biron, Binh Tang, Bobbie
+Chern, Charlotte Caucheteux, Chaya Nayak, Chloe Bi, Chris Marra, Chris McConnell,
+Christian Keller, Christophe Touret, Chunyang Wu, Corinne Wong, Cristian Canton
+Ferrer, Cyrus Nikolaidis, Damien Allonsius, Daniel Song, Danielle Pintz, Danny Livshits,
+Danny Wyatt, David Esiobu, Dhruv Choudhary, Dhruv Mahajan, Diego Garcia-Olano,
+Diego Perino, Dieuwke Hupkes, Egor Lakomkin, Ehab AlBadawy, Elina Lobanova, Emily
+Dinan, Eric Michael Smith, Filip Radenovic, Francisco Guzmán, Frank Zhang, Gabriel
+Synnaeve, Gabrielle Lee, Georgia Lewis Anderson, Govind Thattai, Graeme Nail, Gregoire
+Mialon, Guan Pang, Guillem Cucurell, et al. The llama 3 herd of models, 2024. URL
+https://arxiv.org/abs/2407.21783.
+Ivan Habernal, Omnia Zayed, and Iryna Gurevych. C4Corpus: Multilingual Web-size
+Corpus with Free License. In Nicoletta Calzolari, Khalid Choukri, Thierry Declerck,
+Sara Goggi, Marko Grobelnik, Bente Maegaard, Joseph Mariani, Helene Mazo, Asuncion
+Moreno, Jan Odijk, and Stelios Piperidis, editors, Proceedings of the Tenth International
+14
+Conference on Language Resources and Evaluation (LREC‘16), pages 914–922, Portorož,
+Slovenia, May 2016. European Language Resources Association (ELRA). URL https:
+//aclanthology.org/L16-1146/.
+Peter Henderson, Mark S. Krass, Lucia Zheng, Neel Guha, Christopher D. Manning, Dan
+Jurafsky, and Daniel E. Ho. Pile of law: Learning responsible data filtering from the law
+and a 256gb open-source legal dataset, 2022. URL https://arxiv.org/abs/2207.00220.
+Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang,
+Dawn Song, and Jacob Steinhardt. Measuring mathematical problem solving with the
+math dataset. arXiv preprint arXiv:2103.03874, 2021.
+Jordan Hoffmann, Sebastian Borgeaud, Arthur Mensch, Elena Buchatskaya, Trevor Cai,
+Eliza Rutherford, Diego de Las Casas, Lisa Anne Hendricks, Johannes Welbl, Aidan Clark,
+Tom Hennigan, Eric Noland, Katie Millican, George van den Driessche, Bogdan Damoc,
+Aurelia Guy, Simon Osindero, Karen Simonyan, Erich Elsen, Jack W. Rae, Oriol Vinyals,
+and Laurent Sifre. Training Compute-Optimal Large Language Models, March 2022. URL
+http://arxiv.org/abs/2203.15556. arXiv:2203.15556 [cs].
+Jeremy Howard and Sebastian Ruder. Universal Language Model Fine-tuning for Text
+Classification, May 2018. URL http://arxiv.org/abs/1801.06146. arXiv:1801.06146
+[cs].
+Cameron Jones and Ben Bergen. Does GPT-4 pass the Turing test? In Kevin Duh, Helena
+Gomez, and Steven Bethard, editors, Proceedings of the 2024 Conference of the North
+American Chapter of the Association for Computational Linguistics: Human Language
+Technologies (Volume 1: Long Papers), pages 5183–5210, Mexico City, Mexico, June 2024.
+Association for Computational Linguistics. doi: 10.18653/v1/2024.naacl-long.290. URL
+https://aclanthology.org/2024.naacl-long.290.
+NikhilKandpalandColinRaffel. Position: TheMostExpensivePartofanLLMshouldbeits
+Training Data, April 2025. URL http://arxiv.org/abs/2504.12427. arXiv:2504.12427
+[cs].
+Denis Kocetkov, Raymond Li, Loubna Ben allal, Jia LI, Chenghao Mou, Yacine Jernite,
+Margaret Mitchell, Carlos Muñoz Ferrandis, Sean Hughes, Thomas Wolf, Dzmitry Bah-
+danau, Leandro Von Werra, and Harm de Vries. The stack: 3 TB of permissively licensed
+source code. Transactions on Machine Learning Research, 2023. ISSN 2835-8856. URL
+https://openreview.net/forum?id=pxpbTdUEpD.
+PhilippKoehn. Europarl: Aparallelcorpusforstatisticalmachinetranslation. InProceedings
+of Machine Translation Summit X: Papers, pages 79–86, Phuket, Thailand, September
+13-15 2005. URL https://aclanthology.org/2005.mtsummit-papers.11.
+Julia Kreutzer, Isaac Caswell, Lisa Wang, Ahsan Wahab, Daan van Esch, Nasanbayar
+Ulzii-Orshikh, Allahsera Tapo, Nishant Subramani, Artem Sokolov, Claytone Sikasote,
+Monang Setyawan, Supheakmungkol Sarin, Sokhar Samb, Benoît Sagot, Clara Rivera,
+AnnetteRios,IsabelPapadimitriou,SalomeyOsei,PedroOrtizSuarez,IroroOrife,Kelechi
+Ogueji, Andre Niyongabo Rubungo, Toan Q. Nguyen, Mathias Müller, André Müller,
+Shamsuddeen Hassan Muhammad, Nanda Muhammad, Ayanda Mnyakeni, Jamshidbek
+Mirzakhalov, Tapiwanashe Matangira, Colin Leong, Nze Lawson, Sneha Kudugunta,
+Yacine Jernite, Mathias Jenny, Orhan Firat, Bonaventure F. P. Dossou, Sakhile Dlamini,
+Nisansa de Silva, Sakine Çabuk Ballı, Stella Biderman, Alessia Battisti, Ahmed Baruwa,
+Ankur Bapna, Pallavi Baljekar, Israel Abebe Azime, Ayodele Awokoya, Duygu Ataman,
+Orevaoghene Ahia, Oghenefego Ahia, Sweta Agrawal, and Mofetoluwa Adeyemi. Quality
+ataglance: Anauditofweb-crawledmultilingualdatasets. Transactions of the Association
+for Computational Linguistics, 10:50–72, 2022. doi: 10.1162/tacl_a_00447. URL https:
+//aclanthology.org/2022.tacl-1.4.
+LAION. Safety review for laion 5b, December 19 2023. URL https://laion.ai/notes/
+laion-maintenance/.
+15
+LAION. Releasing re-laion 5b: Transparent iteration on laion-5b with additional safety fixes,
+August 30 2024. URL https://laion.ai/blog/relaion-5b/.
+Yen-TingLin,Chao-HanHuckYang,ZhehuaiChen,PiotrZelasko,XuesongYang,Zih-Ching
+Chen, Krishna C. Puvvada, Szu-Wei Fu, Ke Hu, Jun Wei Chiu, Jagadeesh Balam, Boris
+Ginsburg, and Yu-Chiang Frank Wang. NeKo: Toward Post Recognition Generative
+Correction Large Language Models with Task-Oriented Experts, November 2024. URL
+http://arxiv.org/abs/2411.05945. arXiv:2411.05945 [cs].
+Kyle Lo, Lucy Lu Wang, Mark Neumann, Rodney Kinney, and Daniel Weld. S2ORC:
+The Semantic Scholar Open Research Corpus. In Dan Jurafsky, Joyce Chai, Natalie
+Schluter, and Joel Tetreault, editors, Proceedings of the 58th Annual Meeting of the
+AssociationforComputationalLinguistics,pages4969–4983,Online,July2020.Association
+for Computational Linguistics. doi: 10.18653/v1/2020.acl-main.447. URL https://
+aclanthology.org/2020.acl-main.447/.
+Shayne Longpre, Stella Biderman, Alon Albalak, Hailey Schoelkopf, Daniel McDuff, Sayash
+Kapoor,KevinKlyman,KyleLo,GabrielIlharco,NaySan,MaribethRauh,AviyaSkowron,
+Bertie Vidgen, Laura Weidinger, Arvind Narayanan, Victor Sanh, David Ifeoluwa Adelani,
+Percy Liang, Rishi Bommasani, Peter Henderson, Sasha Luccioni, Yacine Jernite, and
+Luca Soldaini. The responsible foundation model development cheatsheet: A review of
+tools & resources. Transactions on Machine Learning Research, 2024a. ISSN 2835-8856.
+URL https://openreview.net/forum?id=tH1dQH20eZ. Survey Certification.
+Shayne Longpre, Robert Mahari, Ariel Lee, Campbell Lund, Hamidah Oderinwale, William
+Brannon, Nayan Saxena, Naana Obeng-Marnu, Tobin South, Cole Hunter, Kevin Klyman,
+Christopher Klamm, Hailey Schoelkopf, Nikhil Singh, Manuel Cherep, Ahmad Anis,
+An Dinh, Caroline Chitongo, Da Yin, Damien Sileo, Deividas Mataciunas, Diganta
+Misra, Emad Alghamdi, Enrico Shippole, Jianguo Zhang, Joanna Materzynska, Kun
+Qian, Kush Tiwary, Lester Miranda, Manan Dey, Minnie Liang, Mohammed Hamdy,
+Niklas Muennighoff, Seonghyeon Ye, Seungone Kim, Shrestha Mohanty, Vipul Gupta,
+Vivek Sharma, Vu Minh Chien, Xuhui Zhou, Yizhi Li, Caiming Xiong, Luis Villa, Stella
+Biderman, Hanlin Li, Daphne Ippolito, Sara Hooker, Jad Kabbara, and Sandy Pentland.
+Consent in Crisis: The Rapid Decline of the AI Data Commons, July 2024b. URL
+http://arxiv.org/abs/2407.14933. arXiv:2407.14933 [cs].
+Shayne Longpre, Robert Mahari, Ariel Lee, Campbell Lund, Hamidah Oderinwale, William
+Brannon, Nayan Saxena, Naana Obeng-Marnu, Tobin South, Cole Hunter, Kevin Klyman,
+Christopher Klamm, Hailey Schoelkopf, Nikhil Singh, Manuel Cherep, Ahmad Anis,
+An Dinh, Caroline Chitongo, Da Yin, Damien Sileo, Deividas Mataciunas, Diganta Misra,
+Emad A. Alghamdi, Enrico Shippole, Jianguo Zhang, Joanna Materzynska, Kun Qian,
+Kush Tiwary, Lester James V. Miranda, Manan Dey, Minnie Liang, Mohammed Hamdy,
+Niklas Muennighoff, Seonghyeon Ye, Seungone Kim, Shrestha Mohanty, Vipul Gupta,
+Vivek Sharma, Vu Minh Chien, Xuhui Zhou, Yizhi Li, Caiming Xiong, Luis Villa, Stella
+Biderman, Hanlin Li, Daphne Ippolito, Sara Hooker, Jad Kabbara, and Sandy Pentland.
+Consent in Crisis: The Rapid Decline of the AI Data Commons. CoRR, abs/2407.14933,
+2024c. URL https://doi.org/10.48550/arXiv.2407.14933.
+Lefteris Loukas, Manos Fergadiotis, Ion Androutsopoulos, and Prodromos Malakasiotis.
+EDGAR-CORPUS: Billions of tokens make the world go round. In Udo Hahn, Veronique
+Hoste, and Amanda Stent, editors, Proceedings of the Third Workshop on Economics and
+Natural Language Processing, pages 13–18, Punta Cana, Dominican Republic, November
+2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.econlp-1.2. URL
+https://aclanthology.org/2021.econlp-1.2.
+Eneldo Loza Mencía and Johannes Fürnkranz. Efficient Multilabel Classification Algorithms
+for Large-Scale Problems in the Legal Domain. In Semantic Processing of Legal Texts.
+Springer, 2010.
+Anton Lozhkov, Raymond Li, Loubna Ben Allal, Federico Cassano, Joel Lamy-Poirier,
+Nouamane Tazi, Ao Tang, Dmytro Pykhtar, Jiawei Liu, Yuxiang Wei, Tianyang Liu, Max
+Tian, Denis Kocetkov, Arthur Zucker, Younes Belkada, Zijian Wang, Qian Liu, Dmitry
+16
+Abulkhanov, Indraneil Paul, Zhuang Li, Wen-Ding Li, Megan Risdal, Jia Li, Jian Zhu,
+Terry Yue Zhuo, Evgenii Zheltonozhskii, Nii Osae Osae Dade, Wenhao Yu, Lucas Krauß,
+Naman Jain, Yixuan Su, Xuanli He, Manan Dey, Edoardo Abati, Yekun Chai, Niklas
+Muennighoff, Xiangru Tang, Muhtasham Oblokulov, Christopher Akiki, Marc Marone,
+Chenghao Mou, Mayank Mishra, Alex Gu, Binyuan Hui, Tri Dao, Armel Zebaze, Olivier
+Dehaene, Nicolas Patry, Canwen Xu, Julian McAuley, Han Hu, Torsten Scholak, Sebastien
+Paquet, Jennifer Robinson, Carolyn Jane Anderson, Nicolas Chapados, Mostofa Patwary,
+Nima Tajbakhsh, Yacine Jernite, Carlos Muñoz Ferrandis, Lingming Zhang, Sean Hughes,
+Thomas Wolf, Arjun Guha, Leandro von Werra, and Harm de Vries. Starcoder 2 and the
+stack v2: The next generation, 2024. URL https://arxiv.org/abs/2402.19173.
+Alexandra Luccioni and Joseph Viviano. What’s in the box? an analysis of undesirable
+content in the Common Crawl corpus. In Chengqing Zong, Fei Xia, Wenjie Li, and
+Roberto Navigli, editors, Proceedings of the 59th Annual Meeting of the Association
+for Computational Linguistics and the 11th International Joint Conference on Natural
+Language Processing (Volume 2: Short Papers), pages 182–189, Online, August 2021.
+Association for Computational Linguistics. doi: 10.18653/v1/2021.acl-short.24. URL
+https://aclanthology.org/2021.acl-short.24.
+YINGWEI MA, Yue Liu, Yue Yu, Yuanliang Zhang, Yu Jiang, Changjian Wang, and
+Shanshan Li. At which training stage does code data help LLMs reasoning? In The
+Twelfth International Conference on Learning Representations, 2024. URL https://
+openreview.net/forum?id=KIPJKST4gw.
+TeamMetaAI. TheLlama4herd: ThebeginningofaneweraofnativelymultimodalAIinno-
+vation, 2025. URL https://ai.meta.com/blog/llama-4-multimodal-intelligence/.
+Sewon Min, Suchin Gururangan, Eric Wallace, Weijia Shi, Hannaneh Hajishirzi, Noah A.
+Smith, and Luke Zettlemoyer. SILO Language Models: Isolating Legal Risk In a Nonpara-
+metricDatastore,July2024.URLhttp://arxiv.org/abs/2308.04430.arXiv:2308.04430
+[cs].
+Clemens Neudecker. An open corpus for named entity recognition in historic newspapers.
+In Nicoletta Calzolari, Khalid Choukri, Thierry Declerck, Sara Goggi, Marko Grobelnik,
+Bente Maegaard, Joseph Mariani, Helene Mazo, Asuncion Moreno, Jan Odijk, and Stelios
+Piperidis,editors,ProceedingsoftheTenthInternationalConferenceonLanguageResources
+and Evaluation (LREC’16), pages 4348–4352, Portorož, Slovenia, May 2016. European
+Language Resources Association (ELRA). URL https://aclanthology.org/L16-1689.
+OpenSourceInitiative. Theopensourceaidefinition–1.0,2024. URLhttps://opensource.
+org/ai/open-source-ai-definition. Accessed: 2024-11-20.
+Sara Papi, Marco Gaido, Luisa Bentivogli, Alessio Brutti, Mauro Cettolo, Roberto Gretter,
+Marco Matassoni, Mohamed Nabih, and Matteo Negri. Fama: The first large-scale open-
+science speech foundation model for english and italian, 2025. URL https://arxiv.org/
+abs/2505.22759.
+Guilherme Penedo, Quentin Malartic, Daniel Hesslow, Ruxandra Cojocaru, Hamza Alobeidli,
+Alessandro Cappelli, Baptiste Pannier, Ebtesam Almazrouei, and Julien Launay. The
+RefinedWeb dataset for Falcon LLM: Outperforming curated corpora with web data only.
+Advances in Neural Information Processing Systems, 36:79155–79172, 2023.
+Jackson Petty, Sjoerd van Steenkiste, and Tal Linzen. How does code pretraining affect
+language model task performance? In The 7th BlackboxNLP Workshop, 2024. URL
+https://openreview.net/forum?id=2sghJ1yYOr.
+Audrey Pope. NYT v. OpenAI: The Times’s About-Face. Harvard Law Re-
+view Blog, April 2024. URL https://harvardlawreview.org/blog/2024/04/
+nyt-v-openai-the-timess-about-face/.
+Team Qwen. Qwen3: Think Deeper, Act Faster, April 2025. URL https://qwenlm.github.
+io/blog/qwen3/. Section: blog.
+17
+Alec Radford, Karthik Narasimhan, Tim Salimans, and Ilya Sutskever. Improving Language
+Understanding by Generative Pre-Training.
+AlecRadford,RafalJozefowicz,andIlyaSutskever.LearningtoGenerateReviewsandDiscov-
+eringSentiment,April2017. URLhttp://arxiv.org/abs/1704.01444. arXiv:1704.01444
+[cs].
+ColinRaffel, NoamShazeer, AdamRoberts, KatherineLee, SharanNarang, MichaelMatena,
+Yanqi Zhou, Wei Li, and Peter J Liu. Exploring the Limits of Transfer Learning with a
+Unified Text-to-Text Transformer . Journal of Machine Learning Research, 21(140):1–67,
+2020.
+Edwin Rijgersberg. The end of geitje. GoingDutch.ai, 2025. URL https://goingdutch.ai/
+en/posts/geitje-takedown/. Accessed: 2025-02-20.
+Emma Roth. New York Times sues OpenAI and Microsoft over copyright infringement.
+The Verge, December 2023. URL https://www.theverge.com/2023/12/27/24016212/
+new-york-times-openai-microsoft-lawsuit-copyright-infringement.
+Luca Soldaini, Rodney Kinney, Akshita Bhagia, Dustin Schwenk, David Atkinson, Russell
+Authur, Ben Bogin, Khyathi Chandu, Jennifer Dumas, Yanai Elazar, et al. Dolma: an
+Open Corpus of Three Trillion Tokens for Language Model Pretraining Research. arXiv
+preprint arXiv:2402.00159, 2024. URL https://arxiv.org/pdf/2402.00159.
+TheAIAlliance. Datasetspecification, 2024. URLhttps://the-ai-alliance.github.io/
+open-trusted-data-initiative/dataset-requirements/. Accessed: 2025-02-20.
+David Thiel. Identifying and eliminating csam in generative ml training data and models.
+Technical report, Stanford Digital Repository, December 20 2023. URL https://purl.
+stanford.edu/kh752sm9123.
+Unesco. Recommendation on Open Science, 2021. URL https://www.unesco.org/en/
+legal-affairs/recommendation-open-science.
+Ernesto Van der Sar. Anti-piracy group takes prominent ai training dataset
+“books3” offline. TorrentFreak, August 16 2023. URL https://torrentfreak.com/
+anti-piracy-group-takes-prominent-ai-training-dataset-books3-offline-230816/.
+Chengyu Wang, Taolin Zhang, Richang Hong, and Jun Huang. A Short Survey on Small
+Reasoning Models: Training, Inference, Applications and Research Directions, April 2025.
+URL https://arxiv.org/abs/2504.09100v1.
+BigScience Workshop, :, Teven Le Scao, Angela Fan, Christopher Akiki, Ellie Pavlick,
+Suzana Ilić, Daniel Hesslow, Roman Castagné, Alexandra Sasha Luccioni, François Yvon,
+Matthias Gallé, Jonathan Tow, Alexander M. Rush, Stella Biderman, Albert Webson,
+Pawan Sasanka Ammanamanchi, Thomas Wang, Benoît Sagot, Niklas Muennighoff, Al-
+bert Villanova del Moral, Olatunji Ruwase, Rachel Bawden, Stas Bekman, Angelina
+McMillan-Major, Iz Beltagy, Huu Nguyen, Lucile Saulnier, Samson Tan, Pedro Ortiz
+Suarez, Victor Sanh, Hugo Laurençon, Yacine Jernite, Julien Launay, Margaret Mitchell,
+Colin Raffel, Aaron Gokaslan, Adi Simhi, Aitor Soroa, Alham Fikri Aji, Amit Alfassy,
+Anna Rogers, Ariel Kreisberg Nitzav, Canwen Xu, Chenghao Mou, Chris Emezue, Christo-
+pher Klamm, Colin Leong, Daniel van Strien, David Ifeoluwa Adelani, Dragomir Radev,
+EduardoGonzálezPonferrada,EfratLevkovizh,EthanKim,EyalBarNatan,FrancescoDe
+Toni, Gérard Dupont, Germán Kruszewski, Giada Pistilli, Hady Elsahar, Hamza Benyam-
+ina, Hieu Tran, Ian Yu, Idris Abdulmumin, Isaac Johnson, Itziar Gonzalez-Dios, Javier
+de la Rosa, Jenny Chim, Jesse Dodge, Jian Zhu, Jonathan Chang, Jörg Frohberg, Joseph
+Tobing, Joydeep Bhattacharjee, et al. Bloom: A 176b-parameter open-access multilingual
+language model, 2023. URL https://arxiv.org/abs/2211.05100.
+Wenting Zhao, Xiang Ren, Jack Hessel, Claire Cardie, Yejin Choi, and Yuntian Deng.
+WildChat: 1M ChatGPT Interaction Logs in the Wild. In The Twelfth International
+Conference on Learning Representations, 2024. URL https://openreview.net/forum?
+id=Bl8u7ZRlbM.
+18
+A Development
+Common Corpus was first conceptualized in May 2023 as a French corpus for the French
+public services. The initial aim was to create a dataset of 100-140B tokens and use that
+data to train a reproducible small language model, modeled on the Pythia suite (Biderman
+et al., 2023). The initial nucleus of Common Corpus was French-PD a large collection of
+85B words from monographs and newspapers in the public domain19.
+A collection of various open datasets was first published under the name Common Corpus
+in March 202420. At the time, it was a multilingual expansion of French-PD, retaining the
+initial focus on cultural heritage data but containing now about 500B words in the public
+domain from a variety of open collections in English, German, French, Italian, Spanish and
+other European languages. Throughout 2024, additional official releases gradually expanded
+this initial pretraining commons beyond the public domain, including Youtube Commons (in
+April 2024) and Finance Commons (in July 2024).
+In November 2024, Common Corpus became an unified corpus, through the convergence of
+newly collected datasets by PleIAs and pre-existing ones (especially Wikimedia Projects).
+It contained two trillon tokens with the current division in five collections21. The current
+version of Common Corpus, the one we describe in this paper, was released in February 2025
+for the Paris AI Summit. Common Corpus will remain an evolving resource reflecting the
+need for a continuous open infrastructure rather than a fixed dataset, with HuggingFace
+ensuring a proper archiving of past versions for reproducibility.
+A primary driver of Common Corpus has been what we term the open data paradox:
+most of the content available under free licenses or uncopyrighted is not integrated into the
+existing pretraining datasets. Since GPT-3, the pretraining data infrastructure has been
+extensively reliant on web archiving and the constraints that stem from it. which include
+the lack of available tools for PDF hosting and processing, or for diverse language detection.
+The open data paradox had the effect of making the open pretraining ecosystem viable in
+the first place. In particular, the gradual filtering of web archives according to more and
+more ethical rules leaves only a tiny residual amount under open licenses (less than 2% of
+the original set).
+B Provenance
+B.1 Open Govenment
+In this section, we describe the provenance and present token counts and main languages for
+the two sub-collections of Open Government: Finance Commons and Legal Commons.
+B.1.1 Finance Commons
+The datasets that make up Finance Commons22 are presented in Table 4. Here, we also
+present the provenance details for each of the parts of Finance Commons:
+• Securities and Exchange Commission (SEC). This dataset comprises the SEC
+annual reports (Form 10-K) for the years 1993 to 2024. Entries up to 2020 were
+compiled by Loukas et al. (2021). We added the reports from 2021-2024, which
+come from the EDGAR database23, compiled using the EDGAR-Crawler toolkit24.
+19Released as https://huggingface.co/datasets/PleIAs/French-PD-Books and https://
+huggingface.co/datasets/PleIAs/French-PD-Newspapers.
+20Release blogpost: https://huggingface.co/blog/Pclanglais/common-corpus
+21Release blogpost: https://huggingface.co/blog/Pclanglais/two-trillion-tokens-open
+22https://huggingface.co/collections/PleIAs/finance-commons-66925e1095c7fa6e6828e26c
+23https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data
+24https://github.com/nlpaueb/edgar-crawler
+19
+Dataset Main Languages Documents Tokens
+SEC English 1,085,113 9,653,919,837
+WTO English,Spanish,French,andsmallpar- 772,508 2,835,007,015
+titions of others
+AMF French, English 595,397 9,823,755,281
+TED EU German, French, Polish, Spanish, 137,837 650,396,761
+Tenders Dutch, Czech, Romanian, English,
+Swedish, Italian, Bulgarian, Finnish,
+Latvian, Danish, Lithuanian, Croatian,
+Estonian,Hungarian,Portuguese,Slove-
+nian, Slovak, Greek, Irish
+GATT English, French, Spanish, Catalan, Por- 67,596 224,526,628
+Library tuguese, German
+Table 4: Finance Commons sources distribution with languages.
+• World Trade Organization (WTO). This dataset comprises documents from
+WTO’s official Documents Online platform25. The documents cover the years 1995
+to 2024. Documents are available in three official languages: English, French, and
+Spanish. Some documents are available in other languages, e.g., Chinese, Korean,
+Arabic, German, and Portuguese. Also released separately as WTO-PDF26.
+• French Authority for Financial Market (AMF).Thisisadatasetofdocuments
+from the French Authority for Financial Market, or the Autorité des marchés
+financiers27 (AMF), which is an independent public authority that regulates the
+French market. The documents are primarily in French. Also released separately as
+AMF-PDF28.
+• Tenders Electronic Daily (TED) EU Tenders. This dataset is a collection
+of procurement notices published by the EU. The documents are published in the
+online version of the “Supplement to the Official Journal” of the EU29, dedicated to
+European public procurement. The documents are mostly in German, with French,
+Polish, and Spanish making up relatively large portions of the remaining documents.
+There are also small portions of other languages (see details in Table 4).
+• General Agreement on Tariffs and Trade (GATT) Library. This dataset
+comprises documents from GATT, which was an organization that promoted inter-
+nationalcommerceandthereductionoftradebarriersamongmemberstates. Public
+documents were made available by the General Council of the WTO in 200630. The
+documentsspanfromJanuary1,1946,toSeptember6,1996. Mostofthedocuments
+areinEnglish,buttherearealsodocumentsinFrench,Spanish,andotherlanguages.
+B.1.2 Legal Commons
+Here, we present the provenance details for each of the parts of Legal Commons:
+• Europarl. Thisdatasetisamultilingualparallelcorpus,drawnfromtheproceedings
+of the European Parliament31. It includes texts from 21 EU languages. It was
+originally compiled by Koehn (2005).
+25https://docs.wto.org/dol2fe/Pages/FE_Search/FE_S_S005.aspx
+26https://huggingface.co/datasets/PleIAs/WTO-PDF
+27https://www.amf-france.org/en/news-publications/publications/open-data
+28https://huggingface.co/datasets/PleIAs/AMF-PDF
+29https://ted.europa.eu/en/
+30https://www.wto.org/english/docs_e/gattdocs_e.htm
+31https://www.statmt.org/europarl/
+20
+Dataset Languages Tokens
+Caselaw Access English 13,821,842,995
+Project
+Court Listener English 22,625,121,735
+EUR-lex Bulgarian,Croatian,Czech,Danish,Dutch, 65,044,763,781
+English, Estonian, Finnish, French, Ger-
+man, Greek, Hungarian, Irish, Italian, Lat-
+vian, Lithuanian, Maltese, Polish, Por-
+tuguese, Romanian, Slovak, Slovenian,
+Spanish, Swedish
+Eurovoc English, German, French, Croatian, Italian, 31,648,136,898
+Lithuanian, Portuguese, Finnish, Danish,
+Bulgarian, Dutch, Polish, Greek, Swedish,
+Hungarian, Czech, Spanish, Maltese, Lat-
+vian, Slovak, Slovenian, Romanian, Es-
+tonian, Arabic, Tigrinya, Farsi, Russian,
+Urdu, Serbian, Albanian, Kurdish, Pushto,
+Irish, Norwegian, Icelandic, Dari, Arme-
+nian, Japanese.
+French open data French 24,597,392,089
+USPTO English 200,509,900,178
+UN Digital Li- Arabic, Chinese, English, French, Russian, 1,781,037,875
+brary Spanish
+European Open EU languages 7,098,502,579
+Data
+OECD English, French 584,969,458
+Table 5: Legal Commons sources distribution with languages.
+• Caselaw Access Project. This dataset consists of 6,773,632 legal cases, digitized
+from Harvard Law School Library’s physical collection of American case law32. The
+dataset spans the years 1658 to 2020.
+• CourtListener. This is a dataset33 of opinions, oral arguments, judges, judicial
+financial records, and federal filings put together by the Free Law Project34.
+• EUR-lex. Thisisadatasetof57,000legislativedocumentsfromtheEU35.Itisbased
+on the dataset by Loza Mencía and Fürnkranz (2010) and developed by Chalkidis
+et al. (2019). The documents have also been annotated by the Publications Office of
+EU36 with concepts from EuroVoc37. The dataset covers all 24 EU languages.
+• Eurovoc. Eurovoc is a dataset containing 1,528,402 documents in 39 languages
+with associated EuroVoc labels. The documents come from Cellar38, which is a
+data repository for the Publications Office of the European Union. This dataset was
+originally compiled by Sébastien Campion39.
+• French Open Data. This dataset comes from French administrative bodies’ web-
+sites, for example, the French Directorate of Legal and Administrative Information
+32https://case.law/
+33https://www.courtlistener.com/help/api/bulk-data/
+34https://free.law/contact
+35https://eur-lex.europa.eu/
+36https://publications.europa.eu/en
+37http://eurovoc.europa.eu/
+38https://op.europa.eu/en/web/cellar
+39https://huggingface.co/datasets/EuropeanParliament/Eurovoc
+21
+Corpus Language Domain Tokens
+English PD English Books and Newspapers 174.2B
+US PD Books English Books 82.2B
+French PD Books French Books 24.0B
+French PD Newspapers French Newspapers 110.8B
+French PD Diverse French Books and Newspapers 69.6B
+LoC Books English Books 10.6B
+US PD Newspapers English Newspapers 199.3B
+New Zealand PD News- English, M¯aori Newspapers 12.6B
+papers
+Europeana Newspapers Multilingual Newspapers 21.0B
+German PD Newspapers German Newspapers 18.4B
+German PD German Books 58.0B
+Portuguese PD Portuguese Books and Newspapers 2.6B
+Spanish PD Newspapers Spanish Newspapers 8.0B
+Spanish PD Books Spanish Books 15.4B
+Italian PD Italian Books 18.2B
+Dutch PD Dutch Books and Newspapers 2.7B
+BnL Newspapers German, French, Newspapers 0.3B
+Luxembourgish
+Danish PD Danish Books and Newspapers 0.5B
+Serbian PD Serbian Books and Newspapers 0.3B
+Czech PD Czech Books and Newspapers 0.7B
+Greek PD Greek Books and Newspapers 4.2B
+Multilingual PD Multilingual Books and Newspapers 8.4B
+Polish PD Polish Books and Newspapers 5.9B
+Latin PD Latin Books 27.2B
+Russian PD Russian Books 1.9B
+Arabic PD Arabic Books 0.3B
+Table 6: Subsets of Open Culture with language coverage, domains, and token counts.
+(Direction de l’information légale et administrative40; DILA), which is a French
+public administrative entity that disseminates information about laws and their
+applications to the public.
+• USPTO. This dataset comprises documents from the United States Patent and
+Trademark Office (USPTO), the federal agency that grants patents and registers
+trademarks. This dataset consists of actions from this agency from 2019 to 2022. It
+was originally published as part of the Pile of Law (Henderson et al., 2022)41.
+• UN Digital Library. This dataset comes from the UN Digital Library42.
+• PleIAs European Legal Dataset. We also collect datasets from various EU
+websites, e.g., Archives of the EU Institute43 and the Council of the EU44.
+• OECD. These data come from the Organisation for Economic Co-operation and
+Development (OECD)45.
+B.2 Open Culture
+Large portion of data in Open Culture part of the Common Corpus was built on top of the
+following collection-as-data initiatives:
+40https://echanges.dila.gouv.fr/OPENDATA/
+41https://huggingface.co/datasets/pile-of-law/pile-of-law
+42https://digitallibrary.un.org/?ln=en
+43https://archives.eui.eu/
+44https://www.consilium.europa.eu/en/general-secretariat/corporate-policies/
+transparency/open-data/
+45https://www.oecd.org/en/data/datasets.html?orderBy=mostRelevant&page=0
+22
+• Chronicle America: about 100B words (150B tokens) of digitized US newspapers
+by the Library of Congress, made available as a raw text file.
+• Europeana: about21BtokensofdigitizedEuropeannewspapersthroughlarge-scale
+cross-national contributions and new digitizations.
+• Gallica: about 85B words of digitized French newspapers and monographs made
+available on the open data portal of the French digitized library through entire
+dumps or API access46.
+• Biblioteca: about 15B words of digitized Spanish newspapers and monographs.
+Combinedwiththeotherretrieveddata,thecollectionsweredispatchedintosmallerindividual
+subsets, which were also separately released as parts of the Open Culture collection (Table
+6). The Open Culture data in Common Corpus have been post-processed and filtered, as
+described below, which results in a slightly different final word and token count:
+• French PD. This corpus is based on the training corpus for gallicagram47. It
+comprises 289,000 books from the French National Library (Gallica). This initial
+aggregation was made possible thanks to the open data program of the French
+National Library and the consolidation of public domain status for cultural heritage
+works in the EU following the 2019 Copyright Directive (Art. 14).
+• French PD Newspapers. This dataset was also based on the Gallicagram corpus.
+It comprises nearly three million unique newspaper and periodical editions from the
+French National Library (Gallica).
+• LoC Books. Thisdatasetcomprises140,000Englishbooks,digitizedbytheLibrary
+of Congress. The books come from the Selected Digitized Books Collection48. The
+dataset was curated by using the Library of Congress JSON API. This dataset
+contains only the books in the English collection. The dataset was compiled by
+Sebastian Majstorovic.
+• US PD Newspapers. Thisdatasetcomprises21milliondigitizednewspapersfrom
+Chronicling America49. The newspapers were digitized by the Library of Congress.
+The dataset can be fully explored through an original corpus map created by Nomic
+AI50.ThedatasetismostlyinEnglish,butitalsocontainsarticlesinotherlanguages,
+mostly German and Spanish. The articles were published between the years 1690
+and 1963.
+• New Zealand PD Newspapers. This dataset comprises historic newspapers from
+New Zealand and the Pacific from the 19th and 20th centuries. The data were made
+available by the National Library of New Zealand as part of Papers Past51. The
+articles are primarily in English, but include some articles in te reo M¯aori.
+• Europeana Newspapers. This dataset contains over 1,000 digitized newspapers
+from 23 libraries around Europe. It contains articles in at least 40 languages, and
+its articles were published between 1618 and 1990 (Neudecker, 2016). The original
+sources are available via Europeana, and were made available by Big Science52.
+• German PD Newspapers. This dataset contains articles from 4,299,653 issues
+from over 1900 different newspapers. The articles come from the German Digital
+Library,hostedbyDeutschesZeitungsportal53. Thearticleswereoriginallypublished
+between 1794 and 1957. This dataset was curated and first made available by
+Sebastian Majstorovic54.
+46https://api.bnf.fr
+47https://shiny.ens-paris-saclay.fr/app/gallicagram
+48https://www.loc.gov/collections/selected-digitized-books/about-this-collection/
+49https://chroniclingamerica.loc.gov/
+50https://atlas.nomic.ai/data/aaron/pdnews-21286k-tr2k-addmeta/map
+51https://paperspast.natlib.govt.nz/newspapers
+52https://huggingface.co/datasets/biglam/europeana_newspapers
+53https://www.deutsche-digitale-bibliothek.de/newspaper
+54https://huggingface.co/datasets/storytracer/German-PD-Newspapers
+23
+Dataset Tokens
+OpenAlex 191,616,437,384
+Open Science Pile 11,096,766,324
+Open Science French 46,961,690,792
+Open Science Spanish 16,523,491,767
+Open Science German 7,806,446,050
+ArXiv 7,188,731,472
+Total 281,193,563,789
+Table 7: Token count by dataset Open Science.
+• German PD. This dataset contains texts from various sources, including the
+Mannheim Corpus of Historical Newspapers and Magazines55 (Mannheimer Korpus
+Historischer Zeitungen und Zeitschriften). This dataset is made up of 21 German
+newspapers and magazines. The texts were originally published between 1737 and
+1905. The corpus was originally digitized between 2009 and 2011. The corpus was
+made available by the Institut für Deutsche Sprache in 2013.
+• Spanish PD Books. This dataset contains 302,640 individual texts from vari-
+ous sources, including the leading cultural heritage institution Biblioteca Digital
+Hispánica56 (BDH). To ensure that these texts are in the public domain, we have
+retained exclusively titles published prior to 1884.
+• Dutch PD. This dataset contains approximately 176,000 books and 540,000 period-
+icals, which come from various sources including Delpher57. Delpher is a repository
+of digitized printed material from the Netherlands, which is maintained by the
+Koninklijke Bibliotheek, the national library of the Netherlands. To ensure that
+these texts are in the public domain, we have retained exclusively titles published
+prior to 1884.
+• BnL Newspapers. This dataset contains 630,709 articles from 21 different news-
+paper titles and 24,415 unique issues. The articles were digitized by the National
+Library of Luxembourg (BnL) as part of their Open Data Initiative58. OCR was
+doneusingNautilus-OCR59.ThearticlesareinGerman,French,andLuxembourgish.
+The newspapers were originally published between 1841 and 1879. The dataset was
+published and made accessible by BigScience.
+• The rest of the datasets, including French PD Diverse, Portuguese PD, Italian PD,
+Polish PD, Danish PD, Swedish PD, Serbian PD, Czech PD, and Multilingual PD,
+comefromvarioussources,includingseveralEuropeannationallibrariesandcultural
+heritage institutions. To ensure that these texts are in the public domain, we have
+retained exclusively titles published prior to 1884.
+B.3 Open Science
+In Table 7, we present the total token counts per collection inside of the Open Science part
+of Common Corpus.
+B.4 Open Code
+Table 8 shows the number of tokens for the top ten coding languages and frameworks in
+Open Code.
+55https://repos.ids-mannheim.de/fedora/objects/clarin-ids:mkhz1.00000/datastreams/
+CMDI/content
+56https://www.bne.es/fr/catalogues/biblioteca-digital-hispanica
+57https://www.digitisednewspapers.net/histories/delpher/
+58https://data.bnl.lu/
+59https://github.com/natliblux/nautilusocr
+24
+Language Tokens
+Java 35,697,451,454
+JavaScript 28,894,772,110
+Python 26,681,331,771
+C++ 25,481,950,314
+C 23,277,000,113
+PHP 23,077,121,733
+C# 16,806,995,110
+Go 11,200,587,099
+Rust 3,888,428,173
+Ruby 3,718,918,983
+Table 8: Token counts by programming language or framework.
+C Open Culture Verification
+Here, we describe the rights verification process that we applied for cultural data objects:
+• Author life + 70 years for all non-US authors. Among most signatories of
+the Berne Convention for the Protection of Literary and Artistic Works60, this is
+the most common approach to determining documents in the public domain. This
+approach requires not only identifying the author but also their date of death. On
+top of the information already made available by cultural heritage institutions, we
+also implemented an internal data reconciliation pipeline based on the complete
+dump of Wikidata.
+• All publications after 1884. In cases where the author could not be identified or
+for collective works like newspapers, we applied a “universal” public domain rule
+basedon70yearspriortothecurrenttermoftheauthor’slife+70years. Simplified
+rules like these are commonly applied in cultural heritage projects, especially for the
+release of newspaper collections.
+• Publication + 95 years for US authors. This is the copyright-based approach
+currently in place in the US. For an international project, this will only affect
+US-born authors. Due to a lack of further legal expertise, we did not attempt to
+include works whose copyright might not have been renewed.
+• No digitization rights. Following on the 2019 Copyright Directive (Art. 14) and
+common practice among GLAM reusers like Wikimedia Commons, we consider that
+the simple act of digitization does not provide any additional rights.
+D Cleaning and Curation
+D.1 Text Segmentation
+Here is an example input text for the Segmentext model:
+Inthisrespect,theinsurancebusinessinvestmentportfoliocanbeconsidered
+conservativelymanagedasitislargelycomposedofcorporate,sovereign,and
+supranational bonds, term loans as well as demand deposits. Following the
+previous year, the group continued to diversify its holdings into investment-
+grade corporate bonds. It should be noted that bonds and term loans are
+held to maturity in accordance with the group’s business model policy of
+"inflows".
+Technical liabilities on insurance contracts.
+The guarantees offered cover death, disability, redundancy, and unemploy-
+ment as part of a loan protection insurance policy. These types of risk are
+60https://www.wipo.int/treaties/en/ip/berne/
+25
+controlled through the use of appropriate mortality tables, statistical checks
+on loss ratios for the population groups insured, and through the insurance
+program.
+Liability adequacy test.
+A goodness-of-fit test aimed at ensuring that insurance liabilities are ade-
+quate with respect to current statements of future cash flows generated by
+the insurance contracts is performed at each statement of account. Future
+cash flows resulting from the contracts take into account the guarantees and
+options inherent therein. In the event of inadequacy, the potential losses
+are fully recognized in the income statement. The modeling of future cash
+flows in the insurance liability adequacy test are based on the following
+assumptions: At the end of 2022, this liability adequacy test did not reveal
+any anomalies.
+Income statement.
+The income and expenses recognized for the insurance contracts issued by
+thegroupappearintheincomestatementin"Netincomeofotheractivities"
+and "Net expense of other activities".
+Risk management.
+The group adopts a "prudent approach" to its management of the risks
+to which it could be exposed through its insurance activities. Risk of
+counterparty. As stated above, insurance companies only invest in assets
+(bankdeposits,sovereignbonds,supranationalagencies,orcorporatebonds).
+Example output:
+D.2 OCR Error Detection
+OCRoscope. Toillustratethisapproach,thislongtextiscorrectlyidentifiedasFrenchwith
+>99% confidence by cld2, as despite the many mistakes, there are enough non-ambiguous
+French words:
+NOUVELLES POLI TI QÛ E S. Suede. Stockholm , le 2 5 décembre 1792.
+Le général Toll ira à Varsovie en quarté d’envoyé de la Suede auprès du roi
+et de la république ; A 1 même rey.u l’ordre de s’y rendra incessamment. 11
+26
+paraît que k Uc-régeik a des craintes ; il a fait venir chez lji les membres
+c Ij“‘ tribunal 4e la cour , et leur a rtmis son lesfca n at. La fermentation
+qu’a causée 1 ,’ari r?tavh n k M p v riote Thorild tî’est pas appaisée y le
+luigage qv’il a yailé an duc-régent a été bien entendu par le peu) k y ir M»
+(U i n’entendrait pas l’apostrdphe suivante ? ttRxc3xa7nd >la libuk à r
+otre raison , et ne et nous force pas de i’ache’ef r i te n :e sang,.
+Le duc a fait x,épa4idre sur-le-champ une fjtbprijuun à te us les habitans
+di$ Toyaume , pour les detourntr de mr laisser sé luire par de fa,ux bruits
+et des jugemens pe rver$ , e i en même temps l’ordre a. été donné à la
+garnison de charger et de se tenir prête à marcher.
+(Mercure Français, 1793, January 25th)
+Yet one short n-gram ("n k M p v riote Thorild") is classified as unknown by cld2.
+OCRerrcr. The following is a low-error example sentence taken from Common Corpus:
+They did not approach cer, but turned away and passed irom her presence,
+filled with sorrow and moved with sympathy, which her intense emotions
+seemed to communicate to even these thoughtless young men of the tho
+plains.
+And the OCRerrcr detection (with formatting for clarity):
+They did not approach <er>cer,</er> but turned away and passed
+<er>irom</er> her presence, filled with sorrow and moved with sym-
+pathy, which her intense emotions seemed to communicate to even these
+thoughtless young men of the <er>tho</er> plains.
+D.3 OCR Correction
+Here is an example of text containing various OCR errors:
+Theguaran tees offered cover death,disability,r e dundancy andunem ploy-
+ment aspartof aloanprotect ion insurance policy. These types o f risk are
+controlled throu ghthe use o f app ropriate morta litytables,statistica lcheck-
+sonloss rat ios for thepopulation groups insure dandthrough ar e insurance
+program.
+And here is the text corrected by our model, OCRonos:
+The guarantees offered cover death, disability, redundancy, and unemploy-
+ment as part of a loan protection insurance policy. These types of risk are
+controlled through the use of appropriate mortality tables, statistical checks
+on loss ratios for the population groups insured, and through the insurance
+program.
+27

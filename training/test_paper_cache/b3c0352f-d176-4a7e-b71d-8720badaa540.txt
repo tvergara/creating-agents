@@ -1,0 +1,3623 @@
+PublishedasaconferencepaperatICLR2026
+SPATIAL MENTAL MODELING FROM LIMITED VIEWS
+QinengWang1∗ BaiqiaoYin1,3∗ PingyueZhang1 JianshuZhang1 KangruiWang1 ZihanWang1
+JieyuZhang4 KeshigeyanChandrasegaran2 HanLiu1 RanjayKrishna4 SainingXie3
+JiajunWu2† LiFei-Fei2† ManlingLi1†
+1NorthwesternUniversity 2StanfordUniversity 3NewYorkUniversity 4UniversityofWashington
+(cid:128)Website §Code Dataset
+ABSTRACT
+Can Vision-Language Models (VLMs) imagine the full scene from just a few
+views, like humans do? Humans form spatial mental models naturally, internal
+representations of unseen space, to reason about layout, perspective, and mo-
+tion. Our MINDCUBE benchmark with 21,154 questions across 3,268 images
+exposesthiscriticalgap,whereexistingVLMsexhibitnear-randomperformance.
+UsingMINDCUBE,wesystematicallyevaluatehowwellVLMsbuildrobustspa-
+tial mental models through representing positions (cognitive mapping), orienta-
+tions(perspective-taking),anddynamics(mentalsimulationfor“what-if”move-
+ments). We then explore three approaches to help approximate spatial mental
+models in VLMs, focusing on incorporating unseen intermediate views, natu-
+ral language reasoning chains, and cognitive maps. The significant improve-
+ment comes from a synergistic approach, “map-then-reason”, that jointly trains
+the model to first generate a cognitive map and then reason upon it. By training
+models to reason over these internal maps, we boosted accuracy from 37.8% to
+60.8%(+23.0%). Addingreinforcementlearningpushedperformanceevenfur-
+therto70.7%(+32.9%).Ourkeyinsightisthatsuchscaffoldingofspatialmental
+models, actively constructing and utilizing internal structured spatial representa-
+tions with flexible reasoning processes, significantly improves understanding of
+unobservablespace.
+1 INTRODUCTION
+ForVision-LanguageModels(VLMs)(OpenAI,2024)tomovebeyondpassiveperception(Lietal.,
+2023) to interact with partially observable environments (Yang et al., 2024), it is fundamental to
+reason about unseen spatial relationships from limited views. Consider how effortlessly a human
+caninferthelayoutofaroomorthehiddenobjectsbehindfurniture,allbyintegratinginformation
+fromseveralegocentricobservations. Forexample,giventhesecondviewpointinFigure1,human
+caneasilyinfertheunseenobjectsbehindthe“plant”arethe“tissuebox”andthe“handsanitizer”,
+includingtheirposition,pose,andtheirrelationshipwithobjectsthatarenotsimultaneouslyvisible.
+Wehumansbuildandupdateamentalmodelofoursurroundings,evenwhenobjectsareoutofsight.
+This is enabled by a core cognitive function referred to as spatial mental model (Johnson-Laird,
+1980;1983): aninternalrepresentationoftheenvironmentthatallowsforconsistentunderstanding
+and inference about space, independent of the current viewpoint. VLMs, despite their impressive
+progress,struggletosynthesizespatialinformationfromlimitedviews,maintainspatialconsistency
+acrossviews,andreasonaboutobjectsnotdirectlyvisible(Maetal.,2025a).
+This gap calls for specialized evaluation settings, which must include: (a) reasoning with partial
+observations where objects are occluded or out of view (such as “hand sanitizer” in the second
+viewpointinFigure1),(b)maintainingcross-viewconsistencyacrossshiftingviewpoints(suchas
+throughanchorobjects“plant”),and(c)mentalsimulationtoinferhiddenspatialrelationships(such
+as“whatifturningleftandmovingforward”). Tofillthisgap,weintroduceMINDCUBE,featuring
+21,154questionsand3,268images,organizedinto976multi-viewgroupsthroughvarioustypesof
+viewpointtransformations(i.e.,ROTATION,AMONG,AROUNDinFigure2). Weannotatequestions
+∗Equalcontribution,listedinalphabeticalorder.
+†Equaladvising.
+1
+PublishedasaconferencepaperatICLR2026
+The Challenge: Spatial Mental Modeling from Limited Views
+Views VLMs Are Bad at Spatial Mental Modeling
+Position & Orientation Mental Simulation
+3
+2 4
+VLM 2
+1
+Question
+If you are at view 1 and move to view 2,
+what is the furthestfrom you？ 1
+A. Potted plant B. Hand sanitizer
+Imagine the scene Move to view 2
+C. Black shelf D. Fireplace
+How to Approximate Mental Model in VLMs?
+View Interpolation
+1 QACoT+ Ans 4 + View Interp.QAAns
+2 QA 2 +Ans 5 +2 QACoT+ Ans
+1 2 Instruction
+Inserted
+3 +2 QAAns 6 QA 2 +CoT+ Ans
+Reasoning Instruct
+Based on the
+2 images and the SFT
+question, please first
+think step by step
+then answer …
+VLM
+Cognitive Map Free-Form Reasoning RL
+Three Cognitive Scaffold Data Structures Elicitation Methods
+detagitsevnI
+sgnitteS
+4 QA +0.09% 1 QA +15.71% Base Perf. QA
+1 QA +2.67% 2 QA +16.57%
+37.81%
+3 QA +0.91% 6 QA +22.95%
+6 QA
+6 QA +3.52% 1 QA VLM +12.76% QA
+5 QA +3.62% 6 QA VLM +15.90% +32.86 VLM %
+Configurations Performance Overview
+Figure1:Top:VLMscannotmaintainacoherentmentalmodelwhenevaluatingontheMINDCUBE
+benchmark. Bottom:Westudyhowwecanhelpbuildspatialmentalmodelsthroughexternal(scal-
+ing of views, cognitive map input) and internal strategies (fine-tuning, cognitive map elicitation).
+Wefindjointcognitivemapandreasoningsettingyieldsthehighestgain(+32.86%).
+with a focus on objects that are not visible in the current query view. As shown in Figure 2, we
+systematically design question types requiring “what-if” mental simulations from the given view
+(suchas“whatifturningtoleft”),perspectivetaking(suchas“whatiftakingthesofa’sperspective”),
+complexrelationreasoningqueries(referencingeithertheagentorotherobjects).
+Ourextensiveevaluationsof17state-of-the-artVLMsonMINDCUBErevealthatbothopen-weight
+and closed-source models perform only marginally better than random guessing. This poor per-
+formance motivates a central question: How can we facilitate spatial mental models to reason
+effectivelyfrompartialobservations?
+Inspired by spatial cognition (Ramakrishnan et al., 2025; Lee et al., 2025; Zha et al., 2025) oper-
+ating through visual imagery, linguistic reasoning, or explicit cognitive maps, to build consistent
+spatialawarenessacrossdifferentviews, weinvestigatethreeapproachestodeterminewhetherin-
+termediate representations can assist approximating spatial mental models in VLMs. View Inter-
+polation enhances the input by providing additional views and thereby offering more information
+usingrecordedvideo,whichunexpectedlyisnothelpful,highlightingtheimportanceofreasoning
+directlyfromlimitedviews. Free-formNaturalLanguageReasoningverbalizesthementalsimu-
+lationprocess,achievingperformancegains(+2.7%). StructuredCognitiveMapsimulatesglobal
+spatial memory from an allocentric (bird’s-eye) perspective with orientation and view augmenta-
+tion. Interestingly,providinggroundtruthcognitivemapsdirectlytoanswerquestionswillnotyield
+strongimprovements(−5.81%), onlyactivelyengagingreasoningwithamapachievesstrongim-
+provements(+3.62%). Despitetheeffectivenessofreasoningovermaps,buildingaccuratespatial
+mental models exhibit a significant bottleneck attributed to VLMs’ intrinsic ability, evidenced by
+lowIsomorphicRates(<10%)withgroundtruthmapsduringgeneration.
+2
+PublishedasaconferencepaperatICLR2026
+Rotation Question Types
+Question: If you are at the third viewpoint and turn 90 degrees to the “What if” Dynamics
+left, what is to your left？
+Options:
+A. Metal bin translation rotation
+B. Table
+C. Pathway meanwhile sequence
+1⃣ 2⃣ 3⃣ 4⃣
+D. Bookcase
+: rotation agent-object self perspective non-linear 𝑡! 𝑡"
+Around Relation Query
+Question: If you are positioned at the third viewpoint, then turn left and
+?
+move forward, will you get closer to the red trash bin？
+Options: agent-object ?
+A. Yes
+B. No agent-agent
+1⃣ 2⃣ 3⃣
+: sequence agent-object self perspective linear ? object-object
+Among Perspective Taking Visual Patterns
+Question: If you are positioned at the first viewpoint, what is to the left of
+the black boots from where you stand？
+Options: self perspective linear
+A. Sofa
+B. Windows other’s perspective non-linear
+C. TV cabinet 1⃣ 2⃣ 3⃣ 4⃣
+D. Dining Table
+: meanwhile object-object self perspective non-linear
+Figure2: MINDCUBEtaxonomyandexamples.Left:Threecameramovementpatterns(ROTATION,
+AROUND,AMONG)withcorrespondingspatialQAexamples. Right: Four-dimensionaltaxonomy
+categorizingMINDCUBEquestionstypes.
+Recognizing this limitation, we train VLMs by constructing 10,000 reasoning chains and ground
+truth cognitive maps, investigating how to effectively guide spatial mental models toward achiev-
+ing accuracy. While SFT on free-form reasoning chains proved more effective with a gain of
++1.2%, guiding models to first build cognitive maps and then perform free-form reasoning over
+them achieved significantly better performance, resulting in a total gain of +8.5%, proving scaf-
+foldingspatialmentalmodelsviaactivelyconstructingandutilizinginternalstructuredspatialrep-
+resentationswithflexiblereasoningprocessesishighlyeffective.WealsouseReinforcementLearn-
+ing(RL)tofurtherboostpost-SFTperformance, guidingmodelstothinkintermsofbuildingand
+reasoning over cognitive maps by injecting structured thinking before RL training, using our SFT
+model. Thisapproachleadstoasignificantimprovement,raisingtaskaccuracyfromabaselineof
+37.8%to70.7%. Ourempiricalevidencesubstantiatesacriticalfinding:autonomouslygenerating
+and leveraging internal mental representations help VLMs exhibit superior performance in
+spatialreasoningtasks,ascomparedtoconventionalapproachessuchasviewinterpolationor
+externally-suppliedmaps.
+2 MINDCUBE BENCHMARK AND EVALUATION
+2.1 MINDCUBEBENCHMARK
+Overview. WeintroduceMINDCUBE,abenchmarkforevaluatingVLMs’spatialreasoningunder
+partial observations and dynamic viewpoints. MINDCUBE features multi-view orthogonal images
+paired with spatial reasoning questions, enabling fine-grained analysis of spatial mental modeling
+performance. It targets key challenges such as maintaining object consistency across views and
+reasoningaboutoccludedorinvisibleelements.
+Settings. MINDCUBE incorporates three distinct settings—Rotation, Around and Among (vi-
+sualized in left of Figure 2). In the Rotation setting, the challenge lies in interpreting multiple
+orthogonalviewsfromastaticandrotationalobservationpoint,requiringmodelstoformaholistic
+understanding of the environment despite only incremental visibility shifts. The Around setting
+leverages occlusion to force VLMs to maintain object permanence even with partial visibility and
+to convert lateral (left-right) relations in frontal views into depth (front-back) cues in side views.
+The Among setting maintain spatial consistency and overcome visibility constraints as views are
+3
+PublishedasaconferencepaperatICLR2026
+Table 1: Left: MINDCUBE data statistics. The number next to the setting (ROTATION, AMONG,
+AROUND) means the total QA pairs. Numbers next to each dataset (e.g., Arkitscenes) mean QA
+pairs/imagegroups. Forexample,“865/53”forArkitscenesinROTATIONmeans865QApairsand
+53imagegroupsfromit. Right: PerformanceofVLMson MINDCUBE. Darkblue indicatesthe
+bestresultamongallmodelsand lightblue indicatesthesecondbestresultamongallmodels.
+Rotation(1081)
+Method Overall Rotation Among Around
+Baseline
+Arkitscenes 865/53 Random(chance) 32.35 36.36 32.29 30.66
+Random(frequency) 33.02 38.30 32.66 35.79
+Self collected 216/9
+Open-WeightMultiImageModels
+Imggroups 62 LLaVA-Onevision-7BLietal.(2024a) 47.43 36.45 48.42 44.09
+LLaVA-Video-Qwen-7BZhangetal.(2024d) 41.96 35.71 43.55 30.12
+LongVA-7BZhangetal.(2024c) 29.46 35.89 29.55 24.88
+mPLUG-Owl3-7B-241101Yeetal.(2024) 44.85 37.84 47.11 26.91
+Among(18204)
+InternVL3-8BZhuetal.(2025) 37.50 26.00 42.03 36.00
+Qwen2.5-VL-7B-InstructBaietal.(2025) 29.26 38.76 29.50 21.35
+WildRGB-D 17500/710
+Qwen2.5-VL-3B-InstructBaietal.(2025) 33.21 37.37 33.26 30.34
+DeepSeek-VL2-SmallLuetal.(2024) 47.62 37.00 50.38 26.91
+DL3DV-10K 704/24
+Gemma-3-12B-itTeametal.(2025) 46.67 38.39 48.38 34.63
+Imggroups 733 Mantis-8B(SigLip)Jiangetal.(2024) 41.05 37.65 40.23 50.99
+ProprietaryModels
+GPT-5-2025-08-07OpenAI(2025) 47.59 93.33 34.17 41.63
+Around(1869) Gemini-2.5-pro-2025-06Team(2025) 47.05 85.50 25.95 38.40
+Claude-4-Sonnet-20250514Anthropic(2025) 44.75 48.42 44.21 47.62
+DL3DV-10K 789/109 SpatialModels
+RoboBrainJietal.(2025) 37.38 35.80 38.28 29.53
+Self collected 1080/71 SpaceMantisChenetal.(2024a) 22.81 37.65 21.26 29.32
+Spatial-MLLMWuetal.(2025a) 32.06 38.39 20.92 32.82
+Imggroups 180 Space-QwenChenetal.(2024a) 33.28 38.02 33.71 26.32
+captured around a central object with adjacent ones, each view showing the central object posi-
+tionedbeforeonesurroundingelement.VLMsneedtoshareinformationacrossviews,deducingthe
+overallspatialarrangementandrelationshipsevenwhennotallelementsarevisiblesimultaneously.
+Table 1 (left) summarizes the benchmark’s overall data distribution. Details on benchmark design
+aboutsettingsandtaxonomiesandcurationareprovidedintheAppendixB,Cand B.2.2.
+Dataset Curation. The MINDCUBE dataset was created through a pipeline: We first selected
+multi-viewimagegroupsmatchingourtaxonomy’smovementpatterns(Figure2)andspatialcrite-
+ria. Thesewerethenannotatedwithkeyspatialinformation. Finally,wealgorithmicallygenerated
+taxonomy-alignedquestionswithtargeteddistractors. DetailsareincludedintheAppendixB.1.
+2.2 EVALUATIONONMINDCUBE
+WeevaluateVLMs’spatialmentalmodelingablitieson MINDCUBE usingadiversesetofmodels
+(Table 1, right; setup details in the Appendix C). Results reveal a striking performance gap: the
+bestmodel,DeepSeek-VL2-Small,achievesonly47.62%accuracy,wellabovechancebutfarfrom
+human-levelC.3.Whilesomemodelsshowstrengthinspecificareas—notablyGPT-5inROTATION
+(93.33%) and Mantis-8B (SigLip) in AROUND (50.99%)—no single model excels across all cate-
+gories. Wealsoobservethatproprietarymodelsgenerallyoutperformtheopen-sourceones. Spatial
+fine-tuning also yielded varied outcomes without consistently reaching top performance. Overall,
+neithermulti-imageinputnorspatialfine-tuningreliablyimprovesspatialreasoning, raisingakey
+question: HowcanwehelpVLMsdeveloporapproximatethesecrucialspatialreasoningca-
+pabilities?
+3 WHICH SCAFFOLDS BEST GUIDE SPATIAL MENTAL MODELING?
+To address the identified gap, we first evaluate whether structured data forms can scaffold spatial
+reasoninginfrozenVLMsbyapproximatingspatialmentalmodelsunderlimitedviews.
+4
+PublishedasaconferencepaperatICLR2026
+Views View Interpolation Cognitive Map Reasoning Chain
+4 fra + m 1 e 1 Augmented Plain (Obj Only) Free-Form
+1 2 1 insert { "o " " } b n p , j a o e m s { c e i t " t s : i ": o " n T [ ": i { s [ s 5 u , e 5 b ] ox", { " }, Po " t p t o e s d i t p i l o a n n " t : " [ : 3 { , 5] ​​​​​​I p s w n l a i a n t V n i h i t t e , i a w z s t e o 1 i r f , s a s f I u r b e o e s m h e b i e o l n x e d a , f . t p a o n t t d o t e h r d a i n g d h t,
+"name": "Hand sanitizer", "Tissue box": { In View 2, I see the same
+3 4 2 " } p , o s . i . t . i ] o , n ": [7, 5] }, "position": [5, 5] p a o r t e t e f d r o p m l a t n h t e , s s a o m e b o e t n h v i v r i o e n w m s e nt.
+"views": [{ "Hand sanitizer": { Since the hand sanitizer is
+Question "name": "View 1", "position": [7, 5] rightmost in View 1, it’s
+I a w y f o n y h u d o a ? u t m i a s o r f v u e e r t a h t t o e v s v i t e ie f w r w o m 1 2 , 3 fra + m 1 e 4 insert 3 2 }​ " " } " " " } f n p , p f , a a o o a c m s { s c . i e i i i . " n t t n . : g i i g ] " " o o : " : n n " V " : " : " i u r e [ p [ i w 5 4 " g , , h 2" t 6 , 5 " ] ] , , } } " } . , , . S . o " " f p f a o a " s c i i : t n i g { o " n : " : " d [ ow 5 n , ” 3], s p V I c s m p o i n l a e. a t e o n V t t w s i i i e e t e a d 2 s i w l . t z l p e 2 y l t r , a o i f n s t u t m h r e t e t w , h h h e p e e s o s n o f t t l u t t o r e b h o t d e e k h h h i e p i a n s l n n g t a d d n f i t t r n h o i e m s
+Views and Question Examples -Three Data Structures We Studied to Approximate Spatial Mental Models
+Figure3: Groundedexamplesofourthreedatastructuresthatapproximatespatialmentalmodels.
+3.1 DATASTRUCTURESASCOGNITIVESCAFFOLDSFORSPATIALMENTALMODELS
+We investigate whether certain data structures can act as cognitive scaffolds that help form spa-
+tialmentalmodelsinVLMsfromlimitedvisualobservations. Incognitivescience, spatialmental
+models are internal representations encoding the relative configuration of objects and viewpoints.
+Rather than metric-precise maps, they are schematic, manipulable constructs that support reason-
+ingacrossfragmentedobservationsandunseenperspectives(Johnson-Laird,1983;Tversky,1993;
+Tverskyetal.,1994;Tversky,2003). Forinstance, humanscanmentallysimulateturningorinfer
+whatliesbehindthem,suggestingthatsuchrepresentationsareflexible,incomplete,yetfunctionally
+effective.Drawingonthisliterature,wedefinethreedatastructuresbelow(detailedintroductioncan
+befoundinAppendixD.1),eachtargetingdistinctcognitiveproperties(integration,transformation,
+inference)ofspatialmentalmodels,withgroundedexamplesinFigure3:
+1. ViewInterpolation. Interpolatingbetweensparseviewsintroducesperceptualcontinuity,echo-
+ingtheprocessofmentalanimation(Hegarty,1992)andsupportinginternaltransformationsuch
+asimaginedrotation. Thisstructurescaffoldsthedynamicupdatingcapabilityofspatialmental
+models.Figure3showsaone-frameinsertingexamplethatreplacestheoriginalquestionimages.
+2. AugmentedCognitiveMap. Acognitivemapisa2Dschematicrepresentationofobjectlayouts
+in space. Such maps resemble Tversky’s cognitive collages (Tversky, 1993), and they capture
+locallycoherentbutfragmentedstructures.Recentstudies(Yangetal.,2024;Yehetal.,2025)on
+VLM-based spatial intelligence typically adopt a plain form that only encodes object positions
+in a top-down view. We propose an augmented variant that incorporates discrete views, with
+bothobjectsandviewsannotatedbypositionandorientation,therebyapproachingtherelational
+consistencyofspatialmentalmodels.
+3. FreeFormReasoning.Open-ended,step-by-stepnaturallanguagereasoningoffersaprocedural
+approximationofhowspatialmodelsareconstructedandqueried. Whilelessrigidthanmap-like
+structures, such reasoning reflects the inferential function of spatial mental models, especially
+underambiguousorincompleteobservations(Tverskyetal.,1994).
+3.2 EXPERIMENTSETUP
+Weconductcontrolledexperimentswithfixedinputformatstotestwhetherstructuredscaffoldscan
+helpwithoutretraining.Eachconditionintroducesadifferentstructuretosupportinternalmodeling.
+ConfigurationsandEvaluationMetrics. Eachexperimentisdefinedbytwoorthogonalaxes:In-
+putStructure(whatspatialevidenceVLMsreceive)andOutputFormat(therequiredresponsetype).
+As the experimental foundation of this paper, we begin with the ten possible configurations listed
+inTable2,fromwhichweinvestigatearepresentativesubset. Specifically,ourgroundedcognitive
+mapsaregeneratedusingtheobjectarrangementsannotationdescribedinSection2.1,andexamples
+forallconfigurationsareprovidedintheAppendixD.3. InthefrozenVLMsevaluationsetup, we
+excludetheAug-CGMap-OutandPlain-CGMap-Outsettings,asVLMstendtoconflatemap
+generation with reasoning, even when instructed otherwise. Beyond evaluating task performance
+usingQAaccuracy,wealsointroducetwowell-definedgraphmetricsforgeneratedcognitivemaps:
+(1)OverallSimilarity,aweightedscorecombiningdirectionalandfacingconsistency;and(2)Iso-
+morphicRate,measuringwhetherallpairwiseobjectrelationsmatchthegroundtruthunderoptimal
+alignment. FulldefinitionsareprovidedintheAppendixD.2.
+5
+PublishedasaconferencepaperatICLR2026
+Table2: Input–outputconfigurationsusedinallexperiments. Thesuffix“-In”meansthecognitive
+map is given to the model as input, whereas “-Out” means the cognitive map is predicted as an
+intermediate output before answering. “Aug” indicates maps with object and camera annotations;
+“Plain”indicatesmapswithouttheseaugmentations. VI=ViewInterpolation,CGMap=Cognitive
+Map,FFR=Free-formreasoning. Figure3showsvisualexamplesofinputstructures.
+Name Whatthemodelreceives(input) Whatthemodelproduces(output)
+Raw-QA Rawviews+questiontext Directanswer
+VI-1 Raw views + 1 interpolated view + Directanswer
+questiontext
+VI-2 Raw views + 2 interpolated views + Directanswer
+questiontext
+FFR Rawviews+questiontext Free-formreasoning→answer
+Aug-CGMap-In Augmented cognitive map (objects + Directanswer
+camera)+questiontext
+Aug-CGMap-Out Rawviews+questiontext Augmentedcognitivemap→answer
+Plain-CGMap-Out Rawviews+questiontext Plaincognitivemap→answer
+Aug-CGMap-FFR-Out Rawviews+questiontext Augmentedcognitivemap+free-form
+reasoning→answer
+Plain-CGMap-FFR-Out Rawviews+questiontext Plain cognitive map + free-form rea-
+soning→answer
+CGMap-In-FFR-Out Augmented cognitive map (objects + Free-formreasoning→answer
+camera)+questiontext
+Model and Evaluation Data We conduct all experiments using Qwen2.5-VL-3B-Instruct (Bai
+et al., 2025) with all evaluations performed on MINDCUBE-TINY, a diagnostic subset sampled
+from MINDCUBE, containing 1,050 questions in total. Detailed statistics are: 600 from AMONG,
+250fromAROUND,and200fromROTATION.
+3.3 DOSCAFFOLDSIMPROVESPATIALMENTALMODELINGWITHOUTTRAINING?
+WeevaluatehowwelltheseveninputconfigurationsdefinedinTable2supportspatialmentalmod-
+elinginVLMsunderlimitedviews,withoutanymodelupdates. ResultsareshowninTable3(left).
+Howfarcanstructurealonego?Webeginwiththebaseline:rawinputviewsanddirectanswering
+(Raw-QA),whichachieves37.81%accuracy. Addinginterpolatedviews,whichwehopetosimu-
+latesmootherperceptualtransitions, leadstonomeaningfulgain(↑ 0.09%). Weincludeafurther
+analysis on VI in Appendix E.3. Similarly, providing a pre-computed augmented cognitive map
+asdirectinput(Aug-CGMap-In)severelydegradesperformanceto32.00%. Incontrast,enabling
+free-form reasoning (FFR) alone or combined with other settings provides a substantial boost to
+41.33%. Theseresultssuggest: structurealone, whethervisualorspatial, isnotenough. Without
+engaging reasoning, VLMs struggle to leverage even well-formed spatial cues to improve spatial
+mentalmodels.
+Table3: Left: QAaccuracy(%)ofQwen2.5-VL-3B-Instructonthe MINDCUBE-TINY benchmark
+underdifferentconfigsforfrozenVLMs. Right: Graphmetricsfortwocogmapoutputsettings.
+0 50 100
+Config. Overall Rotation Among Around
+Raw-QA 37.81 34.00 36.00 45.20 41.14
+V
+V
+A
+I
+I
+u
+-
+-
+g
+2
+1
+-CGMap-In
+3
+3
+3
+7
+7
+2
+.
+.
+.
+8
+9
+0
+1
+0
+0
+−
+↑
+↓
+3
+3
+3
+5
+5
+5
+.
+.
+.
+5
+5
+0
+0
+0
+0
+3
+3
+3
+7
+6
+0
+.
+.
+.
+3
+5
+5
+3
+0
+0
+4
+4
+3
+1
+2
+3
+.
+.
+.
+2
+8
+2
+0
+0
+0
+S im
+ila
+r
+O
+it
+v
+y
+e ra
+ll
+36.86
+C
+P F A
+G
+l F u
+M
+a R g
+a
+i -
+p
+n C
+-
+- G
+I
+C M
+n
+G a
+-
+M p
+F
+a -
+F
+p F
+R
+- F
+-
+F R
+O
+- F
+u
+R O
+t
+- u O t ut
+4
+4 4 4
+1
+1 0 0
+.
+. . .
+4
+3 4 5
+3
+3 8 7
+↑
+↑ ↑ ↑
+3
+2 3 2
+7
+5 2 1
+.
+. . .
+0
+0 0 0
+0
+0 0 0 3 3
+4
+4 6 9
+1
+3 . .
+.
+. 6 0
+6
+0 0 7
+7
+0 5 5 5
+4
+8 0 8
+4
+. . .
+.
+4 4 0
+4
+0 0 0
+0
+-ic I s
+R
+o
+a
+m
+te
+o
+rp
+h
+11 1 . 6 4 . 5 64 C O C
+O
+G G u
+u
+t
+t
+M M p
+p
+u
+u
+a a t
+t
+p p (
+(
+A
+Pl
+u
+a
+g
+in
+)
+)
+Can we prompt the model to think spatially? The answer appears to be yes. Prompting the
+modeltogenerateacognitivemap(Aug-CGMap-FFR-Out,Plain-CGMap-FFR-Out)before
+6
+PublishedasaconferencepaperatICLR2026
+answering leads to further improvements over free-form reasoning alone (FFR) from 40.48% to
+41.43%. This suggests that generating a map may encourage the model to first form a global un-
+derstandingofthescene,whichinturnsupportsmorestructuredreasoning. Bothmapformshavea
+greatformat-followingability,yetfailtogenerateaccuratemaps. Overall,augmentedmapsperform
+worse. In Table 3 (Right), despite generating syntactically valid maps for both formats, similarity
+to grounded maps is low (< 50%), reflecting limited mapping ability. Notably, both augmented
+and plain maps have low isomorphism rates (0.10%, 7.43%). The reason that the isomorphic rate
+for augmented map setting is nearly zero is likely because the added view-level details increase
+generationerrors. DetailedcaseexamplescanbefoundintheAppendixE.
+(cid:17)KeyTakeaways:ScaffoldingSpatialMentalModelsinFrozenVLMs
+• Explicitreasoningiscrucialforimprovingperformance.
+• Reasoningactsasanecessarymechanismtogroundspatialstructureinfrozensettings.
+• Passivestructures(likemapsasinput)aloneandvisualcontinuityofferlittlebenefit.
+4 CAN WE TRAIN FOR THE EMERGENCE OF SPATIAL MENTAL MODELS VIA
+VLMS’ USE OF SCAFFOLDS?
+So far, prompting frozen VLMs with external scaffolds, such as interpolated views or cognitive
+maps, hasyieldedlimitedgains. Thesetechniquesfailtotacklethecorelimitation: VLMsdonot
+forminternalspatialrepresentationsorreasonthroughspaceeffectively. Togofurther,wewantto
+know:Cansupervisedfine-tuning(SFT)andReinforcementlearning(RL)teachVLMstobuildand
+leveragespatialmentalmodelsfromwithin?
+4.1 DESIGNINGAROBUSTEXPERIMENTALFRAMEWORK
+Toensureconsistencyandcomparability,weinheritexperimentalconfigurationsdetailedinSections
+3.1and3.2. Specifically,weretain: (1)thetwoeffectivedatascaffolds—CognitiveMaps(Object-
+only / Object + Camera) and Free-Form Reasoning, (2) the base model Qwen2.5-VL-3B-Instruct,
+(3) the evaluation benchmark MINDCUBE-TINY, and (4) all established evaluation metrics. View
+interpolationisexcludedduetoitslimitedperformancegainsinearliervalidations.
+SFT Task Configurations. Drawing on insights from Section 3.3, we use selected configura-
+tions from Table 2 to evaluate the incremental impact of cognitive map generation and free-form
+reasoning in SFT. These include baseline QA without explicit reasoning (Raw-QA), reasoning
+guidedbygeneratedmapsonly(Plain-CGMap-Out,Aug-CGMap-Out),reasoning-augmented
+prompts (FFR), and a fully integrated setup that asks VLMs to generate both maps and reasoning
+(Aug-CGMap-FFR-OutandPlain-CGMap-FFR-Out).
+RLTaskConfigurationsandRewardDesign. WeemploytheVAGENframework(Wang*etal.,
+2025)forVLMpolicyoptimization,usingGroupRelativePolicyOptimization(GRPO)(Shaoetal.,
+2024) as our core algorithm. We evaluate three RL variants: (1) RL-FFR (from scratch),
+which trains base model to produce free-form reasoning chains; (2) RL-Aug-CGMap-FFR-Out
+(from scratch),whichtrainsthemodeltojointlygeneratecognitivemapsandreasoning;and
+(3)RL-Aug-CGMap-FFR-Out (from SFT),whichinitializesfromthestrongestSFTcheck-
+point. DetailedsettingscanbefoundintheAppendixG.1.
+GroundedCognitiveMapsandFree-FormReasoningChain. Groundedcognitivemapsarenot
+only used as the input in the Aug-CGMap-In and CGMap-In-FFR-Out setting for the frozen
+VLMs in the Section 3.2, but also as the training and comparison data. We curate such grounded
+cognitive maps through a template-based method, where we always select the front image in our
+annotation as the “up” direction. We also manually constructed grounded reasoning chains using
+detailedimageannotationsandstructuredquestiontemplates,ensuringlogicalcoherenceandclear
+groundinginobservablespatialrelations(seeanexampleinFigure3). Thedetailedgroundedcog-
+nitivemapsandreasoningdatagenerationpipelinesareshownintheAppendixF.1.1andF.1.2.
+7
+PublishedasaconferencepaperatICLR2026
+60
+50
+40
+30
+20
+5 10 15 20 25 30 35 40 45 50 5557
+Steps
+)%(
+ycarucca
+AQ
+80
+60
+Aug-CGMap-Out
+Aug-CGMap-FFR-Out 40
+FF-Rsn
+Plain-CGMap-Out 20
+Plain-CGMap-FFR-Out
+0
+5 10 15 20 25 30 35 40 45 50 5557
+Steps
+(a)QAaccuracy(%)
+)%(
+etaR
+cihpromosI
+90
+80
+70
+60
+Aug-CGMap-Out
+Aug-CGMap-FFR-Out 50
+Plain-CGMap-Out
+40 Plain-CGMap-FFR-Out
+30
+5 10 15 20 25 30 35 40 45 50 5557
+Steps
+(b)IsomorphicRate(%)
+)%(
+ytiralimiS
+llarevO Aug-CGMap-Out
+Aug-CGMap-FFR-Out
+Plain-CGMap-Out
+Plain-CGMap-FFR-Out
+(c)OverallSimilarity(%)
+Figure4: SFTper5steptrainingperformanceontaskaccuracyandgraphmetrics.
+4.2 DOTHEEMERGENCEOFSPATIALMENTALMODELSTRULYBENEFITFROMEXPLICIT
+TRAINING?
+WeexploreseveralSFTconfigurations(resultsshowninTable4),guidedbyaseriesofcoreques-
+tions. Fine-tuning directly on raw QA pairs, without spatial supervision, raises accuracy from
+37.81% to 52.28%. This suggests VLMs can absorb some spatial cues from QA data alone. We
+use this setup as the baseline for evaluating methods that explicitly incorporate spatial structures.
+PrimarymodificationsinSFTphaseincludeadjustedtraininghyperparameters(detailedintheAp-
+pendixF.2)andtheinput-outputconfigurations.
+Table4: QAaccuracy(%)andcognitivemapgenerationqualityofQwen2.5-VL-3B-Instructunder
+bothSFTandRLonMINDCUBE-TINY. FFRreferstofree-formreasoning. Boldedmeansthebest
+withinthattrainingcategory(SFTorRL).
+MINDCUBE-TINYQAAccuracy(%) GeneratedCognitiveMap(%)
+Config.
+Overall Rotation Among Around OverallSim. Isom.Rate
+TFS
+Raw-QA 52.28 34.50 52.50 66.00 – –
+FFR 53.52↑ 36.00 54.67 64.80 – –
+Aug-CGMap-Out 54.19↑ 35.50 53.17 71.60 74.30 43.24
+Plain-CGMap-Out 54.38↑ 35.50 53.50 71.60 91.73 89.05
+Aug-CGMap-FFR-Out 55.24↑ 49.50 52.50 66.40 75.27 46.00
+Plain-CGMap-FFR-Out 60.76↑ 47.50 62.33 67.60 88.79 73.81
+LR
+RL-FFR (from scratch) 50.57 36.50 49.33 64.80 – –
+RL-Aug-CGMap-FFR-Out (from scratch) 52.19 32.00 52.00 68.80 57.03 0.00
+RL-Plain-CGMap-FFR-Out (from scratch) 53.71 33.00 53.66 70.40 47.60 10.29
+RL-Aug-CGMap-FFR-Out (from SFT) 70.67 53.00 76.83 70.00 85.53 58.86
+RL-Plain-CGMap-FFR-Out (from SFT) 70.67 48.00 79.17 68.40 85.79 71.52
+Canstructuredapproximationsofmentalmodelsalonemeaningfullyimproveperformance?
+AsshowninTable4,supervisedfine-tuningonexplicitcognitivemaps,eitherAugmented orPlain,
+leads to substantial improvements in graph structure quality, with more than 30% gains in both
+overall similarity and Isomorphic rate. However, the effect on end-task accuracy remains limited.
+Both augmented maps (54.19%) and Plain maps (54.38%) offer only modest gains over the fine-
+tunedRaw-QA(52.28%). Similarly,directlyFFRalsoyieldsamarginalgain(53.52%). Thismeans
+thatascaffoldaloneisnotsufficienttoautomaticallytranslateintoperformancegains.
+Generating both cognitive maps and free-form reasoning is the most effective approxima-
+tion. Among all configurations, the combination of generating a plain map and then reasoning
+(Plain-CGMap-FFR-Out)yieldsperformancegain(↑8.48%comparedtoRaw QA-SFT),sur-
+passing models that rely on only map generation or reasoning alone. This suggests a synergy be-
+tween structured spatial modeling and natural language inference. The training dynamics reveal
+a crucial trade-off that explains this synergy. As shown in Figure 4 (b, c), models trained solely
+onmapgeneration(Plain-CGMap-Out)learnthetargetstructureveryrapidly,quicklyreaching
+near-perfect similarity and isomorphism. However, their QA accuracy soon plateaus (Figure 4a),
+suggesting the model learns the structure without fully grasping its functional utility. In contrast,
+the top-performing Plain-CGMap-FFR-Out model learns the map structure more slowly and
+neverreachesthesamelevelofstructuralperfection. Yet,itsQAaccuracycontinuestoincreaseand
+surpass all other configurations. This suggests that the joint pressure of the reasoning task forces
+themodelnotjusttoreplicateastructure,buttobuildafunctionallyeffectivespatialrepresentation,
+whichcanleadtoimprovementforoverallspatialunderstandingdespitebeingimperfect.
+8
+PublishedasaconferencepaperatICLR2026
+(cid:17)KeyTakeaways:ExplicitTrainingfortheEmergenceofSpatialMentalModels
+• Jointcogmapandreasoningsettingyieldsoptimalperformancethroughsynergisticeffects.
+• NeithermapgenerationnorreasoningalonelargelyoutperformstheSFTQAbaseline.
+4.3 CANREINFORCEMENTLEARNINGFURTHERREFINESPATIALMENTALMODELS?
+WhileSFTestablishesastrongbaselineforspatialmentalmodeling,emergingevidencefrommod-
+elslikeDeepSeekR1(Guoetal.,2025)suggestsreinforcementlearning(RL)canofferadditional
+gainsbyoptimizingbehaviorthroughoutcome-drivenfeedback. Weask:Canreward-guidedrefine-
+menthelpVLMsbuildsharperspatialmodelsandreasonmoreeffectively?
+RLletsamodelfeeltheconsequencesofitsspatialthoughtsthroughreward,butdoesthatfeedback
+aloneforgeagenuine“mentalmap,”ormustwefirstteachthemodelwhatamaplookslike? Table
+4summarizesthreekeysettingsandanswersthisquestionintwoparts.
+RL in a vacuum is not enough. Training from scratch with sparse rewards provides insufficient
+guidance for building robust spatial representations. When asked to produce free-form reasoning
+(RL-FFR (from scratch)), the model achieves only 50.57% overall accuracy. This result,
+whileanimprovementoverinitialbaselines,confirmsthattask-levelrewardsalonearetoounstruc-
+turedtoeffectivelyteachspatialabstraction.
+Structuredoutputsprovidemodestbenefitswhenlearnedfromscratch. Introducingacognitive
+map structure for the policy to generate offers a scaffold for its reasoning. When starting from
+scratch, the simpler RL-Plain-CGMap-FFR-Out configuration (53.71%) slightly outperforms
+itsaugmentedcounterpart(52.19%)inQAaccuracy.However,inbothcases,themodelfailstolearn
+meaningful geometry, with low similarity scores and near-zero isomorphism rates. This suggests
+thatwithoutapriorconceptofa”good”map,RLstrugglestoexploittheprovidedstructuralformat,
+evenifitcanlearntofillitoutvalidly.
+RLperformsbetterwhenittrainsfromSFTcheckpoint.Themostdramaticimprovementsoccur
+when warm-starting RL from an optimal SFT checkpoint. Both RL-Plain-CGMap-FFR-Out
+(from SFT)anditsaugmentedversionreachanidentical,impressive70.67%overallQAaccu-
+racy. This represents a significant ↑9.91% absolute gain over the best SFT model and a ↑16.96%
+gainoverthebestRL-from-scratchapproach. Crucially,whilebothmodelsachievethesamepeak
+accuracy,theirunderlyingspatialrepresentationsdiffer. ThePlain-CGMapvariantproducesgeo-
+metricallysuperiormaps,withamuchhigherisomorphismrate(71.52%vs.58.86%).Thissuggests
+thatwhileRLfine-tuningcanguidedifferentinitialmodelstothesamereasoningproficiency,start-
+ingwithacleaner,simplerSFTscaffold(Plain)allowsRLtobetterpreserveandpolishageometri-
+callysoundinternalmap. TheseresultsstronglyindicatethatRL’sprimaryrolehereis(1)polishing
+and refining the strong priors learned during SFT, and (2) raising the performance ceiling of SFT,
+enablingthemodeltobreakthroughpreviousplateaustoachievenear-oracle-levelperformance.
+(cid:17)KeyTakeaways:ReinforcementLearningfortheEmergenceofSpatialMentalModels
+• Combiningcognitivemapswithreasoningconsistentlyimprovesalllearningoutcomes.
+• Startingfromscratch,RLprovidesonlymarginalgainsforspatialreasoning;itstruepower
+isunlockedwhenbuildinguponastrongSFTfoundation.
+5 RELATED WORKS
+Spatial Cognition. Spatial cognition encompasses skills like mental rotation, spatial visualiza-
+tion, and object assembly, essential for perceiving and manipulating spatial relationships in both
+2D and 3D environments (Xu et al., 2025b; Zha et al., 2025; Wang et al., 2025). At the core of
+theseabilitiesareSpatialMentalModels(SMMs)(Johnson-Laird,1980;1983),whichareinternal
+representations that allow for consistent understanding of space. Recently, much effort has been
+dedicated to evaluating spatial cognition in VLMs (Zhan et al., 2025; Ma et al., 2025a; Lee et al.,
+2025;Zhangetal.,2025). Moreover,somemethodsareproposedtoenhancespatialunderstanding,
+suchascoordinate-awareprompting(Caietal.,2024),CoTreasoning(Maetal.,2025b;Liuetal.,
+2025b), explicit spatial representation alignment (Cheng et al., 2024; Chen et al., 2024a), and an
+RL-basedapproach(Pan&Liu,2025). However,existingbenchmarks(Leeetal.,2025;Zhanetal.,
+9
+PublishedasaconferencepaperatICLR2026
+2025;Chenetal.,2025;Qietal.,2025;Zhangetal.,2025;Maetal.,2025a;Ramakrishnanetal.,
+2025;Tangetal.,2025b;Fuetal.,2024;Yangetal.,2024;Zhangetal.,2024a)andapproachesoften
+neglect the mental-level spatial reasoning that underpins human cognition, leaving a gap between
+machine and human capabilities. To bridge this gap, a new approach is needed that trains VLMs
+toreasonaboutspacenotonlythroughvisualdatabutalsothroughmental-levelspatialreasoning,
+aligningmorecloselywithhumanspatialcognition.
+MultiViewsunderstanding. Multiviewspatialunderstandingleveragesmultipleviewpointstore-
+construct 3D structures and overcome single-view limitations. Efficient techniques optimize view
+processing,whilereconstructionmethods(Wangetal.,2025;Liuetal.,2025a;Fuetal.,2025;Qu
+etal.,2025),viewsynthesismethods(Sunetal.,2018;Zhangetal.,2024e;Sargentetal.,2023)and
+multiviewequivariantlearning(Youetal.,2024)enhancegeometricconsistency.Topologicalrepre-
+sentationslikeZhangetal.(2024b)encodeobjectrelationsforholisticreasoning,whileframeworks
+suchasHongetal.(2023)advanceopen-vocabularyconceptlearningfrommultiviewdatavianeu-
+ral fields and vision-language fusion. LMMs augmented with multiview inputs (Daxberger et al.,
+2025;Wuetal.,2025a;Fanetal.,2025;Zhengetal.,2025;Leeetal.,2025;Zhaoetal.,2025;Xu
+etal.,2025a)demonstratemarkedimprovementsinspatialtaskslikegeometricunderstandingand
+perspectivetaking. Yet,theystrugglewithmultiviewconsistencyunderstandingduetofragmented
+reasoningand2D-to-3Dprojectionambiguities,leavingagapforrobustspatialAI.
+6 CONCLUSION
+Weintroduced MINDCUBE tostudyhowVLMscanapproximatespatialmentalmodelsfromlim-
+itedviews,acorecognitiveabilityforreasoninginpartiallyobservableenvironments. Movingbe-
+yondbenchmarking,weexploredhowinternalrepresentationscanbescaffoldedthroughstructured
+dataandreasoning. Ourkeyfindingisthatconstructingandreasoningoverself-generatedcogni-
+tive maps, rather than relying on view interpolation or externally provided maps, yields the most
+effective approximation of spatial mental models across all elicitation methods (input-output con-
+figurations,supervisedfine-tuning,andreinforcementlearning). InitializingRLfromawell-trained
+SFTcheckpointfurtheroptimizestheprocess,pushingspatialreasoningperformancetonewlimits.
+ETHICS STATEMENT
+TheMINDCUBEbenchmarkwasdevelopedusingacombinationofpubliclyavailable,anonymized
+datasets(ArkitScenes,WildRGB-D,DL3DV-10K)andself-collectedimagery.Forourself-collected
+data,carewastakentocaptureindoorandoutdoorsceneswithoutincludingpersonallyidentifiable
+information(PII)orsensitivecontent. Allhumanannotatorsinvolvedinthedatacurationandeval-
+uationphaseswerecompensatedatratessignificantlyexceedingtheirlocalminimumwage.
+We acknowledge several limitations and ethical considerations. The datasets used, while diverse,
+may not fully represent the vast range of global environments, potentially introducing geographic
+orculturalbiasesintothemodel’sspatialunderstanding. Furthermore,thetraining,fine-tuning,and
+evaluation of the large-scale Vision-Language Models discussed in this paper carry a significant
+computationalandenvironmentalcost. Whileourresearchisintendedtoadvancethescientificun-
+derstandingofAIcognition,werecognizethattechnologiesenhancingspatialreasoninginmachines
+couldhavedual-useapplications.
+REPRODUCIBILITY STATEMENT
+To ensure the reproducibility of our findings, we have included our complete codebase for data
+processing,modeltraining,andevaluationinthesupplementarymaterialsasa.ziparchive. Further-
+more,thefullMINDCUBEbenchmark,encompassingallofourtrainingdata,testdata,annotations,
+and evaluation protocols, will be released in a public repository to facilitate further research and
+verificationbythecommunity.
+ACKNOWLEDGMENTS
+This work is in part supported by the Stanford Institute for Human-Centered AI (HAI), ONR
+N00014-23-1-2355, ONR MURI N00014-22-1-2740, ONR MURI N00014-21-1-2801, and DSO
+NationalLaboratoriesAgreementDSOCO25017.
+10
+PublishedasaconferencepaperatICLR2026
+REFERENCES
+Anthropic. Claude4sonnetsystemcard,May2025. URLhttps://www-cdn.anthropic.
+com/6be99a52cb68eb70eb9572b4cafad13df32ed995.pdf. Version 20250514, ac-
+cessed2025-06-23.
+ShuaiBai,KeqinChen,XuejingLiu,JialinWang,WenbinGe,SiboSong,KaiDang,PengWang,
+ShijieWang,JunTang,HumenZhong,YuanzhiZhu,MingkunYang,ZhaohaiLi,JianqiangWan,
+PengfeiWang,WeiDing,ZherenFu,YihengXu,JiaboYe,XiZhang,TianbaoXie,ZesenCheng,
+Hang Zhang, Zhibo Yang, Haiyang Xu, and Junyang Lin. Qwen2.5-vl technical report. arXiv
+preprintarXiv:2502.13923,2025.
+Gilad Baruch, Zhuoyuan Chen, Afshin Dehghan, Yuri Feigin, Peter Fu, Thomas Gebauer, Daniel
+Kurz,TalDimry,BrandonJoffe,ArikSchwartz,etal. Arkitscenes: Adiversereal-worlddataset
+for3dindoorsceneunderstandingusingmobilergb-ddata. InThirty-fifthConferenceonNeural
+InformationProcessingSystemsDatasetsandBenchmarksTrack(Round1),2021.
+Wenxiao Cai, Yaroslav Ponomarenko, Jianhao Yuan, Xiaoqi Li, Wankou Yang, Hao Dong, and
+BoZhao. Spatialbot: Precisespatialunderstandingwithvisionlanguagemodels. arXivpreprint
+arXiv:2406.13642,2024.
+Boyuan Chen, Zhuo Xu, Sean Kirmani, Brian Ichter, Danny Driess, Pete Florence, Dorsa Sadigh,
+Leonidas Guibas, and FeiXia. Spatialvlm: Endowingvision-language modelswith spatial rea-
+soning capabilities. arXiv preprint arXiv:2401.12168, 2024a. URL https://arxiv.org/
+abs/2401.12168.
+ShiqiChen, TongyaoZhu, RuochenZhou, JinghanZhang, SiyangGao, JuanCarlosNiebles, Mor
+Geva, Junxian He, Jiajun Wu, and Manling Li. Why is spatial reasoning hard for vlms? an
+attention mechanism perspective on focus areas, 2025. URL https://arxiv.org/abs/
+2503.01773.
+Zhe Chen, Jiannan Wu, Wenhai Wang, Weijie Su, Guo Chen, Sen Xing, Muyan Zhong, Qinglong
+Zhang,XizhouZhu,LeweiLu,etal. Internvl: Scalingupvisionfoundationmodelsandaligning
+for generic visual-linguistic tasks. In Proceedings of the IEEE/CVF Conference on Computer
+VisionandPatternRecognition,pp.24185–24198,2024b.
+An-ChiehCheng, HongxuYin, YangFu, QiushanGuo, RuihanYang, JanKautz, XiaolongWang,
+and Sifei Liu. Spatialrgpt: Grounded spatial reasoning in vision language models, 2024. URL
+https://arxiv.org/abs/2406.01584.
+ErikDaxberger,NinaWenzel,DavidGriffiths,HaimingGang,JustinLazarow,GefenKohavi,Kai
+Kang,MarcinEichner,YinfeiYang,AfshinDehghan,andPeterGrasch. Mm-spatial: Exploring
+3dspatialunderstandinginmultimodalllms,2025.URLhttps://arxiv.org/abs/2503.
+13111.
+Danny Driess, Fei Xia, Mehdi SM Sajjadi, Corey Lynch, Aakanksha Chowdhery, Brian Ichter,
+AyzaanWahid, JonathanTompson, QuanVuong, TianheYu, etal. Palm-e: anembodiedmulti-
+modallanguagemodel. InProceedingsofthe40thInternationalConferenceonMachineLearn-
+ing,pp.8469–8488,2023.
+Zhiwen Fan, Jian Zhang, Renjie Li, Junge Zhang, Runjin Chen, Hezhen Hu, Kevin Wang,
+HuaizhiQu, DilinWang, ZhichengYan, HongyuXu, JustinTheiss, TianlongChen, JiachenLi,
+Zhengzhong Tu, Zhangyang Wang, and Rakesh Ranjan. Vlm-3r: Vision-language models aug-
+mentedwithinstruction-aligned3dreconstruction,2025. URLhttps://arxiv.org/abs/
+2505.20279.
+Chuanyu Fu, Guanying Chen, et al. Maskgaussian: Differentiable mask pruning for efficient 3d
+gaussianrendering. InCVPR,2025. URLhttps://arxiv.org/abs/2506.02751.
+Xingyu Fu, Yushi Hu, Bangzheng Li, Yu Feng, Haoyu Wang, Xudong Lin, Dan Roth, Noah A
+Smith,Wei-ChiuMa,andRanjayKrishna. Blink: Multimodallargelanguagemodelscanseebut
+notperceive. arXivpreprintarXiv:2404.12390,2024.
+11
+PublishedasaconferencepaperatICLR2026
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu,
+ShirongMa,PeiyiWang,XiaoBi,etal. Deepseek-r1: Incentivizingreasoningcapabilityinllms
+viareinforcementlearning. arXivpreprintarXiv:2501.12948,2025.
+Mary Hegarty. Mental animation: Inferring motion from static displays of mechanical systems.
+Journalofexperimentalpsychology: learning,memory,andcognition,18(5):1084,1992.
+YiningHong,ChunruLin,YilunDu,ZhenfangChen,JoshuaB.Tenenbaum,andChuangGan. 3d
+conceptlearningandreasoningfrommulti-viewimages,2023. URLhttps://arxiv.org/
+abs/2303.11327.
+Wenlong Huang, Chen Wang, Ruohan Zhang, Yunzhu Li, Jiajun Wu, and Li Fei-Fei. Voxposer:
+Composable 3d value maps for robotic manipulation with language models. arXiv preprint
+arXiv:2307.05973,2023.
+Wenlong Huang, Chen Wang, Yunzhu Li, Ruohan Zhang, and Li Fei-Fei. Rekep: Spatio-
+temporal reasoning of relational keypoint constraints for robotic manipulation. arXiv preprint
+arXiv:2409.01652,2024.
+YuhengJi, HuajieTan, JiayuShi, XiaoshuaiHao, YuanZhang, HengyuanZhang, PengweiWang,
+MengdiZhao,YaoMu,PengjuAn,etal. Robobrain: Aunifiedbrainmodelforroboticmanipu-
+lationfromabstracttoconcrete. arXivpreprintarXiv:2502.21257,2025.
+DongfuJiang,XuanHe,HuayeZeng,CongWei,MaxW.F.Ku,QianLiu,andWenhuChen.Mantis:
+Interleavedmulti-imageinstructiontuning. TransactionsonMachineLearningResearch, 2024,
+2024. URLhttps://openreview.net/forum?id=skLtdUVaJa.
+PhilipNJohnson-Laird. Mentalmodelsincognitivescience. Cognitivescience,4(1):71–115,1980.
+PhilipNicholasJohnson-Laird. Mentalmodels:Towardsacognitivescienceoflanguage,inference,
+andconsciousness. Number6.HarvardUniversityPress,1983.
+Phillip Y. Lee, Jihyeon Je, Chanho Park, Mikaela Angelina Uy, Leonidas Guibas, and Minhyuk
+Sung. Perspective-aware reasoning in vision-language models via mental imagery simulation,
+2025. URLhttps://arxiv.org/abs/2504.17207.
+Bo Li, Yuanhan Zhang, Dong Guo, Renrui Zhang, Feng Li, Hao Zhang, Kaichen Zhang, Peiyuan
+Zhang, Yanwei Li, Ziwei Liu, et al. Llava-onevision: Easy visual task transfer. arXiv preprint
+arXiv:2408.03326,2024a.
+JunnanLi,DongxuLi,SilvioSavarese,andStevenHoi. Blip-2:Bootstrappinglanguage-imagepre-
+trainingwithfrozenimageencodersandlargelanguagemodels,2023.URLhttps://arxiv.
+org/abs/2301.12597.
+ManlingLi,ShiyuZhao,QinengWang,KangruiWang,YuZhou,SanjanaSrivastava,CemGokmen,
+TonyLee,ErranLiLi,RuohanZhang,etal. Embodiedagentinterface: Benchmarkingllmsfor
+embodied decision making. Advances in Neural Information Processing Systems, 37:100428–
+100534,2024b.
+JackyLiang,WenlongHuang,FeiXia,PengXu,KarolHausman,BrianIchter,PeteFlorence,and
+AndyZeng. Code aspolicies: Languagemodel programsfor embodiedcontrol. In 2023IEEE
+InternationalConferenceonRoboticsandAutomation(ICRA),pp.9493–9500.IEEE,2023.
+Lu Ling, Yichen Sheng, Zhi Tu, Wentian Zhao, Cheng Xin, Kun Wan, Lantao Yu, Qianyu Guo,
+Zixun Yu, Yawen Lu, Xuanmao Li, Xingpeng Sun, Rohan Ashok, Aniruddha Mukherjee, Hao
+Kang, Xiangrui Kong, Gang Hua, Tianyi Zhang, Bedrich Benes, and Aniket Bera. Dl3dv-10k:
+Alarge-scalescenedatasetfordeeplearning-based3dvision, 2023. URLhttps://arxiv.
+org/abs/2312.16256.
+Deku Liu, Yihan Zhang, Zhe Chen, et al. Citygaussianv2: Efficient and geometrically accurate
+reconstruction for large-scale scenes. In ICLR, 2025a. URL https://arxiv.org/pdf/
+2411.00771.
+12
+PublishedasaconferencepaperatICLR2026
+Yuecheng Liu, Dafeng Chi, Shiguang Wu, Zhanguang Zhang, Yaochen Hu, Lingfeng Zhang,
+Yingxue Zhang, Shuang Wu, Tongtong Cao, Guowei Huang, Helong Huang, Guangjian Tian,
+Weichao Qiu, Xingyue Quan, Jianye Hao, and Yuzheng Zhuang. Spatialcot: Advancing spatial
+reasoningthroughcoordinatealignmentandchain-of-thoughtforembodiedtaskplanning,2025b.
+URLhttps://arxiv.org/abs/2501.10074.
+Haoyu Lu, Wen Liu, Bo Zhang, Bingxuan Wang, Kai Dong, Bo Liu, Jingxiang Sun, Tongzheng
+Ren,ZhuoshuLi,HaoYang,YaofengSun,ChengqiDeng,HanweiXu,ZhendaXie,andChong
+Ruan. Deepseek-vl: Towards real-world vision-language understanding, 2024. URL https:
+//arxiv.org/abs/2403.05525.
+Wufei Ma, Haoyu Chen, Guofeng Zhang, Yu-Cheng Chou, Celso M de Melo, and Alan Yuille.
+3dsrbench: Acomprehensive3dspatialreasoningbenchmark,2025a. URLhttps://arxiv.
+org/abs/2412.07825.
+WufeiMa,Yu-ChengChou,QihaoLiu,XingruiWang,CelsodeMelo,JienengChen,JianwenXie,
+andAlanYuille. Spatialreasoner:Towardsexplicitandgeneralizable3dspatialreasoning,2025b.
+URLhttps://arxiv.org/abs/2504.20024.
+OpenAI. Hello gpt-4o. Blog, 05 2024. URL https://openai.com/index/
+hello-gpt-4o/. Accessed: November22,2024.
+OpenAI. GPT-5 System Card. Technical report, OpenAI, aug 2025. URL https://cdn.
+openai.com/gpt-5-system-card.pdf. Accessed: 2025-08-10.
+ZhenyuPanandHanLiu. Metaspatial: Reinforcing3dspatialreasoninginvlmsforthemetaverse.
+arXivpreprintarXiv:2503.18470,2025.
+Jianing Qi, Jiawei Liu, Hao Tang, and Zhigang Zhu. Beyond semantics: Rediscovering spa-
+tial awareness in vision-language models, 2025. URL https://arxiv.org/abs/2503.
+17349.
+YansongQu,JieWang,etal.Dragyourgaussian:Effectivedrag-basededitingwithscoredistillation
+for 3d gaussian splatting. In SIGGRAPH Asia, 2025. URL https://arxiv.org/pdf/
+2501.18672.
+Santhosh Kumar Ramakrishnan, Erik Wijmans, Philipp Kraehenbuehl, and Vladlen Koltun. Does
+spatialcognitionemergeinfrontiermodels?,2025.URLhttps://arxiv.org/abs/2410.
+06468.
+Kyle Sargent, Zizhang Li, Tanmay Shah, Charles Herrmann, Hong-Xing Yu, Yunzhi Zhang,
+Eric Ryan Chan, Dmitry Lagun, Li Fei-Fei, Deqing Sun, and Jiajun Wu. Zeronvs: Zero-shot
+novelviewsynthesisfromasinglerealimage. arXiv:2310.17994,2023.
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang,
+Mingchuan Zhang, YK Li, Y Wu, et al. Deepseekmath: Pushing the limits of mathematical
+reasoninginopenlanguagemodels. arXivpreprintarXiv:2402.03300,2024.
+Shao-Hua Sun, Minyoung Huh, Yuan-Hong Liao, Ning Zhang, and Joseph J Lim. Multi-view to
+novelview: Synthesizingnovelviewswithself-learnedconfidence. InECCV,2018.
+YiheTang,WenlongHuang,YingkeWang,ChengshuLi,RoyYuan,RuohanZhang,JiajunWu,and
+LiFei-Fei. Uad: Unsupervisedaffordancedistillationforgeneralizationinroboticmanipulation.
+arXivpreprintarXiv:2506.09284,2025a.
+Yihong Tang, Ao Qu, Zhaokai Wang, Dingyi Zhuang, Zhaofeng Wu, Wei Ma, Shenhao Wang,
+Yunhan Zheng, Zhan Zhao, and Jinhua Zhao. Sparkle: Mastering basic spatial capabilities
+in vision language models elicits generalization to spatial reasoning, 2025b. URL https:
+//arxiv.org/abs/2410.16162.
+Gemini Team. Gemini: A family of highly capable multimodal models, 2025. URL https:
+//arxiv.org/abs/2312.11805.
+13
+PublishedasaconferencepaperatICLR2026
+Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej,
+SarahPerrin,TatianaMatejovicova,AlexandreRame´,MorganeRivie`re,etal.Gemma3technical
+report. arXivpreprintarXiv:2503.19786,2025.
+Barbara Tversky. Cognitive maps, cognitive collages, and spatial mental models. In European
+conferenceonspatialinformationtheory,pp.14–24.Springer,1993.
+Barbara Tversky. Structures of mental spaces: How people think about space. Environment and
+behavior,35(1):66–80,2003.
+BarbaraTversky,NancyFranklin,HollyATaylor,andDavidJBryant. Spatialmentalmodelsfrom
+descriptions. JournaloftheAmericansocietyforinformationscience,45(9):656–668,1994.
+JianyuanWangetal. Vggt: Visualgeometrygroundedtransformerforuniversal3dreconstruction.
+InCVPR,2025.
+KangruiWang*,PingyueZhang*,ZihanWang*,YaningGao*,LinjieLi*,QinengWang,Hanyang
+Chen,ChiWan,YipingLu,ZhengyuanYang,LijuanWang,RanjayKrishna,JiajunWu,LiFei-
+Fei, Yejin Choi, and Manling Li. Reinforcing visual state reasoning for multi-turn vlm agents,
+2025. URLhttps://github.com/RAGEN-AI/VAGEN.
+QinengWang, ZihaoWang, YingSu, HanghangTong, andYangqiuSong. Rethinkingthebounds
+ofllmreasoning: Aremulti-agentdiscussionsthekey? arXivpreprintarXiv:2402.18272,2024.
+Wenqi Wang, Reuben Tan, Pengyue Zhu, Jianwei Yang, Zhengyuan Yang, Lijuan Wang, Andrey
+Kolobov,JianfengGao,andBoqingGong. Site:towardsspatialintelligencethoroughevaluation,
+2025. URLhttps://arxiv.org/abs/2505.05456.
+JasonWei,XuezhiWang,DaleSchuurmans,MaartenBosma,FeiXia,EdChi,QuocVLe,Denny
+Zhou,etal. Chain-of-thoughtpromptingelicitsreasoninginlargelanguagemodels. Advancesin
+neuralinformationprocessingsystems,35:24824–24837,2022.
+DiankunWu,FangfuLiu,Yi-HsinHung,andYueqiDuan.Spatial-mllm:Boostingmllmcapabilities
+invisual-basedspatialintelligence. arXivpreprintarXiv:2505.23747,2025a.
+JunfeiWu,JianGuan,KaituoFeng,QiangLiu,ShuWu,LiangWang,WeiWu,andTieniuTan. Re-
+inforcingspatialreasoninginvision-languagemodelswithinterwoventhinkingandvisualdraw-
+ing,2025b. URLhttps://arxiv.org/abs/2506.09965.
+HongchiXia,YangFu,SifeiLiu,andXiaolongWang. Rgbdobjectsinthewild: scalingreal-world
+3dobjectlearningfromrgb-dvideos. InProceedingsoftheIEEE/CVFConferenceonComputer
+VisionandPatternRecognition,pp.22378–22389,2024.
+RunsenXu,WeiyaoWang,HaoTang,XingyuChen,XiaodongWang,Fu-JenChu,DahuaLin,Matt
+Feiszli, and Kevin J. Liang. Multi-spatialmllm: Multi-frame spatial understanding with multi-
+modallargelanguagemodels,2025a. URLhttps://arxiv.org/abs/2505.17015.
+WenruiXu,DalinLyu,WeihangWang,JieFeng,ChenGao,andYongLi. Definingandevaluating
+visuallanguagemodels’basicspatialabilities: Aperspectivefrompsychometrics,2025b. URL
+https://arxiv.org/abs/2502.11859.
+Jihan Yang, Shusheng Yang, Anjali W. Gupta, Rilyn Han, Li Fei-Fei, and Saining Xie. Thinking
+inspace: Howmultimodallargelanguagemodelssee,remember,andrecallspaces,2024. URL
+https://arxiv.org/abs/2412.14171.
+Rui Yang, Hanyang Chen, Junyu Zhang, Mark Zhao, Cheng Qian, Kangrui Wang, Qineng Wang,
+Teja Venkat Koripella, Marziyeh Movahedi, Manling Li, et al. Embodiedbench: Comprehen-
+sivebenchmarkingmulti-modallargelanguagemodelsforvision-drivenembodiedagents. arXiv
+preprintarXiv:2502.09560,2025.
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao.
+React: Synergizing reasoning and acting in language models. In International Conference on
+LearningRepresentations(ICLR),2023.
+14
+PublishedasaconferencepaperatICLR2026
+Jiabo Ye, Haiyang Xu, Haowei Liu, Anwen Hu, Ming Yan, Qi Qian, Ji Zhang, Fei Huang, and
+Jingren Zhou. mplug-owl3: Towards long image-sequence understanding in multi-modal large
+languagemodels. arXivpreprintarXiv:2408.04840,2024.
+Chun-Hsiao Yeh, Chenyu Wang, Shengbang Tong, Ta-Ying Cheng, Rouyu Wang, Tianzhe Chu,
+YuexiangZhai,YubeiChen,ShenghuaGao,andYiMa. Seeingfromanotherperspective: Eval-
+uatingmulti-viewunderstandinginmllms. arXivpreprintarXiv:2504.15280,2025.
+Yang You, Yixin Li, Congyue Deng, Yue Wang, and Leonidas Guibas. Multiview equivariance
+improves3dcorrespondenceunderstandingwithminimalfeaturefinetuning,2024.URLhttps:
+//arxiv.org/abs/2411.19458.
+Jirong Zha, Yuxuan Fan, Xiao Yang, Chen Gao, and Xinlei Chen. How to enable llm with 3d
+capacity? a survey of spatial reasoning in llm, 2025. URL https://arxiv.org/abs/
+2504.05786.
+Weichen Zhan, Zile Zhou, Zhiheng Zheng, Chen Gao, Jinqiang Cui, Yong Li, Xinlei Chen, and
+Xiao-Ping Zhang. Open3dvqa: A benchmark for comprehensive spatial reasoning with multi-
+modallargelanguagemodelinopenspace,2025. URLhttps://arxiv.org/abs/2503.
+11094.
+JieyuZhang,WeikaiHuang,ZixianMa,OscarMichel,DongHe,TanmayGupta,Wei-ChiuMa,Ali
+Farhadi,AniruddhaKembhavi,andRanjayKrishna. Taskmeanything. InThirty-EighthAnnual
+ConferenceonNeuralInformationProcessingSystemsDatasetsandBenchmarksTrack,2024a.
+JuexiaoZhang,GaoZhu,SihangLi,XinhaoLiu,HaoruiSong,XinranTang,andChenFeng. Mul-
+tiviewscenegraph,2024b. URLhttps://arxiv.org/abs/2410.11187.
+Peiyuan Zhang, Kaichen Zhang, Bo Li, Guangtao Zeng, Jingkang Yang, Yuanhan Zhang, Ziyue
+Wang,HaoranTan,ChunyuanLi,andZiweiLiu. Longcontexttransferfromlanguagetovision.
+arXivpreprintarXiv:2406.16852,2024c.
+WenyuZhang,WeiEnNg,LixinMa,YuwenWang,JungqiZhao,AllisonKoenecke,BoyangLi,and
+LuWang. Sphere: Unveilingspatialblindspotsinvision-languagemodelsthroughhierarchical
+evaluation,2025. URLhttps://arxiv.org/abs/2412.12693.
+Yuanhan Zhang, Jinming Wu, Wei Li, Bo Li, Zejun Ma, Ziwei Liu, and Chunyuan Li. Video
+instructiontuningwithsyntheticdata. arXivpreprintarXiv:2410.02713,2024d.
+Yuxuan Zhang, Yifan Yang, Jing Zhang, Yifang Wang, Yijun Zhang, and Ming-Hsuan Yang.
+Viewcrafter: Taming video diffusion models for high-fidelity novel view synthesis. In ECCV,
+2024e.
+Baining Zhao, Ziyou Wang, Jianjie Fang, Chen Gao, Fanhang Man, Jinqiang Cui, Xin Wang,
+Xinlei Chen, Yong Li, and Wenwu Zhu. Embodied-r: Collaborative framework for activat-
+ing embodied spatial reasoning in foundation models via reinforcement learning, 2025. URL
+https://arxiv.org/abs/2504.12680.
+Duo Zheng, Shijia Huang, Yanyang Li, and Liwei Wang. Learning from videos for 3d world:
+Enhancingmllmswith3dvisiongeometrypriors, 2025. URLhttps://arxiv.org/abs/
+2505.24625.
+Jensen Jinghao Zhou, Hang Gao, Vikram Voleti, Aaryaman Vasishta, Chun-Han Yao, Mark Boss,
+Philip Torr, Christian Rupprecht, and Varun Jampani. Stable virtual camera: Generative view
+synthesiswithdiffusionmodels. arXivpreprintarXiv:2503.14489,2025.
+JinguoZhu,WeiyunWang,ZheChen,ZhaoyangLiu,ShenglongYe,LixinGu,HaoTian,Yuchen
+Duan, Weijie Su, Jie Shao, Zhangwei Gao, Erfei Cui, Xuehui Wang, Yue Cao, Yangzhou Liu,
+Xingguang Wei, Hongjie Zhang, Haomin Wang, Weiye Xu, Hao Li, Jiahao Wang, Nianchen
+Deng, Songze Li, Yinan He, Tan Jiang, Jiapeng Luo, Yi Wang, Conghui He, Botian Shi,
+XingchengZhang, WenqiShao, JunjunHe, YingtongXiong, WenwenQu, PengSun, Penglong
+Jiao,HanLv,LijunWu,KaipengZhang,HuipengDeng,JiayeGe,KaiChen,LiminWang,Min
+Dou,LeweiLu,XizhouZhu,TongLu,DahuaLin,YuQiao,JifengDai,andWenhaiWang. In-
+ternvl3: Exploring advanced training and test-time recipes for open-source multimodal models,
+2025. URLhttps://arxiv.org/abs/2504.10479.
+15
+PublishedasaconferencepaperatICLR2026
+Appendix
+Table of Contents
+A TheUseofLargeLanguageModels 17
+B MINDCUBEBenchmark 17
+B.1 DetailsforDataCollectionandAnnotation . . . . . . . . . . . . . . . . . . . . 17
+B.2 DetailsofourMINDCUBEBenchmark . . . . . . . . . . . . . . . . . . . . . . 19
+B.3 Examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+C EvaluationonMINDCUBE 22
+C.1 PromptTemplatesforEvaluation . . . . . . . . . . . . . . . . . . . . . . . . . 22
+C.2 Detailsintextonlyevaluation . . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+C.3 HumanEvaluation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+C.4 EvaluationSetup. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+C.5 Analysisinsettings . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+C.6 Failurecaseanalysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+D DataStructuresasCognitiveScaffolds,EvaluationMetrics,andInput-OutputCon-
+figurations 30
+D.1 DataStructuresasCognitiveScaffolds . . . . . . . . . . . . . . . . . . . . . . 30
+D.2 EvaluationMetrics. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+D.3 PromptsforAllInput-OutputConfigurations . . . . . . . . . . . . . . . . . . . 35
+E WhichScaffoldsBestGuideSpatialThinkinginUnchangedVLMs? 43
+E.1 VLMResponseExamplesforConfigurationsinSectionD.3 . . . . . . . . . . . 44
+E.2 AdditionalGraphMetricsforGeneratedGraphs . . . . . . . . . . . . . . . . . 45
+E.3 FurtherAnalysisonViewInterpolation . . . . . . . . . . . . . . . . . . . . . . 46
+E.4 ExplicitReasoningwithVisual-of-Thought . . . . . . . . . . . . . . . . . . . . 47
+F CanWeTeachVLMstoBuildandLeverageSpatialRepresentations? 48
+F.1 SupervisedFine-TuningDataCuration . . . . . . . . . . . . . . . . . . . . . . 48
+F.2 DetailedExperimentalSetup . . . . . . . . . . . . . . . . . . . . . . . . . . . 50
+F.3 VLMResponseExamplesAfterSFTforConfigurationsinSectionD.3 . . . . . 54
+F.4 DetailedGraphMetricResultsforSFTGraph-RelatedExperiments . . . . . . . 57
+F.5 WhichPartofVLMistheBottleneckforSpatialUnderstanding? . . . . . . . . 58
+F.6 BranchingfromRaw-QASFTCheckpoint . . . . . . . . . . . . . . . . . . . . 59
+F.7 ExperimentsonOtherMLLMs . . . . . . . . . . . . . . . . . . . . . . . . . . 59
+F.8 PromptSensitivityAnalyses. . . . . . . . . . . . . . . . . . . . . . . . . . . . 60
+F.9 Exploringlatentspatialrepresentations. . . . . . . . . . . . . . . . . . . . . . . 60
+F.10 HyperparameterTuningResults . . . . . . . . . . . . . . . . . . . . . . . . . . 61
+G CanReinforcementLearningFurtherRefineSpatialThoughtProcesses? 61
+G.1 DetailedExperimentalSetup . . . . . . . . . . . . . . . . . . . . . . . . . . . 61
+G.2 RLRewardDesignAblation. . . . . . . . . . . . . . . . . . . . . . . . . . . . 62
+G.3 VLMResponseExamplesAfterRLforConfigurationsinSectionD.3 . . . . . . 62
+16
+PublishedasaconferencepaperatICLR2026
+A THE USE OF LARGE LANGUAGE MODELS
+We used large language models (LLMs), including Google’s Gemini 2.5 Pro and OpenAI’s GPT-
+5, as auxiliary tools to assist with writing, editing, and conducting the literature review for this
+manuscript. All content was critically reviewed, fact-checked, and revised by the human authors
+to ensure its scientific validity and originality. The authors are fully responsible for all statements
+andconclusionspresentedinthispaper. Specifically,weuseLLMsforpolishingourwordingand
+writing,andweuseLLMstoretrieveseveralrelatedworks.
+B MINDCUBE BENCHMARK
+B.1 DETAILSFORDATACOLLECTIONANDANNOTATION
+Image Collection and Selection. Our MINDCUBE benchmark comprises 3,268 images (2,302
+indoor/outdoorimagesfrompubliclyreleaseddatasetand400self-collectedimages),whereweim-
+plementacomprehensiveimageselectionmethodologyencompassingfourdistinctviewdynamics,
+incorporatingvariousdatasourcesandprocessingprocedures,asshowninFig.2.
+For rotation view dynamics, we implement a three-stage filtering strategy to extract meaningful
+cameratrajectoriesandkeyframesfromArkitScenesBaruchetal.(2021)dataset.
+Inthefirststage,weanalyzethetop-downviewofcameraposeswithineachscenetoidentifytwo
+types of trajectories: linear paths and small rotational arcs. A linear trajectory is characterized by
+consistentlyorientedcamerasexhibitingsignificantdisplacementperpendiculartotheirviewingdi-
+rection. A rotational arc trajectory is identified when three to four camera positions demonstrate
+approximately90-degreerelativeorientationchangeswhilebeingdistributedalonganapproximate
+circulararc.Thesecondstagefocusesonselectingtwocriticalframesfromthepreviouslyidentified
+(a)camerapose1 (b)camerapose2
+Figure1: ExamplesofcameraposesinArkitScenes
+translationsegments. Theselectioncriteriamandatethat: (1)thecameramovementdirectionmust
+beparalleltotheobjectarrangementdirection,(2)thismovementshouldbealignedwiththehori-
+zontalaxis,(3)thefirstframeshouldonlycaptureobjectsAandB,whilethesecondframeshould
+onlycaptureobjectsBandC,and(4)bothframesmustbefreefrommotionblurandexhibitclear
+objectvisibility.
+The third stage processes the rotation segments to extract three or four key frames. These frames
+mustsatisfyseveralconditions: (1)thecamerapositionsshouldappeartooriginatefromastation-
+aryrotatingcamera,evenifslightcircularmovementexists,(2)thecameraorientationsshouldalign
+withstandardcardinaldirections(approximately90degreesapart),and(3)eachframeshouldcon-
+tainnomorethanthreesemanticallydistinctprimaryobjectsthatoccupyover50%oftheframearea
+relativetothebackground.
+Foramongviewdynamics,imagegroupsaremanuallyselectedfromDL3DV-10KLingetal.(2023)
+andWildRGB-DXiaetal.(2024)datasets. Weemployasingle-stageselectionprocesstoidentify
+17
+PublishedasaconferencepaperatICLR2026
+fourkeyframesrepresentingcardinalviewpoints(front,left,right,andback)from360-degreescene
+captures. The selection criteria are: (1) camera orientations must align with standard directions,
+ensuringthatthecentralobject,itsbackgroundobjects,andthecamera’slineofsightarecollinear
+andparallelorperpendiculartostandardsceneelementssuchastablesorwalls, (2)werejectsets
+wherethreeormoreframesshareidenticalsemanticbackgroundinformation,and(3)wediscardsets
+wherethreeormoreframeshaveseverelyoccludedbackgroundobjectsthatcannotbereconstructed
+frominformationintheotherframes.
+For around view dynamics, image groups are manually curated from the DL3DV-10KLing et al.
+(2023) dataset and assigned sequential identifiers. The front view (designated as view 1) must
+provide clear visibility of all relevant information. This view is established as the reference point
+forsubsequentviewsinthesequence.
+Thisstructuredapproachtoimageselectionandprocessingyieldsarichdatasetthatsupportssub-
+sequentmodeltrainingandtestingprocedures. Themethodologyensurescomprehensivecoverage
+ofspatialrelationships,occlusionstates,andview-dependentobjectcharacteristicsacrossmultiple
+viewingscenarios.
+D-BGRdliW
+K01-VD3LD
+Filtering high-quality groups
+Filter for Among
+Consistent Main Object
+Diverse Semantics Filter for Views
+Background Objects
+Orthographic
+Views Filter for Around
+Limit and Distinct
+Objects
+Diverse Semantics
+Clear Spatial Relations
+senecSStikrA
+Top View Camera Pose
+Filter for Clips Filter for Views
+Orthographic
+Views
+Aligned with
+Room Walls
+Figure2: MINDCUBEBenchconstructionpipeline.
+Data Annotation. After collecting and filtering the images, we follow a two-phase paradigm for
+annotation: We establish a systematic image annotation protocol to ensure data consistency and
+accuracy. Theannotationframeworkencompassesfourkeydimensions: spatialrelationshipidenti-
+fication,objectgroupingrules,semanticorientationdetermination,andocclusionlevelassessment.
+Weprovideapdfoftheannotationinterfaceinthesupplementarymaterial.
+Regardingspatialrelationshipidentification, annotatorsarerequiredtoidentifyprimaryobjecten-
+tities within images and determine their spatial relationships. These relationships are primarily
+categorized into two types: front-back relationships typically involving two primary objects, with
+priority given to objects directly behind as key entities; and left-right relationships encompassing
+twotofourprimaryobjects,whereadjacentobjectswithfront-backrelationshipscanbeconsidered
+asaunifiedentity.
+Toenhanceannotationefficiencyandsemanticcompleteness,thisstudyintroducesobjectgrouping
+rules. Multipleobjectscanbeannotatedasaunifiedentitywhentheycollectivelyformclearspatial
+relationshipswithotherprimaryobjects. Eachobjectmayincludeattributedescriptors(e.g.,color,
+material) to enhance semantic expression. Combined object entities must maintain distinct spatial
+relationshipswithotherprimaryobjects.
+Forobjectswithdefinitivesemanticfronts,thefollowinginformationmustberecorded:theobject’s
+inherentsemanticfront,theobject’sorientationrelativetothecurrentviewpoint(aligned,reversed,
+leftward,rightward,etc.),andtheobject’sactualprojecteddirectionwithinthescene.
+18
+PublishedasaconferencepaperatICLR2026
+Occlusion levels are evaluated using a four-tier classification system: complete occlusion where
+the object is entirely invisible from the current viewpoint; major occlusion where primary object
+featuresaredifficulttoidentify;minorocclusionwhereprimaryobjectfeaturesremainidentifiable;
+andnoocclusionwheretheobjectisfullyvisible. Forcasesofcompleteocclusion,theannotation
+system provides multi-view scene images, ensuring object visibility in at least one viewpoint to
+supportsubsequentcross-viewquestion-answeringsystemtraining.
+This annotation protocol provides a structured semantic foundation for subsequent automated
+question-answer pair generation while ensuring data quality and consistency. Through this stan-
+dardizedannotationprocess,weeffectivelycapturekeyinformationincludingspatialrelationships,
+compositionalfeatures,semanticorientations,andocclusionstatesofobjectswithinscenes.
+ExamplesforautomaticQAgenerationpipeline. OurautomaticQAgenerationpipelinegener-
+Current Frame
+Visual Patterns
+no linear
+“What-if” Dynamics Relation Perspective Questions:
+Query Taking Level 1. How did you likely move from
+the first view to second view?
+meanwhile 1
+(Agent, Agent) self perspective 2. What is behind of you?
+3. From chair's view, could you
+2
+see the quilt-covered sofa?
+Main Objects 4. From the TV's view, what is on
+(Agent, Object) other perspective-1
+3 your left-front side?
+1. A chair with a 5. What is on the left of the chair
+basket on it 5 4 from your ego-centric view?
+2. TV (Object, Object) 6 other perspective-2 6. What is on the left of the chair
+from TV's view?
+Figure3: Exampleofdifferentquestion-relatedlabelcombinationstogenerateQApairs.
+atesdifferenttypesofquestionsusingcombinationsoflabels. Eachquestion’slabelcombinationis
+encodedinitsID(e.g.,”among group001 q1 1 1”),whiletheoriginalobjectandlabelinformation
+ispreservedinthemeta infofieldtotrackthecontextofquestiongeneration.
+B.2 DETAILSOFOURMINDCUBEBENCHMARK
+B.2.1 THREEKINDSOFINVISIBILITYSETTINGS
+Rotation. In this setting, our camera remains stationary while rotating in place, capturing 2 to 4
+orthogonalviews. Ineachview,acentralobjectremainsvisibleintheforeground,whileallviews
+maintainequalimportanceinthespatialrepresentation.
+We evaluate models’ understanding of spatial invisibility by asking questions such as ’When
+positioned at a particular viewpoint, what should be to your left or right (given that each view
+only reveals what’s directly ahead)?’ or ’After rotating a quarter or half turn, what objects would
+be in front of you, to your left, behind you, or to your right?’ We expect models to construct
+a comprehensive spatial understanding by leveraging the sequential nature of the views and
+consistent spatial cues across images (such as lighting direction), thereby demonstrating their
+ability to reason about the complete environment despite only having access to partial visual
+informationfromeachviewpoint.
+Around. In this setting, we leverage occlusion phenomena to force MLLMs beyond simple 2D
+spatialrecognition. Whenviewingobjectsfromdifferentangles,someobjectsbecomepartiallyor
+fullyhidden,requiringmodelsto:
+• Maintainobjectpermanencedespitepartialvisibility
+19
+PublishedasaconferencepaperatICLR2026
+• Transform lateral relationships (left-right) from frontal views into depth relationships
+(front-back)forsideviews
+• Integratespatialinformationacrossmultipleviewpointstoformacoherent3Dunderstand-
+ing
+This approach prevents models from relying solely on direct visual cues and instead necessitates
+true3Dspatialreasoningbycombininginformationfrommultipleperspectives.
+Among. Inthissetting,thecamerarotatesaroundacentralobject,positionedbetweenthiscentral
+objectandseveralsurroundingobjects.Fourorthogonalviewsarecaptured,witheachviewshowing
+thecentralobjectpositionedinfrontofoneofthesurroundingobjects.
+This setup creates interesting visibility constraints across different perspectives. For instance, a
+surroundingobjectvisibleinoneviewmaybeinvisibleinanotherviewbecauseoftheconstraints
+imposedbythecamera’sfieldofview.Throughestablishingconsistencyrelationshipsbetweenthese
+views, we can infer the relative positions of objects not directly visible from certain perspectives.
+When an object is not visible from a particular viewpoint, consistency and spatial reasoning can
+determineitspositionrelativetothecentralobject.
+All views hold equal status in this framework, allowing for bidirectional establishment of invisi-
+bilityrelationships. Thiscreatesacoherentspatialreasoningsystemwhereinformationfromeach
+perspective contributes to a complete understanding of the three-dimensional arrangement, even
+whendirectvisualconfirmationisunavailablefromcertainangles.
+B.2.2 LABELTAXONOMY
+WeuseimagerelatedlabelsforbetteranalysisandquestionrelatedlabelsforautomaticQAgener-
+ationwithdifferentlabelcombinations.
+VisualPatterns.Inourtaxonomyofspatialconfigurations,weclassifyvisualpatternssintodistinct
+categoriesbasedontheirgeometricrelationships.Lineararrangementsrefertoconfigurationswhere
+objects are positioned along a single axis, forming a collinear pattern. Non-linear arrangements,
+conversely,arecharacterizedbyobjectspositionedsuchthattheconnectinglinesbetweenadjacent
+pairs form 90-degree angles, creating rectilinear patterns. This binary classification serves as a
+fundamental attribute in our spatial relationship labeling scheme, enabling precise description and
+analysisofscenecompositionsacrossvariousdomains.
+“What if” Dynamics. “What if” Dynamics refers to the model’s capability to comprehend and
+reasonaboutdynamicperspectivechangesoccurringwithinimagesorposedquestions. Weconcep-
+tualizeviewpointtransitionsascombinationsoftranslationandrotationoperations,resultinginfour
+distinctcategories:
+• PureTranslation: Caseswheretheviewpointundergoesonlytranslationalmovementwith-
+outrotationalchange.
+• PureRotation: Scenariosinvolvingrotationaltransformationoftheviewpointwhilemain-
+tainingitspositionalcoordinates.
+• SimultaneousTranslation-Rotation(Meanwhile):Instanceswherebothtranslationalandro-
+tationaloperationsoccurconcurrently.
+• SequentialTranslation-Rotation(Sequence): Caseswheretranslationandrotationoccurin
+sequence rather than simultaneously. Notably, in our dataset, this category is uniquely
+representedthroughtextualdescriptionsinthequestionsratherthanthroughexplicitvisual
+transformations.
+Thefirstthreecategoriesof“Whatif”dynamicsarevisuallydemonstratedthroughchangesinview
+representation,whilethesequentialcategoryrequiresmodelstointerprettext-baseddescriptionsof
+perspectivechanges. Thistaxonomyprovidesasystematicframeworkforevaluatingspatialreason-
+ingcapabilitiesacrossdiverseviewpointtransformationscenarios.
+RelationQuery. Wedefinethreedistinctcategoriesofrelationqueriesthatcapturethefundamental
+natureofspatialreasoningtasks:
+20
+PublishedasaconferencepaperatICLR2026
+• Agent-Agent: Thispatterninvolvesself-referentialspatialpositioning,wheretheobserver
+must evaluate and potentially adjust their own position in space. It requires egocentric
+spatialreasoningandself-awarenessofone’slocationrelativetoenvironmentalconstraints.
+• Agent-Object: This pattern focuses on determining the orientation of an observed object
+relative to the observer’s position. Unlike the P-P pattern, the emphasis here is on object
+perception rather than self-positioning, requiring the observer to make judgments about
+externalentitieswhilemaintainingawarenessoftheirownreferenceframe.
+• Object-Object: Thispatterninvolvesreasoningaboutthespatialrelationshipbetweentwo
+discreteobjectsintheenvironment, independentoftheobserver’sposition. Thisallocen-
+tricspatialreasoningrequiresunderstandingrelativepositioning,distance,andorientation
+betweenentitieswithoutnecessarilyusingoneselfasareferencepoint.
+Thesecategorizationsprovideastructuredapproachtoanalyzingthecognitivedemandsofdifferent
+spatialreasoningtasksandcaninformboththedesignofspatialquestionansweringsystemsandthe
+evaluationofhumanspatialcognitionabilities.
+PerspectiveTaking.Weproposealabelcalled”PerspectiveTaking”thatcategorizesthecomplexity
+ofviewpointprojection. Thislabeldistinguishesbetweenthreeincreasinglysophisticatedlevelsof
+perspectivereasoning:
+• SelfPerspective: Reasoningbasedonthecurrentcameraviewortheobserver’sownview-
+point. Thisrepresentsthebaselinewherenoperspectiveshiftisrequired.
+• Other’sPerspectiveTaking-1:Theabilitytodeterminevisibilityrelationshipsfromanother
+agent’sviewpoint. Thisinvolvesunderstandingwhatobjectsarevisibleoroccludedfrom
+adifferentviewpoint(e.g.,determiningwhetheraspecificobjectiswithinthefieldofview
+ofanothercamera). Theanotheragent’sviewpointisusuallydeterminedbyanobjectwith
+aclearorientationintheimage.
+• Other’sPerspectiveTaking-2:Theabilitytounderstandhowspatialrelationshipstransform
+when viewed from another agent’s perspective. This more advanced capability requires
+mental rotation and spatial transformation to reason about relative positions (e.g., deter-
+miningwhether,fromanotherviewpoint,objectXappearstobepositionedbehindobject
+Y).
+This classification aligns with developmental psychology research on perspective-taking abilities,
+where Level-1 perspective taking typically develops earlier than the more cognitively demanding
+Level-2perspectivetaking.
+We provide performance across different categories and labels in Table1 and 2. Upon detailed
+analysisofmodelperformanceacrossvariouscapabilities,certaintrendsemerge. TheO-O(Object-
+Object) task within Relation Pattern also demonstrates generally lower scores across the board,
+suggestingitisalesstractableproblemforcurrentmodels. Notably,InternVL2-8Bstruggleswith
+thesequencetask,exhibitingthelowestscoreamongallevaluatedmodelsinthatcategory.
+Regarding model stability, Mantis(SigLip) demonstrates robust performance in both Object Ar-
+rangementandRelationPatternsections,indicatingaconsistentcapabilityinthesespatialreasoning
+tasks.Similarly,Qwen2.5-VL-7B-InstructmaintainsrelativelystableperformancewithinViewpoint
+Dynamics. In contrast, InternVL2-8B shows a broader instability, with consistently lower overall
+scoresandconsiderableperformancefluctuationsacrossdifferentsub-categories,highlightingareas
+forfurtherimprovementinitsgeneralizabilityandrobustness.
+B.3 EXAMPLES
+WeshowsomeexamplesinFigure5,6and4.
+21
+PublishedasaconferencepaperatICLR2026
+Table1: PerformanceofVLMsonMINDCUBEacrosscategories.(Part1)
+Model Overall ObjectArrangement PerspectiveTaking
+Linear Perp. Self Level1 Level2
+LLaVA-Video-7B-Qwen2 41.96 30.12 43.11 42.19 60.76 33.80
+Mantis(SigLip) 41.04 50.99 40.08 41.20 54.43 35.41
+GPT-4o 38.81 29.16 39.75 39.07 46.20 31.86
+Qwen2.5-VL-3B-Instruct 33.21 30.34 33.49 32.96 46.84 36.28
+LongVA-7B 29.46 24.88 29.91 28.81 51.90 39.83
+Qwen2.5-VL-7B-Instruct 29.26 21.35 30.02 28.77 46.84 36.81
+deepseek-vl2-small 47.62 26.91 49.63 48.32 56.33 31.11
+Robobrain 37.38 29.53 38.14 37.56 55.06 30.57
+Claude-sonnet-4 44.75 47.62 44.48 45.32 49.38 31.74
+Space-Mantis 22.82 29.32 22.19 22.15 45.57 33.48
+InternVL2-8B 18.68 13.11 19.22 17.89 64.56 27.99
+Space-Qwen 33.28 26.32 33.95 33.06 46.84 35.63
+LLaVA-Onevision-7B 47.43 44.09 47.75 48.04 51.27 33.48
+Spatial-MLLM 32.06 20.92 33.13 31.79 46.84 35.20
+mPLUG-Owl3-7B 44.85 26.91 46.59 45.15 60.13 35.74
+Table2: PerformanceofVLMsonMINDCUBEacrosscategories.(Part2)
+Model RelationPattern ViewpointDynamics
+A-A A-O O-O Rotation Meanwhile Sequence
+LLaVA-Video-7B-Qwen2 36.22 57.61 26.67 35.71 30.12 73.45
+Mantis(SigLip) 23.78 64.16 25.24 37.65 24.99 82.74
+GPT-4o 49.30 48.38 16.70 32.65 31.09 59.73
+Qwen2.5-VL-3B-Instruct 37.85 37.51 20.65 37.37 27.88 46.05
+LongVA-7B 19.72 35.49 25.58 35.89 24.67 40.50
+Qwen2.5-VL-7B-Instruct 31.41 34.67 15.63 38.76 22.87 43.76
+deepseek-vl2-small 43.98 68.27 25.33 37.00 32.97 87.13
+Robobrain 30.94 49.18 27.37 35.80 28.79 59.66
+Claude-sonnet-4 41.78 67.25 15.85 48.42 34.76 69.53
+Space-Mantis 28.18 17.03 20.89 37.65 24.98 14.46
+InternVL2-8B 15.67 12.47 24.58 36.45 21.78 7.36
+Space-Qwen 31.59 38.14 26.13 38.02 28.51 44.58
+LLaVA-Onevision-7B 42.28 65.87 29.79 36.45 33.80 84.38
+Spatial-MLLM 27.72 37.75 25.80 38.39 26.84 44.19
+mPLUG-Owl3-7B 47.80 62.29 18.83 37.84 31.02 81.55
+C EVALUATION ON MINDCUBE
+C.1 PROMPTTEMPLATESFOREVALUATION
+EvaluationPromptPrefix
+Based on these images, answer the question based on this rule: You only need to provide
+*ONE* correct answer selecting from the options listed below. For example, if you think
+thecorrectansweris‘A.above’from‘A.aboveB.underC.frontD.behind.’,yourresponse
+shouldonlybe‘A.above’.
+TheQuestionis:
+C.2 DETAILSINTEXTONLYEVALUATION
+Inthetext-onlyevaluation,wereplacetheoriginalimageinputwithcorrespondingtextualdescrip-
+tionsandassesstheperformanceofmodelsbasedonthesedescriptions. Thepurposeofthiseval-
+uationistohighlighthowmuchinformationmaybelostordistortedwhenthevisualinputissub-
+22
+PublishedasaconferencepaperatICLR2026
+Example of Among setting
+: meanwhile agent-agent self perspective non-linear
+Question: Based on view1 and view2 showing the same
+scene, which direction did you move from the first view
+to the second view?
+Options: A. Forward-left B. Forward-right
+View1 View2 View3 View4
+System Prompt: Based on these four images (image 1, 2, 3, and 4) showing the red ball from different viewpoints
+(front, left, back, and right), with each camera aligned with room walls and partially capturing the surroundings:
+: meanwhile agent-object self perspective non-linear : meanwhile object-object self perspective non-linear
+Question: If you are standing at the viewpoint presented Question: From the viewpoint presented in image 1, what
+in image 1, then you turn left and move forward, will you is to the left of the red ball?
+get closer to the light-colored sofa? Options: A. white-red cabinet B. light-colored sofa C. dark
+Options: A. Yes B. No brown sofa D. school bag and TV cabinet
+Question: If you are standing at the viewpoint presented Question: From the viewpoint presented in image 1, what
+in image 1, what is behind you? is to the right of the red ball?
+Options: A. white-red cabinet B. light-colored sofa C. darkO ptions: A. white-red cabinet B. light-colored sofa C. dark
+brown sofa D. school bag and TV cabinet brown sofa D. school bag and TV cabinet
+: meanwhile object-object other perspective non-linear
+Question: If you are positioned where the light-colored Question: If you are positioned where the dark brown
+sofa is and facing the same direction, what would be to sofa is and facing the same direction, what would be to
+the left of the red ball from this view? the right of the red ball from this view?
+Options: A. dark brown sofa B. school bag and TV Options: A. school bag and TV cabinet B. white-red
+cabinet C. white-red cabinet cabinet C. light-colored sofa
+Figure4: Exampleofamongsetting.
+stituted with text-based representations, and to demonstrate the crucial role of visual data in the
+models’performance.
+We used two types of captions: brief and dense. The brief captions provide a concise overview
+oftheimage,whilethedensecaptionsofferamoredetaileddescriptionwithafocusonthespatial
+relationships between objects. Additionally, the models are evaluated using textual descriptions
+(text-onlyevaluation)basedonthesecaptions,withnoaccesstotheactualimages.
+PromptforBriefCaptioning
+Describethisimagebriefly.
+PromptforDenseCaptioning
+Describethisimageindetail,specifiallyfocusingonthespatialrelationshipbetweenobjects.
+Text-onlyevaluationPromptPrefix
+YouneedtogatherinformationabouteachimagebasedonthedescriptionsIprovidebelow,
+and answer the given questions using those textual descriptions, without directly viewing
+theimages.
+Image1: <Caption1>
+...
+ImageN:<CaptionN>
+23
+PublishedasaconferencepaperatICLR2026
+Example of Around setting
+: meanwhile agent-agent self perspective linear
+Question: Based on view1 and view2 showing the same
+scene, please determine which direction did you move?
+A. Left-front B. Right-front.
+View1(Front) View2(Left) View3(Right) Options: A. Forward-left B. Forward-right
+System Prompt: Given 3 orthogonal perspectives of a scene, they are the front view, left view and right view.
+: meanwhile object-object self perspective linear : meanwhile object-object self perspective linear
+Question: In the second image, what is the nearest Question: If you are at the view of the second image now,
+object the nearest object behind of the black waste bin? then you turn right and go straight, is the green waste bin
+Options: . A. green waste bin B. blue waste bin C. be closer to you?
+shrubbery Options: A. Yes B. No
+Question: In the third image, what is the nearest object Question: If you are at the view of the third image now,
+behind of the blue waste bin. then you turn left and go straight, is the green waste bin
+Options: A. green waste bin B. blue waste bin C. be closer to you?
+shrubbery Options: A. Yes B. No
+Figure5: Example-1ofaroundsetting.
+AsshownintheTable3,allthreemodelsexhibitanoticeableperformancedeclinewhenreplacing
+the original image input with its corresponding text-based description. Specifically, the brief cap-
+tionscausethemostsignificantperformancedrop.Forinstance,RoboBrain-8Bexperiencesa7.83%
+decreasewiththebriefcaptions,andLLaVA-OneVision-7Bdropsby12.91%inthesamecondition.
+Even when using dense captions, which offer more detail, there is still a performance reduction,
+althoughthedecreaseisslightlylesspronouncedcomparedtobriefcaptions. Inconclusion,while
+textualdescriptionscanconveysomeinformation,theyfailtocapturetherichnessandintricaciesof
+visualdata,leadingtoamarkedreductioninperformanceacrossallmodels.
+Table3: Text-only(T)evaluationvs. originalevaluationwithimageinputs(I).Theresultshighlight
+a significant performance drop when the original image input is replaced with the corresponding
+text-basedcaption, particularlywiththe briefcaptions. Inallcases, model performancedecreases
+notably,underscoringthatourbenchmarkisvision-centric.
+Model Brief(T) Dense(T) Original(I)
+RoboBrain-8B 33.92%↓7.83% 35.58%↓6.17% 41.75%
+LLaVA-OneVision-7B 34.17%↓12.91% 35.92%↓11.16% 47.08%
+Qwen2.5-VL-7B-Instruct 27.00%↓5.33% 28.75%↓3.58% 32.33%
+C.3 HUMANEVALUATION
+WeuseourTinyBenchmark—encompassingalltaskcategoriesforevaluationby5humanannota-
+tors,eachofwhomindependentlyanswerseveryquestion. Hereistheresults4.
+Table4: ComparisonofHumanandGPT-4Performance(%)
+Model/Annotator GPT4-o Human-max Human-min Human-avg
+Accuracy 36.54 94.77 94.20 94.55
+This observation demonstrates the disparity in spatial reasoning capabilities between humans and
+state-of-the-art multimodal large language models, where humans exhibit superior performance in
+solvingspatialproblemsthatremainchallengingforadvancedAIsystems.
+24
+PublishedasaconferencepaperatICLR2026
+Example of Around setting
+: meanwhile agent-agent self perspective linear
+View1
+View2 View3
+Question: Based on view1 and view2 showing the same
+scene, please determine which direction did you move?
+A. Left-front B. Right-front.
+Options: A. Forward-left B. Forward-right
+View4 View5 View6
+System Prompt1: Given 3 orthogonal perspectives of a scene, they are the front view, left view and right view.
+: meanwhile object-object self perspective linear : meanwhile object-object self perspective linear
+Question: In the second image, what is the nearest Question: If you are at the view of the second image now,
+object the nearest object behind of the double trash can? then you turn right and go straight, is the sanitation cart
+Options: A. sanitation cart B. bench C. battery powered be closer to you?
+vehicle D. car (View 123 or View 145 Used) Options: A. Yes B. No (View 123 or View 145 Used)
+Question: IIn the third image, what is the nearest object Question: If you are at the view of the third image now,
+behind of the sanitation cart? then you turn left and go straight, is the double trash be
+Options: A. double trash can B. bench C. battery powered closer to you?
+vehicle D. car (View 123 or View 145 Used) Options: A. Yes B. No (View 123 or View 145 Used)
+System Prompt2: Given 3 orthogonal perspectives of a scene, they are the behind view, left view and right view.
+: meanwhile object-object self perspective linear : meanwhile object-object self perspective linear
+Question: In the second image, what is the nearest Question: If you are at the view of the second image now,
+object the nearest object behind of the double trash can? then you turn right and go straight, is the sanitation cart
+Options: A. sanitation cart B. bench C. battery powered be closer to you?
+vehicle D. car (View 623 or View 645 Used) Options: A. Yes B. No (View 623 or View 645 Used)
+Question: I=In the third image, what is the nearest object Question: If you are at the view of the third image now,
+behind of the sanitation cart? then you turn left and go straight, is the double trash be
+Options: A. double trash can B. bench C. battery powered closer to you?
+vehicle D. car (View 623 or View 645 Used) Options: A. Yes B. No (View 623 or View 645 Used)
+Figure6: Example-2ofaroundsetting.
+C.4 EVALUATIONSETUP
+To comprehensively evaluate model performance, we conducted experiments on a diverse suite of
+models. This suite includes models with native multi-image reasoning capabilities (e.g., LLaVA-
+Onevision(Lietal.,2024a),LLaVA-Video(Zhangetal.,2024d),mPLUG-Owl3(Yeetal.,2024),
+InternVL2.5 (Chen et al., 2024b), QwenVL2.5 (Bai et al., 2025), LongVA (Zhang et al., 2024c),
+DeepSeek-VL2 (Lu et al., 2024)), Gemma3 Team et al. (2025), models fine-tuned on interleaved
+image-text data (e.g., Mantis (Jiang et al., 2024)), leading proprietary APIs (e.g., GPT-5, Claude-
+4-Sonnet),andmodelsspecificallyfine-tunedforspatialreasoningtasks(e.g.,RoboBrain(Jietal.,
+2025),Space-Mantis(Chenetal.,2024a),Space-Qwen(Chenetal.,2024a),andSpatial-MLLMWu
+etal.(2025a)).
+C.5 ANALYSISINSETTINGS
+C.5.1 AROUND
+First, we examine the relationship between occlusion degree and response accuracy across four
+visibilitylevels(fullyvisible,mostlyvisible,mostlyoccluded,fullyoccluded)todeterminewhether
+performancedegradesproportionallywithincreasingocclusion. Second,weinvestigatetheimpact
+of camera height variation within the same lateral viewpoint, as different vertical perspectives
+yield distinct occlusion patterns that may challenge the model’s ability to maintain spatial coher-
+ence. These paradigms evaluate whether models perform consistently when transferring spatial
+25
+PublishedasaconferencepaperatICLR2026
+relationships across viewpoints, particularly in scenarios with significant object size discrepancies
+where smaller objects may be completely occluded from one angle but visible from another. This
+multifaceted analysis approach enables a more nuanced understanding of MLLMs’ genuine 3D
+spatial reasoning capabilities beyond simple pattern recognition of 2D visual cues. We mainly
+evaluatedGPT-4oandQwen2.5-VL.
+Occlusion Degree Analysis. Our analysis reveals a notable correlation between occlusion
+Abstract spatial representation
+Around
+Can Column Can
+Front View Left View
+Complex
+Arrange
+-ment Condiment cart
+Right View Back View
+Question1: From the viewpoint presented in image 2, is there anblue trash can behind the
+brick-patterned column? A. Yes B. No.
+Question2: From the viewpoint presented in image 3, is there an orange trash can behind the
+brick-patterned column? A. Yes B. No.
+Answer1: In image 2, the viewpoint is from the left side of the brick-patterned column. Image 4 shows the back
+view of the column, where a blue trash can is visible. Therefore, from the viewpoint in image 2, the blue trash can
+is indeed behind the column.
+Therefore, my answer is A. Yes.
+Answer2:In image 3, the viewpoint shows a blue trash can next to the brick-patterned column. Image 4, which
+shows the back view, reveals an orange trash can next to the column. Therefore, from the viewpoint in image 3,
+the orange trash can is not visible because it is on the opposite side of the column.
+Therefore, my answer is B. No. GPT-4o Response
+Figure7: Exampleofcomplexspatialarrangementinaroundsetting.
+degree and model performance. Accuracy rates declined progressively with increasing occlusion,
+withanaveragedecreaseof50.7%betweenfullyvisibleandfullyoccludedconditions(p<0.01).
+Interestingly, the performance degradation was non-linear, with a precipitous drop occurring
+betweenthemostlyvisibleandmostlyoccludedcategories(28.7%decrease),suggestingapotential
+threshold effect in the models’ spatial reasoning capabilities. Error analysis in Figure8 further
+revealed that models frequently defaulted to proximity-based guessing when confronted with
+heavily occluded objects, rather than leveraging cross-view information to reason about hidden
+spatialrelationships.
+Camera Height Impact Analysis. Varying camera heights significantly affected model per-
+formance through different occlusion patterns. High-angle perspectives yielded 24.8% higher
+accuracy than eye-level views by revealing tops of partially occluded objects and providing better
+scenecontext. Thisadvantagewasmostpronouncedindensearrangementswheretop-downangles
+exposedspatialgapsbetweenobjectsotherwiseinvisiblefromeye-level. Modelsclearlybenefited
+fromtheholisticunderstandingaffordedbyelevatedviewpoints,whereglobalspatialrelationships
+becamemoreapparent.Incontrast,eye-levelperspectiveswithmoresevereocclusionsledtopoorer
+spatial reasoning, suggesting limited ability to mentally reconstruct hidden scene elements from
+partialvisualinformation.
+The integration of findings across all three dimensions indicates that current MLLMs pos-
+sess partial but inconsistent 3D spatial reasoning capabilities. The models’ performance appears
+heavily influenced by the visibility of key reference points across multiple viewpoints, suggesting
+26
+PublishedasaconferencepaperatICLR2026
+Around
+Front View Left View
+Different
+Height
+Right Right Right
+View 1 View 2 View 3
+Back View
+Question: Based on these three images (image 1, 2, and 3) showing the same
+scene from different viewpoints (front, left, and right): From the viewpoint
+presented in image 3, is there a table behind the trash can?A. Yes B. No."
+Answer1: In image 3, we see the trash can Answer1: -In image 1, we see a table and
+positioned against the wall with no visible chairs adjacent to the trash can near wall.
+table behind it. The angle of the shot does -In image 2, the view from the left shows
+not showany part of a table behind the the table extends from the wall, and the
+trash can. trash can is closely beside it.
+Therefore, my answer is B. No. -In image 3, the view from the right toward
+the trash can shows the area where the
+table is located.
+Answer2: In image 3, we see a trash can From this viewpoint, while there's no direct
+placed against a wall with a partial view of view behind the trash can, based on the
+the floor and part of another object that previous images that illustrate the spatial
+appears to be a table. The angle suggests arrangement, the table should be visible
+that if there were a table behind the trash next to the trash can, not directly behind it.
+can, it would be visible or at least partially Therefore, my answer is B. No.
+seen. However, the image only shows the
+trash can and part of the floor, without
+any indication of a table being present Answer2: Image 1 shows a trash can to
+behind it. the right of a table with two chairs. Image
+Therefore, my answer is B. No. 2 reinforces this by showing the table and
+chairs aligned along the wall, with the
+trash can just beyond the table. Image 3
+shows the view from the side of the trash
+Answer3: In image 3, we see the trash can can, where the table is not visible directly
+positioned in front of a wall with a table behind it, suggesting it is adjacent rather
+visible behind it. The perspective shows than directly behind from this viewpoint.
+that the table is indeed locatedbehind Therefore, my answer is B. No
+the trash can when viewed from this angle.
+Therefore, my answer is A. Yes.
+Answer3: In image 1, a table is visible next
+to a trash can. Image 2 confirms the same
+tableand trash can placement from a
+Qwen-7B-Instruct Response different angle. Image 3 shows the trash
+can in the foreground, and a table is visible
+directly behind it. Therefore, my answer is
+GPT-4o Response
+A. Yes.
+Figure8: Exampleofdifferentcameraheights’impactinaroundsetting.
+27
+PublishedasaconferencepaperatICLR2026
+Figure9: Pairedquestion-answersinconsistencyintwotests. WereporttheproportionsofIC,CC
+and WW. Notably, SpaceQwen has a highest inconsistency(around 40%). GPT-4o and LLaVA-
+Onevisionexhibitmorebalancedperformance.
+a reliance on visual correspondence matching rather than true 3D mental modeling. The
+observed asymmetries in spatial transformation paradigms further support this hypothesis, as a
+robust 3D reasoning system would demonstrate consistent performance regardless of the specific
+transformationrequired.
+C.5.2 AMONG
+Whilethecorrectnessofonesinglequestionindicateshowoftenamodelanswersanisolatedques-
+tioncorrectly,itdoesnotcapturewhetherthemodelremainsconsistentwhenpresentedwithobjects
+with different visual attributes and different number of central objects while retaining the original
+peripheralscenes.
+Toinvestigatethis,wealsoproposetwodifferenttests:
+Attribute Invariance Test. We modify only the visual attributes (e.g., color, category) of
+the central object while keeping the spatial configuration of all objects unchanged, as shown
+in Figure10. A robust spatial reasoning system should maintain consistent answers, as spatial
+relationshipsremaininvariantdespitesuperficialattributechanges.
+QuantitySensitivityTest. Weincreasethenumberofcentralobjects(e.g.,fromonetothree)while
+retaining the original peripheral objects, as shown in Figure11. This modification is hypothesized
+to enhance reasoning performance, as additional central objects provide more reference points for
+establishingcross-viewcorrespondencesandconsistency.
+Wealsoproposetolookintotheproportionsofpairedquestionsintestswheretheanswersarein-
+consistentwithoneanother. First,weclassifyeachpairedinstanceintothreescenarios: 1)CC(Both
+Correct) when the model answers both the primary and paired question correctly, 2) WW (Both
+Wrong) when it fails both versions, and 3) IC (Inconsistent) when the model answers one version
+correctlybutfailstheother.
+As shown in Figure 9, we report the proportions of IC (in consistent) outcomes across 4 MLLMs
+in two tests — two open-source (Intern2.5-VL, LLaVA-Onevision), a spatial model (SpaceQwen)
+and a closed-source GPT-4o. We have several observations: 1) SpaceQwen exhibits notably high
+inconsistency score IC (around 40%) on both tasks, 2) LLaVA-Onevision remain fairly balanced
+inconsistencyandhighperformanceacrosstests,whileInternVLvarysignificantlyacrosstests.
+28
+PublishedasaconferencepaperatICLR2026
+Figure10: ExamplesinAttributeInvarianceTest.
+Figure11: ExamplesinQuantitySensitivityTest.
+Our systematic evaluation demonstrates MLLMs can achieve attribute-invariant spatial reasoning
+but struggle to utilize additional reference objects effectively. This highlights the need for: (1)
+enhanced geometric reasoning architectures, and (2) comprehensive benchmarks evaluating both
+attributeinvarianceandquantitysensitivityin3Dspatialunderstanding.
+C.6 FAILURECASEANALYSIS
+The observed pattern of errors indicates that models primarily rely on local relationship match-
+ing rather than inferring global spatial configurations, which represents a critical gap compared to
+human-likespatialreasoningabilities. Futurearchitecturalimprovementsshouldthereforefocuson
+enhancing transitive spatial inference mechanisms and view-invariant scene representation to sup-
+portmorerobustreasoningacrossmultipleperspectives.
+29
+PublishedasaconferencepaperatICLR2026
+Question: Based on these four different viewpoints (front, left,
+back, and right), if you are positioned at the first viewpoint,
+then you tum right and move forward,wil you get closer to the
+window? Question: Based on these four different viewpoints (front, left,
+Options: A. No B.Yes back, andright), if you are positioned at the third viewpoint,
+what is behind you?
+<Reasoning>: Options: A.Washing machine B.White wood rack C.White +
+1. The first image shows a view with a vent,likely the front view. gray curtains D. White wall and window
+2. The second image has a window visible,indicating it is the
+view opposite to the first.
+3. The third image features a large cardboard, potentially a <Reasoning>:
+covered window on one side. The third viewpoint shows the right side of the shoe, with the
+4. The fourth image shows a plain wal,suggesting the view washing machine visible in the background.
+opposite the third image.
+Based on these, the four views are likely structured in a roughly Therefore, if you are positioned at the third viewpoint,the
+rectangular layout. Starting at the first view (front with vent), washing machine is behind you. Therefore, my answer is A.
+turning right would bring you to the wall (fourth image), away Washing machine.
+from the window (second image). Therefore, my answer is A.
+No.
+Figure 12: Failure case analysis. We show GPT4-o’s reasoning process. In case 1, the model is
+unable to establish the spatial location corresponding to each view; In case 2, the model confuses
+thesubjectofthe“behind”relationship.
+D DATA STRUCTURES AS COGNITIVE SCAFFOLDS, EVALUATION METRICS,
+AND INPUT-OUTPUT CONFIGURATIONS
+Inthissection, weprovidedetaileddescriptionsofthethreedatastructuresemployedascognitive
+scaffolds to approximate spatial mental models in VLMs, followed by formal definitions of the
+evaluationmetricsemployedacrossallexperiments. Furthermore,weshowthepromptsforallthe
+input-outputconfigurationsthatwereusedacrossthefollowingexperiments.
+D.1 DATASTRUCTURESASCOGNITIVESCAFFOLDS
+The human ability to navigate and reason about space, especially with incomplete information, is
+largelyattributedtotheformationofinternalspatialmentalmodels. Thesemodels, asextensively
+studiedincognitivescience,arenotnecessarilyveridical,metric-perfectreplicasoftheenvironment.
+Instead,theyareoftenschematicandevendistorted,yetfunctionallyeffectiverepresentations.These
+models can be especially useful for understanding the environment spatial layouts for agentic set-
+tingsYaoetal.(2023);Wangetal.(2024),suchasembodiedscenariosLiangetal.(2023);Driess
+et al. (2023); Huang et al. (2023; 2024); Li et al. (2024b); Yang et al. (2025); Tang et al. (2025a).
+PioneeringworkbyBarbaraTverskysuggeststhattheseinternalconstructsaremoreakinto”cog-
+nitivecollages”–flexibleassembliesofspatialinformationgleanedfromvariousperspectivesand
+experiences, rather than rigid, map-like blueprints Tversky (1993). These ”cognitive collages” al-
+lowfortheintegrationoffragmentedobservationsandsupportreasoningacrossunseenperspectives.
+Johnson-LairdJohnson-Laird(1983)positsthatmentalmodels,includingthoseforspace,serveas
+”structural analogs of the world,” enabling individuals to simulate and infer spatial relationships,
+suchasdeterminingtherelativepositionsofobjectsfromsequentialdescriptions(e.g.,”Aistothe
+leftofB;BisinfrontofC”). ResearchbyTverskyTverskyetal.(1994)hasalsodemonstratedthat
+individualscanconstructrich,multi-dimensionalmentalrepresentationsevenfromlinear,descrip-
+tivetexts,andsubsequentlyquerythesemodelsfromvariouspsychologicalviewpoints.
+Inspired by these cognitive theories, we explore three distinct data structures designed to act as
+cognitivescaffoldsforVLMs. WhenVLMsarepresentedwithlimitedvisualinput,thesestructures
+aimtoapproximatedifferentfacetsofhumanspatialmentalmodeling:dynamicupdating,integrated
+spatiallayoutrepresentation,andinferentialreasoning.
+30
+PublishedasaconferencepaperatICLR2026
+D.1.1 VIEWINTERPOLATIONFORDYNAMICUPDATING
+Humanspatialmentalmodelsarenotstatic;theyarecontinuouslyupdatedwithnewsensoryinfor-
+mation and through mental simulation, such as imagining a change in viewpoint. To approximate
+this dynamic updating and mental animation capability Hegarty (1992), we employ view interpo-
+lation. Thistechniqueaimstobridgeperceptualgapsbetweendiscrete,sparselysampledviewsby
+generatingintermediatevisualframes.
+OurSetting: Inourexperiments,viewinterpolationisimplementedbyinsertingsyntheticframes
+betweenconsecutiveviewsprovidedtothemodel. Forinstance,if”1interpolatedframe”isspeci-
+fied, onenewframeisgeneratedandinsertedbetweenaninitialviewV andthesubsequentview
+n
+V (e.g.,betweenView1andView2). Similarly,”2interpolatedframes”wouldmeantwosyn-
+n+1
+theticframesareinsertedinsequencebetweenV andV . Fortheinterpolatedframes,weeither
+n n+1
+defineaheuristicfunctiontochoosefromtheoriginaldatasetsBaruchetal.(2021);Xiaetal.(2024)
+wherewesampledourdata, orweuseStableVirtualCameraZhouetal.(2025)togenerateinter-
+mediate frames for those image groups without. This approach is intended to provide a smoother
+perceptualexperience,potentiallyaidingtheVLMintrackingobjectrelationsandmaintainingspa-
+tial consistency across viewpoint shifts. (Refer to Figure 3 in the main paper for a conceptual
+illustration)
+D.1.2 COGNITIVEMAPSFORINTEGRATEDSPATIALLAYOUTS
+A core aspect of spatial cognition is the ability to form an allocentric (world-centered) or survey-
+likeunderstandingofanenvironment,capturingtherelativelocationsofobjects. TverskyTversky
+(1993; 2003) highlights that such representations often involve different frames of reference and
+hierarchicalstructures. Cognitivemapsinourcontextare2Dschematicrepresentationsthatattempt
+toembodythisintegratedspatiallayout.
+Our Setting: We investigate two variants of cognitive maps, both represented as structured data
+(e.g.,JSON-likeobjects),tocapturethespatiallayout:
+• Weprovidea2Dgridmapofthescenethatisrelatedtothequestiontobeanswered.
+• The map uses a 10×10 grid, where [0, 0] is the top-left corner and [9, 9] is the bottom-
+rightcorner(i.e.,bird’s-eyeview).
+• Directionsaredefinedasfollows:
+– up=towardsthetopofthegrid(decreasingy-value)
+– right=towardstherightofthegrid(increasingx-value)
+– down=towardsthebottomofthegrid(increasingy-value)
+– left=towardstheleftofthegrid(decreasingx-value)
+– inner=intothe2Dmap(perpendiculartothegrid,pointingawayfromyou)
+– outer=outofthe2Dmap(perpendiculartothegrid,pointingtowardyou)
+• Themapcontains:
+– objects—alistofallimportantitemsinthescenewiththeirposition
+– facing—indicatingthedirectionanobjectisoriented(whenapplicable)
+– views—representingdifferentcameraviewpointsinthescene
+• Augmented Cognitive Map: This version explicitly integrates the observer’s perspective by
+encoding the positions and orientations (facing directions) of the camera viewpoints
+within the map, alongside the objects and their locations. For instance, as depicted in our
+data examples (refer to Figure 3, Cognitive Map - Augmented panel), an augmented map
+mightdefinealistofobjectswiththeirnameandposition(e.g.,"Tissue box": {
+"position": [5, 5] }), and a separate list of views detailing each camera’s name
+(e.g.,"View 1"),position(e.g.,[3, 5]),andfacingdirection(e.g.,"up").
+• PlainCognitiveMap(ObjectOnly): Thisisamoresimplified,object-centricrepresentation. It
+primarily focuses on the spatial locations of objects and, for some objects, their
+intrinsicorientation(facingdirection)fromatop-downsurveyperspective,withoutexplic-
+itly embedding camera view information within its structure. For example (refer to Figure 3,
+Cognitive Map - Plain panel), a plain map might list objects like "Potted plant" with
+31
+PublishedasaconferencepaperatICLR2026
+its position (e.g., [5, 6]) and facing direction (e.g., "down"), and another objectlike
+"Sofa"withonlyitsposition(e.g., [4, 5]). Thistypeofmapstillallowsforreasoning
+aboutobject-to-objectrelationshipsand,wherespecified,objectorientations,butabstractsaway
+theexplicitcameraviewpointsthatgeneratedthesceneunderstanding.
+In both map types, coordinates represent positions on a 2D grid, and facing directions can be
+categorical (e.g., "up", "down", "left", "right", "outer", "inner"). These structures
+aimtoprovidetheVLMwithanexplicit,albeitpotentiallyimperfect,schematicoftheenvironment
+thatitcanthenlearntogenerateandutilizeforspatialreasoningtasks.
+Asfortheformat,ourJSONformathasbeenwidelyadoptedasacomputationalmodelprovidinga
+flexiblestructureforVLMs,designedtoofferabird’s-eyeviewrepresentationencodingtherelative
+positionsandorientationsofobjectsYangetal.(2024). Thisrepresentationaligns,atahighlevel,
+with the functional principles of cognitive maps in cognitive science. Our goal is to equip VLMs
+withascaffoldthatapproximatesthefunctionalroleofacognitivemaptoenableexplicitreasoning,
+ratherthanreplicatingitsexactneurologicalbasis.
+The use of JSON is a principled choice for interfacing with text-native VLMs, following standard
+practices for eliciting structured outputs. VLMs fundamentally operate on sequences of language
+tokens, making JSON a naturally fitting text-based format. JSON provides a structured and com-
+putationally effective means to evaluate complex spatial outputs, constituting one of the standard
+methodsforelicitingstructuredknowledgefromLLMsandVLMs. Althoughdifferentiablevector-
+izedrepresentationsrepresentapromisingresearchdirection,currentintegrationattemptshavebeen
+widelyrecognizedasineffective,particularlyowingtolimitationsinVLMcomprehension.
+D.1.3 FREEFORMREASONING
+Spatial mental models are not just static representations; they are actively used for inference and
+problem-solving Tversky et al. (1994). To approximate this procedural and inferential aspect, we
+utilizefree-formreasoning,implementedasanaturallanguageChain-of-Thought(CoT)Weietal.
+(2022) process. This encourages the VLM to externalize its step-by-step reasoning process when
+deducingananswertoaspatialquery.
+Our Setting: The VLM is prompted to generate a textual reasoning chain before outputting the
+final answer. This process is guided by a three-step principle, exemplified by the reasoning chain
+shown in Figure 3, the reasoning chain panel. For the steps shown in that example, they are: (1)
+InitialObservationandGrounding: Themodelfirstprocesseseachavailableview,identifyingkey
+objects and their immediate spatial relationships within that specific viewpoint. For instance, the
+example chain begins with: "In View 1, I see a potted plant, tissue box,
+and hand sanitizer from left to right, with a sofa behind." This step
+grounds the reasoning in direct visual evidence from individual perspectives. (2) Cross-View
+IntegrationandEnvironmentConsolidation:Next,themodelattemptstoidentifyconsistentobjects
+orenvironmentalcuesacrossthedifferentviewstorecognizethattheydepictthesameunderlying
+3D scene. The example reasoning continues: "In View 2, I see the same potted
+plant, so both views are from the same environment." This step is crucial
+forbuildingaunifiedunderstandingofthespacefromdiscreteobservations. (3)Question-Guided
+Spatial Inference: Finally, based on the specific question posed and the integrated understanding
+fromtheprevioussteps,themodelperformsstep-by-steplogicalandspatialinferencestoarriveat
+the answer. In the example, this involves relating the object positions across views relative to the
+observer’spositioninView2:"Since the hand sanitizer is rightmost in View
+1, it’s spatially furthest behind the potted plant when looking in
+View 2.
+In View 2, the potted plant is closest to me, so the hand
+sanitizer is
+the furthest from me."
+D.2 EVALUATIONMETRICS
+To quantitatively assess how these data structures affect the performance of VLMs in the spatial
+mental modeling presented in MINDCUBE, and to evaluate the quality of the generated cognitive
+32
+PublishedasaconferencepaperatICLR2026
+maps,weemployedthefollowingmetrics: (1)QAAccuracy,and(2)GraphMetricsforGenerated
+CognitiveMaps.
+D.2.1 QAACCURACY
+QAAccuracyservesasthecoremetricforevaluatingtaskperformance. Itquantifiestheproportion
+of questions that the vision-language model (VLM) answers correctly out of the total number of
+questions. AhigherQAAccuracyindicatesbetteralignmentbetweenthemodel’sresponsesandthe
+groundtruth.
+Themetricisformallydefinedas:
+N
+QAAccuracy= correct ×100%
+N
+total
+whereN denotesthenumberofcorrectlyansweredquestions,andN isthetotalnumberof
+correct total
+questionsevaluated.
+D.2.2 GRAPHMETRICSFORCOGNITIVEMAPS
+Toquantitativelyevaluatethequalityofageneratedcognitivemap,weuseasetofstructuredgraph-
+basedmetrics. Theoverallprocessconsistsofseveralkeysteps:
+1. Validity Check. First, we ensure that the generated map is syntactically and semantically
+valid—i.e., it has a correct JSON format, contains interpretable object positions, and includes
+atleastonevalidobject.
+2. Rotation Normalization. Since we do not enforce a fixed orientation for generated maps (to
+allow for flexible generation from vision-language models), we evaluate the similarity between
+the generated map and the ground truth across a set of 3D rotations. We always choose the
+best-alignedrotationtocomputeoursimilarityscores.
+3. StructuralMatching.Wedefinearelationgraphbetweenobjectpairsineachmap,capturingdi-
+rectionalandproximity-basedrelationships. Acorepartoftheevaluationisdeterminingwhether
+theserelationshipsinthegroundtrutharepreservedinthegeneratedmap.
+4. SimilarityMetrics. Wecomputecoverage(howmanyground-truthobjectsarepresent),direc-
+tionalsimilarity(relativespatialrelations), andfacingsimilarity(objectorientation). Theseare
+aggregatedintoanoverallsimilarityscore.
+5. Rotation-Invariant Isomorphism. We also evaluate whether a generated map is graph-
+isomorphic to the ground truth under any allowed 3D rotation, providing a strict measure of
+structuralcorrectness.
+Below,weprovideprecisemathematicaldefinitionsforeachofthesecomponents.
+Notation. A cognitive map is a finite set of objects O = {o ,...,o } where each object o is
+1 n i
+associatedwith(i)a2-Dpositionvectorp = (x ,y ) ∈ R2 and(ii)anoptionalfacinglabelf ∈
+i i i i
+{up,right,down,left,inner,outer}∪{∅}. Fortwomaps, wedistinguish(1)theground-truthmap
+(O⋆,p⋆,f⋆)and(2)ageneratedmap(Og,pg,fg).
+ThesetofobjectsthatappearinbothmapsisOc =O⋆∩Og.
+Extendeddirectionalrelation. Wedefineadirectionalorproximity-basedrelationshipbetween
+anyorderedobjectpair(o ,o )basedontheirspatialarrangementandoptionalfacingannotations.
+i j
+Thisrelationiscapturedviathefunction:
+33
+PublishedasaconferencepaperatICLR2026
+
+right |x −x |>|y −y |andx >x ,
+
+l
+d
+e
+o
+f
+w
+t
+n
+|
+|
+x
+y
+j
+j
+j
+−
+−
+y
+x
+i
+i
+i
+|
+|>
+≥
+|y
+|x
+j
+j
+j
+−
+−
+y
+x
+i
+i
+|
+i
+a
+|
+n
+a
+d
+nd
+x
+y
+j
+j
+j
+<
+>y
+x
+i
+i
+i
+,
+,
+dir(o ,o )= up |y −y |≥|x −x |andy <y ,
+i j j i j i j i
+ i
+o
+∅
+n
+u
+n
+t
+e
+e
+r
+r
+∥
+∥
+ot
+p
+p
+h
+j
+j
+e
+−
+−
+rw
+p
+p
+is
+i
+i
+e
+∥
+∥
+,
+2
+2
+<
+<
+δ
+δ
+a
+a
+n
+n
+d
+d
+(
+(
+f
+f
+i
+i
+=
+=
+i
+o
+n
+u
+n
+t
+e
+e
+r
+r
+∨
+∨
+f
+f
+j
+j
+=
+=
+o
+in
+u
+n
+te
+e
+r
+r
+)
+)
+,
+,
+withthresholdδ =0.5asintheimplementation. Theserelationsformarelationmatrix:
+R(o ,o )=dir(o ,o ).
+i j i j
+Coverage. Coverage measures how many ground-truth objects are successfully retrieved in the
+generatedmap:
+|Oc|
+Cov= ∈[0,1].
+|O⋆|
+Directional similarity. We now evaluate how well the generated map preserves the directional
+relationshipsamongobjectpairsfromthegroundtruth. Define:
+P⋆ ={(o ,o )∈Oc×Oc |i̸=j, R⋆(o ,o )̸=∅}.
+i j i j
+Thenthedirectionalsimilarityscoreisgivenby:
+(cid:12) (cid:12)
+(cid:12){(o
+i
+,o
+j
+)∈P⋆ |Rg(o
+i
+,o
+j
+)=R⋆(o
+i
+,o
+j
+)}(cid:12)
+S = ∈[0,1],
+dir |P⋆|
+which corresponds to the proportion of directional relations in the ground truth that are correctly
+matchedinthegeneratedmap.
+Facingsimilarity. Forobjectswithdefinedfacingdirections,wecomparetheirorientationacross
+thetwomaps:
+F⋆ ={o ∈Oc |f⋆ ̸=∅}.
+i i
+Then:
+S = (cid:12) (cid:12){o i ∈F⋆ |f i g =f i ⋆} (cid:12) (cid:12) ∈[0,1].
+face |F⋆|
+Overallsimilarity. Toaggregatethedirectionalandfacingsimilarities,weuseaweightedcombi-
+nation:
+S =α·S +(1−α)·S ∈[0,1],
+overall dir face
+whereα=0.7placesgreateremphasisonspatiallayoutthanorientation.
+Rotation-invariantisomorphism. Toensurefaircomparisonregardlessoforientation,wedefine
+asetof3Drotations:R={R ,...,R },includingall90°turnsaboutthez-axis,andone90°turn
+1 m
+abouteachofthex-andy-axes.
+Wesaythemapsarerotation-invariantisomorphicifthereexistsarotationsuchthattheirrelation
+matricesmatchcompletely:
+∃k ∈{1,...,m}∀o ,o ∈O⋆ : R⋆(o ,o )=Rg (o ,o ),
+i j i j (k) i j
+whereRg istherelationmatrixcomputedafterapplyingR tothegeneratedmap.
+(k) k
+Graphvalidity. Finally,ageneratedmapisdeemedvalid if: (1)Itiswell-formedJSON,(2)All
+fieldsconformtoexpectedformatsandconstraints,and(3)Atleastoneobjecthasavalidposition.
+(cid:0) (cid:1)
+Together,thetuple Cov, S , S , S , Iso providesacomprehensive,rotation-awareeval-
+dir face overall rot
+uationofhowcloselyageneratedcognitivemapmatchesgroundtruthstructureandorientation.
+34
+PublishedasaconferencepaperatICLR2026
+D.3 PROMPTSFORALLINPUT-OUTPUTCONFIGURATIONS
+Below,weprovideallpromptsfortheinput-outputconfigurationsweinvestigateinourwork.
+D.3.1 EXAMPLEFORRAW-QA
+ExamplePromptforRaw-QA
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+providedimages,whichshowthescenefromdifferentviewpoints.
+[AnswerInstruction]
+Youonlyneedtoprovide*ONE*correctanswerselectingfromtheoptionslistedbelow.For
+example, ifyouthinkthecorrectansweris’A.Above’from’A.AboveB.UnderC.Front
+D.Behind’,yourresponseshould**only**be’<answer>A.Above</answer>’.
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+D.3.2 EXAMPLEFORFFR
+ExamplePromptforFFR:Free-FormReasoning
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+providedimages,whichshowthescenefromdifferentviewpoints.
+[AnswerInstruction]
+Please do step by step reasoning first, then give your final answer. For example, if
+you think the correct answer is ’A. Above’ from ’A. Above B. Under C. Front D.
+Behind’, your response should be this format: ’<think>(replace with your reasoning
+here)</think><answer>A.Above</answer>’.
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+35
+PublishedasaconferencepaperatICLR2026
+D.3.3 EXAMPLEFORVI-1ANDVI-2
+PromptforVI-1: ViewInterpolationwith1Frame
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+providedimages,whichshowthescenefromdifferentviewpoints.
+[AnswerInstruction]
+Youonlyneedtoprovide*ONE*correctanswerselectingfromtheoptionslistedbelow.For
+example, ifyouthinkthecorrectansweris’A.Above’from’A.AboveB.UnderC.Front
+D.Behind’,yourresponseshould**only**be’<answer>A.Above</answer>’.
+[Question]
+Basedonthese8imagesshowingthewhitejarfromdifferentviewpoints(fromfront(image
+1)toleft(image3),fromleft(image3)toback(image5),fromback(image5)toright(im-
+age7),fromright(image7)backtofront(image1)),witheachcameraalignedwithroom
+walls and partially capturing the surroundings: From the viewpoint presented in image 7,
+whatistotheleftofthewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+PromptforVI-2: ViewInterpolationwith2Frames
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+providedimages,whichshowthescenefromdifferentviewpoints.
+[AnswerInstruction]
+Youonlyneedtoprovide*ONE*correctanswerselectingfromtheoptionslistedbelow.For
+example, ifyouthinkthecorrectansweris’A.Above’from’A.AboveB.UnderC.Front
+D.Behind’,yourresponseshould**only**be’<answer>A.Above</answer>’.
+[Question]
+Basedonthese12imagesshowingthewhitejarfromdifferentviewpoints(fromfront(im-
+age1)toleft(image4),fromleft(image4)toback(image7),fromback(image7)toright
+36
+PublishedasaconferencepaperatICLR2026
+(image10),fromright(image10)backtofront(image1)),witheachcameraalignedwith
+roomwallsandpartiallycapturingthesurroundings:Fromtheviewpointpresentedinimage
+10,whatistotheleftofthewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+D.3.4 EXAMPLEFORAUG-CGMAP-IN
+PromptforAug-CGMap-In: GroundedAugmentedCognitiveMapasInput
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+providedimages,whichshowthescenefromdifferentviewpoints. Also,weprovideyoua
+cognitivemapthatshowsthegenerallayoutforthescene. Pleaseusethecognitivemapto
+reasonandanswerthequestion.
+[AnswerInstruction]
+Youonlyneedtoprovide*ONE*correctanswerselectingfromtheoptionslistedbelow.For
+example, ifyouthinkthecorrectansweris’A.Above’from’A.AboveB.UnderC.Front
+D.Behind’,yourresponseshould**only**be’<answer>A.Above</answer>’.
+[CognitiveMapFormat]
+Weprovideyoua2Dgridmapofthescenethatisrelatedtothequestionyoushouldanswer.
+Belowisthedescriptionofthemap:
+-Themapusesa10x10gridwhere[0,0]isatthetop-leftcornerand[9,9]isatthebottom-
+rightcorner
+-Themapisshowninthebird’sview
+-Directionsaredefinedas:
+*up=towardsthetopofthegrid(decreasingy-value)
+*right=towardstherightofthegrid(increasingx-value)
+*down=towardsthebottomofthegrid(increasingy-value)
+*left=towardstheleftofthegrid(decreasingx-value)
+*inner=straightintothe2Dmap(perpendiculartothegrid,pointingawayfromyou)
+*outer=straightoutofthe2Dmap(perpendiculartothegrid,pointingtowardsyou)
+-”objects”listsallimportantitemsinthescenewiththeirpositions
+-”facing”indicateswhichdirectionanobjectisorientedtowards(whenapplicable)
+-”views”representsthedifferentcameraviewpointsinthescene
+Belowisthecognitivemapofthescenerelatedtothequestion. Pleaseuseittoreasonand
+answerthequestion.
+‘‘‘json
+{
+"objects": [
+{"name": "white jar", "position": [5, 5]},
+{"name": "bed sheet with a floral pattern",
+"position": [5, 8]},
+{"name": "white headboard", "position": [2, 5]},
+{"name": "clothes rack", "position": [5, 2]},
+{"name": "table with cups on it", "position": [8, 5]}
+],
+"views": [
+{"name": "Image 1", "position": [5, 6], "facing": "up"},
+{"name": "Image 2", "position": [4, 5], "facing": "right"},
+37
+PublishedasaconferencepaperatICLR2026
+{"name": "Image 3", "position": [5, 4], "facing": "down"},
+{"name": "Image 4", "position": [6, 5], "facing": "left"}
+]
+}
+‘‘‘
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+D.3.5 EXAMPLEFORAUG-CGMAP-OUT
+PromptforAug-CGMap-Out: AskVLMtoOutputAugmentedCognitiveMapandDirect
+Answer
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+provided images, which show the scene from different viewpoints. You will then create a
+detailedcognitivemaprepresentingthesceneusinga10x10gridcoordinatesystem.
+[Rules]
+1. Focus ONLY on these categories of objects in the scene: {white jar, bed sheet with a
+floralpattern,whiteheadboard,clothesrack,tablewithcupsonit}
+2. Createacognitivemapwiththefollowingstructureinthebird’sview:
+-A10x10gridwhere[0,0]isatthetop-leftcornerand[9,9]isatthebottom-rightcorner
+-up=towardsthetopofthegrid(decreasingy)
+-right=towardstherightofthegrid(increasingx)
+-down=towardsthebottomofthegrid(increasingy)
+-left=towardstheleftofthegrid(decreasingx)
+-inner=straightintothe2Dmap(perpendiculartothegrid,pointingawayfromyou)
+-outer=straightoutofthe2Dmap(perpendiculartothegrid,pointingtowardsyou)
+-Includepositionsofallobjectsfromthespecifiedcategories
+-Estimatethecenterlocation(coordinates[x,y])ofeachinstancewithinprovidedcategories
+-Ifacategorycontainsmultipleinstances,includeallofthem
+- Each object’s estimated location should accurately reflect its real position in the scene,
+preservingtherelativespatialrelationshipsamongallobjects
+-Combineandmergeinformationfromtheimagessincetheyarepointingtothesamescene,
+calibratingtheobjectlocationsaccordingly
+-Includecamerapositionsanddirectionsforeachview
+3. Carefully integrate information from all views to create a single coherent spatial repre-
+sentation.
+[AnswerInstruction]
+1.Giventheprovidedviewsandmainobjectsmentionedintheaboverules,you**MUST**
+presentyourcognitivemapinthefollowingJSONformat**beforeyouranswer**:
+‘‘‘json
+{
+"objects": [
+38
+PublishedasaconferencepaperatICLR2026
+{"name": "object_name", "position": [x, y],
+"facing": "direction"},
+{"name": "object_without_orientation", "position": [x, y]}
+],
+"views": [
+{"name": "View/Image 1", "position": [x, y],
+"facing": "direction"},
+{"name": "View/Image 2", "position": [x, y],
+"facing": "direction"}
+]
+}
+‘‘‘
+2. Next,provide*ONE*correctanswerselectingfromtheoptions. Youranswerfieldmust
+beintheformatlike”A.Above”.
+3. Ingeneral,yourresponse’sformatshouldbelike”Basedonmyobservation,theanswer
+is: <cogmap>(Replacewithyourcogmaphere)</cogmap><answer>(Replacewithyour
+answerhere)</answer>”. Youroptionmustbefromtheavailableoptions.
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+D.3.6 EXAMPLEFORPLAIN-CGMAP-OUT
+Prompt for Plain-CGMap-Out: Ask VLM to Output Plain Cognitive Map and Direct
+Answer
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+provided images, which show the scene from different viewpoints. You will then create a
+detailedcognitivemaprepresentingthesceneusinga10x10gridcoordinatesystem.
+[Rules]
+1. Focus ONLY on these categories of objects in the scene: {white jar, bed sheet with a
+floralpattern,whiteheadboard,clothesrack,tablewithcupsonit}
+2. Createacognitivemapwiththefollowingstructureinthebird’sview:
+-A10x10gridwhere[0,0]isatthetop-leftcornerand[9,9]isatthebottom-rightcorner
+-up=towardsthetopofthegrid(decreasingy)
+-right=towardstherightofthegrid(increasingx)
+-down=towardsthebottomofthegrid(increasingy)
+-left=towardstheleftofthegrid(decreasingx)
+-Includepositionsofallobjectsfromthespecifiedcategories
+-Estimatethecenterlocation(coordinates[x,y])ofeachinstancewithinprovidedcategories
+-Ifacategorycontainsmultipleinstances,includeallofthem
+-Objectpositionsmustmaintainaccuraterelativespatialrelationships
+-Combineandmergeinformationfromtheimagessincetheyarepointingtothesamescene,
+calibratingtheobjectlocationswithgridcoordinatesaccordingly
+3. Carefully integrate information from all views to create a single coherent spatial repre-
+39
+PublishedasaconferencepaperatICLR2026
+sentation.
+[AnswerInstruction]
+1.Giventheprovidedviewsandmainobjectsmentionedintheaboverules,you**MUST**
+presentyourcognitivemapinthefollowingJSONformat**beforeyourreasoning**:
+‘‘‘json
+{
+"object_category_1": {"position": [x, y]},
+"object_category_2": {"position": [x, y],
+"facing": "direction"},
+# if the object is asked for orientation
+...
+}
+‘‘‘
+2. Next,provide*ONE*correctanswerselectingfromtheoptions. Youranswerfieldmust
+beintheformatlike”A.Above”
+3. Ingeneral,yourresponse’sformatshouldbelike”Basedonmyobservation,theanswer
+is: <cogmap>(Replacewithyourcogmaphere)</cogmap><answer>(Replacewithyour
+answerhere)</answer>”. Youroptionmustbefromtheavailableoptions.
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+D.3.7 EXAMPLEFORPLAIN-CGMAP-FFR-OUT
+Prompt for Plain-CGMap-FFR-Out: Ask VLM to Output Plain Cognitive Map and
+Free-FormReasoning
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+provided images, which show the scene from different viewpoints. You will then create a
+detailedcognitivemaprepresentingthesceneusinga10x10gridcoordinatesystem.
+[Rules]
+1. Focus ONLY on these categories of objects in the scene: {white jar, bed sheet with a
+floralpattern,whiteheadboard,clothesrack,tablewithcupsonit}
+2. Createacognitivemapwiththefollowingstructureinthebird’sview:
+-A10x10gridwhere[0,0]isatthetop-leftcornerand[9,9]isatthebottom-rightcorner
+-up=towardsthetopofthegrid(decreasingy)
+-right=towardstherightofthegrid(increasingx)
+-down=towardsthebottomofthegrid(increasingy)
+-left=towardstheleftofthegrid(decreasingx)
+-Includepositionsofallobjectsfromthespecifiedcategories
+-Estimatethecenterlocation(coordinates[x,y])ofeachinstancewithinprovidedcategories
+-Ifacategorycontainsmultipleinstances,includeallofthem
+-Objectpositionsmustmaintainaccuraterelativespatialrelationships
+-Combineandmergeinformationfromtheimagessincetheyarepointingtothesamescene,
+40
+PublishedasaconferencepaperatICLR2026
+calibratingtheobjectlocationswithgridcoordinatesaccordingly
+3. Carefully integrate information from all views to create a single coherent spatial repre-
+sentation.
+[AnswerInstruction]
+1.Giventheprovidedviewsandmainobjectsmentionedintheaboverules,you**MUST**
+presentyourcognitivemapinthefollowingJSONformat**beforeyourreasoning**:
+‘‘‘json
+{
+"object_category_1": {"position": [x, y]},
+"object_category_2": {"position": [x, y],
+"facing": "direction"},
+# if the object is asked for orientation
+...
+}
+‘‘‘
+2.Next,pleasealsoprovideyourreasonsstepbystepindetails,thenprovide*ONE*correct
+answerselectingfromtheoptions. Youranswerfieldmustbeintheformatlike”A.Above”
+3. Ingeneral,yourresponse’sformatshouldbelike”Basedonmyobservation,theanswer
+is: <cogmap>(Replace with your cogmap here)</cogmap><think>(Replace with your
+reasoninghere)</think><answer>(Replacewithyouranswerhere)</answer>”. Yourop-
+tionmustbefromtheavailableoptions.
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+D.3.8 EXAMPLEFORAUG-CGMAP-FFR-OUT
+PromptforAut-CGMap-FFR-Out: AskVLMtoOutputAugmentedCognitiveMapand
+Free-FormReasoning
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+provided images, which show the scene from different viewpoints. You will then create a
+detailedcognitivemaprepresentingthesceneusinga10x10gridcoordinatesystem.
+[Rules]
+1. Focus ONLY on these categories of objects in the scene: {white jar, bed sheet with a
+floralpattern,whiteheadboard,clothesrack,tablewithcupsonit}
+2. Createacognitivemapwiththefollowingstructureinthebird’sview:
+-A10x10gridwhere[0,0]isatthetop-leftcornerand[9,9]isatthebottom-rightcorner
+-up=towardsthetopofthegrid(decreasingy)
+-right=towardstherightofthegrid(increasingx)
+-down=towardsthebottomofthegrid(increasingy)
+-left=towardstheleftofthegrid(decreasingx)
+-inner=straightintothe2Dmap(perpendiculartothegrid,pointingawayfromyou)
+-outer=straightoutofthe2Dmap(perpendiculartothegrid,pointingtowardsyou)
+41
+PublishedasaconferencepaperatICLR2026
+-Includepositionsofallobjectsfromthespecifiedcategories
+-Estimatethecenterlocation(coordinates[x,y])ofeachinstancewithinprovidedcategories
+-Ifacategorycontainsmultipleinstances,includeallofthem
+- Each object’s estimated location should accurately reflect its real position in the scene,
+preservingtherelativespatialrelationshipsamongallobjects
+-Combineandmergeinformationfromtheimagessincetheyarepointingtothesamescene,
+calibratingtheobjectlocationsaccordingly
+-Includecamerapositionsanddirectionsforeachview
+3. Carefully integrate information from all views to create a single coherent spatial repre-
+sentation.
+[AnswerInstruction]
+1.Giventheprovidedviewsandmainobjectsmentionedintheaboverules,you**MUST**
+presentyourcognitivemapinthefollowingJSONformat**beforeyourreasoning**:
+‘‘‘json
+{
+"objects": [
+{"name": "object_name", "position": [x, y],
+"facing": "direction"},
+{"name": "object_without_orientation", "position": [x, y]}
+],
+"views": [
+{"name": "View/Image 1", "position": [x, y],
+"facing": "direction"},
+{"name": "View/Image 2", "position": [x, y],
+"facing": "direction"}
+]
+}
+‘‘‘
+2.Next,pleasealsoprovideyourreasonsstepbystepindetails,thenprovide*ONE*correct
+answerselectingfromtheoptions. Youranswerfieldmustbeintheformatlike”A.Above”
+3. Ingeneral,yourresponse’sformatshouldbelike”Basedonmyobservation,theanswer
+is: <cogmap>(Replace with your cogmap here)</cogmap><think>(Replace with your
+reasoninghere)</think><answer>(Replacewithyouranswerhere)</answer>”. Yourop-
+tionmustbefromtheavailableoptions.
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+D.3.9 EXAMPLEFORCGMAP-IN-FFR-OUT
+PromptforCGMap-In-FFR-Out: InputVLMwithGroundedCognitiveMapandOutput
+withFree-FormReasoning
+[Task]
+Your task is to analyze the spatial arrangement of objects in the scene by examining the
+42
+PublishedasaconferencepaperatICLR2026
+providedimages,whichshowthescenefromdifferentviewpoints. Also,weprovideyoua
+cognitivemapthatshowsthegenerallayoutforthescene. Pleaseusethecognitivemapto
+reasonandanswerthequestion.
+[AnswerInstruction]
+Please do step by step reasoning first, then give your final answer. For example, if
+you think the correct answer is ’A. Above’ from ’A. Above B. Under C. Front D.
+Behind’, your response should be this format: ’<think>(replace with your reasoning
+here)</think><answer>A.Above</answer>’. [CognitiveMapFormat]
+Weprovideyoua2Dgridmapofthescenethatisrelatedtothequestionyoushouldanswer.
+Belowisthedescriptionofthemap:
+-Themapusesa10x10gridwhere[0,0]isatthetop-leftcornerand[9,9]isatthebottom-
+rightcorner
+-Themapisshowninthebird’sview
+-Directionsaredefinedas:
+*up=towardsthetopofthegrid(decreasingy-value)
+*right=towardstherightofthegrid(increasingx-value)
+*down=towardsthebottomofthegrid(increasingy-value)
+*left=towardstheleftofthegrid(decreasingx-value)
+*inner=straightintothe2Dmap(perpendiculartothegrid,pointingawayfromyou)
+*outer=straightoutofthe2Dmap(perpendiculartothegrid,pointingtowardsyou)
+-”objects”listsallimportantitemsinthescenewiththeirpositions
+-”facing”indicateswhichdirectionanobjectisorientedtowards(whenapplicable)
+-”views”representsthedifferentcameraviewpointsinthescene
+Belowisthecognitivemapofthescenerelatedtothequestion. Pleaseuseittoreasonand
+answerthequestion.
+‘‘‘json
+{
+"objects": [
+{"name": "white jar", "position": [5, 5]},
+{"name": "bed sheet with a floral pattern",
+"position": [5, 8]},
+{"name": "white headboard", "position": [2, 5]},
+{"name": "clothes rack", "position": [5, 2]},
+{"name": "table with cups on it", "position": [8, 5]}
+],
+"views": [
+{"name": "Image 1", "position": [5, 6], "facing": "up"},
+{"name": "Image 2", "position": [4, 5], "facing": "right"},
+{"name": "Image 3", "position": [5, 4], "facing": "down"},
+{"name": "Image 4", "position": [6, 5], "facing": "left"}
+]
+}
+‘‘‘
+[Question]
+Basedonthesefourimages(image1,2,3,and4)showingthewhitejarfromdifferentview-
+points(front,left,back,andright),witheachcameraalignedwithroomwallsandpartially
+capturingthesurroundings: Fromtheviewpointpresentedinimage4,whatistotheleftof
+thewhitejar?
+A.TablewithcupsonitB.ClothesrackC.BedsheetwithafloralpatternD.Whitehead-
+board
+E WHICH SCAFFOLDS BEST GUIDE SPATIAL THINKING IN UNCHANGED
+VLMS?
+The primary experimental setup for evaluating how different structural scaffolds can guide spatial
+reasoninginunchangedVLMs,hasbeencomprehensivelydescribedinSection3ofthemainpaper.
+43
+PublishedasaconferencepaperatICLR2026
+This current section is dedicated to presenting qualitative examples of model outputs, serving as
+casestudiesforthedifferentscaffoldingconfigurationstested.
+ForprecisedetailsontheinputpromptstructuresandspecificinstructionsprovidedtotheQwen2.5-
+VL-3B-Instructforeachexperimentalcondition(e.g.,Raw-QA,FFR,Plain-CGMap-FFR-Out),
+pleaserefertoAppendixD.3.
+E.1 VLMRESPONSEEXAMPLESFORCONFIGURATIONSINSECTIOND.3
+OutputforRaw-QA:InputPromptRefertoD.3.1
+C.Bedsheetwithafloralpattern
+OutputforVI:InputPromptRefertoD.3.3
+B.Clothesrack
+OutputforAug-CGMap-In: InputPromptRefertoD.3.4
+C.Bedsheetwithafloralpattern
+OutputforFFR:InputPromptRefertoD.3.2
+<think>To determine what is to the left of the white jar from the viewpoint presented in
+image4,let’sanalyzethescene:
+-Inimage4,thewhitejarisplacedonatablecoveredwithapinktableclothfeaturingheart
+patterns.
+-Thetablehasaglasstopandispositionedagainstawall.
+-Totheleftofthejar,thereisapieceoffurniturethatappearstobeabedorabedframe.
+Given this information, the object to the left of the white jar is most likely a bed or a bed
+frame. </think>
+<answer>C.Bedsheetwithafloralpattern</answer>
+OutputforAug-CGMap-FFR-Out: InputPromptRefertoD.3.8
+‘‘‘json
+{
+"objects": [
+{"name": "white jar", "position": [150, 446],
+"facing": "left"},
+{"name": "bed sheet with a floral pattern",
+"position": [0, 317],
+"facing": "left"},
+{"name": "clothes rack", "position": [0, 108],
+"facing": "left"},
+{"name": "table with cups on it", "position": [188, 200],
+"facing": "left"},
+{"name": "white headboard", "position": [188, 317],
+"facing": "left"}
+],
+"views": [
+{"name": "Image 1", "position": [0, 0], "facing": "left"},
+44
+PublishedasaconferencepaperatICLR2026
+{"name": "Image 2", "position": [0, 0], "facing": "left"},
+{"name": "Image 3", "position": [0, 0], "facing": "left"},
+{"name": "Image 4", "position": [0, 0], "facing": "left"}
+]
+}
+‘‘‘
+<CogMap>
+<Yourcognitivemap>
+<Reasoning>
+Fromtheviewpointpresentedinimage4,wecanseethatthewhitejarispositionedinthe
+foreground, facing left. The bed sheet with a floral pattern is located directly behind the
+whitejar,coveringthelowerpartoftheimage. Theclothesrackisvisibleontheleftsideof
+theimage,slightlyabovethebedsheet. Thetablewithcupsonitissituatedfurtherback,to
+therightofthewhitejar. Thewhiteheadboardisalsovisible,butitisnotasprominentas
+theotherobjectsduetoitspositionbehindthebedsheet.
+Therefore,myanswerisA.Tablewithcupsonit.
+</Answer>
+Therefore,myanswerisA.Tablewithcupsonit.
+OutputforPlain-CGMap-FFR-Out: InputPromptRefertoD.3.7
+‘‘‘json
+{
+"white_jar": {"position": [150, 440], "facing": "left"},
+"table_with_cups_on_it": {"position": [187, 260],
+"facing": "right"}
+}
+‘‘‘
+<CogMap>
+<Yourcognitivemap>
+<Reasoning>
+Fromtheviewpointpresentedinimage4,wecanseethatthewhitejarispositionedonthe
+bedsheetwithafloralpattern. Thetablewithcupsonitislocatedtotherightofthewhite
+jar,asindicatedbyitspositionintheimage. Theclothesrackisnotvisibleinthisparticular
+view,andthewhiteheadboardisnotdirectlyrelatedtothewhitejarorthetablewithcups
+onit. Therefore,thecorrectanswerisA.Tablewithcupsonit.
+<Answer>
+Therefore,myanswerisA.Tablewithcupsonit.
+OutputforCGMap-In-FFR-Out: InputPromptRefertoD.3.9
+C.Bedsheetwithafloralpattern
+E.2 ADDITIONALGRAPHMETRICSFORGENERATEDGRAPHS
+Toquantitativelyassessthequalityofthecognitivemapsproducedbyourmodels,weemployasuite
+of graph-based metrics detailed in Section C.2.2. Table 5 presents a comparison of the cognitive
+mapsgeneratedbytwoofourmethods:Aug-CGMap-FFR-OutandPlain-CGMap-FFR-Out.
+Theresultshighlightseveralkeyfindings:
+• HighValidity: Bothmethodsdemonstrateastrongabilitytogeneratesyntacticallyandseman-
+tically valid maps, achieving high Valid Rates (94.95% for Plain-CGMap-FFR-Out and
+92.57% for Aug-CGMap-FFR-Out). This indicates that the models successfully learned the
+requiredJSONstructureforthecognitivemaps.
+45
+PublishedasaconferencepaperatICLR2026
+• Structural Complexity: Achieving perfect structural replication of the ground truth remains
+challenging, as shown by the modest Isomorphism Rates. The Plain-CGMap-FFR-Out
+method performs significantly better, with 7.43% of its maps being structurally identical (iso-
+morphic)tothegroundtruth,comparedtoamere0.10%fortheaugmentedmapmethod.
+• SuperiorSimilarityPerformance: Aclearperformancedifferenceinsemanticsimilarityisev-
+ident. TheAug-CGMap-FFR-Outmethod,whichexplicitlyincludescameraviews,achievesa
+substantiallyhigherOverallSimilarity(51.12%)andissuperiorinrepresentingboththerelative
+directionalrelationships(Avg.Dir.Sim.of43.57%)andthecorrectorientationofindividualob-
+jects(Avg. FacingSim. of68.75%). Incontrast,whilePlain-CGMap-FFR-Outmaintains
+highervalidityandisomorphism,itlagsbehindinallthreesimilaritymetrics.
+Table5: Comparisonofgraphmetricsforcognitivemapsgeneratedbydifferentmethods. Themet-
+ricsevaluatethequalityofthegeneratedmapsagainstthegroundtruth. ValidRate: percentageof
+syntacticallyandsemanticallyvalidmaps. IsomorphismRate: percentageofmapsthatarestruc-
+turallyidentical(isomorphic)tothegroundtruth,accountingforrotation. OverallSim. (Similar-
+ity):aweightedscorecombiningdirectionalandfacingsimilarity(S =α·S +(1−α)·S ).
+overall dir face
+Avg. Dir. Sim. (AverageDirectionalSimilarity): correctnessofrelativespatialrelationsbetween
+objects. Avg. Facing Sim. (Average Facing Similarity): correctness of object orientations. All
+valuesarepercentages(%).
+Method ValidRate IsomorphismRate OverallSim. Avg.Dir.Sim. Avg.FacingSim.
+Aug-CGMap-FFR-Out 92.57 0.10 51.12 43.57 68.75
+Plain-CGMap-FFR-Out 94.95 7.43 37.44 28.29 58.78
+E.3 FURTHERANALYSISONVIEWINTERPOLATION
+To rigorously assess the impact of view interpolation and ensure fair comparison, we conducted
+extensive additional experiments covering view selection strategies, comparisons with optimal in-
+terpolationsettings,andscalinglawsacrossmodelsizes.
+(1)SmartViewSelectionvs. DenseInterpolation. It’spossiblethatthedenseinterpolationmight
+introduce redundancy by implementing an “Oracle View Selection” baseline. Using GPT-5 as a
+plannertoselectthetop-2mostinformativeviewsfrom4images,wecomparedthis“SmartSelec-
+tion” against our dense interpolation setting on Qwen2.5-VL-7B. As shown in Table 6, the Smart
+Selection(36.80%)performssimilarlytothestandard2-viewsettingbutissignificantlyinferiorto
+denseinterpolation(47.40%). Thissuggeststhatintermediateviews,oftenperceivedasredundant,
+provide essential spatio-temporal continuity that high-performing models utilize to stitch scenes;
+aggressivefilteringdisruptsthischain.
+Method(Qwen2.5-VL-7B) Top-2Selection(Oracle) DenseInterpolation(VI-4)
+Accuracy(%) 36.80 47.40
+Table6: Comparison: OracleViewSelectionvs. DenseInterpolation.
+(2) Comparison with Optimal View Interpolation. To ensure fairness, we compared our
+Plain-CGMap against the best possible performance of the View Interpolation (VI) baseline on
+Qwen2.5-VL-3B.AsdetailedinTable7,ourmethod(Plain-CGMap-FFR-Out,47.41%)outper-
+forms the baseline even at its peak performance (VI-1, 46.47%). This confirms that the Cognitive
+Map provides a structural advantage over simply increasing visual frame density. Furthermore,
+adding standard Free-Form Reasoning (FFR) to interpolated views harms performance as density
+increases (dropping from 45.53% to 40.77%), indicating that the bottleneck lies in the perception
+abilitytoorganizevisualfloodsratherthanreasoningcapacityalone.
+(3)ScalingAnalysis: DoesViewInterpolationScale? Weextendedourevaluationtolargermod-
+els,includingQwen2.5-VL-7B,Qwen3-VL-8B,Qwen3-VL-235B,andGPT-5,totestifhigherca-
+pacitynaturallyresolvesinterpolationissues. Resultsfor7B/8Bmodels(Table8)shownoconsis-
+46
+PublishedasaconferencepaperatICLR2026
+Method(Qwen2.5VL-3B) VI-0(Raw) VI-1 VI-2 VI-3 VI-4 VI-5 VI-6 VI-7
+Plain-CGMap-FFR-Out 47.41 44.94 44.59 43.18 44.35 43.41 42.82 45.28
+RawQA 43.76 46.47 45.53 44.94 44.35 44.24 45.18 44.59
+FFR 45.53 43.71 43.83 41.65 41.00 40.36 40.89 40.77
+Table7: ComparisonwithOptimalViewInterpolation(Qwen2.5-VL-3B).
+tent scaling law. While Qwen2.5-VL-7B benefits from density (peaking at VI-4), Qwen3-VL-8B
+exhibitsunstableperformancedespitebeingarchitecturallyadvanced.
+Config VI-0 VI-1 VI-2 VI-3 VI-4 VI-5 VI-6 VI-7
+Qwen2.5-VL-7B 37.80 34.90 35.60 45.30 47.40 46.50 46.80 46.80
+Qwen3-VL-8B 33.80 36.60 37.60 35.20 35.30 33.90 35.80 35.80
+Table8: ScalingAnalysisonQwen2.5-VL-7BandQwen3-VL-8B.
+Moreover,formassive-scalemodels(Table9),performancenegativelycorrelateswithviewdensity.
+GPT-5peaksatthesparse1-framesetting(46.59%)anddeclinesto42.35%asdensityincreasesto
+7frames.Similarly,Qwen3-VL-235Bdropsto∼36%withinterpolation.Thissuggeststhatwithout
+structured mapping, interpolation artifacts act as noise rather than useful signals, even for SOTA
+models.
+Model VI-1 VI-2 VI-3 VI-4 VI-5 VI-6 VI-7
+GPT-5 46.59 45.18 44.24 44.59 42.59 43.53 42.35
+Qwen3-VL-235B 38.94 38.59 37.29 37.18 35.29 36.12 36.00
+Table9: PerformanceofLarge-ScaleModels(GPT-5,Qwen3-VL-235B)acrossviewdensities.
+E.4 EXPLICITREASONINGWITHVISUAL-OF-THOUGHT
+ExplicitVisualSketchingviaExternalTools. Whiletext-structuredmaps(e.g.,JSON)introduce
+symbolicorder,theyfundamentallyremainimplicittokensequences. Tobridgethisgap,weinves-
+tigatedwhetherexternalizingspatialmapintoexplicitvisualrepresentationscouldfurtherenhance
+reasoning. InspiredbyViLaSRWuetal.(2025b),weimplementedapipelinewheretheVLMuses
+anexternalplottingengine(Matplotlib)ratherthangeneratingtextmapsdirectly.
+Wedesignedtwovisual-centricconfigurations:
+1. Visual-Map-as-Input (Img-CGMap-In): Instead of ingesting raw JSON tokens, the
+model receives a rendered 10×10 grid image where objects and viewpoints are plotted
+explicitly. Thisteststhemodel’sabilitytocomprehendprovidedvisuallayouts.
+2. Visual-Map-for-Reasoning (Img-CGMap): We adopt a multi-turn tool-use framework.
+The model first acts as a coder to generate drawing coordinates (e.g., (obj, [x,y])),
+whichareexecutedtorenderavisualsketch. Thissketchisthenfedbacktothemodelasa
+newvisualprompttoguidethefinalspatialreasoning. Theentiremulti-turninteraction
+pipelineandpromptdesignwerestrictlyalignedwiththeViSaLRframework.
+Results Analysis. As shown in Table 10, visual map configurations consistently outperform their
+textualcounterparts. Specifically,Img-CGMapachievesanoverallaccuracyof43.13%,surpassing
+the text-based Plain-CGMap (41.33%). Notably, the “Among” spatial relation benefits signifi-
+cantlyfromthevisualgrid(41.13%vs.39.67%),likelybecauserelativepositioningismoreintuitive
+inpixelspacethanincoordinatespace. Thisexperimentvalidatesthatleveragingexternaltoolsto
+create explicit visual sketches grounds the model’s reasoning more effectively than symbolic text,
+offeringapromisingdirectionforfuturedevelopment.
+47
+PublishedasaconferencepaperatICLR2026
+(a)ExplicitVisualMapinAmongSetting. (b)ExplicitVisualMapinAroundSetting.
+Figure 13: Comparison of Map Representations. The visual map, generated via external tools,
+rendersobjectsandviewpointsontoa10×10grid,providingexplicitgeometricgrounding.
+Configuration MapModality Overall Rotation Among Around
+Raw-QA - 37.81 34.00 36.00 45.20
+CGMap-In(Original) Text(JSON) 41.43 37.00 41.67 44.40
+Img-CGMap-In(New) Visual(Grid) 42.10 31.50 44.17 45.60
+Plain-CGMap(Original) Text(JSON) 41.33 25.00 39.67 58.40
+Img-CGMap(New) Visual(Grid) 43.13 32.75 41.13 55.06
+Table 10: Performance comparison between implicit text-based maps (JSON) and explicit visual-
+basedmaps(Image/Grid). Visualconfigurationsconsistentlyoutperformtheirtextualcounterparts.
+F CAN WE TEACH VLMS TO BUILD AND LEVERAGE SPATIAL
+REPRESENTATIONS?
+In the main paper, we demonstrated that prompting frozen VLMs with external scaffolds offers
+limitedimprovements. Thishighlightedacorelimitation: themodelsthemselvesaren’teffectively
+forminginternalspatialrepresentationsorreasoningthroughspace. Toaddressthis,weinvestigated
+whethersupervisedfine-tuning(SFT)couldteachVLMstobuildandleveragethesespatialmodels
+internally. This section of the appendix provides further details on our SFT methodology, starting
+withthecrucialstepofdatacuration.
+F.1 SUPERVISEDFINE-TUNINGDATACURATION
+EffectiveSFTheavilyreliesonthequalityandnatureofthetrainingdata. ToteachourVLMsthe
+desiredspatialreasoningcapabilities,wemeticulouslycuratedtwoprimarytypesofdata: cognitive
+maps and free-form reasoning chains. These were designed to provide strong supervisory signals
+forthemodeltolearnhowtorepresentandreasonaboutspace.
+F.1.1 COGNITIVEMAPGENERATION
+As discussed in Section D.1, cognitive maps serve as 2D schematic representations of object lay-
+outs. For the SFT phase, we needed to generate ground truth cognitive maps that the VLM could
+learntoproduce. Ourapproachtogeneratingthesemapswasgroundedintheobjectarrangement
+annotationsdescribedinSectionB.1. Weaimedforrepresentationsthatwerenotonlyaccuratebut
+alsoinaformatthattheVLMcouldfeasiblylearntogenerate.
+48
+PublishedasaconferencepaperatICLR2026
+The generation process was automated via a script that processes input JSONL files, where each
+lineitemcontainsscenedetailsincludingimagesand,crucially,meta infodescribingtheobjects,
+theirpotentialorientations,andthecameraviewpointsetup. Foreveryitem,thescriptfirstidentifies
+its specific spatial arrangement ”setting” (e.g., ”around,” ”among,” ”translation,” or ”rotation”) by
+parsing the item’s unique ID. Based on this setting, dedicated functions apply a set of predefined
+rulesandheuristicstodeterminethe2Dcoordinates(ona10x10grid)andfacingdirectionsforboth
+theobjectsandthecameraviews.
+For instance, in the ”around” setting, objects (typically 2-4) are placed in a predetermined linear
+arrangementnearthegrid’scenter(e.g.,atcoordinateslike[4,5],[5,5]),andcameraviewsareposi-
+tionedatcardinaldirectionsrelativetotheseobjects,basedonthespecificcameraanglespertinentto
+thequestion.Inthe”rotation”setting,thecameraisfixedatthecenter([5,5]),anditsfacingdirection
+changesacrossviews,whileobjectpositionsaredefinedrelativetothecamera’scurrentorientation.
+Similar rule-based placements are implemented for ”among” (objects in a cross or T-shape with
+viewsfromspecificangles)and”translation”(objectsarrangedlinearlytodepictrelationshipslike
+”on”or”downto”)settings. Objectorientations,ifapplicable,arealsoassignedbasedontheinput
+meta info.
+Finally, the generated layout of objects and views is formatted into a structured JSON string,
+representing the cognitive map. This JSON cogmap, along with templated instructional prompts
+(cogmap input for VLM input format guidance and cogmap output for VLM output task
+description),isaddedtotheoriginaldataitem. TheoverallgenerationlogicissummarizedinAlgo-
+rithm1.
+Algorithm1CognitiveMapGeneration
+Require: DatasetDcontainingitemswithspatialarrangementannotations
+Ensure: UpdateddatasetwithcognitivemapsinJSONformat
+1: forallitem∈Ddo
+2: setting ←Extractsettingtypefromitem.id
+3: Initializeemptycognitivemapcogmap
+▷Positionobjectsandviewsbasedonsettingtype
+4: ifsetting =“around”then
+5: Position2-4objectsinalinewithcoordinateslike[4,5],[5,5],etc.
+6: Placeviewsatcardinalpositionsbasedoncameraangles
+7: elseifsetting =“among”then
+8: Placecenterobjectat[5,5]andsurroundingobjectsat[5,8],[2,5],[5,2],[8,5]
+9: Positionviewsbasedonspecifiedcameraangles
+10: elseifsetting =“translation”then
+11: Positionobjectsaccordingtotheirspatialrelationships(e.g.,“on”,“down”)
+12: Placeviewstohighlightthesespatialrelationships
+13: elseifsetting =“rotation”then
+14: Arrangeobjectsbasedonrotationtype(clockwise,counterclockwise,etc.)
+15: Fixcameraat[5,5]withvaryingfacingdirections
+16: endif
+▷Addorientationinformationwhereapplicable
+17: forallobject∈cogmap.objectsdo
+18: ifobjecthasorientationthen
+19: Addfacingdirection(“up”,“down”,“left”,“right”)
+20: endif
+21: endfor
+22: FormatcogmapasstructuredJSON
+23: Addformattedcognitivemaptoitem
+24: endfor
+25: returnUpdateddatasetD
+F.1.2 FREE-FORMREASONINGGENERATION
+Whilecognitivemapsprovideastructured,globalunderstandingofthescene,effectivespatialrea-
+soning also involves a procedural, step-by-step thought process. To instill this capability in our
+49
+PublishedasaconferencepaperatICLR2026
+VLMs,wegeneratedadatasetofgroundedfree-formreasoningchains. Thesechainsweredesigned
+toverbalizethementalsimulationprocessrequiredtoanswerthespatialquestionsinMINDCUBE.
+The generation of these reasoning chains was closely tied to the question-answer (QA) templates
+developed in Section 2. For each specific setting (e.g., rotation, among, around), we manually
+constructedreasoningchainsfollowingaconsistentsetofprinciplestoensurelogicalcoherenceand
+cleargroundingintheprovidedvisualinformationandthequestionasked.
+Thecoreprinciplesguidingthegenerationofthesereasoningchainswere:
+1. Initial Scene Understanding. The reasoning begins by processing each input image individu-
+ally. This involves identifying key objects visible in that view and noting their explicit spatial
+relationshipswithotherobjectswithinthatsameview. Thisstepemulatestheinitialperceptual
+intakeahumanmightperform.
+2. Cross-View Consistency and Environment Integration. After individual view analysis, the
+reasoning emphasizes that although different images are provided, they all depict the same un-
+derlying spatial environment. This is often achieved by identifying and highlighting an anchor
+objectoraconsistentsetofobjectsthatappearacrossmultipleviews,therebyhelpingtoestablish
+aunifiedmentalmodelofthescene.
+3. Question-Driven Inference. With a foundational understanding of the scene established from
+theviews,thesubsequentstepsinthereasoningchainaredirectlyguidedbythespecificsofthe
+question. Thisinvolves: (1)MentalSimulation: Ifthequestioninvolvesahypotheticalchange
+inviewpointora”what-if”scenario(e.g.,”whatifyouturnleft?”),thereasoningchainexplicitly
+verbalizesthismentaltransformation. (2)PerspectiveTaking: Ifthequestionrequiresadopting
+a different perspective (e.g., ”from the sofa’s perspective”), the reasoning chain articulates this
+shift. (3) Spatial Relationship Deduction: The chain logically deduces the queried spatial
+relationship by integrating information from the relevant views, applying spatial concepts (like
+left-of,behind,furtherfrom),andreferencingtheestablishedmentalmodelofthescene.
+Thisstructuredapproachtogeneratingreasoningchainsaimedtoprovideclear,step-by-stepexam-
+plesofspatialthoughtprocessesfortheVLMtolearnfrom. Figure14,15and16showatemplate
+examplecombinedwiththefilledcaseforROTATION,AMONG,AROUND,respectively.
+F.2 DETAILEDEXPERIMENTALSETUP
+Inthissection,weprovideamoregranularview Table 11: Training hyperparameters for SFT ex-
+of the experimental parameters employed dur- perimentswithQwen2.5-VL-3B-Instruct.
+ing the Supervised Fine-Tuning (SFT) phase
+of our research. As stated in the main Parameter Value
+text, these experiments were designed to teach
+Datasetsize 10,000QApairs
+Vision-LanguageModels(VLMs)tobuildand
+Epochs 3
+leverage internal spatial representations. The
+Learningrate 1e-5
+base model for these SFT experiments was
+Scheduler Cosine
+Qwen2.5-VL-3B-Instruct.
+Fine-tuningtype Full-parameter
+We utilized a consistent training script for BatchSize 256
+all SFT experiments, ensuring comparability GPUsused 2×NVIDIAH100
+across different configurations. The primary Maximageresolution 90,000pixels
+variation across these runs was the specific Minimageresolution 784pixels
+dataset used (datasets variable in the script), ModelMaxLength 8192tokens
+corresponding to the different SFT task con- WeightDecay 0
+figurations discussed in Section 4.1, such as WarmupRatio 0.03
+Aug-CGMap-Out. Other hyperparameters MaxGradNorm 1
+were kept constant to isolate the effects of the Precision BF16
+differenttrainingsignals. Optimizer AdamW
+Thecoretraininghyperparametersaresumma-
+rizedinTable11andfurtherdetailedbytheprovidedtrainingscript.
+The training was conducted using a distributed setup managed by torchrun and leveraged
+DeepSpeed with a ZeRO Stage 3 optimization strategy for efficient full-parameter fine-tuning.
+Specifically, we set NPROC PER NODE to 2, utilizing two NVIDIA H100 GPUs, though the
+50
+PublishedasaconferencepaperatICLR2026
+Rotation – Template Type 2
+Template Reasoning Chain
+This scene is observed using four images. In image 1, I can see {object_in_front_view1} as the
+main object in front of me. In image 2, I can see {object_in_front_view2} as the main object in
+front of me. In image 3, I can see {object_in_front_view3} as the main object in front of me. In
+image 4, I can see {object_in_front_view4} as the main object in front of me. Image 1 is the initial
+view. Image 2 is captured after a 90-degree clockwise rotation from image 1. Image 3 is after
+another 90-degree clockwise rotation (180 degrees from image 1). Image 4 is after a further 90-
+degree clockwise rotation (270 degrees from image 1).From the perspective of image 4:
+'{object_in_front_view4}' is in front, '{object_in_front_view1}' is to the right, '{object_in_front_view2}'
+is behind, '{object_in_front_view3}' is to the left. After turning 90 degrees to the right:
+'{object_in_front_view1}' is now in front, '{object_in_front_view2}' is now to my right,
+'{object_in_front_view3}' is now behind, '{object_in_front_view4}' is now to my left. The object
+located to my behind is '{object_in_front_view3}'. Therefore, from the viewpoint of image 4, after
+a mental turn of 90 degrees to the right, the object to my behind is '{object_in_front_view3}'. The
+answer is {option}
+Question: If you are standing at the viewpoint presented in image 4
+and turn 90 degrees to the right, what is to your behind ？
+Options:
+A. Staircases
+B. Vanity unit
+C. Urinal
+D. Yellow signboard
+: rotation agent-agent self perspective non-linear
+Curated Reasoning Chain
+This scene is observed using four images. In image 1, I can see yellow signboard as the main
+object in front of me. In image 2, I can see vanity unit as the main object in front of me. In image
+3, I can see staircases as the main object in front of me. In image 4, I can see urinal as the main
+object in front of me. Image 1 is the initial view. Image 2 is captured after a 90-degree clockwise
+rotation from image 1. Image 3 is after another 90-degree clockwise rotation (180 degrees from
+image 1). Image 4 is after a further 90-degree clockwise rotation (270 degrees from image 1).
+From the perspective of image 4: 'urinal' is in front, 'yellow signboard' is to the right, 'vanity unit' is
+behind, 'staircases' is to the left. After turning 90 degrees to the right: 'yellow signboard' is now in
+front, 'vanity unit' is now to my right, 'staircases' is now behind, 'urinal' is now to my left. The object
+located to my behind is 'staircases'. Therefore, from the viewpoint of image 4, after a mental turn
+of 90 degrees to the right, the object to my behind is 'staircases'. The answer is A. Staircases
+Figure14: ExamplereasoningchaintemplateforROTATION
+51
+PublishedasaconferencepaperatICLR2026
+Among – Template Type 3
+Template Reasoning Chain
+In this scene, I observe four images showing different perspectives. All images feature the {main_object} as
+the main object. In image 1, I can see {main_object} in front of the {context_obj_V1}. In image 2, I can see
+{main_object} in front of the {context_obj_V2}. In image 3, I can see {main_object} in front of the
+{context_obj_V3}. In image 4, I can see {main_object} in front of the {context_obj_V4}.By observing the main
+object and its surroundings across views, and noting the rotational changes, I establish their relationships.
+Image 1 is the initial view. Image 2 is captured after a 90-degree clockwise rotation from image 1. Image 3 is
+after another 90-degree clockwise rotation (180 degrees from image 1). Image 4 is after a further 90-degree
+clockwise rotation (270 degrees from image 1).Through analyzing these perspective changes, I construct a
+complete spatial understanding: When I view {context_obj_V2} behind {main_object} in the second view, it
+implies that in the first view, {context_obj_V2} is on the right side of {main_object}. Similarly, when I see
+{context_obj_V4} behind {main_object} in the fourth view, it indicates that in the first view, {context_obj_V4} is
+on the left side of {main_object}. To determine what lies behind me in the first view, I examine the opposite
+view, which is the third view. As {context_obj_V3} is observed behind {main_object} in the third view, it means
+that in the first view, {context_obj_V3} is positioned behind me. This way, I can fully comprehend the spatial
+relationships of all objects in the entire scene from the perspective of image 1. So, from the perspective of
+image 1: {context_obj_V2} is to the right of {main_object}, {context_obj_V3} is to my behind, and
+{context_obj_V4} is to the left of {main_object}. The answer is{option}.
+Question: From the viewpoint presented in image 1, what is to the right of the
+black stool ？
+Options:
+A. Desk
+B. Office Area
+C. Greysofa
+D. Two chairs on the corridor
+: meanwhile object-object self perspective non-linear
+Curated Reasoning Chain
+In this scene, I observe four images showing different perspectives. All images feature the black stool as the
+main object. In image 1, I can see black stool in front of the cabinet desk along a corridor. In image 2, I can
+see black stool in front of the office area. In image 3, I can see black stool in front of the two chairs on the
+corridor. In image 4, I can see black stool in front of the grey sofa.To identify the position change across
+views, I focus on the main object's angle variation. Then, I analyze the angles and relative positions of other
+objects on the platform to back up this observation. I understand that: Image 1 is the initial view. Image 2 is
+captured after a 90-degree clockwise rotation from image 1. Image 3 is after another 90-degree clockwise
+rotation (180 degrees from image 1). Image 4 is after a further 90-degree clockwise rotation (270 degrees
+from image 1).Through analyzing these perspective changes, I can construct a complete spatial
+understanding: when I view office area behind black stool in the second view, it implies that in the first view,
+office area is on the right side of black stool. Similarly, when I see grey sofa behind black stool in the fourth
+view, it indicates that in the first view, grey sofa is on the left side of black stool. However, I am still uncertain
+about what lies behind me in the first view. Then, I recognize that I can examine the opposite view to find
+out. The opposite view of the fist view is the third view. As two chairs on the corridor is observed behind black
+stool in the third view, it means that in the first view, two chairs on the corridor is positioned behind me. This
+way, I can fully comprehend the spatial relationships of all objects in the entire scene. So, from the
+perspective of image 1: office area is to the right of black stool, two chairs on the corridor is to my behind,
+grey sofa is to the left of black stool. The answer is B. office area
+Figure15: ExamplereasoningchaintemplateforAMONG
+52
+PublishedasaconferencepaperatICLR2026
+Around – Template Type 1
+Template Reasoning Chain
+I need to determine how I moved from the viewpoint in image 1 to the viewpoint in image 2. In
+image 1, I can see: {object1_view1}, {object2_view1} from left to right. In image 2, I can clearly
+see {anchor_object_view2}. I notice that {anchor_object_both_views} is visible in both images,
+but from different angles. I analyze how the viewpoint changed from image 1 to image 2: The
+{anchor_object_analysis}, which is visible in image 1, becomes more prominent in image 2. This
+suggests I moved {inferred_movement_description}. The changes in object visibility and
+positioning between images suggest I moved {final_inferred_movement}.Therefore, the answer is
+{option}
+Question: Based on these two views showing the same scene, which
+direction did you move from the first view to the second view？
+Options:
+A. Forward-left
+B. Forward-right
+: meanwhile agent-agent self perspective linear
+Curated Reasoning Chain
+I need to determine how I moved from the viewpoint in image 1 to the viewpoint in image 2. In
+image 1, I can see: grey square planter, white square planter from left to right. In image 2, I can
+clearly see grey square planter. I notice that grey square planter is visible in both images, but from
+different angles. I analyze how the viewpoint changed from image 1 to image 2: The grey square
+planter, which is visible in image 1, becomes more prominent in image 2. This suggests I moved
+forward and toward the left side of the scene. The changes in object visibility and positioning
+between images suggest I moved forward and to the left. Therefore, the answer is A. Forward-left
+Figure16: ExamplereasoningchaintemplateforAROUND
+53
+PublishedasaconferencepaperatICLR2026
+script template showed CUDA VISIBLE DEVICES=0,1,2,3 and NPROC PER NODE default-
+ing to 4, our table and resource claims point to 2 GPUs being used for these runs. The
+per device train batch sizewassetto4,andwithgradient accumulation steps
+at32,thisresultedinaneffectivebatchsizeof256.
+The learning rate was 1 × 10−5 with a cosine learning rate scheduler and a warmup ra-
+tio of 0.03 over 3 training epochs. We enabled full fine-tuning of the vision encoder,
+MM-MLP, and the LLM components (--tune mm vision True --tune mm mlp True
+--tune mm llm True). The maximum sequence length for the model was set to 8192 tokens
+(--model max length 8192), and the maximum image input pixels were capped at 90,000
+(--max pixels 90000),withaminimumof784. Gradientcheckpointingwasenabledtoman-
+age memory usage (--gradient checkpointing True). Checkpoints were saved every 5
+steps(--save steps 5),keepingatotalof12checkpoints(--save total limit 12).
+This consistent and robust experimental framework, detailed in Sections 3.1, 3.2, and herein, al-
+lowedforafaircomparisonofthedifferentSFTstrategiesaimedatimprovingthespatialreasoning
+capabilitiesofQwen2.5-VL-3B-Instruct.
+F.3 VLMRESPONSEEXAMPLESAFTERSFTFORCONFIGURATIONSINSECTIOND.3
+OutputforRaw-QA:InputPromptRefertoD.3.1
+<answer>D.Whiteheadboard</answer>
+OutputforAug-CGMap-Out: InputPromptRefertoD.3.5
+Basedonmyobservation,theansweris:
+<cogmap>
+‘‘‘json
+{
+"objects": [
+{"name": "white jar", "position": [5, 5]},
+{"name": "bed sheet with a floral pattern",
+"position": [5, 8]},
+{"name": "white headboard", "position": [2, 5]},
+{"name": "clothes rack", "position": [5, 2]},
+{"name": "table with cups on it", "position": [8, 5]}
+],
+"views": [
+{"name": "Image 1", "position": [5, 6], "facing": "up"},
+{"name": "Image 2", "position": [4, 5], "facing": "right"},
+{"name": "Image 3", "position": [5, 4], "facing": "down"},
+{"name": "Image 4", "position": [6, 5], "facing": "left"}
+]
+}
+’’’
+</cogmap><answer>C.Bedsheetwithafloralpattern</answer>
+OutputforPlain-CGMap-Out: InputPromptRefertoD.3.6
+Basedonmyobservation,theansweris:
+<cogmap>
+‘‘‘json
+{
+"white jar": {"position": [5, 5]},
+54
+PublishedasaconferencepaperatICLR2026
+"bed sheet with a floral pattern": {"position": [5, 8]},
+"white headboard": {"position": [2, 5]},
+"clothes rack": {"position": [5, 2]},
+"table with cups on it": {"position": [8, 5]}
+}
+’’’
+</cogmap><answer>B.Clothesrack</answer>
+OutputforFFR:InputPromptRefertoD.3.2
+<think>In this scene, I observe four images showing different perspectives. All images
+featurethewhitejarasthemainobject. Inimage1,Icanseewhitejarinfrontofthetable
+withcupsonit. Inimage2,Icanseewhitejarinfrontofthebedsheetwithafloralpattern.
+Inimage3, Icanseewhitejarinfrontoftheclothesrack. Inimage4, Icanseewhitejar
+in front of the white headboard. To identify the position change across views, I focus on
+themainobject’sanglevariation. Then,Ianalyzetheanglesandrelativepositionsofother
+objectsontheplatformtobackupthisobservation. Iunderstandthat: Image1istheinitial
+view. Image 2 is captured after a 90-degree clockwise rotation from image 1. Image 3 is
+after another 90-degree clockwise rotation (180 degrees from image 1). Image 4 is after a
+further90-degreeclockwiserotation(270degreesfromimage1). Throughanalyzingthese
+perspective changes, I can construct a complete spatial understanding: when I view bed
+sheet with a floral pattern behind white jar in the second view, it implies that in the first
+view, bedsheetwithafloralpatternisontherightsideofwhitejar. Similarly, whenIsee
+whiteheadboardbehindwhitejarinthefourthview,itindicatesthatinthefirstview,white
+headboard is on the left side of white jar. However, I am still uncertain about what lies
+behindmeinthefirstview. Then,IrecognizethatIcanexaminetheoppositeviewtofind
+out. Theoppositeviewofthefistviewisthethirdview. Asclothesrackisobservedbehind
+whitejarinthethirdview,itmeansthatinthefirstview, clothesrackispositionedbehind
+me. This way, I can fully comprehend the spatial relationships of all objects in the entire
+scene. So,fromtheperspectiveofimage4: tablewithcupsonitistotherightofwhitejar,
+bedsheetwithafloralpatternistomybehind,clothesrackistotheleftofwhitejar. Sothe
+answerisB.Clothesrack</think><answer>B.Clothesrack</answer>
+OutputforAug-CGMap-FFR-Out: InputPromptRefertoD.3.8
+Basedonmyobservation,theansweris:
+<cogmap>
+‘‘‘json
+{
+"objects": [
+{"name": "white jar", "position": [5, 5]},
+{"name": "bed sheet with a floral pattern",
+"position": [5, 8]},
+{"name": "white headboard", "position": [2, 5]},
+{"name": "clothes rack", "position": [5, 2]},
+{"name": "table with cups on it", "position": [8, 5]}
+],
+"views": [
+{"name": "Image 1", "position": [5, 6], "facing": "up"},
+{"name": "Image 2", "position": [4, 5], "facing": "right"},
+{"name": "Image 3", "position": [5, 4], "facing": "down"},
+{"name": "Image 4", "position": [6, 5], "facing": "left"}
+]
+55
+PublishedasaconferencepaperatICLR2026
+}
+’’’
+</cogmap><think>Inthisscene,Iobservefourimagesshowingdifferentperspectives.All
+imagesfeaturethewhitejarasthemainobject. Inimage1,Icanseewhitejarinfrontofthe
+tablewithcupsonit. Inimage2,Icanseewhitejarinfrontoftheclothesrack. Inimage3,
+Icanseewhitejarinfrontofthebedsheetwithafloralpattern. Inimage4,Icanseewhite
+jarinfrontofthewhiteheadboard. Toidentifythepositionchangeacrossviews,Ifocuson
+themainobject’sanglevariation. Then,Ianalyzetheanglesandrelativepositionsofother
+objectsontheplatformtobackupthisobservation. Iunderstandthat: Image1istheinitial
+view. Image 2 is captured after a 90-degree clockwise rotation from image 1. Image 3 is
+after another 90-degree clockwise rotation (180 degrees from image 1). Image 4 is after a
+further90-degreeclockwiserotation(270degreesfromimage1). Throughanalyzingthese
+perspectivechanges,Icanconstructacompletespatialunderstanding: whenIviewclothes
+rackbehindwhitejarinthesecondview,itimpliesthatinthefirstview,clothesrackison
+the right side of white jar. Similarly, when I see white headboard behind white jar in the
+fourthview,itindicatesthatinthefirstview,whiteheadboardisontheleftsideofwhitejar.
+However,Iamstilluncertainaboutwhatliesbehindmeinthefirstview. Then,Irecognize
+that I can examine the opposite view to find out. The opposite view of the fist view is the
+thirdview. Asbedsheetwithafloralpatternisobservedbehindwhitejarinthethirdview,
+itmeansthatinthefirstview,bedsheetwithafloralpatternispositionedbehindme. This
+way, Icanfullycomprehendthespatialrelationshipsofallobjectsintheentirescene. So,
+from the perspective of image 4: clothes rack is to the right of white jar, bed sheet with a
+floralpatternistomybehind,tablewithcupsonitistotheleftofwhitejar. Sotheanswer
+isA.Tablewithcupsonit.</think><answer>A.Tablewithcupsonit</answer>
+OutputforPlain-CGMap-FFR-Out: InputPromptRefertoD.3.7
+Basedonmyobservation,theansweris:
+<cogmap>
+‘‘‘json
+{
+"white jar": {"position": [5, 5]},
+"bed sheet with a floral pattern": {"position": [5, 8]},
+"white headboard": {"position": [2, 5]},
+"clothes rack": {"position": [5, 2]},
+"table with cups on it": {"position": [8, 5]}
+}
+’’’
+</cogmap><think>Inthisscene,Iobservefourimagesshowingdifferentperspectives.All
+imagesfeaturethewhitejarasthemainobject. Inimage1,Icanseewhitejarinfrontofthe
+tablewithcupsonit. Inimage2,Icanseewhitejarinfrontoftheclothesrack. Inimage3,
+Icanseewhitejarinfrontofthebedsheetwithafloralpattern. Inimage4,Icanseewhite
+jarinfrontofthewhiteheadboard. Toidentifythepositionchangeacrossviews,Ifocuson
+themainobject’sanglevariation. Then,Ianalyzetheanglesandrelativepositionsofother
+objectsontheplatformtobackupthisobservation. Iunderstandthat: Image1istheinitial
+view. Image 2 is captured after a 90-degree clockwise rotation from image 1. Image 3 is
+after another 90-degree clockwise rotation (180 degrees from image 1). Image 4 is after a
+further90-degreeclockwiserotation(270degreesfromimage1). Throughanalyzingthese
+perspectivechanges,Icanconstructacompletespatialunderstanding: whenIviewclothes
+rackbehindwhitejarinthesecondview,itimpliesthatinthefirstview,clothesrackison
+the right side of white jar. Similarly, when I see white headboard behind white jar in the
+fourthview,itindicatesthatinthefirstview,whiteheadboardisontheleftsideofwhitejar.
+However,Iamstilluncertainaboutwhatliesbehindmeinthefirstview. Then,Irecognize
+that I can examine the opposite view to find out. The opposite view of the fist view is the
+56
+PublishedasaconferencepaperatICLR2026
+thirdview. Asbedsheetwithafloralpatternisobservedbehindwhitejarinthethirdview,
+itmeansthatinthefirstview,bedsheetwithafloralpatternispositionedbehindme. This
+way, Icanfullycomprehendthespatialrelationshipsofallobjectsintheentirescene. So,
+from the perspective of image 4: clothes rack is to the right of white jar, bed sheet with a
+floralpatternistomybehind,tablewithcupsonitistotheleftofwhitejar. Sotheanswer
+isA.Tablewithcupsonit.</think><answer>A.Tablewithcupsonit</answer>
+F.4 DETAILEDGRAPHMETRICRESULTSFORSFTGRAPH-RELATEDEXPERIMENTS
+This section provides a detailed look at the Supervised Fine-Tuning (SFT) training dynamics to
+supportthemainpaper’sconclusions.Thefiguresbelowplotkeymetricsovertrainingstepsforfour
+map-generationsettings. Acomparativeanalysishighlightsthatjointlytrainingmapgenerationand
+reasoningisthemosteffectivestrategy.
+When training on map generation alone, as in the Plain-CGMap-Out and Aug-CGMap-Out
+settings, the graph quality metrics show rapid convergence. However, the final QA accuracy is
+limited,reaching54.38%forPlain-CGMap-Outand54.19%forAug-CGMap-Out.
+In contrast, the joint training approaches (Plain-CGMap-FFR-Out and
+Aug-CGMap-FFR-Out), despite a slower initial convergence on graph quality metrics, ulti-
+matelyachievefarsuperiorperformanceintaskaccuracy. ThePlain-CGMap-FFR-Outsetting
+provestobethemosteffective,reachingaQAAccuracyof60.00%. TheAug-CGMap-FFR-Out
+settingalsoyieldsstrongresults,withQAaccuracyclimbingtoabout65%. Thisdemonstratesthe
+superiorityofjointtrainingforachievinghighperformanceinboththefinaltaskaccuracyandthe
+qualityofthegeneratedspatialrepresentations.
+70
+60
+50 40
+30
+20
+10
+0 10 20 30 40 50
+Steps
+)%( etaR
+cihpromosI
+Isomorphic Rate
+90
+80 70
+60
+50
+40 10 20 30 40 50
+Steps
+)%( ytiralimiS
+llarevO
+Overall Similarity
+85
+80
+75 70
+65
+60
+55
+50 10 20 30 40 50
+Steps
+)%( ytiralimiS
+.riD
+gvA
+Average Direction Similarity
+90
+80
+70 60
+50
+40
+30
+20
+10 10 20 30 40 50
+Steps
+)%( ytiralimiS
+gnicaF
+gvA
+Average Facing Similarity
+70
+60
+50 40
+30
+20
+10
+0 10 20 30 40 50
+Steps
+)%( ycaruccA
+AQ
+QA Accuracy
+Figure17: TrainingdynamicsfortheAug-CGMap-Outsetting.
+100
+80 60
+40
+20
+0 10 20 30 40 50
+Steps
+)%( etaR
+cihpromosI
+Isomorphic Rate
+95
+90 85
+80
+75
+70
+65 10 20 30 40 50
+Steps
+)%( ytiralimiS
+llarevO
+Overall Similarity
+95.0
+92.5 90.0 87.5
+85.0
+82.5 80.0
+77.5
+75.0 10 20 30 40 50
+Steps
+)%( ytiralimiS
+.riD gvA
+Average Direction Similarity
+100
+90 80
+70
+60
+50 10 20 30 40 50
+Steps
+)%( ytiralimiS
+gnicaF gvA
+Average Facing Similarity
+60.0
+57.5 55.0 52.5
+50.0
+47.5 45.0
+42.5
+40.0 10 20 30 40 50
+Steps
+)%( ycaruccA
+AQ
+QA Accuracy
+Figure18: TrainingdynamicsforthePlain-CGMap-Outsetting.
+70
+60
+50 40
+30
+20
+10
+0 10 20 30 40 50
+Steps
+)%( etaR
+cihpromosI
+Isomorphic Rate
+90
+80 70
+60
+50
+40 10 20 30 40 50
+Steps
+)%( ytiralimiS
+llarevO
+Overall Similarity
+85
+80
+75 70
+65
+60
+55
+50 10 20 30 40 50
+Steps
+)%( ytiralimiS
+.riD
+gvA
+Average Direction Similarity
+90
+80
+70 60
+50
+40
+30
+20
+10 10 20 30 40 50
+Steps
+)%( ytiralimiS
+gnicaF
+gvA
+Average Facing Similarity
+70
+60
+50 40
+30
+20
+10
+0 10 20 30 40 50
+Steps
+)%( ycaruccA
+AQ
+QA Accuracy
+Figure19: TrainingdynamicsfortheAug-CGMap-FFR-Outsetting.
+57
+PublishedasaconferencepaperatICLR2026
+70
+60
+50 40
+30
+20
+10
+0 10 20 30 40 50
+Steps
+)%( etaR
+cihpromosI
+Isomorphic Rate
+90
+80 70
+60
+50
+40 10 20 30 40 50
+Steps
+)%( ytiralimiS
+llarevO
+Overall Similarity
+85
+80
+75 70
+65
+60
+55
+50 10 20 30 40 50
+Steps
+)%( ytiralimiS
+.riD
+gvA
+Average Direction Similarity
+90
+80
+70 60
+50
+40
+30
+20
+10 10 20 30 40 50
+Steps
+)%( ytiralimiS
+gnicaF
+gvA
+Average Facing Similarity
+70
+60
+50 40
+30
+20
+10
+0 10 20 30 40 50
+Steps
+)%( ycaruccA
+AQ
+QA Accuracy
+Figure 20: Training dynamics for the Plain-CGMap-FFR-Out setting, showing superior final
+performance.
+F.5 WHICHPARTOFVLMISTHEBOTTLENECKFORSPATIALUNDERSTANDING?
+To develop more efficient fine-tuning strategies, it is crucial to understand which component of a
+Vision-Language Model (VLM)—the vision encoder responsible for perception or the Large Lan-
+guageModel(LLM)responsibleforreasoning—presentstheprimarybottleneckforspatialunder-
+standing. To investigate this, we conduct a bottleneck analysis by selectively fine-tuning different
+partsoftheVLMandobservingtheimpactonperformance.
+We evaluate four distinct training configurations on the Raw-QA task, with results captured at an
+early stage of training (step 57) to assess the initial learning dynamics. The configurations are:
+(1)thebaselineperformanceofthepre-trainedmodelwithoutanyfine-tuning;(2)fine-tuningonly
+thevisionencoderwhilekeepingtheLLMfrozen;(3)fine-tuningonlytheLLMwhilekeepingthe
+visionencoderfrozen;and(4)thestandardapproachoffine-tuningallpartsofthemodel.
+Table 12: VLM Training Bottleneck Analysis (Step=57, in %). Performance is measured on the
+MINDCUBE-TINYbenchmarkundertheRaw-QAsetting.
+TrainingMethod Overall Rotation Among Around
+Raw-QA(nofine-tuning) 37.81 34.00 36.00 45.20
+FreezeLLM(VisionEncoderOnly) 37.81 30.50 37.00 45.60
+FreezeVisionEncoder(LLMOnly) 51.43 34.00 50.00 68.80
+TuneAllParts 52.28 34.50 52.50 66.00
+The results, presented in Table 12, offer several key insights. First, there is a dramatic perfor-
+manceleapfromtheno-fine-tuningbaseline(37.81%overall),butonlywhenthelanguagemodelis
+trained.MethodsinvolvingLLMfine-tuningachieveover51%accuracy,underscoringthenecessity
+ofadaptingthemodel’sreasoningcapabilities.
+Most strikingly, the performance bottleneck is almost exclusively concentrated in the LLM. Tun-
+ing only the LLM (Freeze Vision Encoder) yields an overall accuracy of 51.43%, captur-
+ing nearly the full performance gain of end-to-end fine-tuning (52.28%). In stark contrast, tuning
+only the vision encoder (Freeze LLM) provides no improvement whatsoever over the baseline
+(37.81%). This indicates that the bottleneck is not shared between modules. For this spatial task,
+adapting the model’s language-based reasoning is critical, while adapting its visual perception is
+surprisinglyineffective.
+Intriguingly, the fact that fine-tuning only the vision encoder fails to improve performance is in
+itselfasignificantfinding. Apossibleexplanationisthatthepre-trainedvisualfeaturesarealready
+sufficienttoextractthenecessaryobjectsandtheirproperties. Thecorechallengeofthetaskseems
+to lie not in what is seen, but in how to reason about the spatial relationships across a series of
+views—a task primarily handled by the LLM. In conclusion, our analysis suggests that the most
+significantgainscomefromadaptingthereasoningmodule. Forefficienttuning,freezingthevision
+encoderandfocusingsolelyontheLLMprovestobeahighlyeffectivestrategy, achievingnearly
+top-tierperformanceatafractionofthecomputationalcost.
+58
+PublishedasaconferencepaperatICLR2026
+F.6 BRANCHINGFROMRAW-QASFTCHECKPOINT
+In our main experiments, we fine-tuned the model for each specific task format starting from the
+basepre-trainedVLM.Anaturalquestionarises: canacurriculum-basedSFTapproachfurtherim-
+proveperformance? Specifically,weinvestigatewhetherfirstfine-tuningthemodelonthesimplest
+task format—‘Raw-QA‘, which only requires outputting the final answer—can establish a better
+foundationforlearningtoleveragemorecomplexreasoningformats.
+Totestthishypothesis,weconductedasetofbranchingexperiments. Wetookthecheckpointfrom
+the model fully fine-tuned on the ‘Raw-QA‘ task. Then, we used this specialized checkpoint as
+theinitialweightsforfurtherfine-tuningonotherscaffoldingtasks,namelyAug-CGMap-In,FF
+Rsn, and Aug-CGMap-FFR-Out. It is important to note that during this second stage of fine-
+tuning, the model’s output for all tasks was still constrained to be only the final answer option.
+Thissetupallowsustoisolatetheeffectofthecognitivescaffoldsonthemodel’sinternalreasoning
+process,ratherthanitsabilitytogeneratecomplextext.
+Theresults,presentedinTable13,showaconsistentandnotableimprovementacrossallbranched
+tasks compared to their counterparts trained from scratch. For example, both Aug-CGMap-In
+andAug-CGMap-FFR-Outreachanimpressiveoverallaccuracyof49.00%. EventheFF Rsn
+method benefits from this two-stage approach, with its overall accuracy rising to 46.82%. These
+findings suggest that a two-stage SFT strategy is highly effective. By first grounding the model
+in the fundamental objective of the task (i.e., finding the correct answer) and then teaching it to
+processandleveragemorecomplexcognitivescaffolds, wecanachievesuperiorspatialreasoning
+performance. Thisindicatesthatthemodel,onceprimedforthecoretask,becomesmoreadeptat
+utilizingtheprovidedspatialcontext, evenifitdoesnotexplicitlygeneratethereasoningchainor
+cognitivemap.
+Table13: Performanceofvariousmethodsafterbeingfine-tunedfromaRaw-QASFTcheckpoint.
+This two-stage training approach led to performance gains across all methods. All accuracies are
+reportedaspercentages(%).
+Method Overall Rotation Among Around
+Raw-QA 46.36 33.50 51.20 46.75
+Aug-CGMap-In 49.00 35.50 53.20 50.50
+FF Rsn 46.82 37.00 50.60 47.00
+Aug-CGMap-FFR-Out 49.00 37.00 53.20 49.75
+F.7 EXPERIMENTSONOTHERMLLMS
+Our core ‘map-then-reason‘ insight generalizes across different Visual Language Model (VLM)
+families. We have conducted new experiments on InternVL3-2BZhu et al. (2025), and the results
+below(Table14)showthattheAug-CGMap-FFR-OutandPlain-CGMap-FFR-Outsettings
+outperformothersbyalargemargin.
+Table14: PerformanceofInternVL3-2Baftersupervisedfine-tuning. Allaccuraciesarereportedas
+percentages(%).
+Config. Overall Rotation Among Around OverallSim. Isom. Rate
+Raw-QA 54.23 34.00 55.25 68.00 - -
+FFR 56.83 40.00 58.98 65.20 - -
+Aug-CGMap-Out 52.98 35.00 53.90 65.20 87.39 66.15
+Plain-CGMap-Out 51.63 31.50 50.34 70.80 93.64 90.58
+Aug-CGMap-FFR-Out 71.44 58.50 75.42 72.40 87.00 66.63
+Plain-CGMap-FFR-Out 73.56 65.00 77.63 70.80 92.04 88.27
+59
+PublishedasaconferencepaperatICLR2026
+F.8 PROMPTSENSITIVITYANALYSES.
+To examine prompt sensitivity, we compared our structured representation (S) against a natural-
+language (NL) formulation for the three strongest variants. As shown in Table 15, results vary by
+format: for Plain-CGMap-FFR-Out, the structured prompt yields 41.33% versus 39.71% for
+NL,whereasforCGMap-In-FFR-Out, NLslightlyoutperformsS(43.43%vs.41.43%). These
+findings demonstrate that the optimal prompt style is setting-dependent and support the principle
+thatVLMsshouldflexiblyadapttodiverseuserinputsratherthanrelyonasingle“perfect”format.
+Consequently,ourpaperreportsresultsusingoneconsistentandrepresentativepromptvariation.
+Table15: PromptSensitivityAnalysis: structured(S)vs.naturallanguage(NL).
+Configuration Acc(S) Acc(NL)
+Aug-CGMap-FFR-Out 40.57% 37.43%
+Plain-CGMap-FFR-Out 41.33% 39.71%
+CGMap-In-FFR-Out 41.43% 43.43%
+F.9 EXPLORINGLATENTSPATIALREPRESENTATIONS.
+Despiteourprimaryfocusonexplicitrepresentationslikedifferentscaffolds,wealsoinvestigated
+themodel’sinternalfeaturestounderstandhowitencodesspatialinformationandformsspatialmen-
+talmodels. Todeterminewhetherthemodelmaintainslatentspatialrepresentationsandencodesa
+viewpoint-invariant”neuralline,”weconductedanexperimentusing100objecttriplets(front/left-
+/right views) from our MINDCUBE. We registered PyTorch forward hooks at the 10th LLM layer
+(llm.hidden states)ofourSFTmodeltocapturethesefeatures. Weperformedthreecomple-
+mentaryanalyses.
+Pairwisesimilarity. WecalculatedthecosinesimilarityandPearsoncorrelationcoefficient(r)for
+activationsofthesameobjectacrossdifferentviews(positivepairs)andbetweendifferentobjects
+(negativepairs). TheresultsinTable16showthatbothcosinesimilarityandPearsoncorrelation
+werehigherforpositivepairscomparedtonegativepairsinthelayer-10LM.Thisindicatesthatthe
+modelhasameasurable,layer-wisespatialconsistencyforobjectidentityacrossviewpoints.
+Metric Positivepairs Negativepairs
+Cosine 0.9651 0.9160
+Pearsonr 0.2750 0.2046
+Table16: Pairwisesimilarityresultsforpositiveandnegativepairs.
+Stable-dimension search. For each token dimension, we computed the variance across the three
+views. With only 64 stable dimensions (variance 4.15-6.01), the average cosine similarity across
+views was 0.931±0.068, which is significantly higher than random baselines. These low-variance
+dimensionsactassharedneuronsthatremainnearlyconstantacrossdifferentviewpoints.Theirhigh
+pairwisecosinesimilarityconfirmsthatthemodelhaslearnedaninvariantrepresentation.
+Probing. To further investigate whether the identified stable dimensions truly encode a robust,
+viewpoint-invariantrepresentation,weconductedaprobingexperiment. Wetrainedasimplelinear
+classifierontheactivationsfromthemodel’s10thLLMlayer. Thetaskwastopredictthedirection
+of a 90-degree arc rotation for a given object. The training data consisted of pairs of activations
+correspondingtothefrontandleftviewsoftheobjects,andthetargetlabelwaseither”clockwise”
+or”counter-clockwise.”Thissetupforcedtheclassifiertolearnthespatialrelationshipbetweenthe
+twoviewpoints.
+Theclassifierwasthenevaluatedonaheld-outtestsetofobjectsnotseenduringtraining.Itachieved
+animpressive85%accuracy,significantlyoutperformingtherandomchancebaselineof50%. This
+result provides strong evidence that the stable dimensions identified in our previous analysis are
+notmerelystatisticalartifacts. Instead,theyrepresentameaningfulandgeneralizablespatialcode.
+The model’s ability to encode this type of relational information allows a simple linear probe to
+60
+PublishedasaconferencepaperatICLR2026
+successfully infer a complex spatial transformation on entirely new objects, confirming that the
+latentrepresentationsarerobustandusefulforspatialmentalmodeling.
+F.10 HYPERPARAMETERTUNINGRESULTS
+Weconductednewhyperparametertuningexperimentstofurthervalidateourapproach.Specifically,
+weperformedaseriesofexperimentstotunethehyperparametersforourSupervisedFine-Tuning
+(SFT)settings,asdetailedinTable17.
+Asshowninthetable,ouroriginalhyperparameterconfigurationofalearningrateof10−5,abatch
+sizeof512, andawarmupratioof0.03yieldedthehighestaccuracyof52.28%. Theresultsfrom
+theseexperimentsconfirmthatthehyperparametersusedinourinitialsubmissionareeffectiveand
+well-optimizedforthetask,furthersubstantiatingourclaims.
+Table17: SFTHyperparameterTuningResults
+SFT(learningrate,batchsize,warmupratio) Acc(%)
+(1×10−5,512,0.03)–Ours 52.28
+(2×10−5,512,0.03) 51.71
+(4×10−5,512,0.03) 51.52
+(1×10−5,256,0.03) 50.86
+(1×10−5,1024,0.03) 51.90
+(1×10−5,512,0.01) 51.81
+(1×10−5,512,0.10) 50.67
+G CAN REINFORCEMENT LEARNING FURTHER REFINE SPATIAL THOUGHT
+PROCESSES?
+Asdiscussedinthemainpaper,whileSupervisedFine-Tuning(SFT)establishesastrongfoundation
+forspatialreasoning,reinforcementlearning(RL)presentsanavenueforfurtheroptimizingspatial
+thought processes through outcome-driven feedback. The core inquiry is whether guiding VLMs
+with rewards can lead to the development of more precise spatial mental models and enhanced
+reasoning capabilities. This section of the appendix provides a more detailed exposition of the
+experimentalsetupemployedfortheRLphaseofourresearch.Additionally,wepresentcasestudies
+to offer qualitative insights into how RL refines the models’ spatial representations and reasoning
+chains.
+G.1 DETAILEDEXPERIMENTALSETUP
+For the reinforcement learning (RL) phase of our research, we employed the VAGEN framework.
+ThecorepolicyoptimizationalgorithmusedwasGroupRelativePolicyOptimization(GRPO).To
+ensureconsistencyandallowfordirectcomparisonwithearlierstagesofourwork,keycomponents
+from the Supervised Fine-Tuning (SFT) experiments were retained. Specifically, the base Vision-
+Language Model (VLM) for all RL configurations was Qwen2.5-VL-3B-Instruct, and evaluations
+wereperformedontheMINDCUBE-TINYbenchmark. Allpreviouslyestablishedevaluationmet-
+ricswerealsoretained.
+Inconsiderationofcomputationalcosts,eachdistinctRLconfigurationwastrainedforadurationof
+0.5epoch. TheprimaryhyperparametersgoverningtheRLtrainingprocessweresetasfollows:
+• TrainingBatchSize: 32
+• MaximumPromptLength: 1024tokens
+• MaximumResponseLength: 512tokens
+• ActorLearningRate: 1×10−6
+• CriticLearningRate: 1×10−5
+• NumberofTrajectoriesperRollout: 8
+61
+PublishedasaconferencepaperatICLR2026
+• MaximumTurnsperTrajectory: 1
+AsdetailedinSection5.1ofthemainpaper,weinvestigatedthreeRLtaskconfigurations:
+1. RL-FFR(fromscratch):TheQwen2.5-VL-3B-Instructmodelwastrainedtogeneratefree-form
+reasoningchainswithoutpriorSFTforthisspecifictaskformat.
+2. RL-Aug-CGMap-FFR-Out (from scratch): The model was trained to jointly produce aug-
+mentedcognitivemapsandassociatedfree-formreasoning,alsostartingfromthebasepre-trained
+VLM.
+3. RL-Aug-CGMap-FFR-Out(fromSFT):Forthisconfiguration,theRLtrainingwasinitialized
+usingtheweightsfromthestrongestperformingSFTcheckpoint,specificallytheAug-CGMap-
+FFR-OutSFTmodel.
+The reward function was designed to be sparse yet directly indicative of desired behaviors. A re-
+wardof+1wasassignedifthemodel’soutputwasstructurallyvalid(e.g., thegeneratedcognitive
+map adhered to the predefined schema). A more significant reward of +5 was given if the model
+provided the correct final answer to the spatial reasoning question. This dual-component reward
+wasintendedtosteerthelearningprocesstowardsgeneratingbothwell-formedintermediatespatial
+representationsandachievinghighend-taskaccuracy.
+G.2 RLREWARDDESIGNABLATION
+A comprehensive reward ablation study can provide more convincing evidence for our approach.
+Inspired by the Deepseek-R1 approachGuo et al. (2025), our reward design incorporates a dual-
+componentstructure:asmallscoreassignedforvalidformatgenerationandalargerscoreforcorrect
+answer generation. This design encourages both structural correctness and factual accuracy in the
+model’soutput.
+Toinvestigatetheefficacyofthisrewardstructure, weconductedanablationstudywiththreedif-
+ferentrewardconfigurations,asdetailedinTable18. Ourbaseline,representedbyafrozenVisual-
+LanguageModel(VLM),achievedanaccuracyof40.57%. Ourproposedsetting,whichassigns+1
+foravalidformatand+5foracorrectanswer,achievedanaccuracyof50.57%.The”AnswerOnly”
+setting, which assigns +5 for a correct answer but 0 for format, resulted in a similar accuracy of
+50.76%. Incontrast,the”FormatOnly”setting,whichprovidesascoreof+5foravalidformatbut
+0fortheanswer,yieldedaloweraccuracyof45.05%.
+Theseresultsconfirmthattherewardcomponentforacorrectansweristhemostcriticalfactorin
+ourRLrewarddesign. Thehighvalueassignedtothecorrectanswerscore(+5)ishighlyeffective
+atimprovingthemodel’sperformance,afindingthatisconsistentwithrecentworkonRLforLarge
+LanguageModels.
+Table18: RLRewardAblationStudy
+RLRewardSetting(formatscore,answerscore) Acc(%)
+FrozenVLM(baseline) 40.57
+OurSetting(+1,+5) 50.57
+AnswerOnly(+0,+5) 50.76
+FormatOnly(+5,+0) 45.05
+G.3 VLMRESPONSEEXAMPLESAFTERRLFORCONFIGURATIONSINSECTIOND.3
+OutputforFFR:InputPromptRefertoD.3.2
+<think>Fromimage4, thewhitejarispositionedonasurfacewithafloral-patternedbed
+sheet. Totheleftofthejar,thereisatablewithapinktableclothfeaturingheartshapesand
+aHelloKittydesign. Therearealsocupsonthetable. Therefore,theobjecttotheleftofthe
+whitejaristhetablewiththecups.</think><answer>A.Tablewithcupsonit</answer>
+62
+PublishedasaconferencepaperatICLR2026
+Output for RL-Aug-CGMap-FFR-Out (from scratch): Input Prompt Refer to
+D.3.8
+<cogmap>
+{
+"objects": [
+{"name": "white jar", "position": [265, 436],
+"facing": "left"}
+],
+"views": [
+{"name": "View/Image 1", "position": [265, 436],
+"facing": "left"},
+{"name": "View/Image 2", "position": [265, 436],
+"facing": "left"},
+{"name": "View/Image 3", "position": [265, 436],
+"facing": "left"},
+{"name": "View/Image 4", "position": [265, 436],
+"facing": "left"}
+]
+}
+<Yourcognitivemap></cogmap>
+<think>The white jar is located in the center of the 10x10 grid, facing to the left. The
+clothesrackistotheleftofthewhitejar,asseenintheimage2view. Thebedsheetwitha
+floralpatternislocatedtotherightofthewhitejar,asseenintheimage1view. Thewhite
+headboardisnotvisibleinanyoftheprovidedimages.
+Basedontheprovidedimages,thewhitejarislocatedinthecenterofthe10x10grid,facing
+totheleft.Theclothesrackistotheleftofthewhitejar,asseenintheimage2view.Thebed
+sheetwithafloralpatternislocatedtotherightofthewhitejar,asseenintheimage1view.
+The white headboard is not visible in any of the provided images.</think><answer>A.
+Tablewithcupsonit.</answer>
+OutputforRL-Aug-CGMap-FFR-Out (from SFT):InputPromptRefertoD.3.8
+Basedonmyobservation,theansweris:
+<cogmap>
+‘‘‘json
+{
+"objects": [
+{"name": "white jar", "position": [5, 5]},
+{"name": "bed sheet with a floral pattern",
+"position": [5, 8]},
+{"name": "white headboard", "position": [2, 5]},
+{"name": "clothes rack", "position": [5, 2]},
+{"name": "table with cups on it", "position": [8, 5]}
+],
+"views": [
+{"name": "Image 1", "position": [5, 6], "facing": "up"},
+{"name": "Image 2", "position": [4, 5], "facing": "right"},
+{"name": "Image 3", "position": [5, 4], "facing": "down"},
+{"name": "Image 4", "position": [6, 5], "facing": "left"}
+]
+}
+’’’
+</cogmap><think>Inthisscene,Iobservefourimagesshowingdifferentperspectives.All
+imagesfeaturethewhitejarasthemainobject. Inimage1,Icanseewhitejarinfrontofthe
+clothesrack. Inimage2,Icanseewhitejarinfrontofthetablewithcupsonit. Inimage3,
+63
+PublishedasaconferencepaperatICLR2026
+Icanseewhitejarinfrontofthebedsheetwithafloralpattern. Inimage4,Icanseewhite
+jarinfrontofthewhiteheadboard. Toidentifythepositionchangeacrossviews,Ifocuson
+themainobject’sanglevariation. Then,Ianalyzetheanglesandrelativepositionsofother
+objectsontheplatformtobackupthisobservation. Iunderstandthat: Image1istheinitial
+view. Image 2 is captured after a 90-degree clockwise rotation from image 1. Image 3 is
+after another 90-degree clockwise rotation (180 degrees from image 1). Image 4 is after a
+further90-degreeclockwiserotation(270degreesfromimage1). Throughanalyzingthese
+perspective changes, I can construct a complete spatial understanding: when I view table
+with cups on it behind white jar in the second view, it implies that in the first view, table
+with cups on it is on the right side of white jar. Similarly, when I see white headboard
+behindwhitejarinthefourthview,itindicatesthatinthefirstview,whiteheadboardison
+the left side of white jar. However, I am still uncertain about what lies behind me in the
+firstview. Then,IrecognizethatIcanexaminetheoppositeviewtofindout. Theopposite
+viewofthefistviewisthethirdview. Asbedsheetwithafloralpatternisobservedbehind
+white jar in the third view, it means that in the first view, bed sheet with a floral pattern
+is positioned behind me. This way, I can fully comprehend the spatial relationships of all
+objectsintheentirescene. So,fromtheperspectiveofimage4: clothesrackistotheright
+ofwhitejar,tablewithcupsonitistomybehind,bedsheetwithafloralpatternistotheleft
+ofwhitejar. SotheanswerisC.Bedsheetwithafloralpattern.</think><answer>C.Bed
+sheetwithafloralpattern</answer>
+64

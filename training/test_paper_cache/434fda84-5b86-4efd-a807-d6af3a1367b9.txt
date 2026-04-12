@@ -1,0 +1,975 @@
+PublishedasaconferencepaperatICLR2026
+ERASE OR HIDE? SUPPRESSING SPURIOUS UNLEARN-
+ING NEURONS FOR ROBUST UNLEARNING
+NakyeongYang1,2∗ Dong-KyumKim2 JeaKwon2
+MinsungKim1 KyominJung1 MeeyoungCha2†
+1SeoulNationalUniversity 2MaxPlanckInstituteforSecurityandPrivacy
+{yny0506, kms0805, kjung}@snu.ac.kr
+{dong-kyum.kim, jea.kwon, mia.cha}@mpi-sp.org
+ABSTRACT
+Largelanguagemodelstrainedonweb-scaledatacanmemorizeprivateorsensi-
+tiveknowledge,raisingsignificantprivacyrisks.Althoughsomeunlearningmeth-
+odsmitigatetheserisks,theyremainvulnerableto“relearning”duringsubsequent
+training,allowingasubstantialportionofforgottenknowledgetoresurface.Inthis
+paper, we show that widely used unlearning methods cause shallow alignment:
+insteadoffaithfullyerasingtargetknowledge,theygeneratespuriousunlearning
+neurons that amplify negative influence to hide it. To overcome this limitation,
+weintroduceSSIUU,anewclassofunlearningmethodsthatemploysattribution-
+guidedregularizationtopreventspuriousnegativeinfluenceandfaithfullyremove
+target knowledge. Experimental results confirm that our method reliably erases
+targetknowledgeandoutperformsstrongbaselinesacrosstwopracticalretraining
+scenarios: (1)adversarialinjectionofprivatedata,and(2)benignattackusingan
+instruction-following benchmark. Our findings highlight the necessity of robust
+andfaithfulunlearningmethodsforsafedeploymentoflanguagemodels.
+1 INTRODUCTION
+Large language models (LLMs) are built on vast corpora of web-scale data, equipping them with
+broadcapabilitiesacrossdiversetasks. Yet,thisscaleintroducesprivacyrisks,astrainingdatasets
+mayinadvertentlycontainsensitiveorpersonallyidentifiableinformation. Inresponse,priorworks
+have explored strategies to remove private or sensitive knowledge from LLMs. Such approaches
+includegradient-basedinterventions(Jangetal.,2022;Mainietal.,2024),preference-drivenopti-
+mizationframeworks(Jinetal.,2024;Yangetal.,2025),andrepresentationlearningtechniques(Li
+etal.,2024),eachofwhichaimstomitigateprivacyrisksembeddedinmodelparameters.
+Despite these efforts, prior studies reveal that existing unlearning techniques often fail to robustly
+eliminatetargetknowledge. Modelssubjectedtosuchinterventionsremainsusceptibletoprompt-
+basedelicitation(Jinetal.,2024;Yangetal.,2025)andcaninadvertentlyrecoverforgotteninfor-
+mationthroughrepresentationalshiftsintroducedbysubsequenttraining(Deeb&Roger,2024;Hu
+etal.,2024). Giventhegrowingprevalenceofopen-sourceLLMs(e.g.,Meta’sLlama(Dubeyetal.,
+2024), Alibaba’s Qwen (Yang et al., 2024a)) and the widespread availability of fine-tuning inter-
+faces,itiscrucialtounderstandtheirvulnerabilitiesanddesignresilientunlearningmethodsfitfor
+real-worlddeployment.
+Thispapershowsthatcurrentunlearningmethodstendtoinduceshallowalignment,aphenomenon
+where target knowledge is obscured but not truly removed. To explain this behavior, we propose
+the novel concept of spurious unlearning neurons and demonstrate that existing methods often
+suppress the target by introducing distinct neurons to act as inhibitors—i.e., spurious unlearning
+neurons—ratherthandiminishingtheinfluenceofneuronsthattrulyencodesensitiveinformation.
+Sincetheoriginalknowledge-bearingneuronsremainintact,thetargetinformationcanre-emergeif
+thesespuriousneuronsaredisruptedorbypassedduringsubsequenttraining, ultimatelyleadingto
+unlearningfailures. Therefore,wearguethat,forrobustunlearning,methodsshoulddirectlyerase
+thetrueknowledgerepresentationswhilepreventingtheemergenceofspuriousunlearningneurons.
+∗ThisworkwasdoneattheMaxPlanckInstituteforSecurityandPrivacy
+†Correspondingauthor:mia.cha@mpi-sp.org
+1
+PublishedasaconferencepaperatICLR2026
+Toillustratethisissue,wefirstinvestigatewhetherwidelyusedunlearningmethodscaneffectively
+remove target knowledge using an explainability method. Specifically, we apply an attribution
+method(Yangetal.,2023)toexaminevariationsinneuronalcontributionstotargetknowledgeand
+comparevariationsinpositiveandnegativeinfluencesbeforeandafterunlearning. Iftheknowledge
+iseffectivelyremoved,thepositiveinfluenceonthetargetknowledgeshoulddiminishaftertheun-
+learningprocess. However,ourexperimentsconsistentlyshowthatthepositiveinfluenceisretained
+whilethenegativeinfluenceincreases. Therefore,theseresultssuggestthatwidelyusedunlearning
+methods do not reliably eliminate the underlying knowledge encoded in the parameters; instead,
+theyintroducenewneuronstosuppressit.
+To better understand the shallow align- Which country was Donald Trump bornin?
+ment problem, we introduce two practi-
+cal attack scenarios to evaluate whether
+unlearned knowledge is truly removed
+or re-emerges during subsequent train-
+ing: (1) adversarial injection via fine-
+tuningwithaprivacy-relateddatasetand
+(2) benign attack using an instruction-
+following benchmark. In the former
+case, an unlearned model is retrained U.S.A ??? ???
+withasmallsetofprivatedatasamples. Shallow Alignment vs. Faithful Unlearning
+Ifadditionalunlearnedknowledgeresur-
+(Before Unlearning) (After Unlearning)
+facesfromretrainingonadisjointprivate
+dataset, this implies that target knowl-
+Figure 1: Shallow Unlearning Alignment. The red-
+edge has not been adequately removed.
+coloredneuronsarespuriousunlearningneurons,which
+In the latter case, an unlearned model is
+hide target knowledge rather than erasing it. This
+retrained with a benign dataset, such as
+presentsacriticalissue,sincetheknowledgemayresur-
+instruction-followingdata(e.g.,Alpaca).
+faceifthisshallowalignmentisweakenedorbypassed.
+Ifunlearnedknowledgeisrecovereddur-
+ingthisprocess,itposessignificantprivacyrisks. Ourexperimentsshowthatexistingwidelyused
+unlearningmethodsarevulnerabletobothattacks;asaresult,theunlearningeffectiscompromised
+andtargetknowledgeiseasilyrecovered.
+Toaddresspersistentlimitationsinexistingunlearningmethods,wepropose SSIUU—Suppressing
+SpuriousUnlearningNeuronsforRobustUnlearning—whichregularizestheincreaseofnegativein-
+fluenceandthusenablesunlearningalgorithmstoerasetargetknowledgeeffectivelyratherthansup-
+pressit. Specifically,wecomputetheattributionscorefortargetknowledgeandconstrainthenega-
+tiveattributionvaluestoremainattheiroriginallevels. ExperimentalresultsshowthatSSIUUout-
+performsstrongbaselinesinthetwopracticalattackscenarios,faithfullyremovingtargetknowledge
+andremainingrobusttofurtherretraining. Wefurtheranalyzeinternalattributionsignals,showing
+thatSSIUUachievesrobustunlearningbypreventingtheemergenceofspuriousunlearningneurons.
+Ourmethodfaithfullydecreasesthepositiveinfluenceontargetknowledgeacrossalllayers,while
+suppressingthegrowthofnegativeinfluence. Wemakethefollowingcontributions:
+1. Weshowthatwidelyusedunlearningmethodssufferfromshallowunlearningalignment,
+wherespuriousunlearningneuronsemergetohidetheknowledgeratherthaneraseit.
+2. We evaluate this issue in two practical attack scenarios, namely retraining with private
+data and benign instruction following data, and demonstrate the recoverability of target
+knowledge,underscoringtheneedforrobustunlearningmethods.
+3. Weintroduce SSIUU, anovelmethodthatregularizestheemergenceofspuriousunlearn-
+ingneuronsandoutperformsstrongbaselinesinthetwoattackscenarios, highlightingits
+potentialforrobustandsafedeploymentofLLM.
+2 PRELIMINARY: UNLEARNING LANGUAGE MODELS
+Typically, unlearning tasks aim to eliminate target knowledge from a language model’s pa-
+rameters, while maintaining other knowledge. Formally, given a language model P (y|x) =
+θ
+T P (y |x,y ,...,y ) with parameters θ, an unlearning algorithm g updates θ to θ′, remov-
+Qt=1 θ t 1 t−1
+ingtargetknowledgefromP . Variousbenchmarksconsistofinput-outputpairs(x,y) ∈ C,where
+θ
+2
+PublishedasaconferencepaperatICLR2026
+Cdenotestheentireknowledgecorpus,whichispartitionedintotheforgetsetC ⊂Candtheretain
+f
+setC ⊂C\C . SomebenchmarksincludeatestsetC ⊂C\(C ∪C )toassessknowledgeretention
+r f t f r
+onunseendata. Theobjectiveistotrainalanguagemodelnottooutputtextywhengivenaninput
+textx,where(x,y) ∈ C . However,thistrainingprocessmaydestroytheoriginalknowledgeofa
+f
+languagemodel;thus,existingstudieshaveemployedtheretainsetC intheunlearningprocessto
+r
+preservetheoriginalknowledge.
+3 THE SHALLOW UNLEARNING ALIGNMENT PROBLEM
+Wedescribetheshallowunlearningalignmentproblembyintroducingtheconceptofspuriousun-
+learning neuron, which refers to neurons that acquire new knowledge to suppress the display of
+target knowledge rather than remove it. To demonstrate this, we show that existing unlearning
+methodsoftenfailtofullyerasethetargetknowledge,asrevealedbytheirvulnerabilitytoretrain-
+ingperturbations. Furthermore,ourcasestudiessystematicallyuncovertheemergenceofspurious
+unlearningneuronsthroughexplainability-drivenanalysesofmodelinternals.
+3.1 THERETRAININGPERTURBATIONSCENARIOS
+Prior studies demonstrate that fine-tuning a language model often induces catastrophic forgetting
+(French,1999;Kirkpatricketal.,2017)ofitsoriginalknowledge,andthesamephenomenonoccurs
+aftertheunlearningprocess(Deeb&Roger,2024;Huetal.,2024).Thisvulnerabilityisparticularly
+severewhenunlearningyieldsmerelyshallowalignment, servingasashortcutratherthanafaith-
+ful solution. The primary goal of unlearning is to eliminate the target knowledge; however, when
+alignment is superficial and the target knowledge remains intact, it can easily resurface through
+subsequent retraining attacks. Therefore, such retraining attack scenarios are not only well-suited
+for evaluating knowledge retention, but also highly realistic, as many recent LLM platforms pro-
+videfine-tuningAPIsforcustomization(e.g.,OpenAI)orreleasetheirmodelsasopen-source(e.g.,
+Meta’sLlamaandAlibaba’sQwenseries).
+Weassumethatusersfine-tuneanunlearnedmodelwithasmallfraction(p)ofinstancesfromthe
+forget set, either intentionally or not. This is called the harmful retraining attack setting. If a
+model undergoes only superficial unlearning, retraining on a subset p of the forget set can lead to
+therecoveryoffurtherforgottenknowledgethatisdisjointfromtheattackdataset. Inaddition,we
+consider a benign fine-tuning scenario, in which users retrain an unlearned model with a dataset
+unrelatedtotheforgetsetandwithoutmaliciousintent. Werefertothisasthebenignretraining
+attacksetting. Ifforgottenknowledgeisneverthelessrecovered,itrevealsthattheunlearnedmodel
+remainsvulnerabletoseveresecurityrisks.
+3.2 UNLEARNEDMODELSAREVULNERABLETORETRAININGPERTURBATIONS
+80
+60
+40
+20
+0
+GA GD DPO NPO RMU
+)%(
+ycaruccA
+Based on the scenarios mentioned above, we evaluate widely
+used unlearning methods to demonstrate their vulnerability: Harmful Attack (p=0.1)
+Harmful Attack (p=0.3)
+GradientAscent(GA),GradientDifference(GD),DirectPref-
+Benign Attack
+erence Optimization (DPO), NPO, and RMU. The explana-
+tion and implementation details of these unlearning meth-
+ods are described in Appendix C.2. We utilize the FaithUn
+(Yangetal.,2025)datasettounlearnamodelandtoconstruct
+datasetsfortheharmfulretrainingattack. Specifically,wefirst
+unlearninstruction-tunedLlama3.2(3B)modelwiththefor-
+get(5%)andretainset(10%)inthedatasetusinganunlearning
+Figure 2: Experiments on Re-
+method. Then, we fine-tune the unlearned models on a small
+training Attacks with FaithUn.
+portion of the forget set p ∈ {0.1,0.3} and evaluate it using
+Theiraccuracyontheforgetsetbe-
+accuracyontheremainingforgotteninstances,whicharedis-
+foretheattacksis0%.
+jointfromtheattackdataset. Wealsoutilized1,000instances
+oftheAlpaca(Taorietal.,2023)datasetforthebenignretrain-
+ing attack. The details of the attack scenarios are described in Section 6.2.2. Figure 2 shows the
+vulnerabilityofunlearnedmodelstothetwopracticalattackscenarios. Ourexperimentsshowthat
+unlearnedknowledgeissubstantiallyrecoveredthroughsubsequentfine-tuning. Forexample,with
+3
+PublishedasaconferencepaperatICLR2026
+: Before Unlearning
+: After Unlearning
+Decrease in Positive Influence (!!)
+Neuron Index (!)
+Increase in Negative Influence (!")
+)!!"(
+noitubirttA
+15000 ⇒Successful Unlearning
+10000
+5000
+⇒Spurious Unlearning
+0
+0 100k 200k 300k 400k 500k
+The Number of Neurons
+(a)Positivevs.NegativeVariations
+noitairaV
+ecneulfnI
+evitalumuC
+200
+GA GD DPO NPO 150
+RMU
+Ours D
+100
+50
+D+
+0
+GA GD DPO NPO RMU Ours
+(b)CumulativeVariations
+noitairaV
+ecneulfnI
+D+ D
+(c)Variations@100Neurons
+Figure3:InfluenceVariationsafterUnlearning.Afterunlearning,mostmodelsshowthatnegative
+influencevariationsaresubstantiallygreaterthanpositiveinfluencevariations. InFigure3-(b),the
+X-axisdenotesthenumberofaccumulatedneuronssortedbytheirscores,andtheY-axisindicates
+accumulated influence variations. The solid and dotted lines express negative and positive ones,
+respectively. Figure3-(c)showsvariationsextractedfromFigure3-(b)over100neurons.
+p=0.1harmfulretraining,accuracyinthemostsignificantcaseexceeds60. Evenunderbenignre-
+training,targetknowledgeisrecoveredinmostunlearnedmodels. Theseresultssuggestthatcurrent
+unlearningmethodsachieveonlyshallowalignmentratherthanpreciselyerasingtargetknowledge,
+leavingtheunlearningeffectfragile.
+4 THE EXISTENCE OF SPURIOUS UNLEARNING NEURONS
+We hypothesize that shallow unlearning alignment arises when neurons evolve to negatively con-
+tribute to the target knowledge during unlearning, while the original knowledge-bearing neurons
+remainintact. Therefore,wedefinespuriousunlearningneuronsasthosethatadapttosuppressthe
+output probability of target knowledge after unlearning. To identify such neurons, we employ an
+attribution method (Yang et al., 2023) to assess whether target knowledge has been genuinely re-
+movedfromthemodel’sparameters.Specifically,wemeasurechangesinbothpositiveandnegative
+influencesofneuronsandcomparethemtodeterminewhichdirectionofinfluenceispredominantly
+reinforced.
+QuantifyingKnowledge. Weuseanattributionmethod(Yangetal.,2023)toquantifytheinflu-
+enceofneuronsonspecificknowledgefromalanguagemodel. Thecontributionofani-thneuron
+totherepresentationhinaparticularlayer,inpredictinganoutputtextygivenaninputtextxusing
+alanguagemodelP ,isdefinedasfollows:
+θ
+∂P (y|x)
+A(x,y)
+=h ×
+θ
+, (1)
+θi,k θi,k ∂h
+θi,k
+whereh meansk-thtokenrepresentationofi-thneuroncomputedbyP ,and∂P (y|x)/∂h
+θi,k θ θ θi,k
+isthegradientofP (y|x)withrespecttoh . Weexaminetransformervariants; thus, therepre-
+θ θi,k
+sentationandgradientofaspecificlayerarecomputedforeachinputtoken. Therefore,ifaninput
+textincludesK tokens,wehaveK attributionscoresforeachneuron. Inthisformula,h denotes
+θi,k
+the feature value, and ∂P (y|x)/∂h specifies both the direction and magnitude of how h
+θ θi,k θi,k
+contributestotheoutputprobability. Accordingly,wecanquantifythecontributionofeachneuron
+to the output probability using A(x,y). If A(x,y) > 0, we can conclude that the i-th neuron exerts
+θi,k θi,k
+apositiveinfluenceontheoutputprobability. Conversely,ifA(x,y) < 0,itexertsnegatively. Note
+θi,k
+thatourdefinitionofaneuron,followingYangetal.(2023),referstoeachscalarvalueinthehidden
+representationh. Inouranalysis,weconsiderneuronslocatedintheself-attentionmodules(Q,K,
+V,andO)aswellasinthefeed-forwardnetworks(FFNs)acrossalltransformerblocks.
+Quantifying Influence Variations. We investigate the variations in each direction (i.e., positive
+andnegative)ofneuroninfluencetoexaminewhethertargetknowledgeiseffectivelyerasedornot.
+Specifically,wecomputetheattributionscorebeforeandafterunlearningandcomparethedecrease
+inpositive influenceandthe increasein negativeinfluenceon thetarget outputtobe unlearned.
+4
+PublishedasaconferencepaperatICLR2026
+The decrease in positive influence indicates the desirable result of properly unlearning the target
+knowledge. However, theincreaseinnegativeinfluencecorrespondstothegenerationofspurious
+unlearningneurons,whichplayaroleinsuppressingthedisplayoftargetknowledge. Thevariation
+ofpositiveinfluenceineachneuronforthewholeforgetsetC iscomputedasfollows:
+f
+1
+D i + = n × X m k axA θ (x i, , k y)−m k axA θ (x i ′, , k y), (2)
+(x,y)∈Cf
+whereθandθ′areparametersofamodelbeforeandafterunlearning,respectively. nisthenumber
+of samples in the forget set. In contrast, the variation of negative influence D− is similarly com-
+i
+puted by altering the max aggregation to the min aggregation. From this formula, D+ quantifies
+i
+the decrease in positive influence of each neuron, and D− quantifies the increase in the negative
+i
+influence of each neuron. Figure 3-(a) illustrates the conceptual visualization of the D+ and D−
+i i
+scores. Equation 2 is a simplified version of the original equation for better readability. We re-
+define influence variations as D˜+ = max(D+,0) and D˜− = max(D−,0) since negative values
+i i i i
+indicate contradictory unlearning behavior. In addition, we replace A(x,y) with max(A(x,y),0) in
+θ′,k θ′,k
+i i
+Equation2,ensuringthatover-unlearningdoesnotcontributetothescore. Detailedexplanationsfor
+quantifyinginfluencevariationsaredescribedintheAppendixA.
+AssessingWhetherUnlearningErasesorHidestheTargetKnowledge. Wecomparethevari-
+ations in positive and negative influences to uncover evidence of unlearning failure. We sort the
+neuronsindependentlybyD+andD−indecreasingorder,selectthetop-mneuronsfromeachlist,
+i i
+andsumtheirvaluestocomputetheaggregatedinfluencevariationscores.
+Figure 3-(b) shows how the cumulative influence variations increase with the number of neurons
+acrossallunlearningmethods. OurexperimentalresultsonFaithUnindicatethatthepositiveinflu-
+ence variations (dotted lines) are smaller than the negative influence variations (solid lines). This
+suggeststhatunlearningmethodstendtoproducespuriousunlearningneuronsthatmerelysuppress
+thedisplayoftargetknowledge(negativeinfluencevariation),ratherthanfaithfullyerasingit(posi-
+tiveinfluencevariation).
+5 METHODOLOGY
+Tomitigatetheemergenceofspuriousunlearningneurons, weintroduce SSIUU, whichemploysa
+regularizationtermtopreciselyremovetargetknowledge,insteadofsuppressingit. Specifically,we
+optimizethefollowingobjectiveintheunlearningprocedure:
+argm θ i t nL θt +λ× i X ∈I−(x, X y)∈Cf ||A θ (x i t− ,y 1 )−A θ (x i t ,y)|| 2 , (3)
+where L is the loss of an unlearning method (e.g., GA or GD), and θt−1 and θt are parameters
+θt
+ofpreviousandcurrentoptimizationsteps,respectively. I− denotesthesetofneuronindiceswith
+negativeattributionscoresforθt. Thesecondtermofequation3measuresandminimizesthegap
+between the attribution of the previous and current steps. This term mitigates the inflation of the
+negativeinfluenceandonlyreducingthepositiveinfluence. Theoriginalnegativeinfluence(before
+unlearning)mayrepresentcrucialknowledgeforlanguagecomprehension;therefore,wefocusonly
+onavoidingtheintroductionofadditionalnegativeinfluenceswhileretainingtheoriginalnegative
+influences, using the L2-norm as the criterion. For computational efficiency, we derive attribution
+scoresbymultiplyingeachparameterwithitsgradient,ratherthancomputingattributionscoresfor
+every token. We prevent gradients from flowing through A(x,y) by treating it as a constant. More
+θt−1
+i
+detailsofSSIUUimplementationaredescribedinAppendixB.
+5
+PublishedasaconferencepaperatICLR2026
+HarmfulAttack(↓)
+Model Method FS(↓) RS(↑) US(↑) BenignAttack(↓)
+p=0.1 p=0.3
+Default 91.92 89.22 57.40 - - -
+GA 0.0 58.41 54.01 68.42 73.33 16.71
+GD 0.0 81.03 55.77 48.13 54.76 33.33
+Llama-3.2 DPO 0.0 81.47 56.90 31.58 46.67 15.34
+NPO 0.0 77.59 59.52 18.33 18.75 18.62
+RMU 0.0 77.80 56.31 52.63 75.53 14.29
+KLUE 0.0 81.68 56.72 57.14 62.96 28.33
+SSIUU 0.0 84.70 56.28 14.81 14.29 13.33
+Default 78.79 74.78 55.47 - - -
+GA 0.0 36.21 53.55 52.63 66.67 63.64
+GD 0.0 62.07 57.91 27.78 42.86 23.33
+Qwen-2.5 DPO 0.0 60.78 53.01 47.62 58.82 36.36
+NPO 0.0 72.63 56.69 23.33 47.91 18.18
+RMU 0.0 65.95 49.95 42.11 46.67 23.81
+KLUE 0.0 62.50 56.94 33.33 47.92 22.73
+SSIUU 0.0 75.86 60.01 4.76 29.41 13.04
+Table1: ExperimentalresultsontheFaithUndataset
+6 EXPERIMENTS
+6.1 EXPERIMENTALSETUPS
+Models and Datasets. We select Llama-3.2 (3B) (Dubey et al., 2024) and Qwen-2.5 (3B) (Yang
+etal.,2024a),chosenfortheirstrongNLPperformanceandbroadadoptioninpriorwork. Weem-
+ploy the instruction-tuned version as it more accurately reflects real-world applications of LLMs.
+WeuseFaithUn(Yangetal.,2025)andTOFU(Mainietal.,2024)datasets. Themainfocusofthe
+FaithUn dataset is to erase knowledge of well-known celebrities (e.g., “Which country is Donald
+Trump from?”). It does not require any fine-tuning before the unlearning process, as real-world
+knowledge is inherently encoded in language models. Therefore, we use the FaithUn dataset as
+the primary dataset for analysis, as it represents a practical setting for unlearning. We also utilize
+theTOFUdataset,asyntheticauthorprofiledataset,todemonstratethatourfindingsaregeneraliz-
+able.SinceTOFUencompassesknowledgeofsyntheticentities,itrequiresanadditionalfine-tuning
+processbeforeunlearningalanguagemodel. DetailsareinAppendixC.1.
+Baselines. Weutilizewidely-usedunlearningmethodstoassesstheshallowunlearningalignment:
+Gradient Ascent (GA) (Jang et al., 2022), Gradient Difference (GD) (Maini et al., 2024), Direct
+PreferenceOptimization(DPO)(Rafailovetal.,2023), NPO(Zhangetal.,2024),RMU(Lietal.,
+2024), and KLUE (Yang et al., 2025). We configure hyperparameter settings by referring to prior
+studies(Zhangetal.,2024;Jinetal.,2024;Lietal.,2024;Yangetal.,2025). ToimplementSSIUU,
+we adopt GD as the backbone unlearning algorithm for computing L in Equation 3, as it is a
+θt
+representative unlearning approach that is simple and widely applicable. Appendix C.2 provides
+moredetailsonthebaselinesandourmethod.
+Training setups. We finish the unlearning process when a model’s scores (Accuracy or ROUGE)
+for the forget set reach the pre-defined threshold, following the FaithUn benchmark. In the case
+of FaithUn, we early stop the training procedure when accuracy for the forget set reaches 0.33
+(random sampling from three options) to select the optimal model, as it employs Multiple Choice
+QA (MCQA) settings. For TOFU, we fine-tune the model on the dataset with a learning rate of
+η =1e−5for5epochs.WethenconstructmismatchedQApairsbyrandomlypairingquestionswith
+incorrectanswers,andcomputethemeanROUGE-Lrecall,whichdefinestheunlearningthreshold
+τ. This yields τ = 0.1971, which we use for early stopping in the unlearning process. Note that
+highlearningratesoftendestroyotherknowledgeofLLMsduringtheunlearningprocess;therefore,
+wesearchforthelowestlearningratethatstillachievesconvergencetothethreshold.
+6
+PublishedasaconferencepaperatICLR2026
+HarmfulAttack(↓)
+Model Method FS(↓) RS(↑) US(↑) BenignAttack(↓)
+p=0.1 p=0.3
+Default 90.42 93.54 91.45 - - -
+GA 19.49 87.51 91.88 48.72 54.21 23.35
+GD 19.32 89.36 92.88 45.41 51.73 20.98
+Llama-3.2
+DPO 19.57 92.28 91.95 87.39 88.69 26.60
+RMU 14.04 93.70 91.74 87.97 90.97 20.33
+KLUE 18.71 86.86 92.81 43.71 49.38 22.19
+SSIUU 17.75 92.74 91.67 31.82 37.53 21.08
+Table2: ExperimentalresultsontheTOFUdataset*
+6.2 EVALUATIONMETRICS
+6.2.1 BASICUNLEARNINGMETRICS.
+Toimplementthebasicunlearningframework,wefollowtheoriginalimplementationoftheFaithUn
+andTOFUdatasets. Weadoptthreemetrics(FS,RS,andUS)toshowtheresultsafterunlearning.
+WeutilizeaccuracyandROUGE-Lrecall,ameasureofsentencestructuresimilarity(Lin,2004),to
+computethosescoresfortheFaithUnandTOFUdatasets,respectively. (1)ForgettingScore(FS):
+Thisscoreiscomputedfortheforgetsettoevaluatethebasicunlearningperformance. Weuse5%
+and1%ofdatasamplesastheforgetsetforFaithUnandTOFU,respectively. Wedonotconsider
+theoverwhelmingforgetsetscenario,asourstudybeginswithunlearnedmodelsthatappeareffec-
+tive. (2) Retention Score (RS): This score is used to evaluate the retention performance of other
+knowledge. It is computed using data instances that are disjoint from the forget set. We employ
+thepre-specifiedretentionsetsprovidedinFaithUnandTOFU.(3)UtilityScore(US):Thisscore
+isusedtoevaluatetheretentionofgeneralutilityknowledge. Weusefivelanguagecomprehension
+datasets—MMLU(Hendrycksetal.,2020),GSM8K(Cobbeetal.,2021),Hellaswag(Zellersetal.,
+2019),ARC-Challenge(Clarketal.,2018),andWinogrande(Sakaguchietal.,2021)—toevaluate
+the general language understanding capabilities of unlearned models on FaithUn. We sample 500
+instancestoassessmodelsoneachdataset. ForTOFU,weadopttheutilitydatasetsprovidedbythe
+benchmark,namelyRealAuthorandWorldFacts. FurtherdetailsareprovidedinAppendixC.1.
+6.2.2 UNLEARNINGROBUSTNESSMETRICS.
+We propose two attack scenarios to evaluate the robustness of unlearning methods. (1) Harmful
+AttackScore:Weretrainanunlearnedmodelonasmallportionp∈{0.1,0.3}oftheforgetsetwith
+learningratesη ∈{10−5,5×10−6,10−6},andreportthemaximumForgettingScore(FS)observed
+duringretrainingontheremainderoftheforgetsetdisjointfromtheretrainingdata. Asignificant
+recoveryofFSaftertheattackindicatesthatthetargetknowledgehasnotbeenfullyremoved. For
+FaithUn,weconstructtheretrainingattackpoolusingonlyfalselyansweredinstances,asitsMCQA
+evaluationframeworkthatfinalizestheunlearnedmodelwhenFS≤0.33. Thus,instancescorrectly
+answeredbychanceareexcludedfromtheforgetsetinprivacyattackscenarios. (2)BenignAttack
+Score: WeretrainanunlearnedmodelusingtheAlpacadataset, whichisaninstruction-following
+benchmark. Weuse1,000datainstancesofthedatasettoretrainanunlearnedmodelwithvarying
+learningratesη ∈{10−5,10−6,10−7},andreportthemaximumForgettingScore(FS)intheattack
+process. ThebasisforselectingthelearningratesearchspacesisprovidedinAppendixD.2. Werun
+eachattackscenariothreetimesandreportthemeanscores.
+6.3 SSIUUIMPROVESTHEROBUSTNESSOFUNLEARNING
+WeconductexperimentsontheFaithUnandTOFUdatasetstodemonstratethatourmethodsubstan-
+tiallyimprovestherobustnessofunlearningagainstretrainingattacks.Table1showstheexperimen-
+talresultsintheFaithUndataset,andTable2showstheexperimentalresultsintheTOFUdataset.
+First, we conclude that most unlearning processes are effective, as the Retention Scores (RS) and
+Utility Scores (US) remain close to the default after unlearning. However, unlearned models ex-
+*WeexcludetheNPOresultsonTOFU,asthemodelfailstoconvergeandtendstocollapseafterunlearning.
+7
+PublishedasaconferencepaperatICLR2026
+hibitfragilityunderbothattackscenarios. Ourmethodoutperformsothersbyexhibitingrobustness
+againsttheseattacks,demonstratingthattargetknowledgeissignificantlyremoved.
+Furthermore, existingunlearningmethods(e.g., GD)caninadvertentlyhighlighttargetknowledge
+duetoexcessivevariationsinnegativeinfluenceduringremoval. Thisover-unlearningrendersmod-
+elsvulnerabletomembershipinferenceattacks(MIAs)(Jinetal.,2024;Dietal.,2024). Following
+Yang et al. (2024b), we confirm this phenomenon using the logit lens, which is a tool to interpret
+intermediateactivationsintransformermodels,asshowninFigure4. Specifically,weprojectinter-
+mediaterepresentationsthroughthewordembeddinglayerandderivetheprobabilityofthegolden
+answerandarandomlychosendistractor. Bycomparingtheseprobabilities,wecomputetheaccu-
+racyofthegoldenanswer(binaryclassification)todeterminewhethertherepresentationretainsthe
+knowledge. As a result, the accuracy is far below (≈ 0.2) the chance level (0.5) for GD, particu-
+larly in layers 18–27 (Figure 4-a), indicating a failure to achieve robust or faithful unlearning. In
+contrast, SSIUUachieveschance-levelaccuracyafterunlearning(Figure4-b),demonstratingrobust
+unlearningattheinner-layerrepresentationallevelbysuppressingspuriousunlearningneurons.
+0.8 Before Unlearning 0.8 Before Unlearning
+0.6 After Unlearning 0.6 After Unlearning
+0.4 0.4
+0.2 0.2
+0.0 0.0
+0 5 10 15 20 25 0 5 10 15 20 25
+(a)GD (b)Ours
+Figure4: AnalyzingExcessiveKnowledgeRemovalviaLogitLens. TheX-axisandY-axiscor-
+respond to layer indices and accuracy, respectively. The blue dotted line represents the random-
+choicebaseline(binaryclassification). GDtendstoexcessivelyunlearntargetknowledge,whereas
+SSIUUadequatelyunlearnsittotherandom-choicelevel.
+6.4 SSIUUMITIGATESTHEEMERGENCEOFSPURIOUSUNLEARNINGNEURONS
+Toexaminethesuppressionofspuriousunlearningneurons,weanalyzeinfluencevariationsacross
+modulesandlayersonLlama-3.2usingFaithUn. Figure5comparesGDand SSIUU,showingthat
+SSIUUmitigatesthespuriousunlearningneuronsbyreducingnegativeinfluencevariations. InGD,
+targetknowledgeismainlyremovedinthelastlayers, aspositiveinfluencevariationappearsonly
+there. In contrast, with SSIUU, positive influence variation emerges in a broad range of modules,
+indicating that knowledge distributed in multiple modules is effectively removed. Moreover, GD
+shows a strong increase in negative influence variation, whereas SSIUU demonstrates a clear sup-
+pressionofsucheffects.Theresultsalsoindicatethatspuriousunlearningneuronsprimarilyemerge
+intheAttentionQandKmodules,wheretheycuttheknowledgeconnectionsbetweentokens.
+Positive Influence Variation (D+) Positive Influence Variation (D+)
+Attn-Q 3 Attn-Q 3
+Attn-K Attn-K
+Attn-V 2 Attn-V 2
+Attn-O Attn-O
+MLP-gate 1 MLP-gate 1
+MLP-up MLP-up
+MLP-down MLP-down
+0 0
+0 5 10 15 20 25 0 5 10 15 20 25
+Negative Influence Variation (D ) Negative Influence Variation (D )
+Attn-Q 20 Attn-Q 20
+Attn-K 15 Attn-K 15
+Attn-V Attn-V
+Attn-O 10 Attn-O 10
+MLP-gate MLP-gate
+MLP-up 5 MLP-up 5
+MLP-down MLP-down
+0 0
+0 5 10 15 20 25 0 5 10 15 20 25
+(a)InfluenceVariationResultsofGD (b)InfluenceVariationResultsofOurs
+Figure5:InfluenceVariationforEachModuleandLayer.Weplotpositiveandnegativeinfluence
+variations of GD and SSIUU for each module and layer. X-axis and Y-axis correspond to layer
+indicesandmoduletype, respectively. Thecolorscaleindicatestheaveragevariationininfluence
+forthetop-100neuronsineachmodule.
+8
+PublishedasaconferencepaperatICLR2026
+(a)AttributionDistributionsofOriginal,Pre-Attack,andPost-AttackModels
+(b)Correlation(ρ)ofAttributionDistributionsbetweenPre-andPost-AttackModels
+Figure 6: Deeper Investigations into Influence Distributions. We present the influence (attri-
+bution) changes after the harmful attack (p = 0.1). Figure 6-(a) illustrates the attributions of the
+originalmodel,unlearnedmodels,andmodelsaftertheattack. Figure6-(b)presentsthecorrelation
+betweenattributionsbeforeandaftertheattacks. Whilemodelstrainedwithothermethodsexhibit
+highvariability,ourmethodyieldsrelativelyconsistentdistributionswithastrongcorrelation.
+6.5 RETRAININGATTACKDISRUPTSTHESPURIOUSUNLEARNINGNEURONS
+Todemonstratethattheattributionspaceisakeyfactorinrobustunlearning,weanalyzeattribution
+spaces before and after the attack on Llama-3.2 using FaithUn. Figure 6-(a) presents the attribu-
+tion distributions of the original Llama-3.2, unlearned models with GD and SSIUU, and models
+retrained with attacks. In Figure 6-(a), GD produces numerous spurious unlearning neurons with
+strongnegativeattributions. Surprisingly,thepositiveattributionsalsoincrease,indicatingthatun-
+learninginducesacompetitiveemergenceinbothdirectionsofcontribution,oftenwithinthesame
+layer. Thiscompetitionbecomesevenmorepronouncedaftertheattack,resultinginhighvariability
+acrossthedistributions. Incontrast,SSIUUsuppressesthisbidirectionalcompetitionandmaintains
+distributionalconsistency,demonstratingrobustnessevenunderattack.
+Furthermore,weinvestigatethecorrelationoftheattributiondistributionsbetweenbeforeandafter
+theharmfulretrainingattack(p = 0.1),asshowninFigure6-(b). InTable1,GAshowssignificant
+vulnerability, and NPO shows relatively lower vulnerability to the attacks. These results are also
+supported by Figure 6-(b), demonstrating that GA shows a low correlation score (ρ = 0.73) and
+NPOshowsarelativelyhighcorrelationscore(ρ=0.87)inattributiondistributionsbetweenbefore
+andaftertheattack. NotethatwhileGDandNPOexhibitsimilarcorrelations,thevarianceofNPO
+issubstantiallylowerthanthatofGD.Ourmethodyieldsthehighestcorrelationscore(ρ = 0.99)
+comparedtoothermethods,indicatingthegreateststabilityagainsttheattack.
+7 RELATED WORKS
+Machine Unlearning for LLMs. Unlearning has been proposed as a method to tackle privacy
+and copyright concerns in LLM text generation (Jang et al., 2022; Yao et al., 2023; Barbulescu &
+Triantafillou, 2024; Yao et al., 2024). Notable studies have explored it via gradient ascent (Jang
+et al., 2022; Maini et al., 2024), preference optimization (Jin et al., 2024; Yang et al., 2025), and
+representation learning (Li et al., 2024). Prior studies have assessed the capability of these meth-
+odsbyintroducingnewbenchmarksinvariousdomains. WHPandMUSE(Eldan&Russinovich,
+2023;Shietal.,2024)haveusedcopyrightedtexts. TOFU(Mainietal.,2024)hasbuiltsynthetic
+authordatatounlearn. WMDP(Lietal.,2024)hasdealtwithmitigatinghazardousknowledgein
+professionaldomains,suchasbiosecurity. RWKUandFaithUn(Jinetal.,2024;Yangetal.,2025)
+have examined real-world entity knowledge, evaluating generalization across various prompt de-
+signs. Theseeffortshavelaidthegroundworkforassessingunlearningalgorithms. However,their
+attemptstointerpretandanalyzetheirbehaviortoaddresstheunderlyingissuesremainlimited.
+9
+PublishedasaconferencepaperatICLR2026
+UnlearningRobustness. PriorstudieshaveshownthatthealignmentofknowledgeinLLMscan
+beeasilycompromisedbyadditionaltraining(Qietal.,2023;2024;Huangetal.,2024a;b).Asimilar
+phenomenon has also been observed in the context of unlearning. Several studies have attempted
+to demonstrate the robustness of unlearning against retraining attacks (Deeb & Roger, 2024; Hu
+etal.,2024). Theyformulatedanunlearning–retrainingpipelinethatincorporatesbothharmfuland
+benign threat models, and revealed that unlearning is also fragile. However, these works have not
+investigated the underlying cause of unlearning fragility. In this paper, we take a first step toward
+unveilingoneofitskeyreasons: existingunlearningalgorithmstendtohideknowledgeratherthan
+eraseit,asrevealedthroughanexplainability-basedanalysis.
+8 CONCLUSION
+Wedemonstratedusingattribution-basedanalysisthatexistingunlearningmethodsinducespurious
+unlearningneurons,whichhidetargetknowledgeratherthaneraseit. Ourexperimentsintworeal-
+isticattackscenarios,retrainingwithprivateandbenigndatasets,furtherrevealthatsuchashallow
+alignmentleavesmodelsvulnerabletoknowledgerecovery,underminingtheirreliabilityinpractice.
+To overcome these shortcomings, we propose SSIUU, a method to regularize the growth of nega-
+tive influence to suppress the emergence of spurious unlearning neurons. Our results confirm that
+SSIUUfaithfullyremovestargetknowledgeandmaintainsrobustnessagainstsubsequentretraining.
+Bymoredirectlyaligningunlearningwiththeremovaloftargetknowledge,ourapproachrepresents
+apromisingadvancetowardmorereliableLLMdeployment.
+ACKNOWLEDGEMENT
+N. Yang and K. Jung were also supported by Institute of Information & communications Tech-
+nologyPlanning&Evaluation(IITP)grantfundedbytheKoreagovernment(MSIT)[No.RS-2022-
+II220184,DevelopmentandStudyofAITechnologiestoInexpensivelyConformtoEvolvingPolicy
+onEthics&No.RS-2021-II211343,ArtificialIntelligenceGraduateSchoolProgram(SeoulNational
+University)] and the Ministry of Education of the Republic of Korea and the National Research
+FoundationofKorea(NRF-2024S1A5C3A01042642).
+ETHICS STATEMENT
+This paper highlights the vulnerability of unlearned models to retraining attacks and introduces a
+novel method to achieve robust unlearning. While our framework may inadvertently imply attack
+strategiesthatmalicioususerscouldexploitinfine-tuningAPIplatformsoropen-sourcedmodels,
+webelievethatopenlyaddressingtheseriskswillultimatelyfostersaferandmorereliabledeploy-
+mentoflanguagemodels.
+REPRODUCIBILITY STATEMENT
+Wehavemadesignificanteffortstoensurethereproducibilityofourwork.ThedetailsoftheFaithUn
+and TOFU datasets for their utilization are provided in Appendix C.1. The specifications of our
+methodandthebaselineapproachesaredescribedinAppendixC.2. Furthermore,thetrainingpro-
+cedure is outlined in Section 6.1 and Appendix C.1. Furthermore, all experimental settings and
+resultsaredescribedindetailwithintherespectivesections.
+REFERENCES
+George-OctavianBarbulescuandPeterTriantafillou. Toeach(textualsequence)itsown:Improving
+memorized-dataunlearninginlargelanguagemodels. arXivpreprintarXiv:2405.03097,2024.
+PeterClark,IsaacCowhey,OrenEtzioni,TusharKhot,AshishSabharwal,CarissaSchoenick,and
+OyvindTafjord. Thinkyouhavesolvedquestionanswering? tryarc,theai2reasoningchallenge.
+arXivpreprintarXiv:1803.05457,2018.
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser,
+Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John
+10
+PublishedasaconferencepaperatICLR2026
+Schulman. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168,
+2021.
+AghyadDeebandFabienRoger. Dounlearningmethodsremoveinformationfromlanguagemodel
+weights? arXivpreprintarXiv:2410.08827,2024.
+ZonglinDi,SixieYu,YevgeniyVorobeychik,andYangLiu. Adversarialmachineunlearning. arXiv
+preprintarXiv:2406.07687,2024.
+AbhimanyuDubey,AbhinavJauhri,AbhinavPandey,AbhishekKadian,AhmadAl-Dahle,Aiesha
+Letman,AkhilMathur,AlanSchelten,AmyYang,AngelaFan,etal. Thellama3herdofmodels.
+arXivpreprintarXiv:2407.21783,2024.
+Ronen Eldan and Mark Russinovich. Who’s harry potter? approximate unlearning in llms. arXiv
+preprintarXiv:2310.02238,2023.
+RobertMFrench. Catastrophicforgettinginconnectionistnetworks. Trendsincognitivesciences,
+3(4):128–135,1999.
+Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and
+Jacob Steinhardt. Measuring massive multitask language understanding. arXiv preprint
+arXiv:2009.03300,2020.
+Shengyuan Hu, Yiwei Fu, Zhiwei Steven Wu, and Virginia Smith. Unlearning or obfuscating?
+joggingthememoryofunlearnedllmsviabenignrelearning. arXivpreprintarXiv:2406.13356,
+2024.
+TianshengHuang,SihaoHu,FatihIlhan,SelimTekin,andLingLiu. Lisa: Lazysafetyalignment
+for large language models against harmful fine-tuning attack. Advances in Neural Information
+ProcessingSystems,37:104521–104555,2024a.
+Tiansheng Huang, Sihao Hu, Fatih Ilhan, Selim Furkan Tekin, and Ling Liu. Booster: Tack-
+ling harmful fine-tuning for large language models via attenuating harmful perturbation. arXiv
+preprintarXiv:2409.01586,2024b.
+JoelJang,DongkeunYoon,SoheeYang,SungminCha,MoontaeLee,LajanugenLogeswaran,and
+Minjoon Seo. Knowledge unlearning for mitigating privacy risks in language models. arXiv
+preprintarXiv:2210.01504,2022.
+Zhuoran Jin, Pengfei Cao, Chenhao Wang, Zhitao He, Hongbang Yuan, Jiachun Li, Yubo Chen,
+KangLiu,andJunZhao. Rwku: Benchmarkingreal-worldknowledgeunlearningforlargelan-
+guagemodels. AdvancesinNeuralInformationProcessingSystems,37:98213–98263,2024.
+JamesKirkpatrick,RazvanPascanu,NeilRabinowitz,JoelVeness,GuillaumeDesjardins,AndreiA
+Rusu,KieranMilan,JohnQuan,TiagoRamalho,AgnieszkaGrabska-Barwinska,etal.Overcom-
+ingcatastrophicforgettinginneuralnetworks. Proceedingsofthenationalacademyofsciences,
+114(13):3521–3526,2017.
+NathanielLi,AlexanderPan,AnjaliGopal,SummerYue,DanielBerrios,AliceGatti,JustinDLi,
+Ann-KathrinDombrowski,ShashwatGoel,LongPhan,etal. Thewmdpbenchmark: Measuring
+andreducingmalicioususewithunlearning. arXivpreprintarXiv:2403.03218,2024.
+Chin-YewLin. Rouge: Apackageforautomaticevaluationofsummaries. InTextsummarization
+branchesout,pp.74–81,2004.
+PratyushMaini,ZhiliFeng,AviSchwarzschild,ZacharyCLipton,andJZicoKolter. Tofu: Atask
+offictitiousunlearningforllms. arXivpreprintarXiv:2401.06121,2024.
+Abhishek Panigrahi, Nikunj Saunshi, Haoyu Zhao, and Sanjeev Arora. Task-specific skill local-
+ization in fine-tuned language models. In International Conference on Machine Learning, pp.
+27011–27033.PMLR,2023.
+XiangyuQi,YiZeng,TinghaoXie,Pin-YuChen,RuoxiJia,PrateekMittal,andPeterHenderson.
+Fine-tuning aligned language models compromises safety, even when users do not intend to!
+arXivpreprintarXiv:2310.03693,2023.
+11
+PublishedasaconferencepaperatICLR2026
+Xiangyu Qi, Ashwinee Panda, Kaifeng Lyu, Xiao Ma, Subhrajit Roy, Ahmad Beirami, Prateek
+Mittal,andPeterHenderson. Safetyalignmentshouldbemademorethanjustafewtokensdeep.
+arXivpreprintarXiv:2406.05946,2024.
+RafaelRafailov,ArchitSharma,EricMitchell,ChristopherDManning,StefanoErmon,andChelsea
+Finn. Directpreferenceoptimization:Yourlanguagemodelissecretlyarewardmodel. Advances
+inneuralinformationprocessingsystems,36:53728–53741,2023.
+KeisukeSakaguchi,RonanLeBras,ChandraBhagavatula,andYejinChoi. Winogrande: Anadver-
+sarialwinogradschemachallengeatscale. CommunicationsoftheACM,64(9):99–106,2021.
+Weijia Shi, Jaechan Lee, Yangsibo Huang, Sadhika Malladi, Jieyu Zhao, Ari Holtzman, Daogao
+Liu,LukeZettlemoyer,NoahASmith,andChiyuanZhang. Muse: Machineunlearningsix-way
+evaluationforlanguagemodels. arXivpreprintarXiv:2407.06460,2024.
+Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy
+Liang,andTatsunoriBHashimoto.Stanfordalpaca:Aninstruction-followingllamamodel,2023.
+XiaozhiWang,KaiyueWen,ZhengyanZhang,LeiHou,ZhiyuanLiu,andJuanziLi. Findingskill
+neurons in pre-trained transformer-based language models. arXiv preprint arXiv:2211.07349,
+2022.
+An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li,
+Dayiheng Liu, Fei Huang, Haoran Wei, et al. Qwen2.5 technical report. arXiv preprint
+arXiv:2412.15115,2024a.
+Nakyeong Yang, Taegwan Kang, Jungkyu Choi, Honglak Lee, and Kyomin Jung. Mitigating bi-
+ases for instruction-following language models via bias neurons elimination. arXiv preprint
+arXiv:2311.09627,2023.
+NakyeongYang, MinsungKim, SeunghyunYoon, JoongboShin, andKyominJung. Faithun: To-
+wardfaithfulforgettinginlanguagemodelsbyinvestigatingtheinterconnectednessofknowledge.
+arXivpreprintarXiv:2502.19207,2025.
+SoheeYang,ElenaGribovskaya,NoraKassner,MorGeva,andSebastianRiedel.Dolargelanguage
+modelslatentlyperformmulti-hopreasoning? arXivpreprintarXiv:2402.16837,2024b.
+JinYao,EliChien,MinxinDu,XinyaoNiu,TianhaoWang,ZezhouCheng,andXiangYue.Machine
+unlearningofpre-trainedlargelanguagemodels. arXivpreprintarXiv:2402.15159,2024.
+Yuanshun Yao, Xiaojun Xu, and Yang Liu. Large language model unlearning. arXiv preprint
+arXiv:2310.10683,2023.
+RowanZellers, AriHoltzman, YonatanBisk, Ali Farhadi, and YejinChoi. Hellaswag: Cana ma-
+chinereallyfinishyoursentence? arXivpreprintarXiv:1905.07830,2019.
+Ruiqi Zhang, Licong Lin, Yu Bai, and Song Mei. Negative preference optimization: From catas-
+trophiccollapsetoeffectiveunlearning. arXivpreprintarXiv:2404.05868,2024.
+Yiran Zhao, Wenxuan Zhang, Yuxi Xie, Anirudh Goyal, Kenji Kawaguchi, and Michael Shieh.
+Understandingandenhancingsafetymechanismsofllmsviasafety-specificneuron. InTheThir-
+teenthInternationalConferenceonLearningRepresentations,2025.
+KejianZhu,ShangqingTu,ZhuoranJin,LeiHou,JuanziLi,andJunZhao.Establishingtrustworthy
+llmevaluationviashortcutneuronanalysis. arXivpreprintarXiv:2506.04142,2025.
+12
+PublishedasaconferencepaperatICLR2026
+A DETAILS OF INFLUENCE VARIATION QUANTIFICATION
+Theprimaryaimofourworkistorevealoneofthekeyreasonsforunlearningfailure:theemergence
+ofspuriousunlearningneurons,whichincreaseonlynegativeinfluences(hidingknowledge),rather
+thandecreasingexistingpositiveinfluences(erasingknowledge). Inthissection,weprovidedetails
+onthequantificationofinfluencevariation. UsingEquation1,wequantifythecontributionofeach
+neuron to predicting the probability of the output y given the input x. Each neuron has its own
+contributionvalue,andsinceactivationsandgradientsarecomputedforeachtokenrepresentation,
+numerous attribution values are obtained even for a single neuron and a single fact. Furthermore,
+contributionsmayvarydependingontheinputtokensprocessedortheoutputpositionspredicted,
+even within one (x,y) pair. Therefore, a robust aggregation strategy is required to quantify each
+neuron’s contribution to knowledge. An existing work (Yang et al., 2023) has shown that max
+aggregation over all tokens achieves higher performance than mean aggregation. This finding is
+analogous to the use of max pooling in Convolutional Neural Networks (CNNs), where selecting
+themaximumvaluesinafeaturemapcapturesthemostsalientinformation,oftenleadingtobetter
+performance than mean pooling. Motivated by these insights, we adopt max aggregation and min
+aggregationtocapturesalientpositiveandnegativeinfluences,respectively,asfollows:
+1
+D i + = n × X m k axA θ (x i, , k y)−m k axA θ (x i ′, , k y), (4)
+(x,y)∈Cf
+1
+D i − = n × X m k inA θ (x i, , k y)−m k inA θ (x i ′, , k y), (5)
+(x,y)∈Cf
+whereθandθ′areparametersofamodelbeforeandafterunlearning,respectively. nisthenumber
+of samples in the forget set. From these equations, we can quantify each neuron’s influence vari-
+ation in the positive and negative directions. D+ measures the positive influence variation of the
+i
+i-th neuron. If the original attribution value is positive and this value is reduced after unlearning,
+the result can be interpreted as a desirable outcome, since the existing positive contribution to the
+outputprobabilityisdiminished. However,iftheoriginalattributionvalueisnegativeandthisvalue
+becomes further reinforced after unlearning, it can be regarded as an undesirable outcome, as the
+unlearning process induces a spurious unlearning neuron that contributes only negatively. If only
+thenegativecontributionsarereinforced,thentheoriginalpositivecontributionsmayremainintact.
+Therefore,wemeasureandcomparethesetwometrics(D+andD−)toevaluatethefaithfulnessof
+unlearningbehaviors.
+However, Equation 4 and 5 do not account for two undesirable unlearning results: contradictory
+unlearningbehaviorandover-unlearning. Contradictoryunlearningbehaviorreferstocaseswhere
+neuronalcontributionsvaryinawaythatincreasestheoutputprobabilityoftargetknowledge. As
+discussed in Section 6.5, unlearning methods often increase both positive and negative neuronal
+contributions in a competitive manner. Thus, although inherently contradictory, this behavior is
+frequently observed during unlearning. Since it falls outside the scope of our focus, we redefine
+the influence variations as D˜+ = max(D+,0) and D˜− = max(D−,0) to exclude the effects
+i i i i
+of contradictory unlearning behavior in computing the final scores. Equation 4 also fails to filter
+outover-unlearning. Forexample, iftheoriginalattributionispositivebutbecomesnegativeafter
+unlearning, the D+ score may increase substantially. As noted in Section 6.3, this represents un-
+desirableunlearning,whichmakesmodelsvulnerabletomembershipinferenceattacks(MIAs). To
+address this, we replace A(x,y) with max(A(x,y),0) in Equation 4, ensuring that over-unlearning
+θ′,k θ′,k
+i i
+doesnotcontributetothescore.
+B DETAILS OF SSIUU IMPLEMENTATION
+ThissectiondescribesthedetailsofSSIUUimplementation. SSIUUalgorithmcomputestheattribu-
+tionofeachneuron,andsuppressestheinflationofthenegativeinfluencevariation(D−). SSIUUin-
+cludestheminimizationproblemofthefollowingobjective:
+13
+PublishedasaconferencepaperatICLR2026
+J(θt)=L θt +λ× i X ∈I−(x, X y)∈Cf (A θ (x i t− ,y 1 )−A θ (x i t ,y))2, (6)
+whereA(x,y) istreatedasaconstantsincetheparametersattheprevioussteparefixed. Therefore,
+θt−1
+i
+wederivethefinalgradientofSSIUUasfollows:
+∆(x,y)(θt):=A(x,y)−A(x,y)
+(7)
+i θ i t θ i t−1
+J(θt)=L θt +λ× X X (∆ i (x,y)(θt))2 (8)
+i∈I−(x,y)∈Cf
+∇ θt J(θt)=∇ θt L θt +λ X X ∇ θt (∆ i (x,y)(θt))2 (9)
+i∈I−(x,y)∈Cf
+∇
+(∆(x,y)(θt))2 =2∆(x,y)(θt)∇ ∆(x,y)(θt)=2∆(x,y)(θt)∇ A(x,y)
+(10)
+θt i i θt i i θt θt
+i
+∇ θt J(θt)=∇ θt L θt +λ X X 2∆ i (x,y)(θt)∇ θt A θ (x t ,y) (11)
+i
+i∈I−(x,y)∈Cf
+We now proceed to discuss the computation of ∇ A(x,y). For computational efficiency, the
+θt θt
+i
+SSIUUalgorithminthisworktreatseachparameterasafeature,ratherthanusingtheneuronrepre-
+sentationh. Accordingly,foreachscalarparameterϕ ,theattributioniscomputedasfollows:
+t,i
+∂P (y|x)
+A(x,y)
+=ϕ
+·g(x,y); g(x,y)
+:=
+ϕt
+, (12)
+ϕt,i t,i t,i t,i ∂ϕ
+t,i
+where P is the identical to P . Note that in the original attribution formulation (Equations 1
+ϕt θt
+and2),aneuronwasdefinedasasinglevaluewithintherepresentationcomputedateachlayer;thus,
+eachcolumnoftheweightmatrixcorrespondedtothei-thneuron.Incontrast,intheSSIUUregular-
+ization, attributionvaluesarecomputedforeachscalarelementwithintheparametersthemselves.
+Thenthecomputationof∇ A(x,y)isasfollows:
+ϕt ϕt,i
+∂A ϕ (x t, , i y) = ∂(ϕ t,i g t ( , x i ,y)) ≈ ∂ϕ t,i g(x,y) =δ g(x,y), (13)
+∂ϕ ∂ϕ ∂ϕ t,i i,j t,i
+t,j t,j t,j
+whereδ denotestheKroneckerdelta, andwetreatg(x,y) asaconstanttoavoidcomputationally
+i,j t,i
+prohibitivesecond-orderderivatives. Consequently,theoverallgradientofSSIUUbecomes:
+∂J(ϕ ) ∂L
+∂ϕ t ≈ ∂ϕ ϕt +2λ X X ∆ i (x,y)(ϕ t )δ i,j g t ( , x i ,y), (14)
+t,j t,j (x,y)∈Cfi∈I−
+where I− denotes the set of globally selected indices at iteration t, computed over the entire for-
+gettingdataset. Specifically,weobtainI− byidentifyingparameterswhoseaggregatedattribution
+valuesA := ϕ ·∂P (y|x)/∂ϕ arenegative. Inpractice,weapproximatethis
+ϕt,i P(x,y)∈Cf (cid:0) t,i ϕt t,i(cid:1)
+aggregationusingthecurrentforgetbatch.
+By omitting the second derivative term ∇2 P (y|x) ∈ Rd×d, we eliminate the need to compute
+ϕt ϕt
+Hessian-vector products (HVP), preventing out-of-memory errors and maintaining high training
+throughput. The approximation ensures that the regularization acts smoothly on the parameters
+whileavoidingtheinstabilityofsecond-orderoptimization. Therefore,theadditionalcomputational
+overheadissignificantlylowerthanastandardgradientcomputation. Algorithm1showsthegradi-
+entcomputationprocessofSSIUU.
+14
+PublishedasaconferencepaperatICLR2026
+Algorithm1SSIUU: SuppressingSpuriousUnlearningNeuronsforRobustUnlearning
+Input: Regularizationweightλ;Learningrateη;OptimizationstepsT
+Output: UnlearnedmodelP
+ϕT
+1: fort=1toT do:
+2: Sampleabatchbofforgetdata(x,y)∈C f
+3: Sampleabatchb′ofretaindata(x′,y′)∈C r
+4: ComputeGDlossL GD usingbandb′
+5: A ϕt,i ← P(x,y)∈b(cid:0) ϕ t,i ·∂P ϕt (y|x)/∂ϕ t,i(cid:1) //parameter-levelattribution
+6:
+7: ift=1then:
+8: L ←0
+SSIUU
+9: else:
+10: I− ←{i|A ϕt,i <0}
+11: L SSIUU ← Pi∈I− (A ϕt−1,i −A ϕt,i )2
+12: A ϕt−1,i ←A ϕt,i //detachfromthecomputationgraph
+13: Lˆ=L GD +λL SSIUU
+14: ϕ t ←ϕ t −η∇ ϕt Lˆ
+15: endfor
+C DETAILS IN EXPERIMENTS
+C.1 DATASETDETAILS
+WeuseFaithUn(Yangetal.,2025)andTOFU(Mainietal.,2024)datasetsfortheexperiments.
+FaithUn. ThemainfocusofFaithUnistoeraseknowledgeofwell-known200celebrities.FaithUn
+includes664datainstances,andwefollowalltheunlearningsetupsoftheoriginalpaper. Specifi-
+cally,weselect5%,10%,and70%ofthedatasetfortheforgetset,retainset,andtestset,respec-
+tively. Weusetheforgetsetandretainsetintheunlearningprocess,andreporttheaccuracyforthe
+forget set and test set in Table 1. In the unlearning process, we utilize just question-answer pairs;
+incontrast,weuseanMCQAtemplateforevaluatingunlearnedmodels. TheMCQAtemplatein-
+cludesaninstruction,aquestion,andansweroptions,asshowninTable3. Inunlearning,thereisa
+trade-offbetweenforgettingknowledgeandretainingoverallknowledge,makingitdifficulttoselect
+theoptimalmodel. Forfaircomparison,weearlystopwhenForgetScore(FS)≤0.33tochoosethe
+model(therandom-choicelevelforthreeoptions),followingtheoriginalpaper.
+Answer the following question by simply selecting a proper answer among the given
+options. You must generate only the exact word without an explanation.\nQuestion:
+{$question}\nOptions:{$options}\nYourAnswer:
+Table3: TheMultipleChoiceQAEvaluationTemplateforFaithUn
+TOFU. ThefocusoftheTOFUdatasetistoeraseknowledgeofsyntheticQAinstances.Therefore,
+wemustfine-tuneLLMswiththeTOFUdatasetbeforeunlearningtomakeLLMshaveknowledge
+about the dataset. The TOFU dataset includes four types of datasets: Forget set, Retain set, Real
+Author,andWorldFactsdatasets. TheForgetsetisthebasicdatasetusedforforgetting. TheRetain
+setisusedtoevaluatetheretentionabilityofTOFUknowledge. TheRealAuthorandWorldFacts
+datasets are used to evaluate the retention of other knowledge. TOFU includes a total of 4,000
+instances,andweutilizeapre-defined1%Forgetsetforunlearning. Wefinetunethemodelonthe
+dataset (η = 1e−5 and 5 epochs) to have knowledge about TOFU, following the original paper.
+To determine the early stopping threshold, we first construct mismatched QA pairs by randomly
+selectingincorrectanswersandcomputetheirmeanROUGE-Lrecalltosettheunlearningthreshold
+τ. Wefinallysetτ =0.1971anduseitforearlystoppingintheunlearningprocess.
+15
+PublishedasaconferencepaperatICLR2026
+C.2 BASELINEDETAILS
+We adopt a range of widely used unlearning methods to evaluate shallow unlearning alignment:
+Gradient Ascent (GA) (Jang et al., 2022), Gradient Difference (GD) (Maini et al., 2024), Direct
+Preference Optimization (DPO) (Rafailov et al., 2023), Negative Preference Optimization (NPO)
+(Zhangetal.,2024),RMU(Lietal.,2024),andKnowledge-LocalizedUnlearning(KLUE)(Yang
+etal.,2025). Hyperparametersettingsareselectedinreferencetopriorwork(Zhangetal.,2024;Jin
+etal.,2024;Lietal.,2024;Yangetal.,2025).
+(1) Gradient Ascent (GA): Unlike gradient descent in pre-training, GA maximizes the negative
+log-likelihoodlossontheforgetset,drivingthemodelawayfromitsoriginalpredictions.
+(2)GradientDifference(GD):SinceGAmayalsoeraseunrelatedknowledge,GDincorporatesan
+auxiliaryretentionlosstomaximizethelikelihoodoftheretainset,preservingirrelevantknowledge.
+(3) Direct Preference Optimization (DPO): DPO applies preference optimization for unlearning
+bycontrastingpositiveandnegativeinstances. Wetreatthecorrectanswerasthenegativeinstance
+andusearejectionresponse(“Ican’tanswerthequestion.”)asthepositiveinstance,alongwithan
+auxiliaryretentionlosstomaintainlogitsontheretainset.
+(4)NegativePreferenceOptimization(NPO):NPOextendsDPObydiscardingpositiveexamples.
+WeimplementDPOandNPOwithanauxiliaryretentionlossandsearchβ ∈[0.1,0.5].
+(5) RMU: RMU randomizes intermediate representations for the forget set. We search α ∈
+{20,50,100,150,200,300}andusec=20andl=7,followingtheoriginalimplementation†.
+(6) KLUE: KLUE localizes target knowledge by identifying and updating only a small subset of
+neurons. We update 10% of neurons in feed-forward networks using GD. We apply Superficial
+KnowledgeRegularizationwithα=10andN =5,followingtheoriginalimplementation.
+(7)SSIUU: OurmethodbuildsonGDasthebackboneunlearningalgorithmtocomputeL
+θt
+(Equa-
+tion3),givenitssimplicityandbroadapplicability. Wesetλ = 0.001forFaithUnandλ = 0.0001
+forTOFU.ThebasisforselectingλisprovidedinAppendixD.1.
+D ADDITIONAL EXPERIMENTAL RESULTS
+D.1 EXPERIMENTSONTHEREGULARIZATIONWEIGHTTERM(λ)
+We conduct experiments to select an appropriate weight for the regularization term in Equation 3,
+as shown in Figure 7-(a). We search over λ ∈ {0.0001,0.001,0.01,1.0} and evaluate unlearned
+modelsontheFaithUndataset.Wereportaccuracyon(i)theretainset(C ),usedduringunlearning,
+r
+and (ii) the test set (C ), which is unseen. These two accuracies should be maintained, as they
+t
+indicate retention performance. We also measure robustness by computing accuracy after attacks
+(p=0.1andp=0.3). Withasmallweight(λ=0.0001),theunlearnedmodelishighlyvulnerable
+to both attacks. Increasing the weight (λ = 0.001 or λ = 0.01) mitigates this vulnerability, but
+retentionperformancestartstodropwhenλ≥0.01. Specifically,atλ=0.01,accuracyonthetest
+set degrades, and at λ = 1.0, accuracy on the retain set also drops, indicating that the model fails
+toconvergeproperly. Theseresultshighlightthenecessityofcarefullyselectingtheregularization
+weight.
+D.2 EXPERIMENTSONTHEATTACKLEARNINGRATES
+We search varying learning rates for the attacks, as shown in Figure 7-(b) and (c). We reveal that
+the harmful and benign attacks are fatal in the range of [10−5,10−6] and [10−6,10−7], respec-
+tively. From these results, we decide to search learning rates η = {10−5,5 × 10−6,10−6} and
+η ={10−5,10−6,10−7}fortheharmfulandthebenignattacks.
+†https://github.com/centerforaisafety/wmdp
+16
+PublishedasaconferencepaperatICLR2026
+100
+80
+60
+40
+20
+00.0001 0.001 0.01 1.0
+Regularization Weight ()
+)%(
+ycaruccA
+Accuracy on Cr
+Accuracy on Ct 70 Accuracy after Attack (p=0.1) Accuracy after Attack (p=0.3) 60
+50
+40
+30
+20
+1e-04 5e-05 1e-05 5e-06 1e-06 5e-07 1e-07
+Attack Learning Rates
+(a)TheEffectofRegularization
+Weight(λ)inSSIUU
+)%(
+ycaruccA
+70 GA (p=0.1)
+G G A D ( ( p p = = 0 0 . . 3 1 ) ) 60 GD (p=0.3) 50
+40
+30
+20
+10
+01e-05 1e-06 1e-07 1e-08
+Attack Learning Rates
+(b)TheLearningRatesExperi-
+mentsontheHarmfulAttacks
+)%(
+ycaruccA
+GA (Alpaca)
+GD $(Alpaca)
+(c)TheLearningRatesExperi-
+mentsontheBenignAttack
+Figure 7: Additional Experiments. Figure 7-(a) shows the accuracy for varying regularization
+weight (λ). We compute the accuracy on the retain set and test set to assess the models’ behavior
+afterunlearning. Wealsoreporttheaccuracyaftertheharmfulattacks. Figure7-(b)and(c)show
+theexperimentalresultsforvaryinglearningrateattacksonGAandGDmodels.
+E LIMITATIONS AND DISCUSSION
+Byanalyzingvariationsinpositiveandnegativeneuronalinfluence,wefindthatcurrentunlearning
+methods often exhibit shallow unlearning alignment. We also discuss future directions and the
+practicalchallengesassociatedwithourapproach.
+TheChallengeofPost-UnlearningStability. Theretrainingattackscenariosweexaminereflect
+realisticdeploymentenvironments,especiallyasfine-tuningAPIsandopen-sourcecheckpointsbe-
+comeincreasinglyaccessible. Ourfindingsshowthatshallowunlearningalignmentcanmakefor-
+gotten knowledge more recoverable, even through benign forms of instruction tuning. This indi-
+catesthatsecureunlearningisnotsolelyamodel-levelchallengebutalsoapipeline-levelone: plat-
+formoperatorsmustaccountforhowdownstreamfine-tuning,user-supplieddata,andmodel-editing
+workflowsmayreintroduceorreconstructremovedinformation.
+Toward Advanced Knowledge Quantification for Dynamic Interpretability. Our analysis in-
+troduces a new research direction that leverages interpretability methods to track how knowledge
+representations change before and after unlearning, thereby enabling a more faithful evaluation of
+unlearningbehaviorindynamicsettings. Whileourfindingsareconsistentacrossmultipleunlearn-
+ing methodsand LLMarchitectures, theyalso revealnatural methodological dependencies, as our
+analysis relies on the attribution-based method proposed by Yang et al. (2023). Existing knowl-
+edge quantification approaches (Wang et al., 2022; Panigrahi et al., 2023; Zhu et al., 2025; Zhao
+etal.,2025)arenotdesignedtosupportneuron-levelnegativeattribution,limitingtheirapplicabil-
+itytoourobjective. Thissuggeststhatfurtherworkisneededtodevelopknowledgequantification
+techniquescapableofsupportingdynamic,attribution-levelinterpretabilityforunlearning—moving
+beyond simple positive-correlation measurestoward more sophisticated, mathematically grounded
+approaches.
+Improving Scalability and Adaptivity of SSIUU. SSIUU introduces a principled way to miti-
+gatetheemergenceofspuriousunlearningneurons,butitalsoraisespracticalconsiderations. The
+regularizationtermconstrainsinternalattributiondynamicsateveryoptimizationstep, whichmay
+posescalabilitychallengesforextremelylargemodelsorverylongsequences. AlthoughtheHes-
+sian–vectorproductcomputationkeepstheoverheadmanageable,exploringmoreefficientapprox-
+imations—suchassparseorlayer-specificvariants—couldfurtherbroadenitsapplicability. Inour
+experiments, we selected the regularization weight (λ) after a simple hyperparameter search, and
+we found that a single value generalized across multiple models. Nonetheless, careful tuning can
+further improve its performance. Future work could incorporate more adaptive strategies, such as
+dynamicallyadjustingλ,tofurtherimproveusabilityandstability.
+17

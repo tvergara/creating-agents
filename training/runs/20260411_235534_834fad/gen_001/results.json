@@ -1,0 +1,977 @@
+[
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "This work's novel reasoning mechanism feels very timely and addresses a key limitation in current models."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "The prompt-based attack vector is a very current and important area of safety research for deployed LLMs."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "Addressing hallucinations is a critical and highly fashionable problem for making LLMs reliable."
+      },
+      {
+        "paper_id": 19,
+        "score": 7.5,
+        "reasoning": "Connecting vision models and LLMs is a major trend, and this paper offers an efficient approach."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "This paper's approach to retrieval using the LLM itself is a clever and popular new direction in knowledge-intensive tasks."
+      },
+      {
+        "paper_id": 24,
+        "score": 8.0,
+        "reasoning": "The multilingual angle on LLM safety is an important and increasingly relevant area of investigation."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.5,
+        "reasoning": "This work builds directly on the popular 'Tree of Thoughts' paradigm, pushing the frontier of complex reasoning in a very trendy way."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "Watermarking is a very relevant topic for responsible AI, making this a timely contribution."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.5,
+        "reasoning": "Understanding and improving SFT data is a critical and popular topic for building better instruction-following models."
+      },
+      {
+        "paper_id": 36,
+        "score": 9.5,
+        "reasoning": "Using LLMs for evaluation is a massive trend, and this work's proposal of an open, flexible, and interpretable judge is exceptionally relevant."
+      }
+    ],
+    "citation_corr": -0.26343739793893073,
+    "acceptance_corr": 0.10629880069054676
+  },
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/lone_wolf.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 3,
+        "score": 7.0,
+        "reasoning": "Provides a clear, mechanistic explanation of a transformer's learned algorithm, though the problem setting is narrow."
+      },
+      {
+        "paper_id": 14,
+        "score": 6.5,
+        "reasoning": "The proposed reasoning mechanism is interesting, but its application to visual QA limits its immediate relevance to language-only reasoning."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "This paper demonstrates a simple yet effective prompt-based attack, highlighting a significant vulnerability in LLM self-correction."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.5,
+        "reasoning": "Addresses the critical issue of self-contradiction with a practical framework for detection and mitigation without external knowledge."
+      },
+      {
+        "paper_id": 23,
+        "score": 7.5,
+        "reasoning": "The method of using an LLM for its own retrieval is a novel approach, though its efficiency compared to dedicated retrievers is a key question."
+      },
+      {
+        "paper_id": 24,
+        "score": 8.0,
+        "reasoning": "Effectively exposes a significant and under-explored attack surface in the multilingual capabilities of LLMs."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "The investigation into learned watermarks is timely, but the finding that they are removable via fine-tuning limits their practical impact."
+      },
+      {
+        "paper_id": 30,
+        "score": 7.5,
+        "reasoning": "Provides a useful quantitative framework for analyzing SFT data, directly connecting data properties to model instruction-following abilities."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.0,
+        "reasoning": "This work proposes a compelling, automated framework that improves reasoning by learning from errors, moving beyond static prompting methods."
+      },
+      {
+        "paper_id": 35,
+        "score": 8.5,
+        "reasoning": "Creating a strong, open-source judge model is a significant contribution for reproducible and interpretable LLM evaluation."
+      }
+    ],
+    "citation_corr": -0.515527950310559,
+    "acceptance_corr": 0.13608276348795434
+  },
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The paper makes a very strong claim based on a simple method, but likely overlooks more sophisticated adaptive attacks, making its experimental rigor questionable."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This paper introduces a highly novel and timely prompt-based attack framework that reveals critical vulnerabilities in modern LLMs."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The work provides a comprehensive and much-needed framework for tackling the critical issue of self-contradiction, a key aspect of LLM hallucinations."
+      },
+      {
+        "paper_id": 20,
+        "score": 8.0,
+        "reasoning": "This paper presents an elegant and efficient method for connecting vision encoders to frozen LLMs, aligning with the major trend of building powerful multimodal systems."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.5,
+        "reasoning": "The concept of using an LLM for generative retrieval is a paradigm-shifting idea that could significantly influence the future of retrieval-augmented generation."
+      },
+      {
+        "paper_id": 24,
+        "score": 8.5,
+        "reasoning": "This work addresses the critical and underexplored area of multilingual safety, revealing significant vulnerabilities that are highly relevant to global LLM deployment."
+      },
+      {
+        "paper_id": 26,
+        "score": 9.0,
+        "reasoning": "Building upon the trendy 'X-of-Thought' paradigm, this paper introduces a compelling iterative refinement process that mimics human problem-solving."
+      },
+      {
+        "paper_id": 28,
+        "score": 9.0,
+        "reasoning": "The paper investigates a fundamentally important and timely question regarding the learnability and spoofability of LLM watermarks, with significant policy implications."
+      },
+      {
+        "paper_id": 31,
+        "score": 8.0,
+        "reasoning": "This work provides a valuable and novel framework for quantitatively analyzing instruction datasets, which is crucial for understanding and improving LLM alignment."
+      },
+      {
+        "paper_id": 37,
+        "score": 9.5,
+        "reasoning": "This paper addresses the extremely timely and significant challenge of LLM evaluation by training a specialized generative judge, aligning with the LLM-as-a-judge trend."
+      }
+    ],
+    "citation_corr": -0.23643258552267604,
+    "acceptance_corr": -0.03282307143657473
+  },
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 36,
+        "score": 9.5,
+        "reasoning": "This paper provides a well-motivated and comprehensive solution to the critical problem of evaluating LLM alignment, including a new model and a purpose-built benchmark."
+      },
+      {
+        "paper_id": 28,
+        "score": 9.0,
+        "reasoning": "The work investigates the learnability of watermarks, a conceptually novel question with significant security and policy implications for the deployment of open models."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.5,
+        "reasoning": "The proposed instruction tagging framework offers a principled, quantitative method for analyzing SFT data, addressing a key bottleneck in understanding and improving instruction-following models."
+      },
+      {
+        "paper_id": 33,
+        "score": 8.5,
+        "reasoning": "This work introduces an intuitive and promising trial-and-error framework for LLM reasoning that builds intelligently upon the existing 'Chain-of-Thought' paradigm."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.0,
+        "reasoning": "The concept of using an LLM for generative retrieval is an elegant and potentially powerful simplification of the standard RAG pipeline."
+      },
+      {
+        "paper_id": 16,
+        "score": 5.5,
+        "reasoning": "While tackling an important problem, the reliance on a purely prompt-based framework for detecting and mitigating self-contradictions is likely not robust enough for reliable deployment."
+      },
+      {
+        "paper_id": 24,
+        "score": 5.0,
+        "reasoning": "The proposed self-defense framework appears to be a standard data augmentation strategy, representing an incremental contribution to the important problem of multilingual safety."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.0,
+        "reasoning": "The proposed prompt-based attack, while interesting, seems to be a straightforward application of existing prompting techniques with limited conceptual novelty."
+      },
+      {
+        "paper_id": 3,
+        "score": 3.5,
+        "reasoning": "The paper's conclusions are derived from a toy task (GCD), and the insights are unlikely to generalize to the complexity of natural language."
+      },
+      {
+        "paper_id": 4,
+        "score": 2.5,
+        "reasoning": "The paper makes an exceptionally strong claim in its title that is not adequately supported by the scope of the experiments, which is a classic sign of overclaiming."
+      }
+    ],
+    "citation_corr": -0.47338766237601015,
+    "acceptance_corr": -0.09174315117447995
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/lone_wolf.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 3,
+        "score": 7.0,
+        "reasoning": "Provides a clear, mechanistic explanation of how transformers solve a formal task, which is valuable for understanding emergent reasoning."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed iterative and parallel reasoning mechanism is a novel contribution to complex, multi-step reasoning architectures."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This paper introduces a simple yet highly effective prompt-based adversarial attack, revealing critical vulnerabilities in LLM reasoning and instruction-following."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This work provides a comprehensive and much-needed investigation into self-contradiction, a key failure mode of LLM reasoning."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.0,
+        "reasoning": "The concept of using an LLM for generative retrieval is a novel and potentially powerful paradigm for knowledge-intensive reasoning tasks."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.5,
+        "reasoning": "This paper presents a significant advance over chain-of-thought by incorporating trial-and-error learning, mimicking a more robust form of human problem-solving."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "Investigates the fundamental learnability of watermarks, which has significant implications for the practical deployment and safety of foundation models."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.0,
+        "reasoning": "InsTag offers a scalable, quantitative method to analyze SFT data, which is crucial for understanding how instruction-following and reasoning capabilities are acquired."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "The proposed Boosting of Thoughts framework is a substantial contribution, advancing on chain-of-thought and tree-of-thought by introducing an iterative, experience-driven refinement process."
+      },
+      {
+        "paper_id": 35,
+        "score": 9.0,
+        "reasoning": "Addresses the critical and difficult problem of automated evaluation for LLM alignment, proposing a flexible and interpretable generative judge."
+      }
+    ],
+    "citation_corr": -0.6834158021158492,
+    "acceptance_corr": 0.17291712531127051
+  },
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 3,
+        "score": 9.0,
+        "reasoning": "This work provides a rare, fully-characterized explanation of a transformer's learned algorithm on a synthetic task, offering clean and valuable theoretical insight."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.0,
+        "reasoning": "While the core idea of a prompt-based self-attack is clever, the method appears to be a straightforward combination of existing techniques with limited conceptual novelty."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.5,
+        "reasoning": "The paper tackles the critical problem of self-contradiction with a comprehensive framework, providing both strong empirical findings and a practical, knowledge-free mitigation strategy."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.2,
+        "reasoning": "This paper introduces a conceptually elegant paradigm shift by reframing retrieval as a constrained generation problem, unifying two key components of knowledge-intensive NLP."
+      },
+      {
+        "paper_id": 24,
+        "score": 8.5,
+        "reasoning": "The work provides a systematic and important investigation into multilingual safety vulnerabilities, revealing significant, previously under-explored risks in production LLMs."
+      },
+      {
+        "paper_id": 27,
+        "score": 9.0,
+        "reasoning": "The paper rigorously investigates the fundamental and critical question of watermark learnability, providing a principled framework and findings with significant implications for open models and security."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.8,
+        "reasoning": "The work introduces a novel and scalable method to quantify abstract but critical properties of instruction data, providing a principled framework for SFT data analysis and selection."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "The paper presents a compelling framework that operationalizes learning from errors by iteratively and automatically refining prompts, offering a significant conceptual advance in complex reasoning."
+      },
+      {
+        "paper_id": 34,
+        "score": 5.5,
+        "reasoning": "While providing a theoretically sound analysis for the reject option, the contribution appears highly specific and incremental within a well-established problem domain."
+      },
+      {
+        "paper_id": 35,
+        "score": 9.8,
+        "reasoning": "This work addresses the critical bottleneck of LLM evaluation by creating a powerful and flexible generative judge, providing an invaluable and well-executed contribution to the community."
+      }
+    ],
+    "citation_corr": -0.32085626582755017,
+    "acceptance_corr": -0.20286640664245106
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 8.5,
+        "reasoning": "This paper presents a simple yet powerful finding that fine-tuning is an effective defense against backdoor attacks, which has immediate practical implications for the community."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "The novel concept of a prompt-based attack where an LLM fools itself is a fascinating and timely exploration of the adversarial frontier for generative models."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This work provides a comprehensive and much-needed investigation into self-contradictory hallucinations, a critical and widely recognized failure mode in large language models."
+      },
+      {
+        "paper_id": 19,
+        "score": 8.0,
+        "reasoning": "The proposed method offers an elegant approach to bridging vision and language modalities by aligning them within an LLM's existing semantic space, pushing forward on the important multimodal frontier."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.5,
+        "reasoning": "This paper boldly challenges the dominant retrieval-augmentation paradigm by showing an LLM can act as its own retriever, potentially simplifying knowledge-intensive NLP pipelines."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "This research shines a crucial spotlight on the under-examined multilingual dimension of LLM safety, revealing significant vulnerabilities that are critical for a global community to address."
+      },
+      {
+        "paper_id": 27,
+        "score": 8.5,
+        "reasoning": "The paper investigates the fundamental and timely question of watermark learnability, which has profound implications for the future of open models and AI-generated content provenance."
+      },
+      {
+        "paper_id": 30,
+        "score": 9.0,
+        "reasoning": "This work introduces a valuable and timely framework for analyzing instruction-tuning data, offering a more quantitative understanding of the diversity and complexity needed for effective alignment."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "Building upon the influential \"Tree of Thoughts,\" this paper introduces a compelling trial-and-error framework that mimics human learning, pushing the frontier of complex reasoning in LLMs."
+      },
+      {
+        "paper_id": 35,
+        "score": 10.0,
+        "reasoning": "This work tackles one of the most pressing challenges in the field by developing a generative judge for alignment, which is a critical step towards scalable and interpretable LLM evaluation."
+      }
+    ],
+    "citation_corr": -0.1071451160871473,
+    "acceptance_corr": -0.18633899812498245
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 6.5,
+        "reasoning": "A refreshing return to classic online learning principles to combat catastrophic forgetting, though its applicability to complex, non-physical domains remains unproven."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "The model commendably combines iterative and parallel computation, but its claimed generalization feels overstated without testing on more diverse, less synthetic reasoning tasks."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.5,
+        "reasoning": "This prompt-based attack is a clever demonstration of instruction-following, but it reveals less about fundamental model vulnerabilities and more about the need for better instruction filtering."
+      },
+      {
+        "paper_id": 16,
+        "score": 6.0,
+        "reasoning": "While addressing an important problem, the focus on detecting explicit textual contradictions within the same context is a narrow view of the much deeper issue of logical inconsistency."
+      },
+      {
+        "paper_id": 23,
+        "score": 4.5,
+        "reasoning": "This approach awkwardly forces a generative model into a retrieval role, creating a slow and likely unscalable system that ignores decades of progress in efficient information retrieval."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "The paper systematically exposes the anglocentric nature of current safety alignment, providing crucial evidence that safety is not a solved problem but a patchwork of language-specific filters."
+      },
+      {
+        "paper_id": 25,
+        "score": 8.5,
+        "reasoning": "By embracing trial-and-error, this work presents a much more realistic model of problem-solving than prior methods, though its computational overhead is a significant practical concern."
+      },
+      {
+        "paper_id": 27,
+        "score": 8.0,
+        "reasoning": "This work critically demonstrates that watermarks are learnable and therefore spoofable, fundamentally questioning their utility for provenance and attribution in open models."
+      },
+      {
+        "paper_id": 30,
+        "score": 7.0,
+        "reasoning": "The attempt to quantify instruction diversity is laudable, but the proposed tagging system risks imposing an arbitrary and likely incomplete semantic structure onto the data."
+      },
+      {
+        "paper_id": 35,
+        "score": 5.0,
+        "reasoning": "This approach attempts to solve the difficult problem of alignment evaluation by creating a smaller, specialized LLM, which merely shifts the alignment problem rather than solving it."
+      }
+    ],
+    "citation_corr": -0.20308557542776454,
+    "acceptance_corr": 0.23875114908478098
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 8.0,
+        "reasoning": "Proposes a surprisingly simple yet powerful defense against a significant threat, which could have broad practical implications if the claims hold up."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "The proposed mechanism combining iterative and parallel computation addresses a key challenge in complex reasoning, potentially offering a more flexible approach than purely sequential methods."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "This work introduces a clever and efficient method for auditing LLM robustness by turning the model against itself, which is a novel and important direction for safety research."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This paper provides a comprehensive framework for a critical and subtle type of hallucination, with a practical black-box approach that is highly valuable for real-world applications."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.0,
+        "reasoning": "This method cleverly unifies retrieval and generation within a single LLM, which could significantly simplify and improve knowledge-intensive agent architectures."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "The paper sheds light on a crucial and underexplored vulnerability in LLM safety, highlighting that security measures are often not universally applied across languages."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.5,
+        "reasoning": "Building on popular reasoning frameworks like Tree of Thoughts, this work introduces an innovative automated method for learning from errors, mimicking a more human-like trial-and-error process."
+      },
+      {
+        "paper_id": 28,
+        "score": 8.0,
+        "reasoning": "This paper investigates a fundamental question about whether watermarks are a learnable model property, with important implications for both open models and adversarial spoofing."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.5,
+        "reasoning": "Proposing a quantitative method to analyze instruction data is a valuable contribution for understanding and improving the alignment process of large language models."
+      },
+      {
+        "paper_id": 35,
+        "score": 9.0,
+        "reasoning": "Developing a powerful, open, and interpretable generative judge is a critical step towards scalable and trustworthy evaluation of increasingly complex language models."
+      }
+    ],
+    "citation_corr": -0.19292704235657732,
+    "acceptance_corr": 0.18442777839082936
+  },
+  {
+    "agent_idx": 11,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/lone_wolf.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/default.md"
+    },
+    "scores": [
+      {
+        "paper_id": 3,
+        "score": 8.5,
+        "reasoning": "This paper provides a rare and valuable characterization of how a transformer learns an algorithmic task, offering concrete insights into its internal reasoning mechanism."
+      },
+      {
+        "paper_id": 14,
+        "score": 9.0,
+        "reasoning": "The proposed IPRM module introduces a flexible and powerful mechanism for multi-step reasoning that smartly combines serial and parallel computation."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.5,
+        "reasoning": "This work introduces a novel and efficient prompt-based attack that cleverly turns the model's own generative capabilities against itself to reveal robustness flaws."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The paper provides a thorough investigation of self-contradiction, a critical reasoning failure, and offers a practical prompting-based framework for detection and mitigation."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.0,
+        "reasoning": "The proposed LLM2GR method cleverly repurposes the generative capabilities of LLMs to perform retrieval, offering an intriguing alternative to traditional retrieval-augmented pipelines."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.5,
+        "reasoning": "This paper introduces a highly novel and promising framework that mimics human trial-and-error learning by systematically generating, evaluating, and incorporating reasoning failures into the prompt to boost performance."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "The paper provides a valuable investigation into whether decoding-time watermarks can be distilled into a model's weights, raising important implications for both open-model watermarking and potential spoofing attacks."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.5,
+        "reasoning": "InsTag introduces a scalable and insightful method for analyzing instruction datasets, enabling a more quantitative understanding of how data diversity and complexity impact model alignment."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "This paper introduces a highly novel and promising framework that mimics human trial-and-error learning by systematically generating, evaluating, and incorporating reasoning failures into the prompt to boost performance."
+      },
+      {
+        "paper_id": 35,
+        "score": 9.0,
+        "reasoning": "This work addresses the critical need for better evaluation by training a specialized generative judge that is flexible, interpretable, and tested on a diverse set of real-world scenarios."
+      }
+    ],
+    "citation_corr": -0.9028612431622228,
+    "acceptance_corr": 0.14285714285714285
+  },
+  {
+    "agent_idx": 8,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 3.0,
+        "reasoning": "The paper's central claim that simple fine-tuning is a sufficient defense against backdoors is an oversimplification that likely ignores more sophisticated adaptive attacks."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.5,
+        "reasoning": "While the prompt-based attack vector is novel, the method's effectiveness hinges on a 'fidelity filter' whose robustness is not established, risking semantically trivial attacks."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.5,
+        "reasoning": "This paper presents a comprehensive and principled framework for evaluating, detecting, and mitigating self-contradictions without relying on external knowledge, addressing a core LLM-alignment problem."
+      },
+      {
+        "paper_id": 19,
+        "score": 9.0,
+        "reasoning": "The proposed use of optimal transport to align vision and language modalities offers a more structured and theoretically grounded approach than standard contrastive methods."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.5,
+        "reasoning": "This work elegantly reframes retrieval as a generation problem, offering a conceptually novel and unified approach that eliminates the need for external retrieval modules."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "The paper rigorously investigates the critical and under-explored domain of multilingual jailbreaking, providing both a valuable analysis and a practical self-defense mitigation framework."
+      },
+      {
+        "paper_id": 27,
+        "score": 10.0,
+        "reasoning": "This work provides a foundational and conceptually clear investigation into the learnability of watermarks, revealing critical implications for both open-model safety and adversarial spoofing."
+      },
+      {
+        "paper_id": 30,
+        "score": 9.5,
+        "reasoning": "This paper introduces a novel and systematic framework for quantifying the diversity and complexity of SFT data, enabling a more principled approach to instruction tuning."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.0,
+        "reasoning": "The proposed framework introduces a compelling iterative process of self-correction and experience accumulation, providing a principled method for automated reasoning improvement in LLMs."
+      },
+      {
+        "paper_id": 35,
+        "score": 9.0,
+        "reasoning": "The work addresses the critical challenge of LLM evaluation by creating a flexible and interpretable generative judge, which is a significant contribution to alignment research."
+      }
+    ],
+    "citation_corr": 0.009804759295841542,
+    "acceptance_corr": -0.07188851546895891
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "The paper proposes a simple yet potentially powerful defense against backdoor attacks, which could have significant practical implications if the strong empirical results hold up to scrutiny."
+      },
+      {
+        "paper_id": 8,
+        "score": 8.5,
+        "reasoning": "This work appears to offer a comprehensive improvement to unsupervised few-shot learning by thoughtfully addressing limitations in both the pretraining and inference stages."
+      },
+      {
+        "paper_id": 13,
+        "score": 8.0,
+        "reasoning": "The introduction of a large-scale, real-world knowledge graph and associated benchmark tasks represents a valuable contribution for advancing research in company-level representation learning."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "The proposed IPRM introduces a novel and intuitive reasoning mechanism that has the potential to offer superior generalization and interpretability for complex multi-step reasoning tasks."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.5,
+        "reasoning": "The paper presents a highly creative and efficient new attack vector that cleverly turns a model's own generative capabilities against itself, revealing a critical area of vulnerability."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This work provides a comprehensive and practical framework for addressing the important problem of self-contradiction, offering a valuable tool that can be applied even to black-box models."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.0,
+        "reasoning": "The paper proposes a fascinating paradigm shift for information retrieval by using the LLM itself to generate retrieval candidates, potentially simplifying the traditional retrieve-then-read pipeline."
+      },
+      {
+        "paper_id": 24,
+        "score": 8.5,
+        "reasoning": "This research uncovers and systematically investigates a critical, under-explored vulnerability in LLM safety, highlighting the significant risks posed by multilingual jailbreak attempts."
+      },
+      {
+        "paper_id": 28,
+        "score": 9.0,
+        "reasoning": "The paper investigates the fundamental and important question of whether watermarks can be learned, providing key insights into the feasibility of watermarking open models and the potential for spoofing attacks."
+      },
+      {
+        "paper_id": 30,
+        "score": 9.5,
+        "reasoning": "This work introduces a valuable and much-needed framework for systematically analyzing instruction-tuning data, enabling a more principled approach to SFT dataset curation and model development."
+      }
+    ],
+    "citation_corr": 0.5727056123581303,
+    "acceptance_corr": 0.4606822127204284
+  },
+  {
+    "agent_idx": 12,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 8.5,
+        "reasoning": "This paper proposes a simple and highly practical fine-tuning based solution to the critical problem of backdoor attacks in machine learning models."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "The novel prompt-based adversarial attack, where an LLM is guided to fool itself, represents a significant and creative contribution to understanding LLM robustness."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This work offers a comprehensive and practical framework for evaluating, detecting, and mitigating self-contradictions in LLMs without relying on external knowledge."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "The proposed LLM2GR method, which uses a large language model to perform generative retrieval, is a novel and potentially paradigm-shifting approach for knowledge-sensitive tasks."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "This paper addresses the critical and under-explored issue of multilingual jailbreak vulnerabilities in LLMs, providing significant findings and a practical defense framework."
+      },
+      {
+        "paper_id": 27,
+        "score": 9.5,
+        "reasoning": "Investigating the learnability of watermarks is a crucial and timely research question with significant practical implications for the responsible deployment of language models."
+      },
+      {
+        "paper_id": 30,
+        "score": 9.5,
+        "reasoning": "The proposed InsTag method provides a much-needed quantitative framework for analyzing instruction diversity in SFT, demonstrably leading to better data selection and model performance."
+      },
+      {
+        "paper_id": 33,
+        "score": 8.5,
+        "reasoning": "Boosting of Thoughts introduces an intuitive and powerful trial-and-error framework that progressively improves prompting by learning from mistakes, closely mimicking human problem-solving."
+      },
+      {
+        "paper_id": 35,
+        "score": 9.0,
+        "reasoning": "By training a generative judge on diverse, real-world scenarios, this paper presents a highly effective and flexible solution to the pressing challenge of evaluating LLM alignment."
+      },
+      {
+        "paper_id": 19,
+        "score": 8.0,
+        "reasoning": "This paper presents a novel optimal transport-based method to align vision and language models, which is a conceptually elegant approach to a challenging cross-modal problem."
+      }
+    ],
+    "citation_corr": 0.12580645161290324,
+    "acceptance_corr": -0.39840953644479776
+  },
+  {
+    "agent_idx": 14,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/interest_match.md"
+    },
+    "scores": [
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "This work introduces a novel reasoning mechanism that combines iterative and parallel computation, which feels like a very timely and powerful direction for complex multi-step reasoning."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "The paper presents a very current and important prompt-based adversarial attack, highlighting a critical vulnerability where an LLM can be induced to fool itself."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This paper tackles the critical and highly relevant problem of self-contradiction in LLMs with a practical framework for evaluation, detection, and mitigation."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "Proposes an exciting, forward-thinking approach to generative retrieval that could streamline RAG pipelines by having the LLM generate its own reference documents."
+      },
+      {
+        "paper_id": 24,
+        "score": 7.5,
+        "reasoning": "Reveals a significant and overlooked attack surface by investigating jailbreak vulnerabilities in a multilingual context, which is critical as LLMs become more global."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "This work presents an exciting and intuitive extension of the popular \"Tree of Thoughts\" paradigm, introducing a boosting mechanism that learns from errors for complex problem-solving."
+      },
+      {
+        "paper_id": 27,
+        "score": 8.0,
+        "reasoning": "The paper addresses the timely and critical question of watermark learnability, which has significant implications for both open-source model safety and potential adversarial spoofing."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.5,
+        "reasoning": "Introduces a very practical and much-needed framework for analyzing and quantifying instruction-tuning data, which is key to building more capable and aligned models."
+      },
+      {
+        "paper_id": 36,
+        "score": 9.0,
+        "reasoning": "Proposes a powerful and scalable solution to the critical challenge of LLM evaluation by training a generative judge, which aligns perfectly with the trend of using LLMs to evaluate other LLMs."
+      },
+      {
+        "paper_id": 3,
+        "score": 7.0,
+        "reasoning": "Provides a rare, fully characterized explanation of a transformer's learned algorithm, which is a key step towards mechanistic interpretability."
+      }
+    ],
+    "citation_corr": -0.44589605372591323,
+    "acceptance_corr": -0.11518245674418132
+  },
+  {
+    "agent_idx": 13,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md",
+      "selection_strategy": "/Users/tom/personal/creating-agents/agent_definition/selection_strategies/bimodal.md"
+    },
+    "scores": [
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "This paper proposes a simple, practical, and surprisingly effective method for a critical security issue in machine learning, which could have a large impact on practice."
+      },
+      {
+        "paper_id": 12,
+        "score": 8.0,
+        "reasoning": "This work cleverly adapts a foundational vision-language model to a new domain, addressing the key trade-off between generalization and specialization which is a central theme in current research."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "The paper introduces a novel neural reasoning mechanism that feels directionally aligned with the community's goal of building models that can handle complex, multi-step problems."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.5,
+        "reasoning": "This is a very timely and important paper that reveals a critical vulnerability in large language models by creatively using their own capabilities against them."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The work tackles the crucial and difficult problem of LLM hallucinations with a comprehensive framework for evaluation, detection, and mitigation, which is a very popular and important area."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "This research is on the cutting edge of retrieval-augmented methods, cleverly using the LLM itself as the retriever, which could simplify many existing RAG pipelines."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.5,
+        "reasoning": "An extremely important and timely investigation into LLM safety that highlights the often-overlooked Anglocentric bias in current safety research and aligns with the trend towards more inclusive AI."
+      },
+      {
+        "paper_id": 28,
+        "score": 9.0,
+        "reasoning": "This paper explores a fundamental and timely question about whether watermarks can be learned, which has significant implications for the future of open models and responsible AI."
+      },
+      {
+        "paper_id": 30,
+        "score": 8.5,
+        "reasoning": "The work provides a much-needed systematic way to analyze instruction tuning data, a critical component for understanding and improving modern large language models."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.0,
+        "reasoning": "This paper presents a compelling new direction for improving LLM reasoning that moves beyond static prompting to a more dynamic, self-correcting process, building on the popular 'of-thoughts' trend."
+      }
+    ],
+    "citation_corr": -0.18363123401950682,
+    "acceptance_corr": 0.2182178902359924
+  }
+]

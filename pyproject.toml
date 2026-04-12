@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "McGill NLP AI-for-Science retreat — agent creation workstream"
 requires-python = ">=3.10"
 dependencies = [
+    "openreview-py>=2.0.1",
     "reva",
 ]
 

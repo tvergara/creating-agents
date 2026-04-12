@@ -1,0 +1,962 @@
+[
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 1,
+        "score": 6.5,
+        "reasoning": "Large-scale empirical audit of HuggingFace dataset cards is methodologically sound and the finding that 'Considerations for Using the Data' receives only 2.1% of content is important, but the contribution is descriptive rather than prescriptive and the analysis tools (topic modeling, human annotation) are straightforward."
+      },
+      {
+        "paper_id": 3,
+        "score": 4.5,
+        "reasoning": "Probing LLM inductive reasoning via regex-generated sequences is a clever idea, but restricting evaluation to a single GPT model variant on a narrow synthetic domain makes the claim that 'LMs learn more than statistics' frustratingly undersubstantiated given the generality of the claim."
+      },
+      {
+        "paper_id": 13,
+        "score": 5.5,
+        "reasoning": "SCALE's triplet in-context pipeline for low-resource MT is pragmatically useful and the cross-lingual pivot results are genuinely interesting, but BLEU/BLEURT comparisons on a handful of language pairs and the absence of ablations on the STM quality variable leave the core contribution empirically thin."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.5,
+        "reasoning": "AgentBench is a well-scoped, high-impact benchmark covering 8 interactive environments and 29 LLMs, and the systematic documentation of failure modes (long-term reasoning, instruction following) provides real diagnostic value beyond a leaderboard."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.5,
+        "reasoning": "Using RL to generate instruction datasets rather than to refine models is an interesting inversion, but the paper lacks a rigorous comparison to state-of-the-art self-instruct pipelines and the reward signal design is underspecified, making reproducibility questionable."
+      },
+      {
+        "paper_id": 19,
+        "score": 6.0,
+        "reasoning": "VLAP's optimal-transport assignment prediction for grounding frozen LLMs in visual data is elegant and parameter-efficient, but training only a single linear layer raises serious questions about expressivity that the paper addresses only partially, and cross-modal retrieval numbers lag behind dedicated retrieval models."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "Model arithmetic provides a clean, training-free framework for composing LLMs with a coherent algebraic structure, and the extension of speculative sampling to composed models is a practically important efficiency contribution that prior CTG work has ignored."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.0,
+        "reasoning": "BoT's trial-and-error error-analysis loop is a reasonable idea, but the empirical advantage over ToT and other chain-of-thought variants is modest on most benchmarks and the method adds substantial token cost that the paper under-reports, making the claimed improvements hard to evaluate fairly."
+      },
+      {
+        "paper_id": 27,
+        "score": 8.0,
+        "reasoning": "Watermark learnability is an underexplored and genuinely consequential question\u2014the paper's demonstration that distillation enables spoofing attacks on instruction-tuned models is a concrete security finding that should materially change how the community reasons about watermark-based provenance attribution."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.0,
+        "reasoning": "Auto-J's 58-scenario testbed and its demonstration that a 13B open judge can match or beat GPT-4 in evaluation quality addresses a real bottleneck in LLM development, though the dependence on GPT-4-generated training critiques raises a circularity concern the paper does not fully resolve."
+      }
+    ],
+    "citation_corr": 0.26257960651041445,
+    "acceptance_corr": 0.5343239463281865
+  },
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "AgentBench is timely and comprehensive, filling a genuine gap in LLM-as-agent evaluation with 8 diverse environments and 29 models tested, making it immediately actionable for the community and well-aligned with the current momentum around agentic LLM deployment."
+      },
+      {
+        "paper_id": 35,
+        "score": 8.0,
+        "reasoning": "Auto-J addresses a pressing and fashionable need\u2014scalable, interpretable LLM evaluation\u2014with a well-scoped 13B model trained across 58 real-world scenarios that meaningfully advances beyond brittle API-dependent evaluation, and the flexibility across protocols (pairwise and single-response) gives it broad practical reach."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Watermark learnability is a timely and underexplored question with significant real-world implications for open model deployment and adversarial spoofing, and the paper's systematic distillation experiments across three watermarking strategies provide a strong empirical foundation for a nuanced set of findings."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.5,
+        "reasoning": "Model arithmetic is an elegant and generalizing inference framework for composing LLMs that subsumes prior CTG techniques as special cases, and the demonstration that speculative sampling extends cleanly to this multi-model setting makes it practically compelling for low-overhead controlled generation."
+      },
+      {
+        "paper_id": 19,
+        "score": 7.0,
+        "reasoning": "VLAP's use of optimal transport-based assignment prediction to bridge frozen vision and language spaces via a single linear layer is both parameter-efficient and conceptually well-motivated, and the resulting visual semantic arithmetic capability suggests the approach genuinely grounds LLM word-embedding topology in visual structure."
+      },
+      {
+        "paper_id": 25,
+        "score": 6.5,
+        "reasoning": "Boosting of Thoughts introduces an appealing error-driven iterative prompting loop that mimics human trial-and-error learning, and the consistent GPT-4 improvements on mathematical benchmarks are encouraging, though the relationship to existing ToT variants could be more crisply differentiated."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.0,
+        "reasoning": "SCALE's asymmetric collaboration between compact STMs and frozen LLMs for low-resource translation is well-motivated and produces meaningful BLEURT and COMET gains, though the contribution feels incremental relative to the broader wave of LLM-augmented specialized-model literature."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.0,
+        "reasoning": "Using RL to generate the foundational instruction dataset rather than to fine-tune on top of one is a genuinely different framing that reduces human annotation dependence, but the paper would benefit from clearer quantitative comparisons against strong RLHF and self-instruct baselines to establish the magnitude of its advantage."
+      },
+      {
+        "paper_id": 30,
+        "score": 5.5,
+        "reasoning": "TinyTrain's task-adaptive sparse update strategy for MCU-grade on-device training is practically valuable and the memory and compute reductions are impressive, but the work sits somewhat outside the current LLM-centric conversation and the data scarcity handling, while novel, could be communicated with more clarity around which datasets represent truly scarce real-world regimes."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.0,
+        "reasoning": "The ReAnalogy dataset and inductive in-context learning evaluation setting offer an interesting probe for whether LLMs learn generative rules versus surface statistics, but the scope is narrow, the 33% IIL improvement is not always contextualized against baselines clearly, and the quasi-natural language design choice needs stronger motivation."
+      }
+    ],
+    "citation_corr": 0.022506823415178383,
+    "acceptance_corr": 0.6956083436402525
+  },
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Clean, important research question about watermark learnability with dual practical implications; honestly reports limitations of fine-tuning robustness, though missing systematic analysis of paraphrasing robustness and cross-lingual transfer."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "Valuable benchmarking contribution across 8 environments and 29 LLMs, but primarily descriptive\u2014the commercial-vs-OSS gap was already suspected, and the paper falls short of explaining which specific capabilities drive performance differences."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.0,
+        "reasoning": "Addresses a real gap in flexible, interpretable LLM evaluation with a well-constructed 58-scenario testbed, but the claim of outperforming GPT-4 warrants scrutiny given absent position-bias analysis and unclear human-agreement calibration."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.5,
+        "reasoning": "Promising unifying framework for controlled text generation with non-trivial theoretical grounding, but the implicit claim of generality is undermined by an evaluation that narrows almost entirely to toxicity reduction."
+      },
+      {
+        "paper_id": 19,
+        "score": 6.0,
+        "reasoning": "Technically interesting use of optimal transport for cross-modal alignment with a parameter-efficient single linear layer, but the comparison landscape is incomplete\u2014learned-prototype and heavier adapter baselines are absent."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "The error-accumulation prompting idea is genuinely novel, but the paper frames results as applicable to 'various tasks' while evaluating almost exclusively on mathematical reasoning, creating a significant claim-evidence scope gap."
+      },
+      {
+        "paper_id": 13,
+        "score": 5.5,
+        "reasoning": "Sensible collaborative LLM-STM framing for low-resource translation with real empirical gains, but missing ablations on when STM input hurts versus helps and whether improvements hold outside the tested low-resource language pairs."
+      },
+      {
+        "paper_id": 16,
+        "score": 5.0,
+        "reasoning": "A provocative claim that simple fine-tuning defeats complex backdoor defenses, but the evaluation appears limited to less aggressive attack variants, and the absence of testing against adaptive attacks that specifically survive fine-tuning is a critical gap."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.0,
+        "reasoning": "The IIL framework for probing inductive reasoning is methodologically interesting, but the 33% improvement evidence comes from a single GPT model on a purely synthetic regex dataset, making the conclusion that LMs 'learn more than statistics' significantly overclaimed."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.5,
+        "reasoning": "The framing of using RL to generate instruction data without human involvement is appealing, but the paper inadequately distinguishes its contribution from self-instruct-style baselines and leaves the RL reward mechanism underspecified, creating a core completeness gap."
+      }
+    ],
+    "citation_corr": -0.015050788032857698,
+    "acceptance_corr": 0.6767529681839597
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 1,
+        "score": 7.0,
+        "reasoning": "Rigorous empirical analysis of 7,433 dataset cards revealing that 'Considerations for Using the Data' receives only 2.1% of content is a striking and actionable finding for responsible ML practice, directly advancing the ethics dimension of the field."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.5,
+        "reasoning": "Creative use of regex-generated sequences to probe inductive reasoning is methodologically interesting, but the claim that LMs 'learn more than statistical patterns' is overclaimed given the narrow synthetic domain and limited model breadth tested."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.0,
+        "reasoning": "Combining specialized translation models with frozen LLMs via in-context pivoting is a practically motivated architecture, and the low-resource Xhosa gains are notable, but the ethics of language equity and dataset provenance for rare languages go unaddressed."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.5,
+        "reasoning": "AgentBench's systematic evaluation across 8 environments with 29 models, revealing a sharp capability gap between commercial and open-source LLMs, is an important empirical contribution that carries genuine implications for safe deployment of LLM-based agents."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.5,
+        "reasoning": "Using RL to generate instruction data reduces human annotation but the paper does not address whether self-generated training data amplifies existing model biases or risks circular quality degradation, which is a significant omission given the method's design goals."
+      },
+      {
+        "paper_id": 19,
+        "score": 6.0,
+        "reasoning": "VLAP's optimal-transport assignment prediction is an elegant mechanism for grounding frozen LLMs in visual data with minimal parameters, but the paper says nothing about bias propagation from the LLM's word embedding space into visual representations."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "Model arithmetic offers a principled and practically useful framework for composing LLMs without retraining, with the toxicity-reduction results being its strongest ethical positive, though the paper should more explicitly discuss the dual-use risk of formula-based bias injection."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "Boosting of Thoughts is an incremental but functional improvement over Tree-of-Thoughts that productively leverages error analysis, yet the paper provides no discussion of failure modes, bias propagation through iterative self-evaluation, or the costs of extensive GPT-4 inference."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "The demonstration that watermarks are learnable and can be spoofed is a genuinely important and underexplored security finding with direct implications for AI provenance and misuse detection, and the paper handles the dual-use framing with unusual care."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.0,
+        "reasoning": "Auto-J addresses a real gap in generalizable LLM evaluation across 58 real-world scenarios, but training a judge on LLM-generated responses raises circularity concerns about bias laundering that the paper acknowledges only partially."
+      }
+    ],
+    "citation_corr": 0.4191031230004671,
+    "acceptance_corr": 0.515682051112248
+  },
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 27,
+        "score": 8.0,
+        "reasoning": "Directly addresses LLM safety through watermark learnability with strong ethical awareness, raises the dual-use spoofing risk explicitly, and provides empirical limits that matter for AI governance\u2014rare in a venue paper to be this forthcoming about its own attack surface."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.5,
+        "reasoning": "Comprehensive benchmark across 8 agent environments is a genuine community contribution, but the paper inadequately addresses ethical risks of autonomous agents interacting with live OS, databases, and web systems, and the consent/privacy implications of the evaluation environments go unexamined."
+      },
+      {
+        "paper_id": 1,
+        "score": 7.0,
+        "reasoning": "Large-scale empirical audit of dataset documentation practices reveals that the 'Considerations for Using the Data' section receives only 2.1% of card length\u2014a damning quantitative finding about responsible ML practice that the community needs, even if the paper's own ethics discussion is thin."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "Model arithmetic for controlled text generation is technically elegant and the toxicity-reduction results are compelling, but the paper buries the critical dual-use problem: the same composition framework trivially enables adding a 'toxic' component or subtracting safety-trained behavior, which deserves far more than a footnote."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.0,
+        "reasoning": "Building a generative judge on 58 real-world user query scenarios is valuable for alignment evaluation, but the paper provides no disclosure of how real user queries were collected, whether consent was obtained, or how the training data was de-identified\u2014serious omissions for a model trained on sensitive human interactions."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.0,
+        "reasoning": "Addressing low-resource language translation with a hybrid STM+LLM framework has genuine equity implications, but the paper evaluates only a handful of languages and makes no attempt to quantify whose languages remain excluded or whether the STM training data was responsibly licensed."
+      },
+      {
+        "paper_id": 25,
+        "score": 6.0,
+        "reasoning": "Iterative error-driven prompting for mathematical reasoning is a reasonable contribution, but the paper is silent on computational cost (multiple GPT-4 tree expansions per problem), environmental footprint, and the obvious generalization of BoT to automating adversarial reasoning at scale."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.5,
+        "reasoning": "Self-generated instruction data via RL reduces human annotation costs but risks amplifying model biases in a closed loop without external correction; the paper neither audits the diversity or safety of the self-generated instructions nor discusses what happens when the initial model's biases compound through iterative self-training."
+      },
+      {
+        "paper_id": 19,
+        "score": 5.5,
+        "reasoning": "Bridging frozen vision and language models via optimal-transport assignment is technically interesting but the paper ignores that vision-language models trained on web-scraped image-text pairs carry well-documented demographic biases, and no disaggregated fairness evaluation is provided despite claims of general-purpose capability."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.0,
+        "reasoning": "Probing whether LMs learn generative rules versus surface statistics via IIL and regex-generated sequences is a worthy methodological contribution with low ethical risk, but the ReAnalogy dataset's synthetic construction limits ecological validity and the paper overstates the extent to which regex compliance implies genuine rule induction."
+      }
+    ],
+    "citation_corr": 0.37220677062520524,
+    "acceptance_corr": 0.5026196892815542
+  },
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 1,
+        "score": 7.5,
+        "reasoning": "Empirically documents that 'Considerations for Using the Data' receives only 2.1% of dataset card content \u2014 a damning finding that exposes systematic under-investment in ethical documentation precisely where it matters most, making this one of the few papers at this venue that directly advances responsible research practice rather than merely gesturing at it."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "Watermark learnability is a genuine and underexplored safety problem, and the spoofing attack disclosure is appropriately alarming \u2014 but the paper's dual-use calculus is incomplete: releasing a proof-of-concept spoofing attack on a chat model without a responsible disclosure timeline or coordination with affected model providers is itself an ethics lapse the authors have not adequately addressed."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.5,
+        "reasoning": "Model arithmetic is a clever inference-time composition framework, and the toxicity-reduction application is legitimate, but the paper systematically avoids acknowledging that the same arithmetic that subtracts toxic behavior can trivially add it, and no safeguards or usage restrictions on the open-source release are discussed."
+      },
+      {
+        "paper_id": 35,
+        "score": 6.0,
+        "reasoning": "Training a 13B judge on 'massive real-world user queries and LLM responses' raises serious consent and privacy questions that go entirely unaddressed \u2014 the phrase 'real-world scenarios' silently elides whether any of the underlying user data was collected with appropriate permissions or anonymized."
+      },
+      {
+        "paper_id": 14,
+        "score": 6.0,
+        "reasoning": "AgentBench surfaces the stark capability gap between commercial and open-source LLMs as agents, but frames this disparity as a technical finding rather than an equity concern \u2014 the benchmark tasks (web shopping, database manipulation) carry real-world harm potential if deployed, and environmental cost of evaluating 29 models is not mentioned."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.0,
+        "reasoning": "SCALE's benefit to low-resource languages is a genuine positive, but BLEURT and COMET metrics are themselves trained predominantly on English-centric parallel data, meaning the evaluation may systematically underestimate performance on the very languages the paper claims to serve."
+      },
+      {
+        "paper_id": 17,
+        "score": 4.5,
+        "reasoning": "Framed as a safety contribution, BSPA's primary deliverable is an attack methodology and a curated NSFW prompt dataset \u2014 releasing NSFWeval publicly lowers the barrier for adversarial prompt engineering rather than raising defenses, and the proposed text filter is not validated against the paper's own attack in a convincing held-out evaluation."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.0,
+        "reasoning": "Teaching LLMs to generate their own instruction data via RL is methodologically interesting but the paper contains no analysis of whether this self-reinforcing loop amplifies existing LLM biases, which is the most obvious and consequential risk of any closed-loop self-improvement system."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.0,
+        "reasoning": "BoT's iterative trial-and-error framework incurs substantial repeated inference costs that are never quantified as carbon or compute expenditure, and the near-total reliance on GPT-4 \u2014 a closed, opaque commercial model \u2014 makes reproducibility claims hollow while laundering any biases in that model into the benchmark results."
+      },
+      {
+        "paper_id": 3,
+        "score": 4.5,
+        "reasoning": "ReAnalogy's regex-derived quasi-natural language is an interesting evaluation construct for inductive reasoning, but the scope is implicitly English-only and culturally narrow, the dataset size is small relative to the claims about LLM reasoning, and the paper provides no ethics statement despite collecting and releasing evaluation data that could reveal model failure modes with dual-use implications."
+      }
+    ],
+    "citation_corr": 0.16345477944988976,
+    "acceptance_corr": 0.5103103630798288
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "AgentBench is precisely the kind of timely, community-shaping benchmark the field needs as LLM-as-agent research explodes, and its coverage of 8 environments with 29 models gives it the breadth and immediate relevance that makes it feel like essential infrastructure for the moment."
+      },
+      {
+        "paper_id": 35,
+        "score": 8.0,
+        "reasoning": "Auto-J addresses a genuinely pressing problem in the LLM alignment era\u2014scalable, interpretable evaluation across diverse real-world scenarios\u2014and the 13B generative judge framing, 58-scenario testbed, and strong empirical results position it as a timely and impactful contribution."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "The framing of watermark learnability is both novel and consequential for AI safety discourse, and the distillation approach elegantly surfaces practical implications (open-model watermarking, spoofing risks) that will resonate strongly with the community's current preoccupations."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.5,
+        "reasoning": "Model arithmetic offers a clean, training-free compositional inference framework that unifies prior controlled-generation approaches and extends naturally to speculative sampling, making it feel like a principled step forward rather than an incremental patch."
+      },
+      {
+        "paper_id": 19,
+        "score": 7.0,
+        "reasoning": "VLAP's optimal-transport assignment prediction for bridging frozen vision and language encoders is a well-motivated and parameter-efficient approach to a hot problem, and the semantic arithmetic demonstration adds a compelling qualitative dimension to the evaluation."
+      },
+      {
+        "paper_id": 25,
+        "score": 7.0,
+        "reasoning": "Boosting of Thoughts extends the Tree-of-Thoughts paradigm with an elegant error-accumulation mechanism that mimics human trial-and-error learning, and the GPT-4/Llama2 results on mathematical reasoning benchmarks make the gains credible and timely."
+      },
+      {
+        "paper_id": 2,
+        "score": 6.5,
+        "reasoning": "AutoVP fills a real gap by systematically benchmarking the visual prompting design space with 12 downstream tasks, and the up to 27.5% improvement over linear probing is a strong signal, though the PEFT-for-vision niche is somewhat less central than the LLM topics dominating current attention."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.5,
+        "reasoning": "SCALE's asymmetric STM+LLM collaboration for low-resource translation is a directionally interesting idea with solid BLEURT/COMET numbers, but the framing occasionally obscures how much of the gain comes from the pivot mechanism versus the LLM refinement step."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.5,
+        "reasoning": "Using RL to generate instruction datasets rather than refine model behavior is a creative reframing of the RLHF pipeline, though the paper would benefit from clearer ablations isolating the RL contribution from the textual operation diversity heuristics."
+      },
+      {
+        "paper_id": 3,
+        "score": 6.0,
+        "reasoning": "ReAnalogy and the inductive in-context learning evaluation setting are a thoughtful contribution to the 'stochastic parrot vs. genuine reasoning' debate, but the scope is narrow and the regex-generated quasi-natural language domain may limit how broadly the findings generalize."
+      }
+    ],
+    "citation_corr": 0.06836450889034383,
+    "acceptance_corr": 0.5277777777777777
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Genuinely novel threat model \u2014 demonstrating that watermarks are learnable directly by student models opens real security implications for provenance attribution that the community has not adequately confronted, and the paper honestly acknowledges key limitations like fine-tuning erasure and high sample complexity for low-distortion regimes."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "Comprehensive multi-environment benchmark with 29 models covers enough ground to be credible, and the finding that instruction-following rather than raw capability is the bottleneck is worth quantifying, though the performance gap between commercial and OSS LLMs was already the community consensus and the benchmark environments may not reflect real deployment conditions."
+      },
+      {
+        "paper_id": 35,
+        "score": 6.5,
+        "reasoning": "Auto-J is practically important for scalable alignment evaluation, but the evaluation loop is potentially circular \u2014 a judge trained on GPT-4-generated critiques across 58 scenarios inherits GPT-4's biases, and the paper does not adequately confront whether high agreement with human judgments on the test set implies genuine generalization or shared biases."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.5,
+        "reasoning": "Model arithmetic is an elegant framework that unifies prior CTG techniques and extends them without retraining, and the speculative sampling integration is a genuine contribution, but the claim of 'only marginal overhead over a single model' with multiple composed models warrants more rigorous computational analysis than the abstract suggests."
+      },
+      {
+        "paper_id": 13,
+        "score": 5.5,
+        "reasoning": "The STM-LLM collaboration idea is practically motivated and the low-resource translation gains look meaningful, but evaluating on a handful of language pairs \u2014 primarily Xhosa and eight directions \u2014 while claiming to address language bias of LLMs broadly is a significant scope overclaim that a limitations section should not paper over with 'future work.'"
+      },
+      {
+        "paper_id": 19,
+        "score": 5.5,
+        "reasoning": "The optimal-transport assignment prediction as a bridge between vision and language spaces is a principled idea that addresses the modality gap more directly than contrastive objectives, but the contribution is incremental over existing linear-probing VLMs and the evaluation is confined to standard captioning/VQA benchmarks without stress-testing the semantic arithmetic claims on harder compositional examples."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.0,
+        "reasoning": "Boosting of Thoughts borrows a sensible intuition from ensemble methods, but the evaluation is almost entirely on mathematical problem-solving with GPT-4, the computational cost of iterating many trees of thoughts is not seriously analyzed relative to simpler baselines, and the claimed generalizability to 'various tasks' is unsupported by evidence outside the mathematical domain."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.0,
+        "reasoning": "The inductive in-context learning framing is interesting, but the use of regex-generated quasi-natural language sequences as a proxy for 'reasoning' is a hidden assumption the paper never justifies \u2014 it is entirely possible that the 33% IIL improvement reflects pattern-matching on structural regularities in the synthetic data rather than inductive reasoning over generative processes."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.5,
+        "reasoning": "The motivation for using RL to generate instruction data rather than relying on RLHF or self-instruct is underexplored \u2014 the abstract is silent on what reward signal drives RL, what 'textual operations and rules' means precisely, and how the baselines are chosen, making it impossible to assess whether the claimed reductions in human involvement are genuine or methodologically convenient."
+      },
+      {
+        "paper_id": 1,
+        "score": 4.5,
+        "reasoning": "The large-scale empirical analysis of HuggingFace dataset cards surfaces genuinely useful statistics about documentation practice, but the five findings are largely confirmatory of what practitioners already suspect \u2014 popular datasets get better documentation \u2014 and the paper offers no actionable prescriptive framework, making the contribution descriptive rather than consequential for the field."
+      }
+    ],
+    "citation_corr": 0.015097457255042608,
+    "acceptance_corr": 0.3042903097250922
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 14,
+        "score": 7.5,
+        "reasoning": "AgentBench addresses one of the hottest topics in the field \u2014 LLM-as-agent evaluation \u2014 with a comprehensive multi-environment benchmark covering 29 models, and the narrative from problem statement through findings is exceptionally clear and actionable."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.5,
+        "reasoning": "Auto-J tackles the urgent and fashionable problem of LLM alignment evaluation with a well-structured generative judge, and the paper communicates its three evaluation desiderata (generality, flexibility, interpretability) cleanly from abstract through experiments."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "The watermark learnability framing is timely and the paper communicates two distinct downstream implications (open-model watermarking and spoofing) with admirable clarity, keeping the distillation versus fine-tuning distinction legible throughout."
+      },
+      {
+        "paper_id": 19,
+        "score": 7.0,
+        "reasoning": "VLAP's optimal-transport assignment prediction is a compelling and currently fashionable approach to bridging vision and frozen LLMs, and the paper explains the modality-gap motivation and linear-layer efficiency angle accessibly before diving into formalism."
+      },
+      {
+        "paper_id": 25,
+        "score": 6.5,
+        "reasoning": "Boosting of Thoughts extends the popular chain-of-thought and tree-of-thought lineage in a clear trial-and-error loop, and the iterative error-accumulation narrative is communicated with enough figures and worked examples to be reproducible."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.5,
+        "reasoning": "Model arithmetic presents a clean, fashionable inference-time composability framework for LLMs, and the paper helpfully shows how prior CTG methods reduce to formulas within the framework, making the contribution easy to situate."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.0,
+        "reasoning": "SCALE's STM-plus-LLM translation pipeline targets a timely low-resource NLP problem and the paper explains the triplet in-context demonstration mechanism concisely, though some notation around pivoting could be made more explicit."
+      },
+      {
+        "paper_id": 2,
+        "score": 6.0,
+        "reasoning": "AutoVP fills a real gap by systematically benchmarking the visual prompting design space \u2014 a parameter-efficient fine-tuning topic directly in my wheelhouse \u2014 and the framework description is organized and reproducible, though the abstract slightly overclaims novelty."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.5,
+        "reasoning": "The RL-for-instruction-generation angle is a fashionable pivot on RLHF but the paper's presentation of how the reward signal is defined and the precise RL formulation is underspecified relative to what is needed to evaluate the contribution fairly."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.0,
+        "reasoning": "ReAnalogy probes inductive reasoning in LMs with an interesting regex-grounded evaluation, but the paper's narrative is cluttered \u2014 the IIL method, the dataset construction, and the comparison to symbolic baselines are not clearly sequenced \u2014 requiring multiple re-reads to extract the key claims."
+      }
+    ],
+    "citation_corr": 0.09058474353025565,
+    "acceptance_corr": 0.7244071573259104
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Technically rigorous study of watermark learnability with well-controlled distillation experiments, honest reporting of limitations (fine-tuning erasure, sample complexity), and clear separation between what is shown (high-distortion learnability) and what is not (low-distortion robustness)."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "The model arithmetic framework is formally well-grounded, the extension of speculative sampling to composed models is technically sound, and the toxicity-reduction results are compared against strong baselines with appropriate metrics."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "Rigorous multi-environment benchmark with 29 models evaluated, failure-mode analysis grounded in specific task traces, though the claim that code training has 'ambivalent impacts' is underspecified and the diversity of 8 environments introduces confounds that complicate causal attribution."
+      },
+      {
+        "paper_id": 35,
+        "score": 6.5,
+        "reasoning": "The 13B generative judge covers 58 scenarios with flexible evaluation protocols, but the claim of outperforming closed-source models 'by a large margin' is undermined by the fact that proprietary model capabilities were accessed at a fixed point in time and the agreement-with-human metric is itself a contested proxy."
+      },
+      {
+        "paper_id": 19,
+        "score": 6.5,
+        "reasoning": "The optimal transport formulation for cross-modal assignment prediction is theoretically motivated and the single-linear-layer constraint is a clearly falsifiable design choice, but the claim that word embeddings 'preserve semantic taxonomy' visually rests on qualitative arithmetic examples rather than systematic evaluation."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.0,
+        "reasoning": "The SCALE framework for combining STMs and LLMs is technically coherent and the low-resource translation gains are meaningful, but the mechanism by which STM output in in-context demonstrations specifically 'unlocks' LLM pivoting ability is asserted rather than ablated\u2014removing the STM component entirely would clarify the causal story."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "The boosting analogy is loose\u2014the framework does not formally reduce to any statistical boosting algorithm and the ensemble of trial-and-error experiences functions more like prompt augmentation than weak-learner aggregation\u2014so the framing overstates the theoretical grounding of the method."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.5,
+        "reasoning": "The regex-based ReAnalogy dataset is a clever way to construct unambiguous reasoning tests, but the claimed 33% IIL improvement is reported without statistical significance testing and the comparison against symbolic/neurosymbolic baselines uses a dataset those methods were not designed for."
+      },
+      {
+        "paper_id": 1,
+        "score": 5.0,
+        "reasoning": "The large-scale analysis of 7,433 dataset cards is methodologically sound as a descriptive study, but the findings are largely correlational (popularity correlated with completion rate) and the topic modeling methodology is not validated for reliability, limiting confidence in the thematic claims."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.5,
+        "reasoning": "The core claim\u2014that RL can replace human annotation for instruction generation\u2014is insufficiently supported because the baselines compared against are weak, the diversity metric used to motivate the approach is not rigorously tied to downstream fine-tuning performance, and the single fine-tuning step assumption may not hold in practice."
+      }
+    ],
+    "citation_corr": -0.022576182049286547,
+    "acceptance_corr": 0.3118047822311617
+  },
+  {
+    "agent_idx": 8,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Technically rigorous investigation of watermark learnability with genuine dual-use implications \u2014 the spoofing threat to provenance attribution is well-theorized, but the paper's ethics discussion likely undersells the adversarial surface it creates for attribution-based accountability mechanisms."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "AgentBench fills a real evaluation gap and the multi-environment design is sound, but the ethics discussion on what actions agents can take across eight environments \u2014 some involving operating systems and databases \u2014 deserves far more scrutiny than a benchmark paper typically provides."
+      },
+      {
+        "paper_id": 35,
+        "score": 6.5,
+        "reasoning": "Auto-J is a meaningful contribution to LLM evaluation but trains a 13B judge on 'real-world user queries and LLM responses' whose consent, provenance, and potential NSFW content are almost certainly underdisclosed, and deploying a judge trained on biased human-LLM interactions as a proxy for alignment is epistemically circular."
+      },
+      {
+        "paper_id": 1,
+        "score": 6.5,
+        "reasoning": "The large-scale empirical finding that 'Considerations for Using the Data' receives only 2.1% of dataset card content is important and damning, but the paper stops at diagnosis rather than prescribing enforceable interventions, and its own analysis scrapes Hugging Face at scale without discussing the platform's Terms of Service."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.0,
+        "reasoning": "BSPA frames itself as defensive research to improve image generator safety, but constructing an automated retrieval-based tool that systematically identifies stealthy NSFW bypass prompts and then releasing a dataset of successful attacks creates a substantially lower barrier for misuse than the authors acknowledge."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.0,
+        "reasoning": "Model arithmetic for controlled generation is genuinely novel and the toxicity reduction application is commendable, but composing LLMs via log-probability arithmetic is equally capable of amplifying harmful attributes, and the paper's ethics section almost certainly does not engage with this directional symmetry."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "Boosting of Thoughts is an incremental prompting improvement over Tree of Thoughts with modest gains, evaluated almost exclusively on math tasks; the claim of 'consistent superiority' across complex problems is overstated given the narrow benchmark scope, and there are no ethical considerations worth flagging beyond the standard LLM compute cost."
+      },
+      {
+        "paper_id": 13,
+        "score": 5.5,
+        "reasoning": "SCALE's combination of STMs and LLMs for low-resource translation is practically motivated, but evaluating primarily on BLEU/COMET without disaggregating across dialects or social registers in the target low-resource language sidesteps the core fairness question the setup raises."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.0,
+        "reasoning": "Using RL to generate training instruction data without human annotation is interesting but the ethics of self-amplifying LLM instruction sets \u2014 where model biases can compound without human oversight at any stage \u2014 is almost certainly not addressed, making this a higher-risk paper than its methodology section implies."
+      },
+      {
+        "paper_id": 3,
+        "score": 4.5,
+        "reasoning": "The IIL probing methodology is clever but the regex-generated quasi-natural-language dataset is an artificial proxy that tells us little about reasoning in natural deployment contexts; the 33% IIL improvement is on a benchmark the authors constructed, making the generalization claim weakly supported."
+      }
+    ],
+    "citation_corr": 0.36865879447348066,
+    "acceptance_corr": 0.692820323027551
+  },
+  {
+    "agent_idx": 11,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/lone_wolf.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 35,
+        "score": 7.5,
+        "reasoning": "Covers 58 real-world scenarios with dual evaluation protocols and natural language critiques, offering genuine breadth, though the paper's limitations section likely underaddresses judge bias, self-consistency failures, and the gap between benchmark agreement and real-world alignment quality."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "AgentBench is a solid multi-environment benchmark with 29 models tested and honest failure-mode analysis, but the paper does not adequately address dataset contamination risks or the validity of environment-specific metrics as proxies for general agent capability."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "Honestly reports key limitations of watermark learnability\u2014fine-tuning fragility and high sample complexity under low distortion\u2014making this one of the more complete papers in the set, though evaluation under adaptive adversaries is conspicuously absent."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.5,
+        "reasoning": "Model arithmetic is a clean inference framework with clear formal grounding and SOTA toxicity results, but the 'marginal overhead' claim for multi-model composition lacks systematic profiling, and cross-family generalization of composed models is untested."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "BoT's iterative error-analysis loop is novel, but experiments are restricted to mathematical reasoning with GPT-4; whether the approach generalizes to non-math tasks or smaller open models is entirely unexplored, leaving the scope claim unsupported."
+      },
+      {
+        "paper_id": 13,
+        "score": 5.5,
+        "reasoning": "SCALE's STM+LLM pivot strategy shows clear low-resource translation gains, but the paper does not analyze computational latency costs at inference, omits error analysis on failure cases, and tests only a handful of language directions, undercutting its generality framing."
+      },
+      {
+        "paper_id": 1,
+        "score": 5.0,
+        "reasoning": "The large-scale HuggingFace dataset card analysis is descriptively thorough but platform-scoped, lacks longitudinal trend analysis, and its actionable recommendations remain generic rather than evidence-grounded."
+      },
+      {
+        "paper_id": 16,
+        "score": 5.0,
+        "reasoning": "The 'fine-tuning is all you need' claim is dangerously overclaimed without a theoretical account of why it works, missing analysis of attack types where it fails, and no scaling evaluation across model sizes."
+      },
+      {
+        "paper_id": 3,
+        "score": 4.5,
+        "reasoning": "ReAnalogy's regex-grounded evaluation setting is creative, but only a single GPT model is evaluated, the dataset is narrow to quasi-natural language sequences, and there is no analysis of which linguistic properties drive IIL's 33% improvement."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.0,
+        "reasoning": "The RL-driven instruction generation framing is vague\u2014the specific RL algorithm, reward signal, and textual operations are underspecified in the abstract, and the comparison baseline set and evaluation criteria are insufficiently described to assess whether the claimed advantages hold."
+      }
+    ],
+    "citation_corr": -0.006890818588289359,
+    "acceptance_corr": 0.5784924073369804
+  },
+  {
+    "agent_idx": 12,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 1,
+        "score": 6.5,
+        "reasoning": "Empirically documents a critical gap in dataset ethics coverage \u2014 the 'Considerations for Using the Data' section receives only 2.1% of card content \u2014 which is itself an indictment of community norms around responsible data documentation, though the contribution is descriptive rather than prescriptive."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.0,
+        "reasoning": "The regex-based ReAnalogy benchmark is too narrow a substrate to sustain the sweeping claim that LMs 'learn more than statistical patterns'; the evaluation setting confounds inductive generalization with pattern-matched generation within constrained formal grammars."
+      },
+      {
+        "paper_id": 8,
+        "score": 4.5,
+        "reasoning": "Tensor-train ANN search is a legitimate idea but the paper lacks comparison against mature ANN libraries like FAISS or ScaNN on standard BEIR/MTEB retrieval benchmarks, making performance claims difficult to contextualize for RAG practitioners."
+      },
+      {
+        "paper_id": 13,
+        "score": 5.5,
+        "reasoning": "SCALE's combination of STM translation into LLM in-context demonstrations is pragmatically useful for low-resource MT, but reliance on BLEU and BLEURT as primary metrics is insufficient to validate the claimed quality improvements, particularly for morphologically complex Xhosa."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.5,
+        "reasoning": "AgentBench is the kind of benchmark the field actually needs \u2014 8 distinct interactive environments, 29 models evaluated, concrete failure analysis \u2014 and the finding that OSS models lag far behind commercial LLMs on long-horizon reasoning is both credible and consequential."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "Model arithmetic is a genuinely clean and extensible framework for LLM composition without retraining, and the extension to speculative sampling is a real contribution, though the toxicity reduction evaluation scope is narrow relative to the framework's generality claims."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "Boosting of Thoughts borrows the boosting metaphor credibly but the empirical evaluation is limited to mathematical reasoning benchmarks where GPT-4 already performs well, leaving the core claim of broad applicability unsubstantiated."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Watermark distillation reveals a genuine and underappreciated threat \u2014 that learned watermarks can enable spoofing attacks \u2014 and the dual implication for open-model watermarking versus provenance attribution is exactly the kind of nuanced safety analysis the watermarking literature has been missing."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.0,
+        "reasoning": "Auto-J provides a meaningfully more general and interpretable evaluator than prior LLM judges by training on 58 real-world scenarios with structured critiques, though position bias and self-reinforcing evaluation loops when used to train future models are insufficiently analyzed."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.0,
+        "reasoning": "The claim that RL alone can generate instruction data that 'suffices for fine-tuning' without subsequent RLHF is undersubstantiated \u2014 the evaluation lacks ablations against strong self-instruct baselines and does not report diversity metrics on the generated instruction set."
+      }
+    ],
+    "citation_corr": 0.14872572596489825,
+    "acceptance_corr": 0.6643638388299197
+  },
+  {
+    "agent_idx": 13,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 1,
+        "score": 7.5,
+        "reasoning": "Empirically documents that the 'Considerations for Using the Data' section receives only 2.1% of dataset card content\u2014a striking finding that quantifies the community's underinvestment in ethical data documentation and has direct implications for responsible ML practice."
+      },
+      {
+        "paper_id": 3,
+        "score": 6.0,
+        "reasoning": "Thoughtful evaluation methodology using synthetic regex-generated data to probe LLM inductive reasoning, with low ethical risk, though the paper does not discuss whether the quasi-natural language construction could introduce demographic or linguistic biases in the benchmark."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.5,
+        "reasoning": "Addresses low-resource and underrepresented language translation, which has meaningful equity implications, and the collaborative STM+LLM approach could broaden linguistic access; ethics discussion of parallel data bias is appreciated but shallow."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.5,
+        "reasoning": "AgentBench provides a timely and comprehensive evaluation framework for LLM agents across 8 interactive environments, identifying critical failure modes in long-term reasoning and instruction following that are directly relevant to safe deployment of agentic systems."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.0,
+        "reasoning": "Using RL to self-generate instruction data is novel and reduces human annotation burden, but the paper does not adequately address whether RL-driven diversification could amplify harmful or biased content patterns in the generated dataset."
+      },
+      {
+        "paper_id": 17,
+        "score": 5.5,
+        "reasoning": "This dual-use paper constructs automated adversarial prompt tools and an NSFW evaluation dataset; while framed as defensive research, the marginal risk of releasing attack infrastructure is not sufficiently mitigated and the ethics discussion underweights potential misuse."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "Model arithmetic offers a principled, training-free framework for controlled text generation with demonstrated toxicity reduction and honest discussion of limitations; the open-source release and speculative sampling extension are practical contributions to safer LLM deployment."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "Boosting of Thoughts is an interesting iterative prompting framework but lacks any discussion of whether enabling cheaper, automated reasoning amplification could lower barriers to generating persuasive misinformation at scale."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Watermark learnability is a critical and underexplored question for AI accountability; the paper honestly characterizes both the defensive utility of learned watermarks and the spoofing attack vector, making an important and balanced contribution to LLM deployment safety."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.0,
+        "reasoning": "Auto-J advances interpretable LLM evaluation across 58 real-world scenarios, which is valuable for alignment oversight, though training on real user queries raises privacy considerations that the paper does not address and the potential for the judge itself to be gamed or misused is underexplored."
+      }
+    ],
+    "citation_corr": 0.3104987036774781,
+    "acceptance_corr": 0.5207556439232955
+  },
+  {
+    "agent_idx": 14,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/modern.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 14,
+        "score": 7.5,
+        "reasoning": "AgentBench presents a clearly motivated, well-structured benchmark for LLM-as-agent evaluation across 8 distinct environments, with concrete findings about the commercial-vs-OSS performance gap that are directly relevant to my interests in LLM evaluation at scale."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "The watermark learnability framing is crisp and clearly dual-use (open-model watermarking vs. spoofing attacks), the distillation methodology is well-explained, and the limitations around fine-tuning robustness are honestly characterized."
+      },
+      {
+        "paper_id": 35,
+        "score": 7.5,
+        "reasoning": "The three-pronged motivation (generality, flexibility, interpretability) is clearly articulated, the 58-scenario testbed construction is concrete, and the critique of prior single-protocol judges is well-grounded in the literature."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "The model arithmetic inference framework is clearly motivated and the connection to prior CTG techniques via simple formulas is an elegant presentational choice, though the speculative sampling extension could be more prominently foregrounded."
+      },
+      {
+        "paper_id": 30,
+        "score": 7.0,
+        "reasoning": "TinyTrain makes concrete, quantified claims about backward-pass memory and compute reduction that are easy to evaluate, and the problem motivation around MCU-grade on-device training is precisely scoped."
+      },
+      {
+        "paper_id": 13,
+        "score": 6.5,
+        "reasoning": "SCALE clearly frames the STM-LLM collaboration problem and reports concrete BLEURT/COMET deltas, but the mechanism by which LLM language bias is mitigated could be explained more precisely in the abstract."
+      },
+      {
+        "paper_id": 2,
+        "score": 6.5,
+        "reasoning": "AutoVP provides a clear end-to-end framework for visual prompting with well-defined design space axes, and the benchmark of 12 tasks is a genuine contribution, though the relationship between the automation and the benchmark contributions could be more cleanly separated."
+      },
+      {
+        "paper_id": 25,
+        "score": 6.0,
+        "reasoning": "The boosting analogy is reasonably clear and the iterative error-experience loop is well-illustrated, but the abstract overpromises on the novelty of the tree structure modifications relative to Tree of Thoughts."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.5,
+        "reasoning": "The high-level motivation for RL-driven instruction generation is clear, but the abstract leaves the RL reward signal and action space underspecified, making the technical contribution difficult to assess from the presentation alone."
+      },
+      {
+        "paper_id": 3,
+        "score": 5.5,
+        "reasoning": "The IIL evaluation setting is an interesting idea, but the abstract conflates the dataset contribution (ReAnalogy) with the evaluation methodology (IIL) without clearly distinguishing what is reusable infrastructure versus one-off experimental apparatus."
+      }
+    ],
+    "citation_corr": 0.2546787120051225,
+    "acceptance_corr": 0.4708709557974187
+  }
+]

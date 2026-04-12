@@ -59,7 +59,7 @@ def select(agents: list[AgentResult], n_survivors: int = 4) -> list[AgentResult]
             seen_indices.add(idx)
             survivors.append(agent)
 
-    # Top 2 from each metric
+    # Top 2 from each metric, remainder filled by average
     for agent in by_citation[:2]:
         _add(agent)
     for agent in by_acceptance[:2]:

@@ -1,0 +1,1309 @@
+
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2024_conference,times}
+
+%%%%% NEW MATH DEFINITIONS %%%%%
+
+\usepackage{amsmath,amsfonts,bm}
+
+% Mark sections of captions for referring to divisions of figures
+\newcommand{\figleft}{{\em (Left)}}
+\newcommand{\figcenter}{{\em (Center)}}
+\newcommand{\figright}{{\em (Right)}}
+\newcommand{\figtop}{{\em (Top)}}
+\newcommand{\figbottom}{{\em (Bottom)}}
+\newcommand{\captiona}{{\em (a)}}
+\newcommand{\captionb}{{\em (b)}}
+\newcommand{\captionc}{{\em (c)}}
+\newcommand{\captiond}{{\em (d)}}
+
+% Highlight a newly defined term
+\newcommand{\newterm}[1]{{\bf #1}}
+
+
+% Figure reference, lower-case.
+\def\figref#1{figure~\ref{#1}}
+% Figure reference, capital. For start of sentence
+\def\Figref#1{Figure~\ref{#1}}
+\def\twofigref#1#2{figures \ref{#1} and \ref{#2}}
+\def\quadfigref#1#2#3#4{figures \ref{#1}, \ref{#2}, \ref{#3} and \ref{#4}}
+% Section reference, lower-case.
+\def\secref#1{section~\ref{#1}}
+% Section reference, capital.
+\def\Secref#1{Section~\ref{#1}}
+% Reference to two sections.
+\def\twosecrefs#1#2{sections \ref{#1} and \ref{#2}}
+% Reference to three sections.
+\def\secrefs#1#2#3{sections \ref{#1}, \ref{#2} and \ref{#3}}
+% Reference to an equation, lower-case.
+\def\eqref#1{equation~\ref{#1}}
+% Reference to an equation, upper case
+\def\Eqref#1{Equation~\ref{#1}}
+% A raw reference to an equation---avoid using if possible
+\def\plaineqref#1{\ref{#1}}
+% Reference to a chapter, lower-case.
+\def\chapref#1{chapter~\ref{#1}}
+% Reference to an equation, upper case.
+\def\Chapref#1{Chapter~\ref{#1}}
+% Reference to a range of chapters
+\def\rangechapref#1#2{chapters\ref{#1}--\ref{#2}}
+% Reference to an algorithm, lower-case.
+\def\algref#1{algorithm~\ref{#1}}
+% Reference to an algorithm, upper case.
+\def\Algref#1{Algorithm~\ref{#1}}
+\def\twoalgref#1#2{algorithms \ref{#1} and \ref{#2}}
+\def\Twoalgref#1#2{Algorithms \ref{#1} and \ref{#2}}
+% Reference to a part, lower case
+\def\partref#1{part~\ref{#1}}
+% Reference to a part, upper case
+\def\Partref#1{Part~\ref{#1}}
+\def\twopartref#1#2{parts \ref{#1} and \ref{#2}}
+
+\def\ceil#1{\lceil #1 \rceil}
+\def\floor#1{\lfloor #1 \rfloor}
+\def\1{\bm{1}}
+\newcommand{\train}{\mathcal{D}}
+\newcommand{\valid}{\mathcal{D_{\mathrm{valid}}}}
+\newcommand{\test}{\mathcal{D_{\mathrm{test}}}}
+
+\def\eps{{\epsilon}}
+
+
+% Random variables
+\def\reta{{\textnormal{$\eta$}}}
+\def\ra{{\textnormal{a}}}
+\def\rb{{\textnormal{b}}}
+\def\rc{{\textnormal{c}}}
+\def\rd{{\textnormal{d}}}
+\def\re{{\textnormal{e}}}
+\def\rf{{\textnormal{f}}}
+\def\rg{{\textnormal{g}}}
+\def\rh{{\textnormal{h}}}
+\def\ri{{\textnormal{i}}}
+\def\rj{{\textnormal{j}}}
+\def\rk{{\textnormal{k}}}
+\def\rl{{\textnormal{l}}}
+% rm is already a command, just don't name any random variables m
+\def\rn{{\textnormal{n}}}
+\def\ro{{\textnormal{o}}}
+\def\rp{{\textnormal{p}}}
+\def\rq{{\textnormal{q}}}
+\def\rr{{\textnormal{r}}}
+\def\rs{{\textnormal{s}}}
+\def\rt{{\textnormal{t}}}
+\def\ru{{\textnormal{u}}}
+\def\rv{{\textnormal{v}}}
+\def\rw{{\textnormal{w}}}
+\def\rx{{\textnormal{x}}}
+\def\ry{{\textnormal{y}}}
+\def\rz{{\textnormal{z}}}
+
+% Random vectors
+\def\rvepsilon{{\mathbf{\epsilon}}}
+\def\rvtheta{{\mathbf{\theta}}}
+\def\rva{{\mathbf{a}}}
+\def\rvb{{\mathbf{b}}}
+\def\rvc{{\mathbf{c}}}
+\def\rvd{{\mathbf{d}}}
+\def\rve{{\mathbf{e}}}
+\def\rvf{{\mathbf{f}}}
+\def\rvg{{\mathbf{g}}}
+\def\rvh{{\mathbf{h}}}
+\def\rvu{{\mathbf{i}}}
+\def\rvj{{\mathbf{j}}}
+\def\rvk{{\mathbf{k}}}
+\def\rvl{{\mathbf{l}}}
+\def\rvm{{\mathbf{m}}}
+\def\rvn{{\mathbf{n}}}
+\def\rvo{{\mathbf{o}}}
+\def\rvp{{\mathbf{p}}}
+\def\rvq{{\mathbf{q}}}
+\def\rvr{{\mathbf{r}}}
+\def\rvs{{\mathbf{s}}}
+\def\rvt{{\mathbf{t}}}
+\def\rvu{{\mathbf{u}}}
+\def\rvv{{\mathbf{v}}}
+\def\rvw{{\mathbf{w}}}
+\def\rvx{{\mathbf{x}}}
+\def\rvy{{\mathbf{y}}}
+\def\rvz{{\mathbf{z}}}
+
+% Elements of random vectors
+\def\erva{{\textnormal{a}}}
+\def\ervb{{\textnormal{b}}}
+\def\ervc{{\textnormal{c}}}
+\def\ervd{{\textnormal{d}}}
+\def\erve{{\textnormal{e}}}
+\def\ervf{{\textnormal{f}}}
+\def\ervg{{\textnormal{g}}}
+\def\ervh{{\textnormal{h}}}
+\def\ervi{{\textnormal{i}}}
+\def\ervj{{\textnormal{j}}}
+\def\ervk{{\textnormal{k}}}
+\def\ervl{{\textnormal{l}}}
+\def\ervm{{\textnormal{m}}}
+\def\ervn{{\textnormal{n}}}
+\def\ervo{{\textnormal{o}}}
+\def\ervp{{\textnormal{p}}}
+\def\ervq{{\textnormal{q}}}
+\def\ervr{{\textnormal{r}}}
+\def\ervs{{\textnormal{s}}}
+\def\ervt{{\textnormal{t}}}
+\def\ervu{{\textnormal{u}}}
+\def\ervv{{\textnormal{v}}}
+\def\ervw{{\textnormal{w}}}
+\def\ervx{{\textnormal{x}}}
+\def\ervy{{\textnormal{y}}}
+\def\ervz{{\textnormal{z}}}
+
+% Random matrices
+\def\rmA{{\mathbf{A}}}
+\def\rmB{{\mathbf{B}}}
+\def\rmC{{\mathbf{C}}}
+\def\rmD{{\mathbf{D}}}
+\def\rmE{{\mathbf{E}}}
+\def\rmF{{\mathbf{F}}}
+\def\rmG{{\mathbf{G}}}
+\def\rmH{{\mathbf{H}}}
+\def\rmI{{\mathbf{I}}}
+\def\rmJ{{\mathbf{J}}}
+\def\rmK{{\mathbf{K}}}
+\def\rmL{{\mathbf{L}}}
+\def\rmM{{\mathbf{M}}}
+\def\rmN{{\mathbf{N}}}
+\def\rmO{{\mathbf{O}}}
+\def\rmP{{\mathbf{P}}}
+\def\rmQ{{\mathbf{Q}}}
+\def\rmR{{\mathbf{R}}}
+\def\rmS{{\mathbf{S}}}
+\def\rmT{{\mathbf{T}}}
+\def\rmU{{\mathbf{U}}}
+\def\rmV{{\mathbf{V}}}
+\def\rmW{{\mathbf{W}}}
+\def\rmX{{\mathbf{X}}}
+\def\rmY{{\mathbf{Y}}}
+\def\rmZ{{\mathbf{Z}}}
+
+% Elements of random matrices
+\def\ermA{{\textnormal{A}}}
+\def\ermB{{\textnormal{B}}}
+\def\ermC{{\textnormal{C}}}
+\def\ermD{{\textnormal{D}}}
+\def\ermE{{\textnormal{E}}}
+\def\ermF{{\textnormal{F}}}
+\def\ermG{{\textnormal{G}}}
+\def\ermH{{\textnormal{H}}}
+\def\ermI{{\textnormal{I}}}
+\def\ermJ{{\textnormal{J}}}
+\def\ermK{{\textnormal{K}}}
+\def\ermL{{\textnormal{L}}}
+\def\ermM{{\textnormal{M}}}
+\def\ermN{{\textnormal{N}}}
+\def\ermO{{\textnormal{O}}}
+\def\ermP{{\textnormal{P}}}
+\def\ermQ{{\textnormal{Q}}}
+\def\ermR{{\textnormal{R}}}
+\def\ermS{{\textnormal{S}}}
+\def\ermT{{\textnormal{T}}}
+\def\ermU{{\textnormal{U}}}
+\def\ermV{{\textnormal{V}}}
+\def\ermW{{\textnormal{W}}}
+\def\ermX{{\textnormal{X}}}
+\def\ermY{{\textnormal{Y}}}
+\def\ermZ{{\textnormal{Z}}}
+
+% Vectors
+\def\vzero{{\bm{0}}}
+\def\vone{{\bm{1}}}
+\def\vmu{{\bm{\mu}}}
+\def\vtheta{{\bm{\theta}}}
+\def\va{{\bm{a}}}
+\def\vb{{\bm{b}}}
+\def\vc{{\bm{c}}}
+\def\vd{{\bm{d}}}
+\def\ve{{\bm{e}}}
+\def\vf{{\bm{f}}}
+\def\vg{{\bm{g}}}
+\def\vh{{\bm{h}}}
+\def\vi{{\bm{i}}}
+\def\vj{{\bm{j}}}
+\def\vk{{\bm{k}}}
+\def\vl{{\bm{l}}}
+\def\vm{{\bm{m}}}
+\def\vn{{\bm{n}}}
+\def\vo{{\bm{o}}}
+\def\vp{{\bm{p}}}
+\def\vq{{\bm{q}}}
+\def\vr{{\bm{r}}}
+\def\vs{{\bm{s}}}
+\def\vt{{\bm{t}}}
+\def\vu{{\bm{u}}}
+\def\vv{{\bm{v}}}
+\def\vw{{\bm{w}}}
+\def\vx{{\bm{x}}}
+\def\vy{{\bm{y}}}
+\def\vz{{\bm{z}}}
+
+% Elements of vectors
+\def\evalpha{{\alpha}}
+\def\evbeta{{\beta}}
+\def\evepsilon{{\epsilon}}
+\def\evlambda{{\lambda}}
+\def\evomega{{\omega}}
+\def\evmu{{\mu}}
+\def\evpsi{{\psi}}
+\def\evsigma{{\sigma}}
+\def\evtheta{{\theta}}
+\def\eva{{a}}
+\def\evb{{b}}
+\def\evc{{c}}
+\def\evd{{d}}
+\def\eve{{e}}
+\def\evf{{f}}
+\def\evg{{g}}
+\def\evh{{h}}
+\def\evi{{i}}
+\def\evj{{j}}
+\def\evk{{k}}
+\def\evl{{l}}
+\def\evm{{m}}
+\def\evn{{n}}
+\def\evo{{o}}
+\def\evp{{p}}
+\def\evq{{q}}
+\def\evr{{r}}
+\def\evs{{s}}
+\def\evt{{t}}
+\def\evu{{u}}
+\def\evv{{v}}
+\def\evw{{w}}
+\def\evx{{x}}
+\def\evy{{y}}
+\def\evz{{z}}
+
+% Matrix
+\def\mA{{\bm{A}}}
+\def\mB{{\bm{B}}}
+\def\mC{{\bm{C}}}
+\def\mD{{\bm{D}}}
+\def\mE{{\bm{E}}}
+\def\mF{{\bm{F}}}
+\def\mG{{\bm{G}}}
+\def\mH{{\bm{H}}}
+\def\mI{{\bm{I}}}
+\def\mJ{{\bm{J}}}
+\def\mK{{\bm{K}}}
+\def\mL{{\bm{L}}}
+\def\mM{{\bm{M}}}
+\def\mN{{\bm{N}}}
+\def\mO{{\bm{O}}}
+\def\mP{{\bm{P}}}
+\def\mQ{{\bm{Q}}}
+\def\mR{{\bm{R}}}
+\def\mS{{\bm{S}}}
+\def\mT{{\bm{T}}}
+\def\mU{{\bm{U}}}
+\def\mV{{\bm{V}}}
+\def\mW{{\bm{W}}}
+\def\mX{{\bm{X}}}
+\def\mY{{\bm{Y}}}
+\def\mZ{{\bm{Z}}}
+\def\mBeta{{\bm{\beta}}}
+\def\mPhi{{\bm{\Phi}}}
+\def\mLambda{{\bm{\Lambda}}}
+\def\mSigma{{\bm{\Sigma}}}
+
+% Tensor
+\DeclareMathAlphabet{\mathsfit}{\encodingdefault}{\sfdefault}{m}{sl}
+\SetMathAlphabet{\mathsfit}{bold}{\encodingdefault}{\sfdefault}{bx}{n}
+\newcommand{\tens}[1]{\bm{\mathsfit{#1}}}
+\def\tA{{\tens{A}}}
+\def\tB{{\tens{B}}}
+\def\tC{{\tens{C}}}
+\def\tD{{\tens{D}}}
+\def\tE{{\tens{E}}}
+\def\tF{{\tens{F}}}
+\def\tG{{\tens{G}}}
+\def\tH{{\tens{H}}}
+\def\tI{{\tens{I}}}
+\def\tJ{{\tens{J}}}
+\def\tK{{\tens{K}}}
+\def\tL{{\tens{L}}}
+\def\tM{{\tens{M}}}
+\def\tN{{\tens{N}}}
+\def\tO{{\tens{O}}}
+\def\tP{{\tens{P}}}
+\def\tQ{{\tens{Q}}}
+\def\tR{{\tens{R}}}
+\def\tS{{\tens{S}}}
+\def\tT{{\tens{T}}}
+\def\tU{{\tens{U}}}
+\def\tV{{\tens{V}}}
+\def\tW{{\tens{W}}}
+\def\tX{{\tens{X}}}
+\def\tY{{\tens{Y}}}
+\def\tZ{{\tens{Z}}}
+
+
+% Graph
+\def\gA{{\mathcal{A}}}
+\def\gB{{\mathcal{B}}}
+\def\gC{{\mathcal{C}}}
+\def\gD{{\mathcal{D}}}
+\def\gE{{\mathcal{E}}}
+\def\gF{{\mathcal{F}}}
+\def\gG{{\mathcal{G}}}
+\def\gH{{\mathcal{H}}}
+\def\gI{{\mathcal{I}}}
+\def\gJ{{\mathcal{J}}}
+\def\gK{{\mathcal{K}}}
+\def\gL{{\mathcal{L}}}
+\def\gM{{\mathcal{M}}}
+\def\gN{{\mathcal{N}}}
+\def\gO{{\mathcal{O}}}
+\def\gP{{\mathcal{P}}}
+\def\gQ{{\mathcal{Q}}}
+\def\gR{{\mathcal{R}}}
+\def\gS{{\mathcal{S}}}
+\def\gT{{\mathcal{T}}}
+\def\gU{{\mathcal{U}}}
+\def\gV{{\mathcal{V}}}
+\def\gW{{\mathcal{W}}}
+\def\gX{{\mathcal{X}}}
+\def\gY{{\mathcal{Y}}}
+\def\gZ{{\mathcal{Z}}}
+
+% Sets
+\def\sA{{\mathbb{A}}}
+\def\sB{{\mathbb{B}}}
+\def\sC{{\mathbb{C}}}
+\def\sD{{\mathbb{D}}}
+% Don't use a set called E, because this would be the same as our symbol
+% for expectation.
+\def\sF{{\mathbb{F}}}
+\def\sG{{\mathbb{G}}}
+\def\sH{{\mathbb{H}}}
+\def\sI{{\mathbb{I}}}
+\def\sJ{{\mathbb{J}}}
+\def\sK{{\mathbb{K}}}
+\def\sL{{\mathbb{L}}}
+\def\sM{{\mathbb{M}}}
+\def\sN{{\mathbb{N}}}
+\def\sO{{\mathbb{O}}}
+\def\sP{{\mathbb{P}}}
+\def\sQ{{\mathbb{Q}}}
+\def\sR{{\mathbb{R}}}
+\def\sS{{\mathbb{S}}}
+\def\sT{{\mathbb{T}}}
+\def\sU{{\mathbb{U}}}
+\def\sV{{\mathbb{V}}}
+\def\sW{{\mathbb{W}}}
+\def\sX{{\mathbb{X}}}
+\def\sY{{\mathbb{Y}}}
+\def\sZ{{\mathbb{Z}}}
+
+% Entries of a matrix
+\def\emLambda{{\Lambda}}
+\def\emA{{A}}
+\def\emB{{B}}
+\def\emC{{C}}
+\def\emD{{D}}
+\def\emE{{E}}
+\def\emF{{F}}
+\def\emG{{G}}
+\def\emH{{H}}
+\def\emI{{I}}
+\def\emJ{{J}}
+\def\emK{{K}}
+\def\emL{{L}}
+\def\emM{{M}}
+\def\emN{{N}}
+\def\emO{{O}}
+\def\emP{{P}}
+\def\emQ{{Q}}
+\def\emR{{R}}
+\def\emS{{S}}
+\def\emT{{T}}
+\def\emU{{U}}
+\def\emV{{V}}
+\def\emW{{W}}
+\def\emX{{X}}
+\def\emY{{Y}}
+\def\emZ{{Z}}
+\def\emSigma{{\Sigma}}
+
+% entries of a tensor
+% Same font as tensor, without \bm wrapper
+\newcommand{\etens}[1]{\mathsfit{#1}}
+\def\etLambda{{\etens{\Lambda}}}
+\def\etA{{\etens{A}}}
+\def\etB{{\etens{B}}}
+\def\etC{{\etens{C}}}
+\def\etD{{\etens{D}}}
+\def\etE{{\etens{E}}}
+\def\etF{{\etens{F}}}
+\def\etG{{\etens{G}}}
+\def\etH{{\etens{H}}}
+\def\etI{{\etens{I}}}
+\def\etJ{{\etens{J}}}
+\def\etK{{\etens{K}}}
+\def\etL{{\etens{L}}}
+\def\etM{{\etens{M}}}
+\def\etN{{\etens{N}}}
+\def\etO{{\etens{O}}}
+\def\etP{{\etens{P}}}
+\def\etQ{{\etens{Q}}}
+\def\etR{{\etens{R}}}
+\def\etS{{\etens{S}}}
+\def\etT{{\etens{T}}}
+\def\etU{{\etens{U}}}
+\def\etV{{\etens{V}}}
+\def\etW{{\etens{W}}}
+\def\etX{{\etens{X}}}
+\def\etY{{\etens{Y}}}
+\def\etZ{{\etens{Z}}}
+
+% The true underlying data generating distribution
+\newcommand{\pdata}{p_{\rm{data}}}
+% The empirical distribution defined by the training set
+\newcommand{\ptrain}{\hat{p}_{\rm{data}}}
+\newcommand{\Ptrain}{\hat{P}_{\rm{data}}}
+% The model distribution
+\newcommand{\pmodel}{p_{\rm{model}}}
+\newcommand{\Pmodel}{P_{\rm{model}}}
+\newcommand{\ptildemodel}{\tilde{p}_{\rm{model}}}
+% Stochastic autoencoder distributions
+\newcommand{\pencode}{p_{\rm{encoder}}}
+\newcommand{\pdecode}{p_{\rm{decoder}}}
+\newcommand{\precons}{p_{\rm{reconstruct}}}
+
+\newcommand{\laplace}{\mathrm{Laplace}} % Laplace distribution
+
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Ls}{\mathcal{L}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\emp}{\tilde{p}}
+\newcommand{\lr}{\alpha}
+\newcommand{\reg}{\lambda}
+\newcommand{\rect}{\mathrm{rectifier}}
+\newcommand{\softmax}{\mathrm{softmax}}
+\newcommand{\sigmoid}{\sigma}
+\newcommand{\softplus}{\zeta}
+\newcommand{\KL}{D_{\mathrm{KL}}}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\standarderror}{\mathrm{SE}}
+\newcommand{\Cov}{\mathrm{Cov}}
+% Wolfram Mathworld says $L^2$ is for function spaces and $\ell^2$ is for vectors
+% But then they seem to use $L^2$ for vectors throughout the site, and so does
+% wikipedia.
+\newcommand{\normlzero}{L^0}
+\newcommand{\normlone}{L^1}
+\newcommand{\normltwo}{L^2}
+\newcommand{\normlp}{L^p}
+\newcommand{\normmax}{L^\infty}
+
+\newcommand{\parents}{Pa} % See usage in notation.tex. Chosen to match Daphne's book.
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\DeclareMathOperator{\sign}{sign}
+\DeclareMathOperator{\Tr}{Tr}
+\let\ab\allowbreak
+
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{pifont}
+\usepackage{booktabs} 
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{amsmath}
+
+\newcommand{\dd}{{\rm d}}
+
+\newcommand{\cmark}{\color{green}\ding{51}}%
+\newcommand{\xmark}{\color{red}\ding{55}}%
+\newcommand{\ymark}{\color{orange}\textbf{$\sim$}}%
+\newcommand\Tstrut{\rule{0pt}{2.6ex}}         % = `top' strut
+\newcommand\Bstrut{\rule[-0.9ex]{0pt}{0pt}}   % = `bottom' strut
+\newcommand{\GK}[1]{\textcolor{blue}{[Gabriel: #1]}}
+\newcommand{\RS}[1]{\textcolor{red}{[Ravi: #1]}}
+
+
+\title{Forward Learning with Top-Down Feedback: \\ Empirical and Analytical Characterization}
+
+
+
+\author{Ravi Srinivasan$^{1,2}$, Francesca Mignacco$^{3,4}$, Martino Sorbaro$^{5,6}$, \\\textbf{Maria Refinetti}$^{7,8}$\textbf{,}
+\textbf{Avi Cooper}$^{9}$\textbf{,} \textbf{Gabriel Kreiman}$^{10,11, \dagger}$\textbf{,} \textbf{Giorgia Dellaferrera}$^{1,2,5,10,11,\ddagger}$\\
+\small
+$^1$ IBM Research Europe, Zurich, $^2$ ETH Zurich, $^3$ Joseph Henry Laboratories of Physics, Princeton \\
+\small
+University, $^4$ Initiative for the Theoretical Sciences, Graduate Center, City University of New York, \\
+\small
+$^5$ Institute of Neuroinformatics, University of Zurich and ETH Zurich,
+$^6$ AI Center, ETH Zurich, \\
+\small
+$^7$ Laboratoire de Physique de l’Ecole Normale Supérieure, Université PSL, CNRS,
+Sorbonne Université, \\
+\small
+Université Paris-Diderot, Sorbonne Paris Cité, 
+$^8$ IdePHICS laboratory, École Fédérale Polytechnique de \\
+\small
+Lausanne (EPFL),
+$^9$ Massachusetts Institute of Technology, $^{10}$ Center for Brains, Minds and Machines, \\
+\small
+$^{11}$ Children’s Hospital, Harvard Medical School\\
+$^\dagger$\texttt{\small gabriel.kreiman@tch.harvard.edu} \\$^\ddagger$\texttt{\small giorgia.dellaferrera@gmail.com}
+}
+
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+  ``Forward-only'' algorithms, which train neural networks while avoiding a backward pass, have recently gained attention as a way of solving the biologically unrealistic aspects of backpropagation.
+  Here, we first address compelling challenges related to the ``forward-only'' rules, which include reducing the performance gap with backpropagation and providing an analytical understanding of their dynamics. To this end, we show that the forward-only algorithm with top-down feedback is well-approximated by an ``adaptive-feedback-alignment'' algorithm, and we analytically track its performance during learning in a prototype high-dimensional setting. Then, we compare different versions of forward-only algorithms, focusing on the Forward-Forward and PEPITA frameworks, and we show that they share the same learning principles. Overall, our work unveils the connections between three key neuro-inspired learning rules, providing a link between ``forward-only'' algorithms, \textit{i.e.,} Forward-Forward and PEPITA, and an approximation of backpropagation, \textit{i.e.,} Feedback Alignment.
+\end{abstract}
+
+
+
+
+ 
+\section{Introduction}
+\label{intro}
+In machine learning (ML), the credit assignment (CA) problem refers to estimating how much each parameter of a neural network has contributed to the network's output and how the parameter should be adjusted to decrease the network's error. The most commonly used solution to CA is the Backpropagation algorithm (BP) \citep{Rumelhart}, which computes the update of each parameter as a derivative of the loss function. While this strategy is effective in training networks on complex tasks, it is problematic in at least two aspects. First, BP is not compatible with the known mechanisms of learning in the brain \citep{Lillicrap2020}.
+While the lack of biological plausibility does not necessarily represent an issue for ML, it may eventually help us understand how to address shortcomings of ML, such as the lack of continual learning and robustness, or offer insights into how learning operates in biological neural systems \citep{richards2019deep}.
+Second, the backward pass of BP is a challenge for on-hardware implementations with limited resources, due to high memory and power requirements \citep{Khacef2022,kendall2020}.
+
+These reasons motivated the development of alternative solutions to CA, relying on learning dynamics that are more biologically realistic than BP. Among these, several algorithms modified the feedback path carrying the information on the error \citep{Lillicrap,noekland2016direct,Akrout2019DeepLW,clark2021credit} or the target \citep{lee2015difference,frenkel2019learning} to each node, while maintaining the alternation between a forward and a backward pass. 
+More recently, ``forward-only'' algorithms were developed, which consist of a family of training schemes that replace the backward pass with a second forward pass. These approaches include the \textit{Forward-Forward }algorithm (FF) \citep{Hinton2022FF} and the \textit{Present the Error to Perturb the Input To modulate the Activity} learning rule (PEPITA) \citep{Dellaferrera_PEPITA}. Both algorithms present a clean input sample in the first forward pass (\textit{positive phase} for FF, \textit{standard pass} for PEPITA). In FF, the second forward pass consists in presenting the network with a corrupted data sample obtained by merging different samples with masks (\textit{negative phase}). In PEPITA, instead, in the second forward pass the input is modulated through information about the error of the first forward pass (\textit{modulated pass}). For simplicity, we will denote the first and second forward pass as \textit{clean} and \textit{modulated} pass, respectively, for both FF and PEPITA. These algorithms avoid the issues of weight transport, non-locality, freezing of activity, and, partially, the update locking problem \citep{Lillicrap2020}. Furthermore, as they do not require precise knowledge of the gradients, nor any non-local information, they are well-suited for implementation in neuromorphic hardware. Indeed, the forward path can be treated as a black box during learning and it is sufficient to measure forward activations to compute the weight update.
+
+\begin{figure*}[h]
+     \centering
+     \includegraphics[width=1\textwidth]{figures/Schemes.pdf}
+     \vspace*{-5mm}
+     \caption{Different error transportations and WM configurations. Green arrows mark forward paths and orange arrows indicate error paths. \textbf{(a)} Feedback alignment (FA). \textbf{(b)} Present the Error to Perturb the Input To modulate Activity (PEPITA). \textbf{(c)} PEPITA with WM. \textbf{(d)} Forward-Forward (FF).}
+     \label{fig:schemes}
+ \end{figure*}
+
+Despite the promising results, the ``forward-only'' algorithms are still in their infancy. First, neither \citet{Hinton2022FF} nor \citet{Dellaferrera_PEPITA} present an analytical argument explaining why the algorithms work effectively. Second, they present some biologically unrealistic aspects. For instance, the FF requires the generation of corrupted data and their presentation in alternation with clean data, while PEPITA needs to retain information from the first forward pass until the second forward pass, therefore the algorithm is local in space but not local in time. Third, the algorithms 
+present a performance gap when compared with other biologically inspired learning rules, such as feedback alignment (FA). 
+Our work addresses the mentioned limitations of the ``forward-only'' algorithms, focusing on PEPITA, and compares the FF and the PEPITA frameworks. Here, we make the following contributions: 
+\textit{(i)} We show that PEPITA effectively implements ``feedback-alignment'' with an adaptive feedback (AF) matrix that depends on the upstream weights (Sec.~\ref{sec:taylor});
+\textit{(ii)} Focusing on PEPITA, we use the above result to analytically characterize the online learning dynamics of ``forward-only'' algorithms and explain the phenomenon of alignment of forward weights and top-down connections observed in original work (Sec.~\ref{sec:teacherstudent});
+\textit{(iii)} We demonstrate that PEPITA can be applied to networks deeper than those tested by \citet{Dellaferrera_PEPITA} (Sec.~\ref{sec:deeper});
+\textit{(iv)} We propose two strategies to extend the weight mirroring (WM) method to training schemes other than FA and show that PEPITA enhanced with WM achieves better alignment, accuracy, and convergence (Sec.~\ref{sec:deeper});
+\textit{(v)} We demonstrate that PEPITA can be approximated to a rule containing a sum of Hebbian and anti-Hebbian terms, allowing space- and time-locality (Sec.~\ref{sec:hebbian} and Appendix \ref{appendix:tl});
+\textit{(vi)} We analytically compare the Hebbian approximation of PEPITA with the Forward-Forward algorithm \citep{Hinton2022FF} with top-down feedback (Sec.~\ref{sec:ff}).
+
+
+
+ \begin{table*}[h]
+\caption{Biological properties and test accuracy [\%] on MNIST achieved by a non-exhaustive selection of bio-inspired alternatives to BP. We report the highest accuracy documented in the referenced papers. Legend: \color{red}\ding{55} \color{black}= aspect not solved; \color{green}\ding{51} \color{black}= aspect fully solved; \color{orange}\textbf{$\sim$} \color{black}= aspect partially solved. 
+}
+\label{tab:background}
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{sc}
+\begin{tabular}{lcccccc|c}
+\toprule
+\begin{tabular}{@{}c@{}}Learning \\ Rule\end{tabular} & Ref. & \begin{tabular}{@{}c@{}}Forward \\ Only\end{tabular} &  \begin{tabular}{@{}c@{}}Weight \\ Transport \\ Free\end{tabular} & Local &  \begin{tabular}{@{}c@{}}Activity \\ Freezing\end{tabular} &  \begin{tabular}{@{}c@{}}Update \\ Unlocked\end{tabular} & MNIST \\
+\midrule
+FA  & \cite{lillicrap2016random} & \xmark & \cmark & \xmark & \xmark & \xmark & 98.74 \\
+DFA & \cite{nøkland2016direct} & \xmark & \cmark & \xmark & \xmark & \ymark & 98.55  \\
+DRTP & \cite{frenkel2019learning} & \xmark & \cmark & \cmark & \xmark & \cmark & 98.52 \\
+DTP-$\sigma$ & \cite{Ororbia_Mali_2019} & \xmark & \cmark & \cmark & \xmark & \cmark & 97.62 \\
+LRA & \cite{Ororbia_Mali_2019} & \xmark & \cmark & \cmark & \ymark & \cmark & 98.03 \\
+RLRA & \cite{ororbia2020largescale} & \xmark & \cmark & \cmark & \cmark & \cmark & 98.18 \\
+EFP & \cite{Kohan2018} & \cmark & \cmark & \cmark & \cmark & \xmark & 98.24 \\
+PEPITA & \cite{Dellaferrera_PEPITA} & \cmark& \cmark & \cmark & \cmark & \ymark  &  98.29 \\
+FF & \cite{Hinton2022FF} & \cmark & \cmark & \cmark & \cmark & \cmark & 98.84 \\
+PFF & \cite{ororbia2023pff} & \cmark & \cmark & \cmark & \cmark & \cmark & 98.66 \\
+SP & \cite{kohan2022signal} & \cmark & \cmark & \cmark & \cmark & \cmark & 98.62 \\
+PEPITA+WM & Ours & \cmark& \cmark & \cmark & \cmark & \ymark  &  98.42 \\
+PEPIT-Hebbian & Ours & \cmark& \cmark & \cmark & \cmark & \ymark  &  98.05 \\
+PEPITA-TL & Ours & \cmark & \cmark & \cmark & \cmark & \cmark & 92.78 \\
+\hline 
+\bottomrule
+\end{tabular}
+\end{sc}
+}
+\end{center}
+\vskip -0.2in
+\end{table*}
+
+\section{Background and relevant work}
+\subsection{Bio-inspired learning algorithms}
+Several training rules for artificial neural networks (ANNs) have been proposed to break the weight symmetry constraint required by BP \citep{Lillicrap,noekland2016direct,liao2016signsymmetry,nokland2019localerror,frenkel2019learning,Hazan,Kohan2018,kohan2022signal,meulemans_tristany_2021,halvagal2022combination,journe2022hebbian, launay2020direct}. Furthermore, several brain-inspired algorithms have been shown to train ANNs with local information in the frameworks of Predictive Coding (PC) \citep{Rao1999,oord2019representation,millidge2022backpropagation,salvatori2021predictive,Ororbia_Mali_2019,ororbia2020largescale} and neural generative coding \citep{ororbia2022NCG,ororbia2023convolutional}. Table \ref{tab:background} reports properties of biological plausibility and accuracy metrics for these algorithms.
+The FA algorithm \citep{Lillicrap} %demonstrates that the feedback weights used to backpropagate the gradient do not need to be symmetric with the feed-forward weights. FA 
+replaces the transposed forward weights $W$ in the feedback path with random, fixed (non-learning) weight matrices $F$ to deliver error information to earlier layers, thereby solving the weight transport problem (Fig. \ref{fig:schemes}a) \citep{Lillicrap}.
+While FA achieves a performance close to BP on simple tasks such as MNIST \citep{MNIST} and CIFAR-10 \citep{CIFAR10} with relatively shallow networks, it fails to scale to complex tasks and architectures \citep{bartunov,xiao2018biologicallyplausible,Moskovitz2018}. Moreover, \citet{hinton1987learning} proposed the Recirculation algorithm in which the output of an autoencoder is fed back into the network as a "negative" example. Later, \citet{baldi2018learning} showed that Recirculation is a special case of adaptive FA. To improve FA performances, \citet{Akrout2019DeepLW} proposed the Weight-Mirror (WM) algorithm, which is an approach to adjust the feedback weights in FA to improve their agreement, allowing to train neural networks with complex architectures (ResNet-18 and ResNet-50) on complex image recognition tasks (ImageNet).  
+
+
+
+
+\subsection{Theoretical analyses } 
+The theoretical study of online learning with 1-hidden-layer neural networks 
+has brought considerable insights to statistical learning theory \citep{saad1995a, saad1995b, Riegler1995,goldt2020modeling, refinetti2021classifying}. 
+ We leverage these works to understand learning with biologically plausible algorithms. Through similar analysis, \citet{refinetti} analytically confirmed the previous results of \citet{lillicrap2016random, noekland2016direct, frenkel2019learning} showing that the key to learning with direct feedback alignment (DFA) is the alignment between the network's weights and the feedback matrices, which allows for the DFA gradient to be aligned to the BP gradient. The authors further show that the fixed nature of the feedback matrices induces a degeneracy-breaking effect where, out of many equally good solutions, a network trained with DFA converges to the one that maximizes the alignment between feedforward and feedback weights.
+ This effect, however, imposes constraints on the structure of the feedback weights for learning, and possibly explains the difficulty of training convolutional neural networks with DFA. \citet{bordelon2022influence} derived self-consistent equations for the learning curves of DFA and FA in infinite-width networks via a path integral formulation of the training dynamics and investigated the impact of biologically plausible rules on feature learning.
+
+
+
+\subsection{The PEPITA learning rule}
+Given a fully connected network with $L$ layers, an input $x$, and one-hot encoded labels $y$ (Fig.~\ref{fig:schemes}b), the learning rule proposed by \citet{Dellaferrera_PEPITA} relies on a \textit{clean} and a \textit{modulated} forward pass through the network. During the \textit{clean} pass, the hidden unit and output unit activations are computed as:
+\begin{equation}\label{eq:standardpass}
+h_1 = \sigma_1 (W_1 x), \hspace{0.3cm}
+    h_\ell = \sigma_\ell (W_\ell h_{\ell-1}) \; \text{ for } 2\leq \ell \leq L,
+\end{equation}
+where $\sigma_l$ is the non-linearity at the output of the $\ell^{th}$ layer and $W_\ell$ is the matrix of weights between layers $\ell-1$ and $\ell$. During the \textit{modulated} pass, the activations are computed as:
+\begin{equation}\label{eq:modulatedpass}
+h_1^{err} = \sigma_1 (W_1 (x - F e) ),  \hspace{0.3cm}
+    h_\ell^{err} = \sigma_\ell (W_\ell h_{\ell-1}^{err})  \; \text{ for } 2\leq \ell \leq L,
+\end{equation}
+where $y$ is the target output, $e \equiv h_L - y$ denotes the network error, and $F$ is the fixed random matrix used to project the error on the input. We denote the output of the network either as $h_L$ or $\hat{y}$.
+After the two forward passes, the weights are updated according to the PEPITA learning rule:
+\begin{align}
+\Delta W_1 & = (h_1-h_1^{err}) (x - Fe)^\top; \label{eq:pepita_dw_input}\\
+\Delta W_\ell & = (h_\ell-h_\ell^{err}) (h_{\ell-1}^{err})^\top \;
+\text{ for } 2\leq \ell< L; \label{eq:pepita_dw_hidden} \\
+\Delta W_L & = e (h_{L-1}^{err})^\top. \label{eq:pepita_dw_out}
+\end{align}
+Note that, compared to the original paper, we changed the sign convention to read $-Fe$ rather than $+Fe$ in eqn.~\ref{eq:modulatedpass} and eqn.~\ref{eq:pepita_dw_input}. Because the distribution of $F$ entries is symmetric around zero, this has no consequence on the results. This change will appear useful when describing the WM  applied to PEPITA in Section \ref{sec:deeper}.
+Finally, the updates are applied depending on the chosen optimizer. For example, using stochastic gradient descent with learning rate $\eta$: $W(t+1) = W(t) - \eta \Delta W$.
+The pseudocode detailing the algorithm is provided in Appendix \ref{sec:pseudo}. 
+
+\subsection{The Forward-Forward algorithm}
+Analogously to PEPITA, the FF algorithm removes the need for a backward pass and relies on two forward passes (Fig. \ref{fig:schemes}d). The \textit{clean} pass and the \textit{modulated} pass operate on real data and on appropriately distorted data, respectively.
+The latter is generated to exhibit very different long-range correlations but very similar short-range correlations. %This forces FF to focus on the longer-range correlations in images that characterize shapes. 
+In practice, the \textit{modulated} samples are hybrid images obtained by adding together one digit image times a mask with large regions of ones and zeros and a different digit image times the reverse of the mask.
+In the \textit{clean} pass, the weights are updated to increase a ``goodness'' in the hidden layers (\citet{Hinton2022FF} proposes to use the sum of the squared activities, or its negation), and in the \textit{modulated} pass to decrease it. %The goodness can be chosen as the sum of the squared neural activities \cite{Hinton2022FF}. 
+Similarly, the Predictive Forward Forward (PFF) integrates the local synaptic adaptation rule of FF based on a goodness measure and contrastive learning, with lateral competition and aspects of PC, such as its local error Hebbian manner of adjusting generative synaptic weights \citep{ororbia2023pff}.
+
+
+
+\section{Theoretical analysis of the learning dynamics of PEPITA}
+In this section, we present a theory for the ``forward-only'' learning frameworks, focusing specifically on PEPITA in two-layer networks. We propose a useful approximation of the PEPITA update, that we exploit to derive analytic expressions for the learning curves, and investigate its learning mechanisms in a prototype teacher-student setup.
+
+\subsection{Taylor expansion and Adaptive Feedback rule}\label{sec:taylor}
+First, we observe that the perturbation applied in the modulation pass is small compared to the input: $\|Fe\|\ll\| x\|$. Indeed, in the experiments, the entries of the feedback matrix $F$ are drawn with standard deviation $\smash{\sigma_F = \kappa/\sqrt{D}}$, where $D$ is the input dimension -- typically large -- and $\kappa$ is a constant set by grid search, while the input entries are of order one. Thus, it is reasonable to Taylor-expand the presynaptic term $h_1-h_1^{err}$, which results in the approximate update rule:
+\begin{align}
+\label{eq:AF-layer1}
+\Delta W_1 \simeq \left[(W_1 F e)\odot h_1'\right] x^\top,
+\end{align}
+where we have used $x$ instead of $(x-Fe)$ since the small perturbation has been found to be negligible for the performance \citep{Dellaferrera_PEPITA}. 
+Eqn.~\ref{eq:AF-layer1} shows that PEPITA is effectively implementing a ``DFA-like'' update (equivalent to FA in two-layer networks), but using an AF matrix where the random term is modulated by the network weights. In light of this observation, it is natural to expect the alignment between $W_1 F$ and $W_2$.
+This simple approximation, which we call Adaptive Feedback Alignment (AFA), is actually very accurate, as we verify numerically in Fig.~\ref{fig:theory}a, displaying experiments on MNIST, and in Fig.~\ref{fig:AUapprox} of Appendix \ref{appendix:AUapprox_figures} for the CIFAR-10 and CIFAR-100 \citep{CIFAR100} datasets. AFA approximates PEPITA very accurately also in the teacher-student regression task depicted in Fig.~\ref{fig:theory}b, analyzed in the next section.
+\subsection{Ordinary differential equations for Adaptive Feedback Alignment with online learning for teacher-student regression}\label{sec:teacherstudent}
+To proceed in our theoretical analysis, it is useful to assume a generative model for the data. We focus on the classic teacher-student setup \citep{gardner1989three,PhysRevA.45.6056,RevModPhys.65.499,engel2001statistical,zdeborova2016statistical}. We consider $D-$dimensional standard Gaussian input vectors $x\sim\mathcal{N}(0,I_D)$, while the corresponding label $\smash{y=\tilde W_2\,\tilde\sigma(\tilde W_1x)}$ is generated by a two-layer \emph{teacher} network with fixed random weights $\smash{\tilde W_1}$, $\smash{\tilde W_2}$ and activation function $\tilde\sigma (\cdot)$. The two-layer \emph{student} network outputs a prediction $\hat y =  W_2\,\sigma( W_1x)$ and is trained with the AFA rule and an \emph{online} (or \emph{one-pass}) protocol, i.e., employing a previously unseen example $x_\mu$, $\mu=1,\ldots,N$, at each training step, where $N$ is the number of samples. We characterize the dynamics of the mean-squared generalization error \begin{equation}
+  \label{eq:eg}
+  \epsilon_g \equiv \frac{1}{2}\mathbb{E}_{x}{\left[(\hat y -  y)^2 \right]} \equiv \frac{1}{2}\mathbb{E}_x\left[{e^2}\right], \quad e \equiv  \hat y -  y,
+\end{equation}
+in the infinite-dimensional limit of both input dimension $D\rightarrow \infty$ and number of samples $N\rightarrow \infty$, at a finite rate (or \emph{sample complexity}) $N/D\sim\mathcal{O}_D(1)$ where the training time is $t=\mu/D$. The hidden-layer size is of order $\mathcal{O}(1)$ in both teacher and student. We follow the derivation in the seminal works of \citet{biehl1995learning,PhysRevLett.74.4337,PhysRevE.52.4225}, which has been put on rigorous ground by \citet{goldt2019dynamics}, and extend it to include the time-evolution of the AF. 
+As discussed in Appendix \ref{appendix:ODEs}, the dynamics of the error $\epsilon_g$ as a function of training time $t$ is fully captured by the evolution of the AF matrix and a set of low-dimensional matrices encoding the teacher-student alignment. We derive a closed set of ordinary differential equations (ODEs) tracking these matrices, and we integrate them to obtain our theoretical predictions. Furthermore, in Appendix \ref{appendix:early_training}, we perform an expansion at early training times $t\ll 1$ to elucidate the alignment mechanism and the importance of the ``teacher-feedback alignment'', i.e. $\smash{\tilde W_2 \tilde W_1 F}$, as well as the norm of $\smash{\Vert \tilde W_1 F\Vert}$. For the sake of the discussion, we consider sigmoidal activations $\tilde\sigma(\cdot)=\sigma(\cdot)={\rm erf}(\cdot)$, keeping in mind that the symmetry ${\rm erf}(-x)=-{\rm erf}(x)$ induces a degeneracy of solutions.
+
+\begin{figure*}[h!]
+     \centering
+     \includegraphics[width=1\textwidth]{figures/theory.pdf}
+     \vspace*{-5mm}     \caption{
+     \textbf{(a)} Test accuracy as a function of epochs for experiments with the MNIST and a 1-hidden-layer network with (1024 hidden units, {ReLU}). Blue dots mark the ``vanilla'' PEPITA algorithm  (without momentum) while purple crosses mark the AFA approximation (\ref{eq:AF-layer1}). \textbf{(b)} Generalization error as a function of time for the experiments with PEPITA (blue dots) and AFA (purple crosses), and the theoretical curves (App.~\ref{appendix:ODEs}) marked by full lines. Parameters: $D=500$, $lr=.05$, erf activation, 2 hidden units in both teacher and student.  \textbf{(c)} Alignment angle between the teacher and student second-layer weights (dark green), the student and a degenerate solution (light green), and the AF matrix and the student (orange) as a function of time. \textbf{(d)} Direction of the student, the AF and the teacher (and degenerate solutions). Different time shots are marked by vertical dashed lines in panel (c).}\label{fig:theory}
+ \end{figure*}
+
+Fig.~\ref{fig:theory}b shows our theoretical prediction for the generalization error as a function of time, compared to numerical simulations of the PEPITA and AFA algorithms. We find excellent agreement between our infinite-dimensional theory and experiments, even at moderate system size $(D=500)$.  
+
+Fig.~\ref{fig:theory}c shows the dynamic changes in the alignment of the second-layer student weights $W_2$ with different matrices: the second-layer teacher weights $\tilde W_2$, the second-layer teacher weights of the closest degenerate solution, and the AF weights $W_1F$.  We clearly observe that the error is stuck at a plateau until ``adaptive-feedback alignment'' happens ($t\sim 10^2$). Fig.~\ref{fig:theory}d depicts the directions of the two-dimensional vectors $W_2$, $W_1F$, and $\smash{\tilde W_2}$ at three different time shots, marked by vertical dashed lines in Fig.~\ref{fig:theory}c. It is crucial to notice that, in this case, the feedback also evolves in time, giving rise to a richer picture, that we further discuss in Appendix \ref{appendix:AUapprox_figures}. 
+In the special case of Fig.~\ref{fig:theory}c, while the direction of $W_1F$ is almost constant, its norm increases, speeding up the learning process, as shown in Fig.~\ref{fig:norm_alingment}. Similar behavior was observed in \citet{Dellaferrera_PEPITA}. Notice that, in the case of one hidden layer, FA directly implies gradient alignment given that the weight updates become identical if the feedback matches the feed-forward weights.
+
+\section{Testing PEPITA on deeper networks, with weight mirroring, weight decay and activation normalization}\label{sec:deeper}
+The theoretical analysis above focuses on a two-layer network, as used in the proof-of-principle demonstration of PEPITA's function in the original article. To the best of our knowledge, PEPITA has been tested so far only on two-layer networks. Here, we empirically show that the algorithm can be extended to train deeper networks. Furthermore, we propose three techniques that improve the performance of PEPITA and narrow the gap with BP. First, we enhance PEPITA with standard techniques used in ML, namely weight decay (WD) \citep{krogh1991} and activation normalization \citep[as in][]{Hinton2022FF}. In addition, we combine PEPITA with the WM algorithm  \citep{Akrout2019DeepLW} to train the projection matrix $F$. Indeed, WM has been shown to greatly improve alignment between the forward and backward connections and the consequent accuracy of FA and, in Section \ref{sec:taylor}, we have shown that PEPITA is closely related to FA. In order to apply WM to PEPITA, we propose a generalization of WM for learning rules where the dimensionalities of the feedback and feedforward weights do not match, such as PEPITA, but also including DFA. In our work we focus on fully connected models, and leave the enhancement of convolutional networks for further exploration. Experiments were run on Nvidia V100 GPUs, using custom Python code available \href{https://github.com/ravifrancesco/PEPITA}{\underline{here}}.
+\begin{figure*}[h!]
+     \centering
+     \includegraphics[width=1\textwidth]{figures/fig3.pdf}
+     \vspace*{-5mm}
+     \caption{\textbf{(a)}, \textbf{(b)} Test accuracy of fully connected networks with increasing depth trained with PEPITA on the CIFAR-10 dataset. \textbf{(a)} PEPITA uniform and PEPITA normal refer to the initialization of the weights and $F$ (Sec.~\ref{sec:deeper}). ``PEPITA-Hebbian'' refers to the learning rule explained in Section ~\ref{sec:hebbian}. \textbf{(b)} Effect of weight decay. \textbf{(c)} Alignment angle between $F$ (Eq.~\ref{eq:modulatedpass}) and $W_1 \cdot W_2$ 
+     during training with or without WM. PreM refers to pre-mirroring (Sec.~\ref{sec:deeper}). Hyperparameters are reported in Table \ref{tab:architectures}. The plots indicate mean and standard deviation over 10 independent runs.}
+     \label{fig:accuracies}
+\end{figure*}
+
+\subsection{Methods}\label{sec:deeper_methods}
+We first test two initialization strategies, He uniform \citep[as in][]{Dellaferrera_PEPITA} and He normal. %F is initialized by sampling its entries from a uniform or normal distribution, respectively.
+The normal initialization is necessary to factorize the feedback matrix $F$ as explained below. The distribution of the entries of F has a mean of zero and standard deviation reported in Tab.~\ref{tab:architectures}. When not specified, we use the He normal initialization.
+The hyperparameters are found through grid search and are reported in Table \ref{tab:architectures}.
+
+In order to apply WM to PEPITA, we need to modify the original algorithm \citep{Akrout2019DeepLW}. Indeed, in a network trained with FA, the WM algorithm aligns, for each layer $\ell$, a backward matrix $F_\ell$ with the transpose of the corresponding forward matrix $W_\ell$ (Fig.~\ref{fig:schemes}a). In order to recover the one-to-one correspondence of WM, we factorize the $F$ matrix into the product of as many matrices as the number of layers: \scalebox{0.9}{$\smash{F=\prod_{\ell=1}^{L}F_\ell}$} (Fig.~\ref{fig:schemes}c). We initialize each of these matrices by sampling the entries from a normal distribution and apply WM layer-wise (see pseudocode in Appendix \ref{appendix:WM}). After each standard WM update, we also normalize each $F_\ell$ to keep the standard deviation \scalebox{0.9}{$\smash{\sigma_F^{(t)}}$} of the updated $F$ at step $t$ constant at its initialization value \scalebox{0.9}{$\smash{\sigma_F^{(0)}}$} (see Table \ref{tab:architectures}). Running WM before learning starts (\textit{pre-mirroring}) brings the random feedback weights into alignment without the use of any training data. We run benchmarks both with five epochs of pre-mirroring, and without. We compared PEPITA's performance to three baselines, BP, FA, and Direct Random Target Projection \citep[DRTP,][]{frenkel2019learning} with and without weight decay. For the baselines, we use the code by \citet{frenkel2019learning}. Our use of learning rate decay means the grid search returned different hyperparameters, explaining some discrepancies in the accuracies compared to \citet{frenkel2019learning}.
+
+\begin{table*}[h]
+\caption{Test accuracy [\%] achieved by BP, FA, DRTP, and PEPITA in the experiments, with and without weight decay, normalization of the activations and WM . Mean and standard deviation are computed over 10 independent runs. All training schemes are tested with ReLU nonlinearity except DRTP which uses tanh nonlinearity. The hyperparameters obtained through grid search are reported in Table \ref{tab:architectures}.
+Bold fonts refer to the best results exclusively among PEPITA and its improvements.
+}
+\label{tab:results}
+\vskip 0.15in
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{llll|ccc}
+\toprule
+& W. Decay & Norm. & Mirror & MNIST & CIFAR-10 & CIFAR-100 \\
+\midrule
+ BP & \xmark & \xmark & \xmark  & 98.72$\pm$0.06 & 57.60$\pm$0.20 & 29.36$\pm$0.19  \\
+  & \cmark & \xmark & \xmark  & 98.66$\pm$0.04 & 57.92$\pm$0.19 & 29.93$\pm$0.27  \\
+  \midrule 
+ FA & \xmark & \xmark & \xmark  & 98.48$\pm$0.05 & 56.76$\pm$0.23 & 22.75$\pm$ 0.28 \\
+  & \cmark & \xmark & \xmark  & 98.35$\pm$0.04 & 57.19$\pm$0.24 & 22.62$\pm$0.25  \\
+  \midrule 
+ DRTP & \xmark & \xmark & \xmark  & 95.45$\pm$0.09 & 46.92$\pm$0.21 & 16.99$\pm$0.16  \\
+  & \cmark & \xmark & \xmark  & 95.44$\pm$0.09 & 46.92$\pm$0.27 & 17.59$\pm$0.18  \\
+  \midrule 
+ PEPITA & \xmark & \xmark & \xmark  & 98.02$\pm$0.08 & 52.45$\pm$0.25 & 24.69$\pm$0.17  \\
+  & \cmark & \xmark & \xmark  & 98.12$\pm$0.08 & 53.05$\pm$0.23 & 24.86$\pm$0.18  \\
+  & \xmark & \cmark & \xmark  & \textbf{98.41}$\pm$0.08 & \textbf{53.51}$\pm$0.23 & 22.87$\pm$0.25  \\
+  & \xmark & \xmark & \cmark  & 98.05$\pm$0.08 & 52.63$\pm$0.30 & \textbf{27.07}$\pm$0.11 \\
+  & \cmark & \xmark & \cmark  & 98.10$\pm$0.12 & 53.46$\pm$0.26 & \textbf{27.04}$\pm$0.19 \\
+  & \xmark & \cmark & \cmark  & \textbf{98.42}$\pm$0.05 & \textbf{53.80}$\pm$0.25 & 24.20$\pm$0.36 %\\  \midrule
+\\\hline 
+\bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table*}
+
+\subsection{Results}
+
+\textbf{Initialization} The He uniform and normal initialization performed equally (Fig.~\ref{fig:accuracies}a).
+
+\textbf{Depth}
+Without activation normalization, PEPITA is successful in training networks with up to three hidden layers without drop in accuracy for increasing depth (Fig.~\ref{fig:accuracies}a). Furthermore, with activation normalization, PEPITA can train networks with up to five hidden layers. However, this comes at the cost of a decrease in performance with increasing depth (Fig.~\ref{fig:5hidden}).
+
+
+
+\textbf{Weight decay and normalization}
+On a 1-hidden-layer network trained on the CIFAR-10 dataset, weight decay and normalization improved PEPITA's performance by 0.6\% and 1.1\%, respectively (Fig.~\ref{fig:accuracies}b and Table \ref{tab:results}).
+
+\textbf{Weight mirroring}
+Fig.~\ref{fig:accuracies}c shows that, when WM is applied, the $W$ and $F$ matrices achieve a significantly better alignment than with the standard PEPITA. The improvement of the alignment is more significant for 1- and 2-hidden-layer than for 3-hidden-layer networks (Sup. Fig. \ref{fig:angles}).
+Furthermore, the improved alignment obtained with WM is reflected in improved accuracy, especially for 1-hidden-layer networks (Table \ref{tab:results}), but also for 2- and 3-hidden-layer networks (Sup. Table \ref{tab:baselines_relu}). Remarkably, on the CIFAR-10 dataset, WM combined with activation normalization leads to 53.8\%, an improvement of 1.3\% compared to the standard PEPITA. On CIFAR-100 WM improves the accuracy by over 2\%, reducing significantly the gap with BP.
+
+\textbf{Convergence rate}
+\cite{Dellaferrera_PEPITA} shows that PEPITA's convergence rate is in between BP (the fastest) and FA (the slowest). By extracting the \textit{slowness} from the \textit{plateau equation for learning curves} \citep{Dellaferrera_GRAPES}, we find that pre-mirroring improves the convergence rate for 1-hidden-layer models (Table \ref{tab:results_slowness}), compatibly with the ``align, then memorize'' paradigm proposed for FA \citep{refinetti}.
+
+\section{On the relationship between Forward-Forward and PEPITA}
+The goal of this section is to compare PEPITA and a FF framework with top-down connections. To this end, we first propose a minor change to the PEPITA update rule that exposes its Hebbian foundation, and which can be applied to train ANNs in a time-local fashion. Finally we analytically compare FF and PEPITA in the case where negative samples are based on high-level feedback.
+
+\subsection{PEPITA's formulation as Hebbian and anti-Hebbian phases}\label{sec:hebbian}
+In the PEPITA framework, the presynaptic term ($h^{err}_{\ell-1}$) in the learning rule of eqn.~\ref{eq:pepita_dw_hidden} can be replaced interchangeably with the same term, computed during the first forward pass ($h_{\ell-1}$) \citep{Dellaferrera_PEPITA}. Taking this a step further, we separate the brackets in eqn.~\ref{eq:pepita_dw_hidden} and mix the two choices for the presynaptic term obtaining an approximately equivalent rule for hidden layer weights:
+\begin{equation}\label{eq:PEPITA_mixed}
+\Delta W_\ell = h_\ell  h_{\ell-1}^{err \top} - h_\ell^{err}  h_{\ell-1}^{err\,\top} \simeq \hspace{0.3cm} h_\ell  h_{\ell-1}^\top - h_\ell^{err}  h_{\ell-1}^{err\,\top}.
+\end{equation}
+The learning rule eqn.~\ref{eq:PEPITA_mixed} now contains two Hebbian terms, each a product of the activity of the presynaptic and the postsynaptic node, similarly to \citep{xie2003equivalence, scellier2017equilibrium, detorakis2019contrastive}. We dub this approximation \textit{PEPITA-Hebbian}. Fig.~\ref{fig:accuracies}a shows that the approximation in eqn.~\ref{eq:PEPITA_mixed} has negligible impact on the accuracy. We note that these two terms can be used to update the weights \textit{online}, separating the updates between the first and second pass (Algorithm \ref{pseudocode_split}), and allowing to alleviate the constraint of storing in memory information of the first pass until the second pass. We name this version \textit{PEPITA-time-local} (PEPITA-TL). PEPITA-TL exhibits a decrease in accuracy (Sup. Fig. \ref{fig:timelocal}), but it is still uses the feedback in a useful manner (Appendix \ref{appendix:tl}). We leave the exploration to improve the accuracy of PEPITA-TL for further work.
+
+
+\subsection{Comparison between the weight updates of PEPITA and Forward-Forward}\label{sec:ff}
+In FF, the weights are updated to increase and decrease the ``goodness'' in every hidden layer in the \textit{clean} pass and \textit{modulated} pass respectively, where the goodness can be the negative sum of the squared neural activities (in our notation, $-\|h_\ell\|^2$, for the \textit{clean} and $-\smash{\|h_\ell^{err}\|^2}$ for the \textit{modulated} pass).
+\citet{Hinton2022FF} chooses a loss based on the logistic function $\sigma$ applied to the goodness, minus a threshold, $\theta$: $\smash{p = \sigma \left(\|h_l\|^2 - \theta \right)}$.
+For simplicity, we work directly on the goodness. This is equivalent to minimizing, at each layer $\ell$, a loss function defined as: 
+\begin{equation}\label{eq:hinton_orig}
+    J_\ell  =  \|h_\ell\|^2 - \|h_\ell^{err}\|^2
+\end{equation}
+We then compute an update for FF as the derivative of the loss eqn.~\ref{eq:hinton_orig} with respect to the weights:
+\begin{align*}
+    \frac 12 \frac{\partial J_\ell}{\partial W_\ell}
+    &= \frac 12 \left(\frac{\partial \|h_\ell\|^2}{\partial W_\ell} - \frac{\partial \|h_\ell^{err}\|^2}{\partial W_\ell}\right) \\
+        &= \frac 12 \left(\frac{\partial \|\sigma (W_\ell h_{\ell-1})\|^2}{\partial W_\ell} - \frac{\partial \|\sigma(W_\ell h_{\ell-1}^{err})\|^2}{\partial W_\ell} \right) \\
+    &= \sigma(W_\ell h_{\ell-1})\odot \sigma'(W_\ell h_{\ell-1}) h_{\ell-1}^\top -\sigma(W_\ell h_{\ell-1}^{err})\odot \sigma'(W_\ell h_{\ell-1}^{err}) h_{\ell-1}^{err \top}\\
+    &=  (\sigma'(W_\ell h_{\ell-1})\odot h_\ell  h_{\ell-1}^\top -\sigma'(W_\ell h_{\ell-1}^{err})\odot h_\ell^{err} h_{\ell-1}^{err})\\
+    &=  (h_{\ell}'\odot h_\ell) h_{\ell-1}^\top -  (h_{\ell}^{err '} \odot h_\ell^{err}) h_{\ell-1}^{err\,\top}.
+\end{align*}
+
+We note that the terms $h'_\ell \equiv \sigma'(W_\ell h_{\ell-1})$ and $h_\ell^{err '} \equiv \sigma'(W_\ell h_{\ell-1}^{err})$ can be omitted in the common case where $\sigma$ is a ReLU function because they are 0 if and only if $h_\ell$ is already 0, and equal to 1 otherwise.
+Likewise, they are always equal to 1 if $\sigma$ is linear. In these cases, therefore
+\begin{align}\label{eq:hinton}
+\begin{split}
+    \frac 12 \frac{\partial J_\ell}{\partial W_\ell} = h_\ell h_{\ell-1}^\top - h_\ell^{err} h_{\ell-1}^{err\,\top},
+\end{split}
+\end{align}
+which is equivalent to eqn.~\ref{eq:PEPITA_mixed}, apart from a factor $1/2$ that can be incorporated in the learning rate.
+For other choices of $\sigma$, since $Fe \ll x$, the derivative of the activations in the two forward passes are close enough to approximate $\sigma'(W_\ell h_{\ell-1})\simeq \sigma'(W_\ell h_{\ell-1}^{err})$.
+
+By comparing eqn.~\ref{eq:PEPITA_mixed} and eqn.~\ref{eq:hinton}, we observe that the FF update rule with loss eqn.~\ref{eq:hinton_orig} approximates the weight update rule of the previously proposed PEPITA. 
+We remark that the comparison between PEPITA and FF holds for the general FF framework minimizing and maximizing the square of the activities for the clean and modulated passes respectively, which in the experiments by \citet{Hinton2022FF} provides the best performances. However, the weight update reported by \citet{Hinton2022FF} presents analytical differences from eqn.~\ref{eq:hinton} due to their use of thresholding and non-linearity applied to the goodness.
+Another notable difference lies in the way the ``modulated'' samples are generated in the two algorithms: as described, in PEPITA's \textit{modulated} pass, the input is modulated by the error. In the FF algorithm, in contrast, the negative samples are data vectors corrupted by external means, %e.g.~hybrid images in which one digit image times a binary mask and a different digit image times the reverse of the mask are added together. 
+although \cite{Hinton2022FF} mentions that the negative data may be predicted by the neural net using top-down connections. In contrast, the activations of the two passes are not statistically different in PEPITA, presumably due to the small perturbation of the input in the second pass (Fig. \ref{fig:goodness}).
+
+\section{Discussion}
+In the quest for biologically inspired learning mechanisms, two of the long-standing challenges include providing a theoretical ground to understand the dynamics of the training algorithms and scaling their application to complex networks and datasets. The FF algorithm \citep{Hinton2022FF} and the PEPITA algorithm \citep{Dellaferrera_PEPITA} are ``forward-only'' algorithms that train neural networks with local information, without weight transport, without freezing the network’s activity, and without backward locking. 
+
+
+First, we show that PEPITA can be approximated by an FA-like algorithm, where the error is propagated to the input layer via the project matrix $F$ ``adapted'' through the forward synaptic matrix. By performing a theoretical characterization of the generalization dynamics, we provide intuition on the alignment mechanisms, offering novel theoretical insights into the family of forward-only algorithms. We then test two standard techniques to improve the performance of PEPITA, i.e. weight decay, and activation normalization. Moreover, in line with our theoretical findings that highlight the importance of the alignment of the feedback and feedforward weights, we test PEPITA in combination with a version of WM tailored to PEPITA. By aligning the feedback weights to the feedforward weights, WM significantly improves the classification accuracy on both the CIFAR-10 and CIFAR-100 datasets. Finally, we propose \textit{PEPITA-hebbian}, a version of PEPITA in which the update contains a sum of Hebbian and anti-Hebbian terms. We compare \textit{PEPITA-hebbian} to FF, highlighting the similarities between the two algorithms. While FF uses externally generated negative samples for the second forward pass, \citet{Hinton2022FF} himself suggests the possibility that the negative data may be predicted by the neural net using top-down connections. We show that, when choosing the goodness as the negative sum of the squared activities, \textit{PEPITA-hebbian} is precisely an example of this possibility. This avoids the biologically unrealistic requirement of corrupting the images entailed by FF and is compatible with biological mechanisms of neuromodulation and thalamocortical projections \citep{Mazzoni,williams1992,clark2021credit,Kreiman2021}. Moroever, the separate feedback pathway can be linked to neuromodulatory signals that acts as \emph{plasticity-steering} effects \citep{roelfsema2018control}, necessary for PEPITA-TL to distinguish between the two forward passes. %Furthermore, the \textit{PEPITA-hebbian} update can be computed locally in time and space, which allows for updates without storing the activation values in memory. Not only is this compatible with biological networks \citep{Sjstrm2001RateTA,Caporale2008,markram2011}, but is especially important in the perspective of an implementation on an analog neuromorphic chip, where storing data in memory is difficult and online learning is desirable \citep{mitra2008real,demirag2021,Khacef2022}.
+We envision that further research could build a unified theoretical framework for these and other forward-only algorithms, leading to higher accuracy, network depth, and biological plausibility.
+
+
+
+\section{Limitations and future work}
+While this work provides valuable insights into forward-learning algorithms from empirical and analytical perspectives, it is important to acknowledge several limitations. First, the algorithms we analyze still lag behind BP in terms of performance and scalability. Further work is needed to understand the causes of the difference in accuracy between forward-learning algorithms and BP, which may include poor collaboration between layers during training \citep{lorberbom2023layer}. Moreover, the factorization of the feedback matrix in the modified version of WM may not correspond to any known biological mechanism. Additional, more bio-plausible alternatives need to be explored. Another open direction of investigation is the theoretical analysis of the learning dynamics in deep networks. A starting point in this direction could be to consider deeper networks. In conclusion, our work provides a starting point for addressing those limitations through further research.
+
+\section*{Acknowledgements}
+This work was supported by NIH grant R01EY026025 and NSF grant CCF-1231216.
+M.S.\ was supported by an ETH AI Center postdoctoral fellowship.
+
+\bibliography{iclr2024_conference}
+\bibliographystyle{iclr2024_conference}
+
+\newpage
+\appendix
+\setcounter{figure}{0}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\setcounter{table}{0}
+\renewcommand{\thetable}{S\arabic{table}}
+\setcounter{algorithm}{0}
+\renewcommand{\thealgorithm}{S\arabic{algorithm}}
+\setcounter{section}{0}
+\section{Pseudocode for PEPITA}\label{sec:pseudo}
+Algorithm \ref{pseudocode} describes the original PEPITA as presented in \citet{Dellaferrera_PEPITA}. \\ Algorithm \ref{pseudocode_split} describes our modification of PEPITA, which is Hebbian and local both in space and in time (Pepita-time-local).
+
+\begin{minipage}[t]{0.48\textwidth}
+    \begin{algorithm}[H]
+        \caption{Implementation of PEPITA}\label{pseudocode}
+        \begin{algorithmic}
+            \REQUIRE Input $x$ and one-hot encoded label $y$
+            \STATE \COMMENT{standard forward pass}
+            \STATE $h_0 = x$
+            \FOR{$\ell = 1, ..., L$}
+                \STATE $h_{\ell} = \sigma_\ell(W_\ell h_{\ell-1}) $
+            \ENDFOR
+            \STATE $e = h_L - y$
+            \STATE \COMMENT{modulated forward pass}
+            \STATE $h_0^{err} = x+Fe$
+            \FOR{$\ell = 1, ..., L$}
+                \STATE $h_{\ell}^{err} = \sigma_\ell(W_\ell h_{\ell-1}^{err}) $
+                \IF{$\ell < L$}
+                    \STATE $\Delta W_\ell = (h_\ell-h_\ell^{err}) (h_{\ell-1}^{err})^\top $
+                \ELSE
+                    \STATE $\Delta W_\ell = e (h_{\ell-1}^{err})^\top $
+                \ENDIF
+                \STATE $W_\ell(t+1) = W_\ell(t) - \eta \Delta W_\ell$ \COMMENT{apply update}
+            \ENDFOR
+        \end{algorithmic}
+    \end{algorithm}
+\end{minipage}
+\hfill 
+\begin{minipage}[t]{0.49\textwidth}
+    \begin{algorithm}[H]
+        \caption{Impl.\ of PEPITA-time-local}\label{pseudocode_split}
+        \begin{algorithmic}
+            \REQUIRE Input $x$ and one-hot encoded label $y$
+            \STATE \COMMENT{standard forward pass}
+            \STATE $h_0 = x$
+            \FOR{$\ell = 1, ..., L$}
+                \STATE $h_{\ell} = \sigma_\ell(W_\ell h_{\ell-1})$
+                \STATE $\Delta W_\ell^+ = h_\ell h_{\ell-1}^\top$
+                \STATE $W_\ell^+(t+1) = W_\ell(t) - \eta \Delta W_\ell^+$
+                \COMMENT{apply 1st update}
+            \ENDFOR
+            \STATE $e = h_L - y$
+            \STATE \COMMENT{modulated forward pass}
+            \STATE $h_0^{err} = x-Fe$
+            \FOR{$\ell = 1, ..., L$}
+                \STATE $h_{\ell}^{err} = \sigma_\ell(W_\ell^+ h_{\ell-1}^{err}) $
+                \IF{$\ell < L$}
+                    \STATE $\Delta W_\ell^- = -h_\ell^{err} h_{\ell-1}^{err \top} $
+                \ELSE
+                    \STATE $\Delta W_\ell^- = -yh_{\ell-1}^{err \top}$
+                \ENDIF
+                \STATE $W_\ell(t+1) = W_\ell^+(t+1) - \eta \Delta W_\ell^-$
+                \COMMENT{apply 2nd update}
+            \ENDFOR
+        \end{algorithmic}
+    \end{algorithm}
+\end{minipage}
+
+
+The updates for PEPITA-Hebbian are:
+\begin{itemize}
+    \item for the hidden layers:
+\end{itemize}
+\begin{equation}
+\begin{split}
+    \Delta W_\ell &= h_\ell  h_{\ell-1}^{err \top} - h_\ell^{err}  h_{\ell-1}^{err\,\top} \\
+    &\simeq h_\ell  h_{\ell-1}^\top - h_\ell^{err}  h_{\ell-1}^{err\,\top},
+\end{split}
+\end{equation}
+\begin{itemize}
+    \item for the first and last layers
+\end{itemize}
+\begin{equation}\label{eq:approx}
+\begin{split}
+    \Delta W_1 & \simeq h_1x^\top - h_1^{err}(x - Fe)^\top; \\
+    \Delta W_L & \simeq h_Lh_{L-1}^\top - yh_{L-1}^{err\,\top}.
+\end{split}
+\end{equation}
+These updates are applied at the end of both forward passes for PEPITA-Hebbian, similarly as in pseudocode \ref{pseudocode}.
+
+\newpage
+
+\section{Training with the time-local rule}
+\label{appendix:tl}
+
+The weight update of the \textit{PEPITA-Hebbian} rule in eqn.~\ref{eq:PEPITA_mixed} consists of two separate phases that can contribute to learning without knowledge of the activity of the other, i.e.~learning is time-local. Specifically, the term $h_\ell h_{\ell-1}^\top$ can be applied \textit{online}, immediately as the activations of the first pass are computed. Analogously, the second term $\smash{- h_\ell^{err} h_{\ell-1}^{err \top}}$ can be applied immediately during the second forward pass. To ensure that the hidden-layer updates prescribed by PEPITA are useful, we compared the test curve of PEPITA-TL against a control with $F=0$ (Fig.~\ref{fig:timelocal}), and found that removing the feedback decreases the accuracy from approx.~40\% to approx.~18\%.
+
+Regarding the time-locality of FF, the two forward passes can be computed in parallel, as the \textit{modulated} pass does not need to wait for the computation of the error of the first pass. However, according to the available implementations \citep{ff_implementation} the updates related to both passes are applied together at the end of the second forward pass.
+
+The time-local PEPITA is trained on the CIFAR-10 dataset with learning rate $0.01$. All the other hyperparameters are the same as the ones reported in Table  \ref{tab:architectures}.
+
+\begin{figure}[h!]
+    \centering
+    \centering
+    \includegraphics[width=.4\textwidth]{figures/sup_tl_CIFAR10.pdf}
+    \caption{Test curve for PEPITA in its time-local formulation and time-local PEPITA with F=0 (i.e., only the last layer is trained) on the CIFAR-10 dataset. The network has 1 hidden layer with 1024 units. The forward matrices are initialized using the He normal initialization. $F$ entries are sampled from a normal distribution with standard deviation 0.5$\cdot 2\sqrt{6 /(32\cdot32\cdot3)}$. We use learning rate $0.0001$ and weight decay with $\lambda=10^{-4}$. The learning is reduced by a factor of $\times0.1$ at epoch 50. The plot indicates mean and standard deviation over 10 independent runs. Time-local PEPITA achieves a significantly higher accuracy than the time-local, F=0 scheme.}
+    \label{fig:timelocal}
+\end{figure}
+
+\newpage
+
+\section{Distribution of the goodness in PEPITA}
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1.\textwidth]{figures/norm_diff_passes.pdf}
+    \caption{Difference of the norm of the squared activities of the first hidden layer between the \emph{clean} and \emph{modulated} pass in PEPITA (a) before training, (b) after 50 epochs, and (c) at the end of training. The network is a 2-hidden-layer network trained with WD with $\lambda=10^{-4}$ on the CIFAR-10 dataset. The activites are recorded on the test set. We remark that in PEPITA the input of the second forward pass is modulated by the error. Since the error decreases during training, also the difference of the activations in the two passes decreases with training. This explains why the distribution of the difference of the norm of the squared activities has a lower standard deviation in the middle of training (b) and at the end of training (c), than before training (a). In contrast, the modulation of the input in FF is constant during training, and the scope of training is maximising the difference of the goodness in the two passes.}
+    \label{fig:goodness}
+\end{figure}
+
+\newpage
+
+
+
+
+
+\newpage
+\section{Additional figures on the Adaptive Feedback Alignment approximation}
+\label{appendix:AUapprox_figures}
+Fig.~\ref{fig:AUapprox} displays the comparison between the ``vanilla'' PEPITA algorithm and the AFA approximation introduced in eqn.~\ref{eq:AF-layer1} of the main text. The test accuracy as a function of training epochs is depicted for the CIFAR-10 dataset in the left panel and for the CIFAR-100 dataset in the right panel. 
+
+Fig.~\ref{fig:norm_alingment} depicts the norm of the AF matrix $f=W_1 F/D$ as a function of training time. The symbols mark the numerical simulations at dimension $D=500$, while the full line represents our theoretical prediction. We observe that, for this run, the norm of the AF increases over time. We have observed by numerical inspection that this behavior is crucial to speed up the dynamics, as also observed in \citet{Dellaferrera_PEPITA}.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.4\textwidth]{figures/au_CIFAR10.pdf}
+    \hspace*{5mm}
+    \includegraphics[width=.4\textwidth]{figures/au_CIFAR100.pdf}
+    \caption{Comparison between the test accuracy as a function of training epochs between the ``vanilla'' PEPITA algorithm and its AFA approximation (eqn.~\ref{eq:AF-layer1} of the main text) for the CIFAR-10 (\emph{left panel}) and CIFAR-100 (\emph{right panel}) datasets.}
+    \label{fig:AUapprox}
+\end{figure}
+\begin{figure}[h!]
+    \centering
+        
+    \includegraphics[width=.4\textwidth]{figures/norm_f.pdf}
+    \caption{Norm of the alignment matrix $f=W_1F/D$ as a function of training time, for the same parameters as in Fig.~\ref{fig:theory} of the main text: $D=500$, $lr=.05$, erf activation, two hidden units in both teacher and student ($K=M=2$).}
+    \label{fig:norm_alingment}
+\end{figure}
+\section{Ordinary differential equations for online learning in the teacher-student regression task}
+\label{appendix:ODEs}
+In this section, we present the details of the teacher-student model under consideration and we sketch the derivation of the ordinary differential equations tracking the online learning dynamics of the AFA rule. We consider a shallow \emph{student} network trained with AFA to solve a supervised learning task. The input data are random $D-$dimensional vectors $x\in\mathbb{R}^D$ with independent identically distributed (i.i.d.) standard Gaussian entries $x_j\sim\mathcal{N}(0,1)$, $j=1,\ldots,D$, and the (scalar) labels are generated as the output of a 1-hidden-layer \emph{teacher} network with parameters $\smash{\tilde \theta=(\tilde W_1,\tilde W_2,M,\tilde\sigma)}$:
+\begin{align}
+    y &= \sum_{m=1}^M \tilde W_2^m \tilde \sigma(\nu^m), \qquad \nu^m = \frac{\tilde W_1^m \, x}{\sqrt D},
+\end{align}
+where $M$ is the size of the teacher hidden layer, $\nu^m$ denotes the teacher preactivation at unit $m\in\{1,\ldots,M\}$, and $\tilde\sigma(\cdot)$ is the activation function. The student is a 1-hidden-layer neural network parametrized by $\theta=(W_1,W_2,K,\sigma)$ that outputs the prediction
+\begin{align}
+     \hat y = \sum_{k=1}^K W_2^k \sigma(\lambda^k), \qquad \lambda^k = \frac{W_1^k x}{\sqrt D},
+\end{align}
+where $K$ is the size of the student hidden layer, $\sigma(\cdot)$ the student activation function, $\lambda^k$ the student preactivation at unit $k\in \{1,\ldots,K\}$. For future convenience, we write explicitly the scaling with respect to the input dimension. Therefore, at variance with the main text, in this supplemementary section we always rescale the first layer weights as well as the feedback by $1/\sqrt{D}$. 
+
+We focus on the \emph{online} (or \emph{one-pass}) learning protocol, so that at each training time the student network is presented with a fresh example $x_\mu$, $\mu=1,\ldots N$, and $N/D\sim\mathcal{O}_D(1)$. The weights are updated according to the AFA rule defined in eqn.~\ref{eq:AF-layer1}:
+\begin{align}
+\label{eq:supmat_update}
+    W_1(\mu+1)=W_1(\mu)-\eta_1 \Delta W_1(\mu), && \Delta W_1=\frac{W_1 F}D e\, h'_1 \frac{x^\top}{\sqrt{D}},\\
+    W_2(\mu+1)=W_2(\mu)-\eta_2 \Delta W_2(
+    \mu
+    ), && \Delta W_2=e \, h_1^\top.
+\end{align}
+We consider fixed learning rates $\eta_1=\eta$, $\eta_2=\eta/D$. Different learning rate regimes have been explored in \citet{veiga2022phase}.
+It is crucial to notice that the mean squared generalization error 
+\begin{align}
+\epsilon_g(\theta,\tilde \theta)&=\frac 12 \mathbb{E}_x\left[\left(\sum_{k=1}^KW_2^k \sigma(\lambda^k) -\sum_{m=1}^M\tilde W_2^m \tilde \sigma(
+\nu^m
+)\right)^2\right]
+\end{align}
+depends on the high-dimensional input expectation only through the low-dimensional expectation over the preactivations $\{\lambda_k\}_{k=1}^K, \{\nu_m\}_{m=1}^M$. Notice that, in this online-learning setup, the input $x$ is independent of the weights, which are held fixed when taking the expectation. Furthermore, due to the Gaussianity of the inputs, the preactivations are also jointly Gaussian with zero mean and second moments:
+\begin{align}
+Q^{kl}=\mathbb{E}_x\left[\lambda^k\lambda^l\right]=\frac{W_{1}^k\cdot W_{1}^l}D\;, \\
+R^{km}=\mathbb{E}_x\left[\lambda^k\nu^m\right]=\frac{W_{1}^k\cdot {\tilde W_{1}}^m}D\;, \\
+T^{mn}=\mathbb{E}_x\left[\nu^m\nu^n\right]=\frac{{\tilde W_{1}}^m\cdot {\tilde W_{1}}^n}D.
+\end{align}
+The above matrices are named \emph{order parameters} in the statistical physics literature and play an important role in the interpretation. The matrices $Q$ and $T$ capture the self-overlap of the student and teacher networks respectively, while the 
+matrix $R$ encodes the teacher-student overlap. In the infinite-dimensional limit discussed above, the generalization error is only a function of the order parameters $Q,T,R$
+and of the second layer weights $\smash{\tilde W_2, W_2}$ of teacher and student respectively. Therefore, by tracking the evolution of these matrices via a set of ODEs -- their ``equations of motion'' -- we obtain theoretical predictions for the learning curves.
+The update equations for $Q,R,W_2$ can be obtained from eqn.~\ref{eq:supmat_update} according to the following rationale. As an example, we consider the update equation for the matrix $Q$:
+\begin{align}
+\begin{split}
+    &Q^{kl}(\mu+1)- Q^{kl}(\mu)\\
+    &\quad=\frac{1}{D}\left[W_1^k(\mu
+    )-\eta\Delta W_1^k(\mu)\right]\cdot\left[W_1^l(\mu
+    )-\eta\Delta W_1^l(\mu)\right]-\frac{1}{D}W_1^k(\mu
+    )\cdot W_1^l(\mu)\\
+    &\quad=-\frac{1}{D}\eta \,f^k\,e \,\sigma'(\lambda^k)\lambda^l-\frac{1}{D}\eta \,f^l\,e \,\sigma'(\lambda^l)\lambda^k+\frac{1}{D}\eta^2\, f^k\,f^l\,\sigma'(\lambda^k)\sigma'(\lambda^l)e^2,
+\end{split}
+\end{align}
+where we have defined the AF $f:=W_1 F /D$, we have used that $\Vert x_\mu\Vert^2=D$ as $D\rightarrow\infty$ and omitted the $\mu-$dependence on the right hand side for simplicity. By taking $t=\mu/D$, as shown in \citet{goldt2019dynamics}, in the infinite-dimensional limit $Q^{kl}(\mu)$ concentrates to the solution of the following ODE:
+\begin{align}
+    \frac{\dd Q^{kl}}{\dd t}&=-\eta f^k \mathbb{E}\left[\sigma'(\lambda^k)\lambda^l e\right]-\eta f^l \mathbb{E}\left[\sigma'(\lambda^l)\lambda^k e\right]+\eta^2f^kf^l \mathbb{E}\left[\sigma'(\lambda^k)\sigma'(\lambda^l)e^2\right],
+\end{align}
+Similarly, we can derive ODEs for the evolution of $R,W_2$ and the AF $f$:
+\begin{align}
+    \frac{\dd R^{km}}{\dd t}=-\eta \,f^k \mathbb{E}\left[\sigma'(\lambda^k)\nu^m e\right],&&
+    \frac{\dd W_2^k}{\dd t}=-\eta\mathbb{E}\left[\sigma(\lambda^k)e\right],&&
+        \frac{\dd f^k}{\dd t}=-\eta f^k\mathbb{E}\left[\rho \sigma'(\lambda^k)e\right],
+\end{align}
+where the expectations are taken over the preactivatons and $\rho={F \,x}/{\sqrt{D}}$, and we have $\mathbb{E}_x[\lambda^k\rho]=f^k$,  $\mathbb{E}_x[\nu^m\rho]=\tilde f^m:=\tilde W_1 F/D$, $q_f:=F\cdot F/D$. The generalization error can be rewritten as
+\begin{align}
+\lim_{D\rightarrow\infty}\epsilon_g(\theta,\tilde \theta
+)=\frac{1}{2}\sum_{k,l=1}^KW_2^kW_2^l \,I_2(k,l)+\frac{1}{2}\sum_{m,n=1}^M  \tilde W_2^m \tilde W_2^n \,I_2(m,n)-\sum_{k=1}^K\sum_{m=1}^MW_2^k\tilde W_2^m\,I_2(k,m),
+\end{align}
+where $I_2$ generically encodes the averages over the activations
+\begin{align}
+I_2(\alpha,\beta)=\mathbb{E}\left[\sigma_\alpha(\gamma^\alpha)\sigma_\beta(\gamma^\beta)\right],&& \gamma^\alpha=\begin{cases}
+    \lambda^k & \textrm{if}\;\; \alpha=k,l\\
+    \nu^m & \textrm{if}\;\; \alpha=m,n
+    \end{cases}, && \sigma_\alpha=\begin{cases}
+    \sigma & \textrm{if}\;\; \alpha=k,l\\
+    \tilde \sigma & \textrm{if}\;\; \alpha=m,n
+    \end{cases}.
+\end{align}
+The other averages in eqns. can be expressed in a similar way and estimated by Monte Carlo methods. In the case of sigmoidal activation $\sigma(x)={\rm erf}(x/\sqrt{2})$, the function $I_2$ has an analytic expression.
+\begin{align}
+I_2(\alpha,\beta)=\frac{2}{\pi}{\rm arcsin}\frac{C^{\alpha\beta}}{\sqrt{1+C^{\alpha\alpha}}\sqrt{1+C^{\beta\beta}}}\;, && C^{kl}=Q^{kl}, \;\; C^{km}=R^{km},\;\; C^{mn}=T^{mn}.
+\end{align}
+\subsection{Early-training expansion}
+\label{appendix:early_training}
+As done by \citet{refinetti} for DFA, it is instructive to consider an expansion of the ODEs at early training times. We assume the following initialization: $W_2^k(0)=0$, $\forall k\in\{1,\ldots,K\}$, while the first layer is assumed to be orthogonal to the teacher $W_1^{k}(0)\cdot \tilde W_1^m=0$ and of fixed norm $\Vert W_1^k(0)\Vert^2/D=q_0$,  $\forall k\in\{1,\ldots,K\},\forall m\in\{1,\ldots,M\}$. We also take orthogonal first-layer teacher weights, such that $T$ is the identity matrix. This initialization leads to:
+\begin{align}
+    R^{km}(0)=0\;, && \frac{\dd}{\dd t}W_2^k\biggr\rvert_{t=0}=0\;,&& \frac{\dd}{\dd t}R^{km}\biggr\rvert_{t=0}=\frac{\sqrt{2}}{\pi \sqrt{1+q_0}}\eta \,f^k(0)\,\tilde W_2^m.
+\end{align}
+We can therefore compute the second-layer update to linear order:
+\begin{align}
+    \frac{\dd}{\dd t}W_2^k(t)= \frac{2}{\pi^2 (1+q_0)}\eta^2\,f^k(0)\,\Vert \tilde W_2\Vert_2^2\;t +\mathcal{O}(t^2).\label{eq:expansion_w2} 
+\end{align}
+Eqn.~\ref{eq:expansion_w2} shows that the update of the second-layer weights at early training times is in the direction of the AF matrix, in agreement with the alignment phase observed in experiments. Crucially, it is necessary that $f^k(0)\neq 0\;\forall k$ in order to have non-zero updates, i.e. the feedback $F$ must not be orthogonal to the first-layer weights at initialization. We now inspect the behavior of the FA at the beginning of training. We have that the update at time zero is:
+\begin{align}
+    \frac{\dd }{\dd t}f^k\biggr\rvert_{t=0}=\frac 2 \pi \,\eta \frac{f^k(0)}{\sqrt{(1+q_0)(1+q_f)-f^k(0)^2}}\,(\tilde W_2\cdot \tilde f),\label{eq:expansion_f}
+\end{align}
+and
+\begin{align}
+    f^k(t)=f^k(0)+\frac 2 \pi \,\eta \frac{f^k(0)}{\sqrt{(1+q_0)(1+q_f)-f^k(0)^2}}\,(\tilde W_2\cdot \tilde f)\;t +\mathcal{O}(t^2).
+\end{align}
+Eqn.~\ref{eq:expansion_f} illustrates that the feedback-teacher alignment $\tilde f$ plays an important role in speeding up the dynamics. Indeed, if $\Vert \tilde f\Vert_2^2$ is close to zero, the feedback update slows down inducing long plateaus in the generalization error. A similar role is played by the alignment angle between $\tilde W_2$ and $\tilde f$.
+
+\newpage
+\section{PEPITA's results compared to the Baselines}
+\begin{table*}[h]
+\caption{Test accuracy [\%] achieved by BP, FA, DRTP, PEPITA, and PEPITA with WM in the experiments. Mean and standard deviation are computed over 10 independent runs. The nonlinearity is ReLU for all algorithms except DRTP, for which is tanh. WM is used in combination with weight decay with $\lambda = 10^{-4}$ for the networks trained on the CIFAR-10 dataset and for the 3-hidden-layer networks trained on the CIFAR-100 dataset. The other networks are trained without weight decay. Bold fonts refer to the best results exclusively among PEPITA and its improvements.}
+\label{tab:baselines_relu}
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{sc}
+\begin{tabular}{l|ccc|ccc}
+\toprule
+ & \multicolumn{3}{|c}{2 hidden layers}  & \multicolumn{3}{|c}{3 hidden layers} \\ \midrule
+& MNIST & CIFAR-10 & CIFAR-100 & MNIST & CIFAR-10 & CIFAR-100 \\
+\midrule
+ BP & 98.85$\pm$0.06 & 59.69$\pm$0.25 & 32.28$\pm$0.17& 98.89$\pm$0.04 & 60.07$\pm$0.28 & 32.80$\pm$0.16 \\ 
+ FA &  98.64$\pm$0.05  & 57.76$\pm$0.39 & 22.90$\pm$0.14 & 97.48$\pm$0.06 & 52.99$\pm$0.21 & 22.81$\pm$0.21 \\
+ DRTP &  95.36$\pm$0.09 & 47.48$\pm$0.19 & 20.55$\pm$0.30 & 95.74$\pm$0.10 & 47.44$\pm$0.19 & 21.81$\pm$0.24 \Bstrut\\ \hline
+ PEPITA & \textbf{98.19}$\pm$0.07  & 52.39$\pm$0.27 & 24.88$\pm$0.15 & 95.07$\pm$0.11 & 52.47$\pm$0.24 & 01.00$\pm$0.00  \Tstrut\\ 
+ \begin{tabular}{@{}c@{}}PEPITA \\ +WD\end{tabular} & 98.09$\pm$0.07 & 53.09$\pm$0.33 & 24.64$\pm$0.24 & 95.09$\pm$0.16 & 52.56$\pm$0.31 & \textbf{23.13}$\pm$0.21 \\
+ \begin{tabular}{@{}c@{}}PEPITA \\ +WM\end{tabular} & 98.13$\pm$0.05  & \textbf{53.44}$\pm$0.28  & \textbf{26.95}$\pm$0.24 & \textbf{96.33}$\pm$0.12 & \textbf{52.80}$\pm$0.33 & 23.03$\pm$0.28 \\
+\bottomrule
+\end{tabular}
+\end{sc}
+}
+\end{center}
+\end{table*}
+
+
+\section{Slowness results}\label{sec:slowness}
+In our analysis of convergence rate, we use the \emph{plateau equation for learning curves} \citep{Dellaferrera_GRAPES}:
+
+\begin{align}
+    \text{accuracy} = \frac{\text{max\_accuracy} \cdot \text{epochs}}{\text{slowness} + \text{epochs}} 
+\end{align}
+
+By fitting the test curve to this equation, we calculate the slowness parameter, which measures how quickly the network reduces error during training. In mathematical terms, the slowness value corresponds to the number of epochs needed to reach half of the maximum accuracy. In practice, a lower slowness value indicates faster training.
+
+Table \ref{tab:results_slowness} shows that the best convergence rate for PEPITA (\textit{i.e.}, small slowness value) is obtained in general by PEPITA with WM (MNIST, CIFAR-100). Compared to the baselines, PEPITA has a better convergence than all the algorithms on MNIST, is the slowest on CIFAR-10, and the second best after BP on CIFAR-100. However, these results are strongly dependent on the chosen learning rate.
+\begin{table*}[h]
+\caption{Convergence rate in terms of slowness value obtained by BP, FA, DRTP and PEPITA in the experiments for the fully connected models trained on MNIST, CIFAR-10 and CIFAR-100 (same simulations reported in Table \ref{tab:results}). PreM refers to pre-mirroring (Sec.~\ref{sec:deeper}). The smallest the slowness value, the better the convergence rate. The slowness is computed on the first 60 epochs of the test curve (before the learning rate decay), averaged over 10 independent runs. All the networks are trained without weight decay. The slowness result of FA on CIFAR-10 is lower than in \citet{Dellaferrera_PEPITA} as our grid search returned a higher value for the learning rate. Bold fonts refer to the best results exclusively among PEPITA and its improvements.}
+\label{tab:results_slowness}
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{l|ccc}
+\toprule
+& \multicolumn{3}{|c|}{1$\times$1024 Fully connected models}  \\ \midrule
+  & MNIST & CIFAR-10 & CIFAR-100  \\
+\midrule
+BP & 0.061$\pm$0.001 & 0.421$\pm$0.016 & 1.406$\pm$0.053 \\ 
+ FA & 0.081$\pm$0.002 & 0.463$\pm$0.020 & 4.946$\pm$0.123 \\ 
+ DRTP & 0.059$\pm$0.002 & 0.362$\pm$0.021 & 12.904$\pm$0.443  \Bstrut\\ \hline
+ PEPITA & 0.052$\pm$0.004 & 0.894$\pm$0.071 & 2.695$\pm$0.166 \Tstrut\\ 
+ PEPITA+WM & 0.047$\pm$0.005 & 0.890$\pm$0.081 & 2.333$\pm$0.102\\
+ PEPITA+WM+preM & \textbf{0.040}$\pm$0.002 & \textbf{0.856}$\pm$0.051 & \textbf{1.999}$\pm$0.059\\
+\bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table*}
+
+
+\newpage
+\section{Hyperparameters}
+
+\begin{table*}[h!]
+\caption{1-hidden-layer network architectures and settings used in the experiments. The nonlinearity is ReLU for all algorithms except DRTP, for which is tanh.}
+\label{tab:architectures}
+\footnotesize
+\vskip 0.15in
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{sc}
+\begin{tabular}{l|lll|lll}
+\toprule
+& \multicolumn{3}{|c|}{1 Hidden layer} & \multicolumn{3}{|c}{1 hidden layer - Normalization} \\ \midrule
+  & MNIST & CIFAR-10 & CIFAR-100 & MNIST & CIFAR-10 & CIFAR-100 \\
+\midrule
+InputSize & 28$\times$28$\times$1 & 32$\times$32$\times$3 & 32$\times$32$\times$3 & 28$\times$28$\times$1 & 32$\times$32$\times$3 & 32$\times$32$\times$3 \\ 
+ Hidden units & 1$\times$1024 & 1$\times$1024 & 1$\times$1024 & 1$\times$1024 & 1$\times$1024 & 1$\times$1024 \\ 
+ Output units & 10 & 10 & 100 & 10 & 10 & 100 \\ \midrule
+ $\eta$ BP & 0.1 & 0.01 & 0.1 & $-$ & $-$  & $-$ \\
+ $\eta$ FA & 0.1 & 0.01 & 0.01 & $-$ & $-$  & $-$ \\
+ $\eta$ DRTP & 0.01 & 0.001 & 0.001 & $-$ & $-$  & $-$ \\
+ $\eta$ PEPITA & 0.1 & 0.01 & 0.01 & 100 & 10  & 100 \\
+ $\lambda$ weight decay & $10^{-5}$ & $10^{-4}$ & $10^{-5}$ & 0.0 & 0.0  & 0.0 \\
+ $\eta$ decay rate & $\times$0.1 & $\times$0.1 & $\times$0.1 & $\times$0.5 & $\times$0.1  & $\times$0.1 \\
+ decay epoch & 60,90 & 60,90 & 60,90 & 60,90 & 60,90  & 60,90  \\
+ Batch size & 64 & 64 & 64 & 64 & 64 & 64 \\ 
+ $\eta$ WM & 0.1 & 0.001 & 0.1 & 0.001 & 0.001 & 0.001 \\
+ $\lambda$ weight decay WM & 0.0 & 0.1 & 0.5 & 0.1 & 0.1 & 0.1 \\
+ $\sigma_F^{(0)}$ (uniform) & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ \\ 
+ $\sigma_F^{(0)}$ (normal) & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ \\ 
+ Fan in & $28\cdot28\cdot1$ & $32\cdot32\cdot3$ &  $32\cdot32\cdot3$ & $28\cdot28\cdot1$ & $32\cdot32\cdot3$ &  $32\cdot32\cdot3$ \\ 
+ $\#$epochs & 100 & 100 & 100 & 100 & 100 & 100 \\
+ Dropout & 10\% & 10\% & 10\% & 10\% & 10\% & 10\% \\ 
+\bottomrule
+\end{tabular}
+\end{sc}
+}
+\end{center}
+\vskip -0.1in
+\end{table*}
+
+\begin{table*}[h!]
+\caption{2-, 3-hidden-layer network architectures and settings used in the experiments. The nonlinearity is ReLU for all algorithms except DRTP, for which is tanh. \textbf{(*)} For the 3-hidden-layer network trained with PEPITA on the MNIST dataset, we do not use learning rate decay, as indicated by the grid search.}
+\label{tab:architectures_b}
+\footnotesize
+\vskip 0.15in
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{sc}
+\begin{tabular}{l|lll|lll}
+\toprule
+& \multicolumn{3}{|c|}{2 hidden layers} & \multicolumn{3}{|c}{3 hidden layers} \\ \midrule
+  & MNIST & CIFAR-10 & CIFAR-100 & MNIST & CIFAR-10 & CIFAR-100 \\
+\midrule
+InputSize & 28$\times$28$\times$1 & 32$\times$32$\times$3 & 32$\times$32$\times$3 & 28$\times$28$\times$1 & 32$\times$32$\times$3 & 32$\times$32$\times$3 \\ 
+Hidden units & 2$\times$1024 & 2$\times$1024 & 2$\times$1024 & 3$\times$1024 & 3$\times$1024 & 3$\times$1024 \\ 
+ Output units & 10 & 10 & 100 & 10 & 10 & 100 \\ \midrule
+ $\eta$ BP & 0.1 & 0.01 & 0.1 & 0.1 & 0.01 & 0.1 \\
+ $\eta$ FA & 0.1 & 0.01 & 0.01 & 0.01 & 0.001  & 0.01 \\
+ $\eta$ DRTP & 0.001 & 0.001 & 0.001 & 0.001 & 0.001  & 0.001 \\
+ $\eta$ PEPITA & 0.1 & 0.01 & 0.01 & 0.001 & 0.01 & 0.01 \\
+ $\lambda$ weight decay & $10^{-5}$ & $10^{-4}$ & $10^{-5}$ & $10^{-5}$ & $10^{-4}$ & $10^{-4}$ \\
+ $\eta$ decay rate (*) & $\times$0.1 & $\times$0.1 & $\times$0.1 & $\times$0.1 & $\times$0.1  & $\times$0.1 \\
+ decay epoch & 60,90 & 60,90 & 60,90 & 60,90 & 60,90  & 60,90  \\
+ Batch size & 64 & 64 & 64 & 64 & 64 & 64 \\ 
+ $\eta$ WM & 0.00001 & 1.0 & 1.0 & 0.1 & 0.001 & 0.001 \\
+ $\lambda$ WD WM & 0.0 & 0.1 & 0.1 & 0.001 & 0.1 & 0.1 \\
+ $\sigma_F^{(0)}$ (uniform) & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ & 0.05$\cdot 2\sqrt{\frac{6}{\text{fanin}}}$ \\ 
+  $\sigma_F^{(0)}$ (normal) & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ & 0.05$\cdot \sqrt{\frac{2}{\text{fanin}}}$ \\ 
+ Fan in & $28\cdot28\cdot1$ & $32\cdot32\cdot3$ &  $32\cdot32\cdot3$ & $28\cdot28\cdot1$ & $32\cdot32\cdot3$ &  $32\cdot32\cdot3$ \\ 
+ $\#$epochs & 100 & 100 & 100 & 100 & 100 & 100 \\
+ Dropout & 10\% & 10\% & 10\% & 10\% & 10\% & 10\% \\ 
+\bottomrule
+\end{tabular}
+\end{sc}
+}
+\end{center}
+\vskip -0.1in
+\end{table*}
+
+
+
+\newpage
+\section{Training deeper fully-connected models}
+In the field of biologically inspired learning, reaching convergence on networks with more than a couple of hidden layers is a long standing challenge. Two significant reasons for this are the difficulty of learning hierarchical representations and the explosion of weight updates and activities in deep layers \cite{illing2021local}.  In particular, forward-only learning schemes have been shown to work so far on a maximum of four hidden layers (FF \citep{Hinton2022FF}). The original PEPITA paper was only able to train 1 hidden layer models \citep{Dellaferrera_PEPITA}, therefore our strategy to reach convergence with up to 5 hidden layers (Fig.~\ref{fig:5hidden}) represents a significant improvement over the previous work.
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1.\textwidth]{figures/5hidden.pdf}
+    \caption{Test accuracy obtained with PEPITA and normalization of the activations for 1- to 5-hidden-layer networks on (a) MNIST, (b) CIFAR-10, and (c) CIFAR-100. Note that compared to Fig. \ref{fig:accuracies} the trend is decreasing, as here we use activation normalization to obtain convergence for 4 and 5 hidden layers, which we did not use for Fig. \ref{fig:accuracies}.}
+    \label{fig:5hidden}
+\end{figure}
+
+\newpage
+
+\section{Weight mirroring}
+\label{appendix:WM}
+
+Algorithm \ref{pseudocode_wm} describes how WM is applied to PEPITA. This algorithm is applied at the end of each training epoch. $\sigma_F^{(t+1)}$ refers to the standard deviation of the entries of $F(t+1)=\prod_{\ell=1}^{L}F_\ell(t+1)$.
+\begin{algorithm}[H]
+        \caption{Implementation of WM}\label{pseudocode_wm}
+        \begin{algorithmic}
+            \STATE \COMMENT{Mirror weights}
+            \FOR{$\ell = 1, ..., L$}
+                \STATE $\delta_{\ell-1} \sim \mathcal{N}(\mu, \sigma^2)$
+                \STATE $\delta_{\ell} = \sigma_\ell(W_\ell \delta_{\ell-1}) $
+                \STATE $F_\ell(t+1) = F_\ell(t) - \eta \delta_{\ell-1} \delta_{\ell}^\top$
+            \ENDFOR
+            \STATE \COMMENT{Normalize feedback matrices}
+            \FOR{$\ell = 1, ..., L$}
+                \STATE $F_\ell(t+1) = \left(\sigma_F^{(0)} / \sigma_F^{(t+1)}\right)^{1/L} \cdot F_\ell$
+            \ENDFOR
+        \end{algorithmic}
+    \end{algorithm}
+
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.4\textwidth]{figures/sup_ang_mnist.pdf}
+    \hspace*{5mm}
+    \includegraphics[width=.4\textwidth]{figures/sup_ang_CIFAR-100.pdf}
+    \caption{Alignment angle between $F$ and $W_{tot}$ during training with (pink and purple curves) or without (blue curve) WM for the MNIST (\emph{left panel}) and CIFAR-100 (\emph{right panel}) datasets. PreM refers to pre-mirroring (Sec.~\ref{sec:deeper}). The hyperparameters are reported in Table \ref{tab:architectures}. The plots indicate mean and standard deviation over 10 independent runs.}
+    \label{fig:WM_suppl}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/angles123_mnist.pdf}
+    \caption{Alignment angle between $F$ and $W_{tot}$ during training with (pink curve) or without (blue curve) WM for the MNIST dataset for (a) 1-, (b) 2-, (c) 3-hidden-layer networks. The hyperparameters are reported in Table \ref{tab:architectures} for the 1-hidden-layer network and Table \ref{tab:architectures_b} for the 2- and 3-hidden-layer networks. The plots indicate mean and standard deviation over 10 independent runs.}
+    \label{fig:angles_mnist}
+\end{figure}
+
+\begin{figure}[t!]
+    \centering
+    \includegraphics[width=1\textwidth]{figures/angles123.pdf}
+    \caption{Alignment angle between $F$ and $W_{tot}$ during training with (pink curve) or without (blue curve) WM for the CIFAR-10 dataset for (a) 1-, (b) 2-, (c) 3-hidden-layer networks. The hyperparameters are reported in Table \ref{tab:architectures} for the 1-hidden-layer network and Table \ref{tab:architectures_b} for the 2- and 3-hidden-layer networks. The plots indicate mean and standard deviation over 10 independent runs.}
+    \label{fig:angles}
+\end{figure}
+
+\end{document}

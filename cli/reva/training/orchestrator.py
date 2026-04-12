@@ -7,7 +7,7 @@ import logging
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -26,10 +26,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TrainingConfig:
     population: int = 15
-    n_survivors: int = 4
-    max_generations: int = 50
+    n_survivors: int = 6
+    max_generations: int = 6
     papers_per_agent: int = 10
-    model: str = "claude-sonnet-4-6"
+    model: Optional[str] = None  # None → use backend default
+    backend: str = "claude-code"
     run_id: Optional[str] = None
     data_dir: str = "data"
     flaws_dir: str = "FLAWS/data/papers"
@@ -37,7 +38,8 @@ class TrainingConfig:
     runs_dir: str = "training/runs"
     config_path: Optional[str] = None  # reva config.toml path
     seed: Optional[int] = None
-    parallel: int = 1  # number of concurrent agent evaluations per generation
+    parallel: int = 4  # number of concurrent agent evaluations per generation
+    seed_configs: list = field(default_factory=list)  # optional AgentConfig dicts to include in gen 0
 
 
 def run(cfg: TrainingConfig) -> list[AgentConfig]:
@@ -83,12 +85,13 @@ def run(cfg: TrainingConfig) -> list[AgentConfig]:
 
         # --- Build population ---
         population = _get_or_build_population(
-            gen_dir, gen_idx, survivors, pools, cfg.population, cfg.seed
+            gen_dir, gen_idx, survivors, pools, cfg.population, cfg.seed,
+            seed_configs=cfg.seed_configs if gen_idx == 0 else [],
         )
 
         # --- Score agents (skip already-completed) ---
         results = _score_generation(
-            gen_dir, population, papers, ground_truth, cfg.model, cfg.parallel
+            gen_dir, population, papers, ground_truth, cfg.model, cfg.parallel, cfg.backend
         )
 
         # --- Select survivors ---
@@ -179,12 +182,14 @@ def _build_pools(config_path: Optional[str]) -> AxisPools:
     interests = sorted(str(f) for f in cfg.interests_dir.glob("**/*.md") if f.name != "README.md")
     methodologies = sorted(str(f) for f in cfg.review_methodology_dir.glob("*.md") if f.name != "README.md")
     review_formats = sorted(str(f) for f in cfg.review_format_dir.glob("*.md") if f.name != "README.md")
+    selection_strategies = sorted(str(f) for f in cfg.selection_strategy_dir.glob("*.md") if f.name != "README.md")
     return AxisPools(
         roles=roles,
         personas=personas,
         interests=interests,
         methodologies=methodologies,
         review_formats=review_formats,
+        selection_strategies=selection_strategies,
     )
 
 
@@ -195,6 +200,7 @@ def _get_or_build_population(
     pools: AxisPools,
     population: int,
     seed: Optional[int],
+    seed_configs: list = [],
 ) -> list[AgentConfig]:
     agents_path = gen_dir / "agents.json"
     if agents_path.exists():
@@ -203,7 +209,11 @@ def _get_or_build_population(
 
     gen_seed = None if seed is None else seed + gen_idx
     if gen_idx == 0:
-        pop = sample_random(pools, n=population, seed=gen_seed)
+        seeded = [AgentConfig.from_dict(d) for d in seed_configs]
+        n_random = max(0, population - len(seeded))
+        pop = seeded + sample_random(pools, n=n_random, seed=gen_seed)
+        if seeded:
+            logger.info("Gen 0: seeded %d agent(s) + %d random", len(seeded), n_random)
     else:
         pop = generate_children(survivors, pools, n_children=population, seed=gen_seed)
 
@@ -216,8 +226,9 @@ def _score_generation(
     population: list[AgentConfig],
     papers: list[dict],
     ground_truth: dict,
-    model: str,
+    model: Optional[str],
     parallel: int = 1,
+    backend: str = "claude-code",
 ) -> list[_AgentResultWithConfig]:
     results_path = gen_dir / "results.json"
     completed: dict[int, dict] = {}
@@ -252,7 +263,7 @@ def _score_generation(
     def _score_one(idx: int, config: AgentConfig) -> _AgentResultWithConfig:
         logger.info("Scoring agent %d/%d", idx + 1, len(population))
         system_prompt = _compile_prompt(config)
-        scores = run_agent(system_prompt, papers, model=model)
+        scores = run_agent(system_prompt, papers, model=model, backend=backend)
         eval_result = evaluate(scores, ground_truth)
 
         entry = {
@@ -287,12 +298,15 @@ def _score_generation(
 
 def _compile_prompt(config: AgentConfig) -> str:
     from pathlib import Path as P
+    ss = config.selection_strategy
+    ss_path = P(ss) if ss and P(ss).exists() else None
     return compile_agent_prompt(
         role_path=P(config.role),
         persona_path=P(config.persona),
         interest_path=P(config.interests),
         review_methodology_path=P(config.methodology),
         review_format_path=P(config.review_format),
+        selection_strategy_path=ss_path,
     )
 
 

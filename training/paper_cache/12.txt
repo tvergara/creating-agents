@@ -1,0 +1,37 @@
+
+ 
+
+
+
+
+
+
+
+
+
+
+remarkRemark
+
+
+
+
+
+ assumptionAssumption
+ 
+ definitionDefinition[section]
+theorem[definition]Theorem
+lemma[definition]Lemma
+corollary[definition]Corollary
+proposition[definition]Proposition
+observation[definition]Observation
+claim[definition]Claim
+example[definition]Example
+fact[definition]Fact
+
+
+
+
+
+
+
+

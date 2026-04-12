@@ -1,0 +1,1367 @@
+DenoisingNeuralRerankerforRecommenderSystems
+DENOISING NEURAL RERANKER FOR RECOMMENDER
+SYSTEMS
+WenyuMao1∗ShuchangLiu2†,‡HailanYang2, XiaobeiWang2, XiaoyuYang2, XuGao2,
+XiangLi2, LantaoHu2, HanLi2, KunGai2, AnZhang1, XiangWang1†
+1UniversityofScienceandTechnologyofChina
+2KuaishouTechnology
+ABSTRACT
+For multi-stage recommenders in industry, a user request would first trigger a
+simpleandefficientretrievermodulethatselectsandranksalistofrelevantitems,
+thentherecommendercallsaslowerbutmoresophisticatedrerankingmodelthat
+refinestheitemlistexposuretotheuser. Toconsistentlyoptimizethetwo-stagere-
+trievalrerankingframework,mosteffortshavefocusedonlearningreranker-aware
+retrievers. Incontrast,therehasbeenlimitedworkonhowtoachievearetriever-
+awarereranker. Inthiswork,weprovideevidencethattheretrieverscoresfromthe
+previousstageareinformativesignalsthathavebeenunderexplored. Specifically,
+wefirstempiricallyshowthatthererankingtaskunderthetwo-stageframeworkis
+naturallyanoisereductionproblemontheretrieverscores,andtheoreticallyshow
+thelimitationsofnaiveutilizationtechniquesoftheretrieverscores. Following
+thisnotion,wederiveanadversarialframeworkDNRthatassociatesthedenoising
+rerankerwithacarefullydesignednoisegenerationmodule. TheresultingDNR
+solution extends the conventional score error minimization loss with three aug-
+mented objectives, including: 1) a denoising objective that aims to denoise the
+noisyretrieverscorestoalignwiththeuserfeedback;2)anadversarialretriever
+scoregenerationobjectivethatimprovestheexplorationintheretrieverscorespace;
+and3)adistributionregularizationtermthataimstoalignthedistributionofgener-
+atednoisyretrieverscoreswiththerealones. Weconductextensiveexperiments
+on three public datasets and an industrial recommender system, together with
+analyticalsupport,tovalidatetheeffectivenessoftheproposedDNR.Thecodeis
+releasedathttps://github.com/maowenyu-11/DNR.
+1 INTRODUCTION
+Recommendersystemsaimtogeneratepersonalizeditemlistsandmaximizeusers’engagement.
+Forlarge-scaleitempools,industrialsolutionsRiccietal.(2022);Liuetal.(2025)typicallyusea
+two-stageretriever-rerankerarchitecture. Theretrieverefficientlynarrowsdownalargeitempooltoa
+manageablerelevantcandidateset. Thererankerthenusesamoresophisticatedmodeltoreorderthe
+candidatesintoanoptimallist-wiseorder. Tooptimizethetwo-stageframeworktowardsaconsistent
+goal of recommendation (e.g., aligning with user behavior or preference) across all stages, the
+majorityofeffortshavebeenfocusingonlearningareranker-awareretrieverGallagheretal.(2019);
+Xuetal.(2024a). However,thereislimitedworkonhowtoachievearetriever-awarereranker.
+ForthelatterrerankerCarbonell&Goldstein(1998);Jinetal.(2008);Peietal.(2019);Liuetal.
+(2022),earlystudiesproposetore-scoretheretrievalitemsJinetal.(2008);Aietal.(2018);Peietal.
+(2019)bymodelingthemutualinfluencesamongcandidateitems. Recentstate-of-the-artapproaches
+finditmoreeffectivetoformulatethererankingtaskasalistgenerationproblemShietal.(2023);
+Renetal.(2024);Linetal.(2024), wherethelistswithbetterlist-wiserewardsaregivenhigher
+generationprobability. Yet,existingmethodslargelyoverlookthepotentialofinitialretrieverscores,
+whichmayofferrichpriorinformationforthererankerstage. Inpractice,astraightforwardapproach
+∗WorkdoneduringtheinternshipatKuaishou:wenyumao2@gmail.com
+†Correspondingauthor:liushuchang@kuaishou.com,xiangwang@ustc.edu.cn
+‡Thefirsttwoauthorscontributedequallytothiswork
+1
+DenoisingNeuralRerankerforRecommenderSystems
+toleverageinitialretrieverscoresistodirectlyincludethemasextrainputfeaturesofthemodel,
+whichshowspromisetoimprovererankingperformanceasinFigure1a. Still,aswewillillustratein
+section3.2,thisnaivesolutionmightbefarfromexploitingthisretrieverinformationeffectivelyto
+alignwithuserfeedback,whichisaddressedbythefollowingcontributionsinthiswork.
+Formulating reranking as a noise reduction problem: The retriever stage typically employs
+a simpler model than the reranker to process large candidate pools, given computational budget
+constraints. Incontrast, thereranker, operatingonamuchsmallercandidateset, canuseamore
+sophisticated architecture and thus achieves significantly higher accuracy (Figure 1a, 1b). What
+followsisanempiricalassumptionthatthereishighernoiseintheretrieverscoresthanthereranker
+scores,whichnaturallyindicatesanoisereductionprocessofthererankingstage.Thisnoisereduction
+patternisalsoevidentwhenweobservethechangesintheembeddingrepresentationsofground
+truthtargetitems. WeshowevidencebycomparingFigure1candFigure1d,wherethesamesetof
+retrievedcandidatesisnotdistinguishedwellbytheretriever,butthetargetitemsarebetterpredicted
+bythereranker,intermsoftheembeddingspace. Thereranker’snoiseismoreconcentratednear
+zerothantheretriever’s(Figure1e),furtherconfirmingthererankeractsasadenoisingmodelforthe
+retriever’snoise. However,duetotheuncertaintyinherentinnoisyretrieverscores,denoisingbased
+onthesescoresmaymisalignwiththesystem-widegoalofaligningwithuserbehavior. Thus,we
+arguethatlearninganoise-awarererankeriscrucialforachievingaretriever-awarereranker.
+0.80
+0.75
+0.70
+0.65
+0.60
+Retriever RerankerReranker w/ s
+5@GCDN
+NDCG@10
+Useful Score Information
+NDCG@5 NDCG@20
+MRR AUC
+Reranker
+Retriever
+MAP@5 MAP@20
+MAP@10
+(a) Initial retriever scores fur- (b) Performance comparison of
+therboosttheperformance. twostagesinMovieLensdataset.
+Embedding in Retriever Stage Embedding in Reranker Stage Noise Distribution Comparison
+20 1.0 5 Retriever
+Reranker
+10 0.8 4
+0.6 3
+0
+0.4 2
+10
+Retriever 0.2 R R e e t r r a i n e k v e e r r 1
+20 Target 0.0 Target 0
+20 10 0 10 20 0.00 0.25 0.50 0.75 1.00 1.0 0.5 0.0 0.5 1.0
+(c)Targetitemandselectedcan- (d)Noisereductionprocessin (e)Noisedensitydistributionof
+didatesembeddinginretriever. itemembeddingperspective. thererankerandretriever.
+Figure 1: (a) The informative retriever score and (b-d) noise reduction nature of reranking. The
+reranker in this example uses transformer model to select the top-20 items from the candidates.
+“Rerankw/s”representsusingretrieverscoresasadditionalitemfeaturesforthereranker. Theblack
+shaded circles in (c) and (d) represent the retriever’s selection of candidate items, and the green
+shadedcirclein(d)representsthoseofthererankerforexposure. (e)comparesthenoisedistribution
+(distancebetweenpredictedscoresandground-truthlabels)oftheretrieverandthereranker.
+Theproposedsolution: Motivatedbythepreviousanalysis,weproposeanadversarialframework,
+whichformulatesadenoisingneuralreranker(DNR)withacarefullydesignednoisegeneration
+module,whichintroducesunseennoisetousers’feedbacktoaugmentthedistributionmodelingof
+retrieverscores. Wetheoreticallyshowthattheuserbehavioralignmentgoalcanbedecomposedinto
+threelearningobjectivesinoursolutionframework: 1)adenoisingobjectivethataimstodenoisethe
+noisyretrieverscoresunderbothobservedandsyntheticretrieverscores;2)anadversarialobjective
+thatencouragesthenoisegeneratortosynthesizeadversarialsamplesthatarehardtodenoise,which
+inturnimprovesthereranker’seffectiveness;and3)ascoredistributionregularizationtermthataims
+toalignthedistributionbetweensyntheticretrieverscoreswiththerealretrieverscores.
+Weconductempiricalexperimentsonthreepublicdatasetsandanindustrialrecommendersystemto
+verifythesuperiorityofDNRagainstnaiveutilizationstrategiesofretrieverscores,aswellasleading
+2
+DenoisingNeuralRerankerforRecommenderSystems
+rerankermodels. Additionally,wefindthatthethreeproposedlearningobjectivesintheadversarial
+denoisingframeworkyieldbetterrecommendationperformancethanasingledenoisingobjective.
+2 RELATED WORK
+2.1 MULTI-STAGERECOMMENDATION
+Modern content-intensive web services with large candidate pools typically employ multi-stage
+recommendersystemsQinetal.(2022);Zhengetal.(2024);Liuetal.(2022)(alsoknownascascade
+rankingLiuetal.(2017);Gallagheretal.(2019)process)tobalanceaccuracyandefficiencyunder
+strictlatencyconstraints. Eachstageprogressivelynarrowsdownthecandidatesetwhileemploying
+increasinglysophisticatedmodels. Whilemostexistingworkfocusesonindependentlyoptimizing
+individualstages(e.g.,retrievalWangetal.(2011;2017)orthererankingstageLiuetal.(2022);
+Peietal.(2019)),recentstudiesexplorejointoptimizationacrosstheentirepipelineGallagheretal.
+(2019);Qinetal.(2022);Xuetal.(2024b). Theseapproachesleveragelater-stagemodelstoguide
+earlier-stagelearning,improvingoverallcoherenceandperformanceZhaoetal.(2023);Xuetal.
+(2024a). In contrast, our work takes a complementary direction—–using earlier-stage scores to
+regulatelater-stageoptimization.
+2.2 RERANKINGSTRATEGIES
+Insequentialrecommendation,re-rankingPeietal.(2019);Huzhangetal.(2023);Aietal.(2018)
+aims to refine the initial ranking list generated by a previous retrieval stage. Existing re-ranking
+approachescanbebroadlycategorizedintothefollowingparadigms. Single-pointre-scoringmethods
+Kang&McAuley(2018);Zhuangetal.(2018)independentlypredictarefinedscoreforeachitem
+andre-rankthemaccordingly. Whileefficient,theyignoredependenciesbetweenitems,potentially
+leadingtosuboptimallist-levelperformance. Unlikesingle-pointapproaches,list-refinementmethods
+Pei et al. (2019); Ai et al. (2018); Xi et al. (2022) explicitly model mutual influences between
+items by treating the pre-ranked candidate list as input. Techniques such as Transformer-based
+architecturesPeietal.(2019)captureuserpreferencestooptimizethelistholistically. Generator-
+evaluator methods Huzhang et al. (2023); Shi et al. (2023) first generate multiple candidate lists
+andthenevaluatethemusingalearnedutilityfunctiontoselectthebestone. Theycaneffectively
+generateahigh-qualityrecommendationlistbutsufferfromtheincreasingcomputationalcostdueto
+thegeneration-evaluationloop.EmergingtechniquesleveragediffusionmodelsMaoetal.(2025c;a;d)
+togeneraterefineditemlistsbyiterativelydenoisingarankingdistribution,whichexcelsincapturing
+complexuserpreferences.
+2.3 ADVERSARIALLEARNING
+AdversariallearningLowd&Meek(2005)hasemergedasapowerfultechniquefordataaugmentation
+in recommendation systems, improving the model robustness and generalization. By leveraging
+generativeadversarialnetworks(GANs)Wangetal.(2017)oradversarialtrainingHeetal.(2018);
+Tangetal.(2020),thesemethodssynthesizehigh-qualityuser-iteminteractionsorperturbexisting
+datatoenhancemodelrobustness. Forinstance, IRGANWangetal.(2017)employsaminimax
+gamebetweenagenerator(samplinghardnegativeitems)andadiscriminator(distinguishingreal
+from synthetic interactions) to improve ranking performance. Similarly, AdvIR Park & Chang
+(2019)introducesadversarialperturbationstoembeddingspaces,forcingthemodeltolearnmore
+generalizablerepresentations. Thesemethodsdemonstrate that adversariallearningcannotonly
+augmenttrainingdatabutalsoenhancemodels’robustness. Ourmethodisdesignedtoaddnoise
+byadversariallearning,whichcanenhancethereranker’seffectivenessindenoisingthepre-ranking
+scorestoalignwithuserfeedback.
+3 METHODOLOGY
+3.1 PROBLEMFORMULATION
+For a given user request u (which may contain information about the candidate items I(u) =
+{i ,i ,··· ,i } retrieved by the retriever, user profile features, and user interaction history), we
+1 2 n
+3
+DenoisingNeuralRerankerforRecommenderSystems
+Display
+user feedback after display
+… Tens
+��
+Adversarial
+Reranker Learning
+Denoising Noise
+… Hundreds Reranker Generator
+multi �� ��Posterior �� �풂� 
+stage Retriever Regularization
+… Thousands
+��
+item list score list
+Item Set
+�� ��
+Retriever results
+… Millions
+Noise Reduction Formulation for Reranker
+Figure2: Overallframeworkofmulti-stagerecommendersystem(ontheleft)andthenoisereduction
+formulationofourmethod,DNR.
+observethefollowingduringdatacollection: 1)Thecorresponding(continuous)retrieverscoresof
+I(u)arex =[x ,x ,··· ,x ]∈[0,1]n,whichessentiallydescribetheuserpreferenceprediction
+u i1 i2 in
+intheviewoftheretriever;2)Thegroundtruthuserfeedback(i.e.,binarylabelssuchasclick,watch,
+share,etc.) ofthecandidateset,i.e.,z =[z ,z ,··· ,z ]∈{0,1}n. Notethatforrecommender
+u i1 i2 in
+systemsthatfurtherselectKitemsafterthererankingprocess,wemayneverobservethepositive
+userfeedbackfortheremainingn−K items. Fromaprobabilisticviewpoint,wecanassumezero
+labelsasdefaultsfortheseitems,sincepassingthererankingprocessisthepremiseofobservingthe
+userfeedbacksignals.
+The Noise Reduction Task: In our formulation, the overall recommendation-feedback process
+u→x→z(wherexandzarerandomvariablesforretrieverscoresanduserfeedback)formsastrict
+Markovchain. Itinvolvesaninitialretrieverp (x|u),whichservesastheretrieverscoregeneration
+x
+prior(andisassumednon-optimizableinthererankingtask). UnderthisMarkovassumption,the
+learnablererankerq (z|x)servesastheconditionaluserfeedbacklikelihoodestimatorthatpredicts
+θ
+theuserfeedbackzˆsolelygiventheretrieverscoresx,ensuringconditionalindependencefromthe
+user context u, i.e., zˆ ∼ q (·|x ). Given an observed feedback z , the learning goal adopts the
+θ u u
+generaldataloglikelihoodmaximizationobjective:
+maxlogp(z |u,θ) (1)
+u
+θ
+wherethepredictedlikelihoodp(z |u,θ)fortheobserveduserfeedbackz isdeterminedbythe
+u u
+retrieverp ,thererankerq ,andtheuserrequestu.
+x θ
+Note: DrivenbythestrictconditionalindependenceoftheMarkovchain,westructurallyexcludethe
+userconditiontermufortheremainderofthepaper(e.g.,wewilldenotetheretrieverasp (x),the
+x
+rerankerasq (z|x ),andsimplifythemarginallearninggoalasmax logp(z )),sinceouranalytical
+θ u θ u
+frameworkoperatesstrictlywithinthescorespace.
+3.2 ANALYTICALLIMITATIONOFDIRECTOPTIMIZATIONMETHODS
+As we have mentioned in section 1, involving retrieval scores as input is beneficial for existing
+rerankingmethods. Regardlessofthererankerdesign,thecorrespondingobjectivefunctionis:
+L direct =−E x∼px [logq θ (z u |x)] (2)
+whichmaximizestheuserbehavioralignmentconditionedonthegivenretrievalscores. Asaspecial
+case,accordingtothebinarynatureofz ,wecansimplifythelearningobjectiveasstandardbinary
+u
+cross-entropy(BCE)loss. Theoretically,wecanfindthatL optimizesanupperboundofthe
+direct
+negativedataloglikelihood(detailsinAppendixB.2):
+−logp(z )=L +L +L
+u direct 1 2
+q (z |x)
+L 1 =E x∼pxh log p θ (z u |x)i (3)
+z|x u
+L =−D p (x)∥p (x|z ) .
+2 KL x x|z u
+(cid:0) (cid:1)
+4
+DenoisingNeuralRerankerforRecommenderSystems
+where p represents the ground-truth user feedback probability and p represents the posterior
+z|x x|z
+distributionofretrieverscoresconditionedonuserfeedback,bothtermsarenotrelatedtothereranker
+q ,andtheyaremerelydeterminedbytheretrieverpriorandtheuser. Intuitively,smallervaluesof
+θ
+L andL makethesolutionofEq.(2)morealignedwiththegoalofEq.(1). However,thesetwo
+1 2
+termsarenotfullycontrolledbythedirectoptimizationframework,potentiallycausingsignificant
+misalignmentbetweenEq.(2)andEq.(1). Thiswillleadtoadiscrepancybetweenthefinalreranking
+resultsanduserfeedback,andthus,thesuboptimalrecommendationperformance.
+3.3 IMPLEMENTINGNOISEGENERATORFORTHEPOSTERIOR
+To overcome the aforementioned limitations, we propose to complement the denoising reranker
+q with a noise generator f (·|z ). Formally, we generate noise with ϵ ∼ f and add it to the
+θ ϕ u ϕ
+user feedback to form the synthetic retriever score posterior p (x|z ), taking insight from the
+ϕ u
+reparameterizationtrickKingma&Welling(2014):
+x′ =(1−λ )z +λ ϵ, (4)
+u c u c
+wherethegeneratednoiseϵrepresentsthenoisybehaviorinretrieverscoresx′,λ representsthe
+u c
+proportionofnoiseinthegeneratedretrieverscores. Wedenotethegenerationprocessasx′ ∼p ,
+u ϕ
+which is analogous to the sampling process with ground truth posterior (assumed unknown and
+intractable),i.e.,x∼p . Forimplementation,weinvestigatetwochoicesofnoisegeneratorf :
+x|z ϕ
+• HeuristicGenerator: Thisoptionusesanon-parametricnoisegeneratorfheuristicwithamanually
+ϕ
+designeddistribution.Forexample,wecanadoptrandomGaussiannoisesimilartoHoetal.(2020);
+Lietal.(2024),butwenoticethatthisisnotagoodrepresentationofthenoiseinretrieverscores.
+Intuitively,giventhebinaryuserfeedbacksignals,anaturalassumptionoftheretrieverprioristhe
+Betadistribution,i.e.,,theconjugatepriorandtheposteriorforbinaryvariables(i.e.,bernoulli
+or binomial distribution) are both beta distribution, where we can derive the heuristic solution
+as ϵ ∼ Beta(α,β). For simplicity, one may set α = β = 0.5 to approximate the uncertainty.
+In practice, we find that it is also beneficial to set α and β that align with the observed noise
+distributioninthedata.
+• Model-basedGenerator: Whiletheheuristicgeneratoriseffectiveinourempiricalstudy,weare
+skepticalofwhetherthemanuallydesignedheuristicnoisegeneratorisoptimalforaugmenting
+theretrieverscoredistribution. Sincethepriornoisedistributionisuncertain,itisnecessaryto
+learnthisdistributionadaptivelyandpersonally. Toachieveamorepreciseestimation,wedesigna
+learnablemodelfmodel,withparameterϕ,thatwillbeoptimizedalongwiththereranker(detailsin
+ϕ
+thenextsection). Thegeneratednoiseϵshouldalsobealignedwiththeobserveddistribution,and
+italsoparticipatesinanadversarialtrainingobjectiveinordertobetterexploretheretrieverscore
+space,whichinturnimprovesthereranker’seffectiveness. Asthenoiseislearned,λ requires
+c
+no manual adjustment and can be treated as 1. As we will show in Section 4.3, this choice is
+empiricallybetterthantheheuristicgenerator.
+3.4 OVERALLLEARNINGFRAMEWORK
+Inthissection,weshowhowtooptimizetheuserfeedbackalignmentgoal,i.e.,Eq.(1)bysimulta-
+neouslylearningthedenoisingrerankerandtheadversarialnoisegenerator. Specifically,wecan
+decomposethenegativelog-likelihoodobjectiveintothreelossterms(derivationinAppendixB.1):
+−logp(z )=L +L +L +δ
+u z adv x x
+L z =−E x∼pϕh logq θ (z u |x) i
+q (z |x) (5)
+L adv =E x∼pϕh log p θ (z u |x)i
+z|x u
+L =D p (x|z )∥p (x) ,
+x KL(cid:16) ϕ u x (cid:17)
+whichconsistsofanaugmenteddenoisinglosstermL ,anadversarialnoisegenerationlossL ,
+z adv
+andascoredistributionregularizationtermL . Wewillillustratethedetailsofthesethreeterms
+x
+inthefollowingsections. Theadditionaltermδ = −D p (x|z )∥p (x|z ) ≤ 0represents
+x KL ϕ u x|z u
+(cid:0) (cid:1)
+5
+DenoisingNeuralRerankerforRecommenderSystems
+thenegativedivergencebetweenthegeneratednoisyretrieverscoresp andthecorrespondingreal
+ϕ
+p . Thistermisnotdirectlyoptimizableduetotheunknownp ,butweexpecttoachieveasmall
+x|z x|z
+divergenceinδ withtheoptimizationoftheotherthreeterms,sothattheoveralloptimizationis
+x
+alignedwiththegoalofEq.(1).
+Denoising with Augmented Retriever Scores: L in Eq.(5) denotes the denoising loss under
+z
+the noisy retriever scores generated by the noise generator. Specifically, we can first synthesize
+x′ ∼p (·|z )asthegeneratedretrieverscoresaccordingtoEq.(4),thenpassthemintothereranker
+u ϕ u
+q for the prediction of user feedback z , and L only updates θ. The optimization can also be
+θ u z
+simplifiedintotheBCElosswithz aslabels. Notethatthegeneratedscoresx′,differentfromthe
+u u
+observedx ,essentiallyserveastheaugmentedscoresthattheinitialretrieverwouldhaveproduced
+u
+given the user request. This means that the reranker will be aware of the noisy behavior of the
+retriever. Combiningwiththedirectoptimization,wehavethefinaldenoisinglossforthereranker:
+L =L +λ L , (6)
+θ direct m z
+whereλ controlsthemagnitudeoftheaugmentation,andtheparametersofthenoisegenerator
+m
+f arefixed. Additionally,ourmodel-agnosticframeworkdoesnotrestrictthearchitectureofthe
+ϕ
+denoisingrerankerq ,aswewillshowinsection4.3,onecanadoptvariousbackbones,including
+θ
+PRMPeietal.(2019)andPIERShietal.(2023).
+AdversarialNoiseLearning: L describeshowthererankerq behavesdifferentlyfromtheuser
+adv θ
+feedbackundertheviewpointofthesyntheticretrieverscores. Inpractice,thistermisexpectedto
+besmallsincetheratioq (z |x)/p (z |x)≈1inmajorcasesduetotheuserfeedbackalignment
+θ u z|x u
+ofEq.(6)andtheaugmentedobjectiveL . Nevertheless, intheviewofgeneratednoisyretriever
+z
+scores, we can see that L encourages adversarial samples of x that produce small ratios of
+adv
+q (z |x)/p (z |x). Inotherwords,abetterp shouldbeabletoexploreandsynthesizeretriever
+θ u z|x u ϕ
+scoresthatareincorrectlydenoisedbythererankerq . Fortheheuristicnoisegeneratorfheuristic,it
+θ ϕ
+isnotoptimizableonceαandβ arechosen. Incontrast,forthemodel-basedgeneratorfmodel,we
+ϕ
+followtheintuitionofadversarialcaseexploration,andapproximateL byfirstfixingthereranker
+adv
+andthenoptimizingthegeneratorwithanadversarialloss:
+minlogq (z |x′). (7)
+θ u u
+ϕ
+We implement the model-based generator fmodel by a 2-layer MLP and directly output x′ using
+ϕ u
+Eq.(4),sothattheend-to-endlearningbecomesfeasibleforEq.(7).Incaseswherethenoisegenerator
+isnotdirectlyoptimizable,onemayhavetoconsiderotheralternativeslikereparameterizationtricks
+Kingma&Welling(2014)orpolicygradientSilveretal.(2014). Notably,L doesnotencourage
+adv
+over-explorationofx′,whichmaynegativelyimpactthelearningofthereranker. Insuchcases,the
+u
+syntheticscoresareunrealisticallydifferentfromtherealretrieverscores,divergingfromtheuser
+feedback,inducingsmallp andlargeq (z |x)/p (z |x),violatingL .
+z|x θ u z|x u adv
+Noise Regularization: L aims to reduce the divergence between the synthetic retriever score
+x
+distribution p and the real retriever score prior distribution p . Intuitively, this term favors the
+ϕ x
+syntheticscoredistributionp thatcanmimicthenoisybehavioroftherealretriever’sscoresp . For
+ϕ x
+implementation,wefirstsynthesizetheretrieverscorex′ withEq.(4)andcalculatethedistributional
+u
+differencebetweensyntheticscoresfromp andretrieverscoresfromp . Then,weminimizethis
+ϕ x
+differencetoapproximatethedistribution-levelKLdivergence.
+Again,giventhattheheuristicnoisegeneratorfheuristicisnotoptimizablebytheobjectivesinEq(5),
+ϕ
+itmightnotbetheoptimalchoiceforaugmentingtheretrieverscoredistribution. Asaconsequence,
+thiscouldleadtorecommendationsthatarenotinalignmentwithuserfeedback. Forthetrainingof
+themodel-basednoisegeneratorfmodel,wefirstadopttheheuristicgeneratorinthefirstλ epochs
+ϕ e
+toensurelearningstabilityofrerankerq throughoutL , thenengagetheadversariallearningof
+θ z
+L andtheoptimizationofL afterward,switchingthegenerationofϵfromheuristicgeneratorto
+adv x
+model-basedgenerator. WepresentthealgorithmofourtrainingprocedureinAppendixC.
+4 EXPERIMENTS
+Inthissection,weconductextensiveexperimentstoanswerthefollowingquestions:
+6
+DenoisingNeuralRerankerforRecommenderSystems
+• RQ1: HowdoesDNRperformcomparedwithleadingrerankersinrecommendationsystems?
+• RQ2: Howdoesthedenoisingformulationcomparetoothermethodsofusingretrieverscores?
+• RQ3: CanthedenoisingformulationgeneralizetorerankerbackbonesotherthanPRM?
+• RQ4: Howdoestheheuristicnoisegenerator’sperformancecomparetothatoftheadversarial
+model-basedgenerator?
+• RQ5: HowdoesdifferentobjectivesinDNRcontributetotheperformance?
+• RQ6: HowsensitiveisDNRtothehyperparametersλ ,λ ,andλ ?
+c m e
+4.1 EXPERMENTALSETTINGS
+Datasets. Weconductexperimentsonthreereal-worlddatasets,includingML-1MHarper&Konstan
+(2016),KuaivideoLiuetal.(2025),andAmazon-booksNietal.(2019). Thedetaileddescriptionand
+thestatisticsoftheprocesseddatasetsforboththeretrieverandthererankerstagesarepresentedin
+AppendixD.1. Fortheonlineexperimentalverification,pleaserefertoAppendixE.6.
+Baselines: WecomparetheperformanceofDNRwithfourcategoriesofrecommendationmethods
+inourrerankingtask,includingtraditionalrecommenders(i.e.,SASRecKang&McAuley(2018),
+Caser Tang & Wang (2018), GRU4Rec Hidasi et al. (2016), and MiDNN Zhuang et al. (2018)),
+whichindividuallypredictthescoresofcandidateitemsandrankthemaccordingly;list-refinement
+methods(i.e.,DLCMAietal.(2018),SetRankPangetal.(2020),PRMPeietal.(2019),andMIR
+Xietal.(2022)),whichencodethemutualinferenceincandidateitemsandrefinetherankingsbased
+onthisinformation;generator-evaluatormethods(i.e.,EGRerankHuzhangetal.(2023),PierShi
+et al. (2023), and NAR4Rec Ren et al. (2024)), which generate multiple reranked item lists and
+evaluatethemtoselectthebestoneforusers;anddiffusion-Basedmethods(i.e.,DiffuRecLietal.
+(2024)andDCDRLinetal.(2024))whichutilizediffusionmodelstogenerateitemsorlistsfor
+recommendation. DetailedinformationforourbaselinesispresentedinAppendixD.3.
+ImplementationDetails: OurexperimentsareimplementedwithPython3.8andPyTorch1.12. We
+constructtheretrieverstagewiththecollaborativefilteringmethodKorenetal.(2009)toobtainthe
+initialretrieverscoresforthetop-50candidateitems. Thedetailedsettingandexperimentalresults
+oftheretrieverstagearepresentedinAppendixE.1. Thererankerreorderstheseitemsfilteredby
+retrieversandselectsthetopK =6fordisplay. Thedimensionofrerankers’hiddenembeddingis
+128acrossallmodels,andallmodelsaretraineduntilconvergence. Thelearningrateandweight
+decayaretunedwithintherangeof[0.01,0.001,0.0001]and[0,0.1,0.01,0.001],respectively. We
+tune the hyperparameters with λ ∈ [0.1,1.0], λ ∈ [0.1,1.0], and λ ∈ [0,200]. The optimal
+c m e
+hyperpapemtersadoptedforourexperimentalresultsarepresentedinAppendixD.2.
+EvaluationMetrics: Followingcommonpractices, weemployHitRatio@6(H@6), NDCG@6
+(N@6),MAP@6(M@6),F1@6,andAUCforperformanceevaluationofthererankerstage.Although
+notthefocusofthispaper,weadopttheAUCmetrictoevaluatetheperformanceoftheretriever
+stage. Andtheretrieverisfixedduringtrainingofrerankers.
+4.2 MAINRESULTS(RQ1)
+WecomparetheperformanceofourproposedDNRwithmultipleleadingbaselinesandtheresults
+aredetailedinTable1. “DNR-G”and“DNR-B”denoteusingtwoalternativesoffheuristictogenerate
+ϕ
+GaussiannoiseandBetanoise,respectively,beforeswitchingtothemodel-basednoisegenerator
+fmodelintheepochλ . Wecanobservethatthegenerator-evaluator-basedmethods(i.e.,EGRerank
+ϕ e
+Huzhangetal.(2023),PierShietal.(2023),andNAR4RecRenetal.(2024))achievecomparable
+performanceamongthemultiplebaselines,validatingtheeffectivenessofthegenerator-evaluator
+paradigm in the reranker stage. In comparison, our DNR solutions consistently outperform the
+state-of-the-artbaselinesacrossthethreebenchmarks. Thishighlightsthesuperiorityofournoise
+reductionformulationandthesignificanceofimprovingrerankereffectivenesswiththreeobjectives
+inadversariallearning.
+7
+DenoisingNeuralRerankerforRecommenderSystems
+Table 1: Overall performance of different methods for the reranking recommendation. The best
+scoresareinboldandthebestbaselinescoresareunderlined,respectively. Allimprovementsare
+statisticallysignificantwithstudentt-testp<0.05.
+ML-1M Kuaivideo Book
+Methods
+H@6 N@6 M@6 F1@6 AUC H@6 N@6 M@6 F1@6 AUC H@6 N@6 M@6 F1@6 AUC
+SASRec 59.79 72.16 61.84 65.41 85.98 36.72 54.01 41.66 43.00 77.86 60.27 69.32 58.17 62.44 83.64
+Caser 58.60 71.34 60.55 64.14 86.53 36.66 54.04 41.65 43.93 78.39 59.92 69.31 58.06 62.09 84.21
+GRU4Rec 58.07 69.91 59.03 63.47 86.74 37.28 54.39 42.20 43.66 74.67 53.69 59.24 46.71 55.65 81.19
+MiDNN 56.86 70.30 59.28 62.16 86.87 37.32 54.56 42.38 43.72 74.73 60.28 69.61 58.58 62.45 83.02
+DLCM 62.31 73.87 63.82 67.96 89.35 39.69 60.67 48.90 46.61 75.80 66.80 75.88 65.39 69.28 91.93
+SetRank 59.35 73.10 62.51 64.72 88.84 44.75 64.39 51.88 52.59 89.93 66.15 75.70 64.84 68.64 92.01
+PRM 60.09 72.85 62.21 65.51 88.20 39.92 55.93 42.97 46.18 85.15 67.86 76.88 66.44 70.42 92.00
+MIR 62.22 74.33 64.47 67.97 87.76 37.01 55.79 43.16 44.50 79.95 66.08 71.48 56.62 68.62 91.82
+EGRank 62.76 74.75 64.97 68.46 88.72 40.09 59.01 47.52 47.06 77.44 70.73 80.75 72.40 73.33 89.40
+Pier 62.74 75.99 65.98 68.74 90.43 45.35 65.11 52.55 53.35 90.93 71.14 80.22 71.62 73.74 92.26
+NAR4Rec 62.81 75.01 65.42 68.31 88.30 44.31 63.83 51.45 52.08 89.94 70.08 79.46 70.69 72.66 92.44
+MG-E 63.53 76.18 66.52 69.37 89.08 46.89 66.19 53.75 55.26 90.16 70.63 79.81 71.07 73.20 90.21
+DiffuRec 62.16 75.80 66.28 67.83 91.48 40.78 61.16 50.77 48.00 81.08 58.62 68.77 57.25 60.79 84.74
+DCDR 60.79 73.21 62.57 66.58 89.01 43.86 63.52 50.92 51.66 89.92 65.84 70.36 54.76 67.33 88.07
+DNR-G 64.89↑77.67↑68.00↑70.71↑92.75↑49.61↑69.60↑57.67↑58.39↑93.20↑74.83↑82.57↑74.24↑77.65↑94.46↑
+DNR-B 64.23↑77.12↑67.30↑70.01↑92.08↑50.30↑70.15↑58.12↑59.16↑93.38↑75.50↑83.53↑75.54↑78.30↑94.23↑
+4.3 ABLATIONSTUDY(RQ2,RQ3,RQ4,&RQ5)
+RQ2&RQ3: Toinvestigatedifferentwaystoleverageretrieverscores,wedevelopthreevariants
+for leveraging retriever scores as rerankers’ input: “c score” refers to leveraging a concatenate
+operation to combine the score features with encoded user states from users’ interaction history;
+“+score”denotesincorporatingthescorefeaturewithuserstatesbyasimpleaddition;“wscore”
+representsadoptingtheinitialretrieverscoresastheweightsofcandidateitems. Theframeworks
+ofthethreevariantsareshowninAppendixD.4. TovalidatethegeneralizabilityofDNRacross
+differentrerankerbackbones,weconductexperimentscomparingourthreevariantsandDNRitself
+whenusingPRMPeietal.(2019)andPierShietal.(2023)astheunderlyingrerankers,respectively.
+WereporttheexperimentalresultsinTable2. Thevariants“cscore”,“+score”,and“wscore”all
+achievesuperiorperformancecomparedtothebasererankerbackbone,confirmingthatincorporating
+retrieverscoresintothererankingstageyieldstangiblebenefits. Moreover,ourDNRoutperforms
+allthreevariants, underscoringdenoisingformulationasamoreeffectivestrategyforleveraging
+retrieverscores. Importantly,DNRdeliversconsistentimprovementsacrossbothbackbones,thereby
+validatingthegeneralizabilityofourdenoisingformulationforrerankingarchitectures.
+RQ4: To further investigate different noise generators, we conduct ablation experiments on the
+heuristicnoisegeneratorsthatgeneratenoisefromtheGaussiandistributionandBetadistribution,
+denotedas“w/G”and“w/B”respectively.TheresultsarepresentedinTable3.Bycomparing“w/G”
+with“DNR-Gorcomparing“w/B”with“DNR-B”,wecanseethatourDNRframework—equipped
+withamodel-basednoisegeneratorforadversariallearning—consistentlyoutperformscounterparts
+usingheuristicnoisegenerators.
+RQ5: TocomparedifferentlearningobjectivesinEq.(5),wefirstobservethat“w/G”and“w/B”
+methodsoutperformthePRMbaseline,indicatingtheeffectivenessofL ,whichusestheheuristic
+z
+noisegeneratortoaugmentthelearningofreranker. Then,all“w/oL ”alternativesand“w/oL ”
+adv x
+alternatives appear to downgrade the effectiveness of the full implementation of DNR. All these
+observationsvalidatetheeffectivenessofthederivedtermsinEq.(5).
+8
+DenoisingNeuralRerankerforRecommenderSystems
+Table2: AblationStudyforthedifferentwaysofleveragingtheretrieverscoresonbothPRMand
+Pierrerankerbackbones.
+ML-1M Kuaivideo Book
+Methods
+H@6 N@6 M@6 F1@6 AUC H@6 N@6 M@6 F1@6 AUC H@6 N@6 M@6 F1@6 AUC
+PRM 60.09 72.85 62.21 65.51 88.20 39.92 55.93 42.97 46.18 85.15 67.86 76.88 66.44 70.42 92.00
+cscore 62.50↑76.73↑67.36↑ 68.29 91.35↑46.20↑67.58↑56.31↑54.25↑85.76↑69.71↑77.99↑68.20↑72.29↑92.15↑
++score 62.69↑76.05↑66.48↑68.36↑90.77↑45.83↑66.77↑56.25↑53.97↑ 83.47 71.50↑81.18↑72.72↑74.18↑ 91.41
+wscore 62.48↑76.68↑67.34↑68.19↑ 87.20 46.82↑66.94↑54.77↑55.00↑ 84.05 72.73↑82.21↑74.15↑75.45↑ 91.81
+DNR 64.23 77.12 67.30 70.01 92.08 50.30 70.15 58.12 59.16 93.38 75.50 83.53 75.54 78.30 94.23
+Pier 62.74 75.99 65.98 68.74 90.43 45.35 65.11 52.55 53.35 90.93 71.14 80.22 71.62 73.74 92.26
+cscore 62.33 76.51↑66.95↑69.18↑90.55↑46.28↑66.09↑53.98↑53.76↑ 90.56 71.88↑81.02↑73.15↑74.32↑ 91.89
++score 62.58 76.18↑66.52↑68.85↑ 90.31 46.83↑68.21↑55.88↑54.66↑ 91.82 71.27↑80.70↑72.79↑74.15↑92.28↑
+wscore 62.98↑76.66↑67.16↑69.37↑90.58↑45.76↑66.82↑54.55↑ 53.33 90.45 72.03↑81.56↑74.74↑75.32↑92.33↑
+DNR 63.41 77.28 68.02 70.22 91.97 48.89 69.35 57.76 56.02 92.38 73.68 82.61 74.82 76.88 93.78
+Table3: AblationStudyforDNRalternatives. “Gw/oL ”and“Bw/oL ”representDNR-Gor
+adv adv
+DNR-Bparadigmswithoutadversarialnoiselearningobjective;“Gw/oL ”and“Bw/oL ”referto
+x x
+DNR-GorDNR-Bparadigmswithoutthenoiseregularization.
+ML-1M Kuaivideo Book
+Methods
+H@6 N@6 M@6 F1@6 AUC H@6 N@6 M@6 F1@6 AUC H@6 N@6 M@6 F1@6 AUC
+PRM 60.09 72.85 62.21 65.51 88.20 39.92 55.93 42.97 46.18 85.15 67.86 76.88 66.44 70.42 92.00
+w/G 63.36 76.69 66.82 69.34 91.98 47.84 67.34 55.27 56.28 92.43 73.38 81.32 72.89 76.18 93.38
+w/B 63.65 76.90 67.01 69.64 90.85 48.83 68.71 56.60 57.45 92.73 73.42 81.20 72.74 76.23 93.46
+Gw/oL adv 63.71 76.57 66.61 69.43 92.14 48.75 68.70 56.57 57.34 92.21 73.83 81.89 73.27 76.60 93.62
+Gw/oLx 63.47 76.43 66.43 69.19 91.90 48.88 69.10 57.18 57.57 92.69 73.99 82.01 73.44 76.76 94.29
+DNR-G 64.89 77.67 68.0 70.71 92.75 49.61 69.60 57.67 58.39 93.20 74.83 82.57 74.24 77.65 94.46
+Bw/oL adv 63.65 76.90 67.01 69.64 90.85 49.55 69.84 58.04 58.31 92.91 74.71 82.49 74.14 77.52 94.01
+Bw/oLx 63.32 76.62 66.76 69.29 90.60 49.96 69.93 58.00 58.77 92.81 74.42 82.20 73.74 77.23 93.96
+DNR-B 64.23 77.12 67.30 70.01 92.08 50.30 70.15 58.12 59.16 93.38 75.50 83.53 75.54 78.30 94.23
+4.4 SENSITIVITYANALYSIS(RQ6)
+Weconductsensitivityanalysisforλ ,λ ,andλ forbothDNR-GandDNR-B,andpresentthe
+c m e
+resultsinFigure3.Whenadjustingλ ,λ isfixedat40;whenadjustingλ ,λ isfixedat0.3.Forλ
+m e e m c
+adjustments,λ andλ aresetto0.6and80,respectively. WhiletheBetanoisegenerallyperforms
+m e
+betterthanGaussiannoiseinmostsettings,asshowninTable2,thereexistsomecommonpatterns
+inthesehyper-parameters: 1)allparametersappearstohaveanoptimalvaluewithinthesearched
+region,indicatingtheeffectivenessofincludingeachcorrespondingdesigns,i.e.,λ forthesynthetic
+c
+noisyscoresinEq.(4),λ forthecombineddenoisinglossEq.(6),andλ fortheswitchingfrom
+m e
+heuristicnoisegeneratortomodel-basedone;2)Over-amplifyingthesehyper-parametersresultsin
+thedowngradeofthererankperformance,indicatingthesignificanceofkeepingabalancebetween
+theinvolvedcomponents. Additionally,theanalysisofλ intheleftplotofFigure3showsthatusing
+c
+themodel-basednoisegeneratorcanfurtherenhancetheperformanceovertheheuristicone.
+5 CONCLUSION
+Inthispaper,weprovideevidencethattheinitialretrieverscoresareinformativeforthelatterreranker
+stage in the multi-stage recommender system. To formulate the relationship between retriever
+andrerankerscores, weviewthererankerasanoisereductiontaskfromtheretrieverscoresand
+9
+DenoisingNeuralRerankerforRecommenderSystems
+0.72
+0.70
+0.68
+0.66
+0.64
+0.2 0.4 0.6 0.8 1.0
+c
+6@GCDN
+Sensitvity to c
+0.74
+w/ G
+w/ B 0.72 DNR
+0.70
+0.68
+0.66
+0.2 0.4 0.6 0.8 1.0
+m
+6@GCDN
+Sensitvity to m
+DNR-G 0.71
+DNR-B 0.70 0.69
+0.68
+0.67
+0.66
+0.65
+0 50 100 150 200
+e
+6@GCDN
+Sensitvity to e
+DNR-G
+DNR-B
+Figure 3: Sensitivity analysis of hyperparameters (i.e., λ , λ , and λ ) for our method on the
+c m e
+Kuaivideodataset.
+proposeDNR.Tofullyexplorethescorespace,weproposetheframeworkofDNR,addingnoise
+togenerateretrieverscoresasaugmentationandthendenoisingthemtoalignwithuserfeedback.
+Whileaheuristicdesignofthenoisedistributioncaneffectivelyimprovethemodelperformance
+(e.g., Gaussian or Beta distribution), we prove that adversarially learns a denoising reranker and
+anoisegeneratorfortheretrieverstagecanfurtherboostthereranker’sperformance. Theoretical
+analysisandempiricalvalidationacrossthreepublicdatasetsdemonstratetheeffectivenessofthe
+noisereductionformulationandthedesignofourDNR.
+6 ACKNOWLEDGEMENT
+ThisresearchwassupportedbytheNationalNaturalScienceFoundationofChina(U25A20445)
+andtheadvancedcomputingresourcesprovidedbytheSupercomputingCenteroftheUniversityof
+ScienceandTechnologyofChina(USTC).ThisworkwasalsosupportedbyKuaishouTechnology,
+whereauthorWenyuMaoconductedthisresearchduringaninternship.
+ETHICS STATEMENT.
+Thisworkisdesignedtoexplorethesignificanceofretrieverscoresforthereranker,formulatingthe
+rerankerasadenoisingprocessofretrieverscoreswithanadversarialframework. Wedonotforesee
+anydirect,immediate,ornegativesocietalimpactsofourresearch.
+REPRODUCIBILITY STATEMENT.
+Alltheresultsinthisworkarereproducible. Wehavediscussedtheoptimalhyperparametersandthe
+detailsondevicesandsoftwareenvironmentsinSection4.1andAppendixD.2. Forreproducibility,
+wereleasethecodeathttps://github.com/maowenyu-11/DNR
+10
+DenoisingNeuralRerankerforRecommenderSystems
+REFERENCES
+QingyaoAi,KepingBi,JiafengGuo,andW.BruceCroft. Learningadeeplistwisecontextmodelfor
+rankingrefinement. InSIGIR,pp.135–144.ACM,2018.
+JaimeG.CarbonellandJadeGoldstein. Theuseofmmr,diversity-basedrerankingforreordering
+documentsandproducingsummaries. InSIGIR,pp.335–336.ACM,1998.
+JiaxinDeng,ShiyaoWang,KuoCai,LejianRen,QigenHu,WeifengDing,QiangLuo,andGuorui
+Zhou. Onerec: Unifyingretrieveandrankwithgenerativerecommenderanditerativepreference
+alignment. CoRR, abs/2502.18965, 2025. doi: 10.48550/ARXIV.2502.18965. URL https:
+//doi.org/10.48550/arXiv.2502.18965.
+Luke Gallagher, Ruey-Cheng Chen, Roi Blanco, and J. Shane Culpepper. Joint optimization of
+cascaderankingmodels. InWSDM,pp.15–23.ACM,2019.
+F. Maxwell Harper and Joseph A. Konstan. The movielens datasets: History and context. ACM
+Trans. Interact. Intell. Syst., 5(4):19:1–19:19, 2016. doi: 10.1145/2827872. URL https:
+//doi.org/10.1145/2827872.
+XiangnanHe,ZhankuiHe,XiaoyuDu,andTat-SengChua. Adversarialpersonalizedrankingfor
+recommendation. InSIGIR,pp.355–364.ACM,2018.
+Balázs Hidasi, Alexandros Karatzoglou, Linas Baltrunas, and Domonkos Tikk. Session-based
+recommendationswithrecurrentneuralnetworks. InICLR(Poster),2016.
+JonathanHo,AjayJain,andPieterAbbeel. Denoisingdiffusionprobabilisticmodels. InNeurIPS,
+2020.
+GuangdaHuzhang,Zhen-JiaPang,YongqingGao,YawenLiu,WeijieShen,Wen-JiZhou,Qianying
+Lin,QingDa,AnxiangZeng,HanYu,YangYu,andZhi-HuaZhou. Aliexpresslearning-to-rank:
+Maximizingonlinemodelperformancewithoutgoingonline. IEEETrans.Knowl.DataEng.,35
+(2):1214–1226,2023.
+RongJin,HamedValizadegan,andHangLi. Rankingrefinementanditsapplicationtoinformation
+retrieval. InWWW,pp.397–406.ACM,2008.
+Wang-ChengKangandJulianJ.McAuley. Self-attentivesequentialrecommendation. InICDM,pp.
+197–206.IEEEComputerSociety,2018.
+DiederikP.KingmaandMaxWelling. Auto-encodingvariationalbayes. InICLR,2014.
+XiaoyuKong,LehengSheng,JunfeiTan,YuxinChen,JiancanWu,AnZhang,XiangWang,and
+XiangnanHe. Minionerec: Anopen-sourceframeworkforscalinggenerativerecommendation.
+CoRR,abs/2510.24431,2025.
+YehudaKoren,RobertM.Bell,andChrisVolinsky. Matrixfactorizationtechniquesforrecommender
+systems. Computer,42(8):30–37,2009.
+ZihaoLi,AixinSun,andChenliangLi. Diffurec: Adiffusionmodelforsequentialrecommendation.
+ACMTrans.Inf.Syst.,42(3):66:1–66:28,2024.
+Xiao Lin, Xiaokai Chen, Chenyang Wang, Hantao Shu, Linfeng Song, Biao Li, and Peng Jiang.
+Discreteconditionaldiffusionforrerankinginrecommendation. InWWW(CompanionVolume),
+pp.161–169.ACM,2024.
+QiLiu,KaiZheng,RuiHuang,WuchaoLi,KuoCai,YuanChai,YananNiu,YiqunHui,BingHan,
+NaMou,HongningWang,WentianBao,YunenYu,GuoruiZhou,HanLi,YangSong,DefuLian,
+andKunGai. Recflow: Anindustrialfullflowrecommendationdataset. InICLR.OpenReview.net,
+2025.
+ShichenLiu,FeiXiao,WenwuOu,andLuoSi. Cascaderankingforoperationale-commercesearch.
+InKDD,pp.1557–1565.ACM,2017.
+11
+DenoisingNeuralRerankerforRecommenderSystems
+WeiwenLiu,JiaruiQin,RuimingTang,andBoChen.Neuralre-rankingformulti-stagerecommender
+systems. InRecSys,pp.698–699.ACM,2022.
+DanielLowdandChristopherMeek. Adversariallearning. InKDD,pp.641–647.ACM,2005.
+WenyuMao,ShuchangLiu,HaoyangLiu,HaozheLiu,XiangLi,andLantaoHu. Distinguished
+quantizedguidancefordiffusion-basedsequencerecommendation. InWWW,pp.425–435.ACM,
+2025a.
+WenyuMao,JiancanWu,WeijianChen,ChongmingGao,XiangWang,andXiangnanHe.Reinforced
+promptpersonalizationforrecommendationwithlargelanguagemodels. ACMTrans.Inf.Syst.,43
+(3):72:1–72:27,2025b.
+Wenyu Mao, Jiancan Wu, Guoqing Hu, Zhengyi Yang, Wei Ji, and Xiang Wang. On efficiency-
+effectivenesstrade-offofdiffusion-basedrecommenders. CoRR,abs/2510.17245,2025c.
+WenyuMao,ZhengyiYang,JiancanWu,HaozheLiu,YanchengYuan,XiangWang,andXiangnan
+He. Addressingmissingdataissuefordiffusion-basedrecommendation. InSIGIR,pp.2152–2161.
+ACM,2025d.
+JianmoNi,JiachengLi,andJulianJ.McAuley. Justifyingrecommendationsusingdistantly-labeled
+reviewsandfine-grainedaspects. InEMNLP/IJCNLP(1),pp.188–197.AssociationforComputa-
+tionalLinguistics,2019.
+LiangPang,JunXu,QingyaoAi,YanyanLan,XueqiCheng,andJirongWen. Setrank: Learning
+apermutation-invariantrankingmodelforinformationretrieval. InSIGIR,pp.499–508.ACM,
+2020.
+DaeHoonParkandYiChang. Adversarialsamplingandtrainingforsemi-supervisedinformation
+retrieval. InWWW,pp.1443–1453.ACM,2019.
+ChanghuaPei,YiZhang,YongfengZhang,FeiSun,XiaoLin,HanxiaoSun,JianWu,PengJiang,
+JunfengGe,WenwuOu,andDanPei. Personalizedre-rankingforrecommendation. InRecSys,pp.
+3–11.ACM,2019.
+JiaruiQin,JiachenZhu,BoChen,ZhirongLiu,WeiwenLiu,RuimingTang,RuiZhang,YongYu,
+andWeinanZhang. Rankflow: Jointoptimizationofmulti-stagecascaderankingsystemsasflows.
+InSIGIR,pp.814–824.ACM,2022.
+YuxinRen,QiyaYang,YichunWu,WeiXu,YalongWang,andZhiqiangZhang. Non-autoregressive
+generativemodelsforrerankingrecommendation. InKDD,pp.5625–5634.ACM,2024.
+FrancescoRicci,LiorRokach,andBrachaShapira. Recommendersystems:Techniques,applications,
+andchallenges. InRecommenderSystemsHandbook,pp.1–35.SpringerUS,2022.
+Xiaowen Shi, Fan Yang, Ze Wang, Xiaoxu Wu, Muzhi Guan, Guogang Liao, Yongkang Wang,
+XingxingWang,andDongWang. PIER:permutation-levelinterest-basedend-to-endre-ranking
+frameworkine-commerce. InKDD,pp.4823–4831.ACM,2023.
+DavidSilver,GuyLever,NicolasHeess,ThomasDegris,DaanWierstra,andMartinA.Riedmiller.
+Deterministicpolicygradientalgorithms. InICML,volume32ofJMLRWorkshopandConference
+Proceedings,pp.387–395.JMLR.org,2014.
+JiaxiTangandKeWang. Personalizedtop-nsequentialrecommendationviaconvolutionalsequence
+embedding. InWSDM,pp.565–573.ACM,2018.
+JinhuiTang,XiaoyuDu,XiangnanHe,FajieYuan,QiTian,andTat-SengChua. Adversarialtraining
+towardsrobustmultimediarecommendersystem. IEEETrans.Knowl.DataEng.,32(5):855–867,
+2020.
+JunWang,LantaoYu,WeinanZhang,YuGong,YinghuiXu,BenyouWang,PengZhang,andDell
+Zhang. IRGAN:Aminimaxgameforunifyinggenerativeanddiscriminativeinformationretrieval
+models. InSIGIR,pp.515–524.ACM,2017.
+12
+DenoisingNeuralRerankerforRecommenderSystems
+LidanWang,JimmyLin,andDonaldMetzler. Acascaderankingmodelforefficientrankedretrieval.
+InSIGIR,pp.105–114.ACM,2011.
+YunjiaXi,WeiwenLiu,JiemingZhu,XilongZhao,XinyiDai,RuimingTang,WeinanZhang,Rui
+Zhang,andYongYu. Multi-levelinteractionrerankingwithuserbehaviorhistory. InSIGIR,pp.
+1336–1346.ACM,2022.
+EnqiangXu,YimingQiu,JunyangBai,PingZhang,DadongMiao,SonglinWang,GuoyuTang,Lin
+Liu,andMingmingLi.Optimizinge-commercesearch:Towardageneralizableandrank-consistent
+pre-rankingmodel. InSIGIR,pp.2875–2879.ACM,2024a.
+ShichengXu,LiangPang,JunXu,HuaweiShen,andXueqiCheng. List-awarereranking-truncation
+jointmodelforsearchandretrieval-augmentedgeneration. InWWW,pp.1330–1340.ACM,2024b.
+ZhishanZhao,JingyueGao,YuZhang,ShuguangHan,SiyuanLou,Xiang-RongSheng,ZheWang,
+HanZhu, YuningJiang, JianXu, andBoZheng. COPR:consistency-orientedpre-rankingfor
+onlineadvertising. InCIKM,pp.4974–4980.ACM,2023.
+KaiZheng,HaijunZhao,RuiHuang,BeichuanZhang,NaMou,YananNiu,YangSong,Hongning
+Wang,andKunGai. Fullstagelearningtorank: Aunifiedframeworkformulti-stagesystems. In
+WWW,pp.3621–3631.ACM,2024.
+TaoZhuang,WenwuOu,andZhirongWang. Globallyoptimizedmutualinfluenceawarerankingin
+e-commercesearch. InIJCAI,pp.3725–3731.ijcai.org,2018.
+13
+DenoisingNeuralRerankerforRecommenderSystems
+A NOTATIONS
+symbol description
+u userrequestinformationincludingprofilefeaturesandinteractionhistory
+x randomvariablesofretrieverscoresonthecandidateitemset
+z randomvariablesofuserfeedbackonthecandidateitemset
+x ,z observedretrieverscoresanduserfeedbackindata
+u u
+x′ thegeneratedretrieverscoresfromthelearnedorheuristicposteriormodelϕ
+u
+q theprobabilisticrepresentationofthererankermodel
+θ
+p theprobabilisticrepresentationoftheposterior
+ϕ
+f thenoisegeneratorthatimplementstheposterior
+ϕ
+p theprobabilisticrepresentationofthenon-optimizableretriever
+x
+p theposteriorofagivenreranker
+x|z
+p theprobabilisticrepresentationofgroundtruthuserfeedback
+z|x
+L thestandarduserfeedbackalignmentlossgiventheretrieverscores
+direct
+L theuserfeedbackalignmentlossgivengeneratedretrieverscoresfromposterior
+z
+L theadversariallossthatencouragestheposteriortogenerateirregularnoises
+adv
+L theregularizationofposterior
+x
+λ thehyperparameterthatcontrolsthemagnitudeofnoiseinjectioninEq.(4)
+c
+λ thehyperparameterthatbalancesL andL whenlearningthereranker
+m direct z
+λ thehyperparameterthatdetermineswhichepochswitchesthenoisegenerator
+e
+Table4: ListofNotations
+B PROOFS
+B.1 DERIVATIONOFTHETHREEOBJECTIVESINOURSOLUTION
+Inthissection,weillustratethederivationoftheEq.(5). SimilartothevariationalBayesianinference
+Kingma&Welling(2014),westartbyanalyzingtheKLdivergencebetweentherealretrieverscores
+andsyntheticnoisyscores:
+p (x|z )
+D (p (x|z )∥p (x|z ))=−E log x|z u
+KL ϕ u x|z u pϕh p (x|z )i
+ϕ u
+p(x,z )
+=−E log u −logp(z ) (8)
+pϕh p (x|z ) u i
+ϕ u
+logp(x,z )
+=−E u +logp(z ),
+pϕhlogp (x|z )i u
+ϕ u
+NotethatakeydifferencebetweenEq.(8)andtheconventionalderivationinKingma&Welling(2014)
+isthatthevariationalposteriorϕisnotalatentfactorencoderthatreducesnoiseanddimensions,but
+anexplicitnoisegeneratorthatmimicsthebehaviorofretrieverscores. Intermsofthedenoising
+problemformulation,itisalsosimilartoaone-stepdiffusion,butwithakeydifferenceinthatthereal
+retrieverscoresx arenotsampledbyamanuallydefineddistribution. Instead,anexistingretriever
+u
+p servesasthepriordistribution.
+x
+14
+DenoisingNeuralRerankerforRecommenderSystems
+Then,rearrangingthetermsofEq.(8),wecanderivethecorrespondingobjectivesthatinfluencethe
+datalikelihoodasfollows:
+−logp(z )
+u
+p(x,z )
+=−E x∼pϕ(cid:2) log p (x|z u )(cid:3) −D KL (cid:0) p ϕ (x|z u )∥p x|z (x|z u ) (cid:1)
+ϕ u
+=−E x∼pϕ(cid:2) logp z|x (z u |x)
+(cid:3)
++D KL
+(cid:0)
+p ϕ (x|z u )∥p x (x)
+(cid:1)
+−D KL
+(cid:0)
+p ϕ (x|z u )∥p x|z (x|z u )
+(cid:1)
+(9)
+q (z |x)
+=−E x∼pϕ(cid:2) logq θ (z u |x) (cid:3) +E x∼pϕ(cid:2) log p θ (z u |x)(cid:3) +D KL (cid:0) p ϕ (x|z u )∥p x (x) (cid:1)
+z|x u
+−D p (x|z )∥p (x|z )
+KL ϕ u x|z u
+(cid:0) (cid:1)
+which isequivalent toEq.(5). Itgenerally follows thederivation of theevidencelowerbound in
+variationalauto-encoders,exceptthatwefurtherdecomposethefirstreconstructiontermintothe
+augmenteddenoisinglossL z = −E x∼pϕ(cid:2) logq θ (z u |x)
+(cid:3)
+andtheadversariallearninglossL adv =
+E x∼pϕ(cid:2) log p q z θ |x ( ( z z u u | | x x ) )(cid:3) . Intuitively,whenq θ iscloselyalignedwiththerealuserfeedbackdistribution
+p , theadversarialtermL willbeclosetozero. MinimizingL wouldencouragethenoise
+z|x adv adv
+generatorf tofindsampleswhereq andp behavedifferently.
+ϕ θ z|x
+B.2 THEANALYTICALLIMITATIONOFSTANDARDRERANKINGMODELS
+I − n E th x i u s ∼ s p e x c [ t l i o o g n, q w θ ( e z f u o |x rm u a )] l , ly w a h n e a r ly e z t e h t e he ob E s q e . r ( v 3 e ). d R x e u ca o ll n t l h y a c t o th m e e d s ir f e r c o t m op t t h im e i r z e a t t r i i o e n ve g r oa p l ri L o d r ir p ec x t |x w = it x h u ou = t
+posteriormodeling.Notethatweadditionallydefinep astheground-truthuserfeedbackprobability
+z|x
+andp astheposteriordistributionofretrieverscoresconditionedonuserfeedback. Bothp and
+x|z z|x
+p arenotrelatedtothererankerq ,andtheyaremerelydeterminedbytheretrieverpriorandthe
+x|z θ
+user. Then,wecanextracttheuserbehavioralignmenterrorofq asfollowsandderiveitsrelationto
+θ
+thegoalofmax logp(z ):
+θ u
+q (z |x )
+−E x u∼px [logq θ (z u |x u )]=−E x u∼pxh log p θ (z u |x u )i −E x u∼px [logp z|x (z u |x u )]
+z|x u u
+q (z |x )
+=−E x u∼pxh log p θ (z u |x u )i +D KL (cid:0) p x (x u )∥p x|z (x u |z u ) (cid:1) −logp(z u )
+z|x u u
+q (z |x )
+⇒−logp(z u )=−E x u∼px [logq θ (z u |x u )]+E x u∼pxh log p θ (z u |x u )i
+z|x u u
+−D p (x )∥p (x |z ) .
+KL x u x|z u u
+(cid:0) (cid:1)
+(10)
+whichcorrespondstoEq.(3).
+As we have discussed in section 3.2, the direct optimization of the first term L might cause
+direct
+misalignmentwiththedatalikelihoodmaximizationgoal,sincetheobserveddatadoesnotprovide
+sufficientinformationabouttheretrieverscoredistributionandthererankerisunawareofthenoise
+patterns in the retriever score space. In contrast, our proposed solution solves this limitation by
+collaborativelylearningthenoisegeneratorf alongwiththereranker. Theresultingobjectivesin
+ϕ
+Eq.(5)intentionallyfindasyntheticnoisyscoredistributionp thatalignswiththerealretrieverscore
+ϕ
+distributionandexploresadversarialcasesinwhichthererankerfailstoaccuratelydenoiseintouser
+feedback(detailsinSection3.4).
+C LEARNING ALGORITHM
+WepresenttheoveralllearningprocessofourmethodinAlgorithm1.
+15
+DenoisingNeuralRerankerforRecommenderSystems
+Algorithm1:TrainingproceduresofDNR
+Input: Hyperparametersλ ,λ ,andλ ,initialrerankerθandnoisegeneratorϕ
+c e m
+Output: Optimizeddenoisingrerankerq andthenoisegeneratorf .
+θ ϕ
+1: forEpochido
+2: ifi>λ e then
+3: forEachsample(u,x u ,z u )do
+4: Generateϵ∼f ϕ modelforgivenuandz u andformsyntheticnoisyscoresx′ u withEq(4)
+5: OptimizererankerθbasedonL θ ;
+6: OptimizenoisegeneratorϕbasedonL andL ;
+adv x
+7: endfor
+8: else
+9: forEachsample(u,x u ,z u )do
+10: Sampleϵ∼f ϕ heuristicforgivenuandz u andformsyntheticnoisyscoresx′ u withEq(4)
+11: OptimizererankerθbasedonL θ ;
+12: endfor
+13: endif
+14: endfor
+D DETAILED SETTINGS FOR OFFLINE EXPERIMENTS
+D.1 DATASETS
+TheML-1Mdatasetisapublicbenchmarkinthefieldofrecommendersystems,comprising1million
+ratingsfrom6,040usersacrossmorethan3,900movies. TheKuaivideodatasetissourcedfrom
+Kuaishou,apopularshort-videoappwithover300millionactiveusersdaily. TheAmazonBooks
+dataset is a comprehensive collection of product reviews specifically focused on books available
+onAmazon. Foralldatasets,weinitiallyprocessbyeliminatingusersanditemswithfewerthan
+20interactions,toavoidthecold-startissue. Fortheretrieverstage,wesplitthedataintotrainand
+testsubsetsataratioof8:2,whereeachsampleiscomposedofinteractionhistoryandanitemfor
+prediction. Forthererankerstage,wesorttheinteractionsinchronologicalorder,usingthelastsix
+interactionsastheitemlistrevealedtousersafterreranking. Wepresentthestatisticsoftheprocessed
+datasetsfortheretrieverandrerankerstagesinTable5andTable6,respectively.
+Table5: DatasetStatisticsforRetrieverStage Table6: DatasetStatisticsforRerankerStage
+Dataset #Users #Items #Actions Dataset #Users #Items #Sequences
+ML-1M 6,020 3,043 995,154 ML-1M 6,022 3,043 161,646
+Kuaivideo 89,310 10,395 3,270,132 Kuaivideo 89,416 10,395 513,010
+Amazon-Toys 35,732 38,121 1,960,674 Amazon-Toys 35,736 38,121 311,386
+D.2 HYPERPARAMETERSSETTING
+Herewepresenttheoptimalhyperparameters’settingsinTable7.
+D.3 BASELINES
+Wedetailthecomparedbaselinesofourmainexperimentsinthefollowing,includingtraditional
+recommenders,list-refinementmethods,generator-evaluatormethods,anddiffusion-basedmethods.
+TraditionalRecommenders: predictthescoresofcandidateitemsandrankthemaccordingly.
+• SASRec Kang & McAuley (2018) proposes a self-attention based sequential recommendation
+model(SASRec)thatcaptureslong-termsemanticsandshort-termdynamicsusinganattention
+mechanism.
+• CaserTang&Wang(2018)introducesaconvolutionalsequenceembeddingrecommendationmodel
+thatcapturessequentialpatternsusingconvolutionalfiltersappliedtolatentspaceembeddings.
+16
+DenoisingNeuralRerankerforRecommenderSystems
+Table7: HyperparametersettingforDNRondifferentdatasets
+Datasets ML-1M Kuaivideo Book
+λc 0.4 0.3 0.5
+λm 0.4 0.6 0.4
+λe 40 80 100
+weight_decay 0.001 0.001 0
+dropout 0.3 0.3 0.5
+batch_size 2048 2048 2048
+emb_dim 128 128 128
+• GRU4RecHidasietal.(2016)applyrecurrentneuralnetworks(RNNs)tosession-basedrecom-
+mendations,addressingthechallengeofshortusersessionswithoutlong-termprofiles.
+• MiDNNZhuangetal.(2018)proposesaglobaloptimizationframeworkfore-commercesearch
+rankingthatconsidersmutualinfluencesbetweenitems, usingextendedfeaturesandsequence
+generationtooptimizerankingandmaximizeoverallutility.
+List-RefinementMethods: encodetheitemlistsfromthepreviousstageandrefinetherankings
+basedonthisinformation.
+• DLCMAietal.(2018)leverageslocalrankingcontextfromtop-retrieveddocumentstorefineinitial
+rankinglists. Themodelusesarecurrentneuralnetworktocapturedocumentinteractionsandan
+attention-basedlossfunction,significantlyimprovingperformanceovertraditionallearning-to-rank
+methods.
+• SetRankPangetal.(2020)introducesaneurallearning-to-rankmodelthatlearnsapermutation-
+invariantrankingfunctiondirectlyondocumentsets. Utilizingmulti-headself-attentionblocks,
+SetRankcapturescross-documentinteractionsandachievesrobustperformanceacrossvarying
+inputsizes.
+• PRMPeietal.(2019)addressespersonalizedre-rankinginrecommendationsystemsbyincorporat-
+inguser-specificpreferencesintothere-rankingprocess. Itconsidersuserbehaviorandcandidate
+list,enhancingbothrelevanceandpersonalizationinthefinalrecommendations.
+• MIRXietal.(2022)proposestocapturecomplexinteractionsbetweenuseractionsandcandidate
+list features across multiple levels, improving the accuracy and relevance of recommendations
+throughahierarchicalrerankingapproach.
+Generator-EvaluatorMethods: generatemultiplerankeditemlistsandevaluatethemtoselectthe
+bestoneforusers.
+• EGRerank Huzhang et al. (2023) proposes an evaluator-generator framework for learning-to-
+rank (LTR) in e-commerce applications. The framework includes an evaluator that evaluates
+recommendations involving context, a generator that maximizes the evaluator score through
+reinforcementlearning,andadiscriminatorthatensuresthegeneralizationoftheevaluator.
+• PierShietal.(2023)followsatwo-stagearchitecturewithaFine-grainedPermutationSelection
+Module(FPSM)andanOmnidirectionalContext-awarePredictionModule(OCPM).FPSMselects
+top-KcandidatepermutationsbasedonuserinterestusingSimHash,whileOCPMevaluatesthese
+permutationswithanomnidirectionalattentionmechanism.
+• NAR4RecRenetal.(2024)explorestheuseofnon-autoregressivegenerativemodelsforre-ranking
+inrecommendationsystems,addressingchallengessuchassparsetrainingsamplesanddynamic
+candidatesbyintroducingamatchingmodel,unlikelihoodtrainingtodistinguishfeasiblesequences,
+andcontrastivedecodingtocaptureitemdependencies.
+Diffusion-BasedMethods: utilizediffusionmodelstogenerateitemsorlistsforrecommendation.
+• DiffuRecLietal.(2024)incorporatesadiffusionprocesstoinjectnoiseintotargetitemembeddings
+andareverseprocesstoreconstructthetargetitemrepresentation.
+17
+DenoisingNeuralRerankerforRecommenderSystems
+candidate scores interaction history candidate scores interaction history candidate scores interaction history
+0.82 … 0.93 89 … 26 0.82 … 0.93 89 … 26 0.82 … 0.93 89 … 26
+MLP Transformer MLP Transformer Transformer
+weight
+score_emb concat user_state score_emb user_state user_state
+similarity similarity similarity
+candidate items candidate items candidate items
+14 … 75 14 … 75 14 … 75
+Figure4: Differentwaystoleverageretrieverscores.
+• DCDR Lin et al. (2024) introduces a new framework that leverages diffusion models for the
+rerankingstageinrecommendationsystems. DCDRextendstraditionaldiffusionmodelswitha
+discreteforwardprocessandaconditionalreverseprocesstogeneratehigh-qualityitemsequences.
+D.4 IMPLEMENTATIONOFDIVERSESTRATEGIESFORLEVERAGINGRETRIEVERSCORES
+Here,wepresentthedetailedimplementationofdifferentwaystoleverageretrieverscoresinFigure
+D.4. Theleftonerefersto“cscore”,whichleveragesaconcatenateoperationtocombinethescore
+featureswithencodeduserstatesfromusers’interactionhistory. Themoderateonerepresents“+
+score”,whichincorporatesthescorefeaturewithuserstatesbyasimpleplusoperation. Theright
+oneisthe“wscore”,whichadoptstheinitialcandidatescoreastheweightofcandidateitems.
+E COMPLEMENTARY EXPERIMENTAL ANALYSIS
+E.1 EXPERIMENTSOFRETRIEVERSTAGE
+DetailedExperimentalSettingsforRetrieverStage
+WeimplementtheretrieverstagewiththeMFmethodKorenetal.(2009),whichaimstoimprovethe
+clickrateperformance. Thedimensionoftheitemembeddingis128,andthelearningrateis0.001.
+WerandomlyselectnegativeitemstotraintheMFmethod,enhancingtheretriever’sperformance
+despitetheitemsparsity.
+ExperimentalresultsofRetrieverStage
+Here,wepresentthedetailedresultsoftheretrieverstageinTable8.
+Table8: Performanceoftheretrieverstage,whichadoptsthematrixfactorization(MF)modeltorate
+andselectthetop-50itemsfromfullitemset.
+Datasets ML-1M Kuaivideo Book
+AUC 79.20% 89.62% 88.82%
+E.2 VISUALIZATIONOFLEARNEDNOISES
+Tovisualizethegeneratednoisedistribution,wecomparethedensitycurveofthegeneratednoise
+fromdifferentnoisegenerators,includingGaussiannoise,Betanoise,andlearning-basednoise. As
+demonstratedinFigure5,thedistributionoflearnednoiseismorealignedwiththedistributionof
+truenoisebetweenretrieverscoresanduserfeedback. Thismeansthattheresultingposteriorwith
+model-basednoisesamplerbetterreducesthedivergencetermδ inEq.(5),andpotentiallyimprove
+x
+thealignmentbetweenourproposedsolutionwiththethreeobjectivesandthedatalog-likelihood
+maximizationgoal.
+18
+DenoisingNeuralRerankerforRecommenderSystems
+1.50
+1.25
+1.00
+0.75
+0.50
+0.25
+0.00
+1.0 0.5 0.0 0.5 1.0
+Value
+ytisneD
+Distribution of Gaussian Noise
+Density Curve 2.5
+2.0
+1.5
+1.0
+0.5
+0.0
+1.0 0.5 0.0 0.5 1.0
+Value
+ytisneD
+Distribution of Beta Noise
+Density Curve 1.50
+1.25
+1.00
+0.75
+0.50
+0.25
+0.00
+1.0 0.5 0.0 0.5 1.0
+Value
+ytisneD
+Distribution of Learned Noise
+Density Curve
+1.5
+1.0
+0.5
+0.0
+1.0 0.5 0.0 0.5 1.0
+Value
+ytisneD
+Distribution of True Noise
+Density Curve
+Figure5: Thevisualizationofgeneratednoisefromdifferentvariants.
+E.3 PERFORMANCEONDIFFERENTSETTINGSOFBETA-DISTRIBUTION
+TheU-shapedBetadistributioninourpaperismotivatedbythebinarynatureoftheuserfeedback
+scoresandtheuncertaininitialguess,anditisalreadyempiricallyoutperformingtheGaussiandistri-
+butioninourexperiments. Sincetheheuristicallydesignedbetadistributionisnotguaranteedtobe
+optimal—unlikethemodel-basednoisegenerator,whoselearnednoisedistributionisdemonstrated
+tobeclosertotherealnoisedistribution.
+ToexploredifferentBetadistributions,weconductedadditionalexperimentswithDNRthatused
+abetadistributionBeta(2,5),i.e.,DNR-BL,whichismorealignedwiththetruenoisedistribution
+aswellasourmodel-basedgenerator(asshowninFigure5),beforeswitchingtothemodel-based
+generatorinepochλ . Empirically,theresultsarepresentedinTable9.
+e
+Table9: Experimentswiththebetadistributionreplicatethelearneddistribution.
+ML-1M Kuaivideo Book
+Methods
+NDCG@6 MAP@6 NDCG@6 MAP@6 NDCG@6 MAP@6
+DNR-B 77.12 67.30 70.15 58.12 83.53 75.54
+DNR-BL 77.43 67.49 71.10 59.61 83.68 75.79
+Wecanobservethatusingthismore"aligned"betadistribution(i.e.,,DNR-BL)beforeepochλ
+e
+offersaslightimprovementcomparedtousingtheU-shapedBeta(i.e.,DNR-B)beforeλ . This
+e
+reinforcesourmainclaim: adoptingamodel-basednoisegeneratortolearnandregularizenoise
+distribution,aligningitmorecloselywiththeground-truthnoisedistribution.
+E.4 DETAILEDRESULTSOFSENSITIVITYANALYSIS
+Here, we present the detailed results of the sensitivity analysis for different datasets in Figure 6,
+Figure7,andFigure8.
+E.5 EXPERIMENTSONLARGERRERANKERBACKBONES
+DNRisabackbone-agnosticframeworkforrerankingtasks,utilizinganddenoisingthenoisyscores
+from the previous retrieval stage through adversarial learning. Recently, LLMs have become a
+powerful tool for reranking tasks Mao et al. (2025b). However, text-based LLM4Rerank is not
+comparableinoursettingofflineoronline,duetothelackofrichtextualinformation(suchasdetailed
+itemdescriptions)thatLLM-basedrerankersfundamentallyrelyon. Toevaluatetheeffectivenessof
+DNRinlargemodels,wescaledupourPRMbaselinebysignificantlyincreasingthenumberofits
+Transformerlayers,servingasa“largermodel”forcomparison. WethentestedourDNRframework,
+usingthisscaled-upPRMasitsrerankerbackbone. Theresultsarepresentedinthetable10.
+Wecanobservethatscalingupthebackbonemayimprovethererankingresult,comparingthelarger
+PRMwiththeoriginalPRM,orcomparingthelargerDNRwiththeoriginalDNR.Additionally,our
+originalDNRoutperformsthescaled-up“largermodel”baseline(largerPRM);TheDNRframework
+mayalsogeneralizewelltoalargermodel.
+19
+DenoisingNeuralRerankerforRecommenderSystems
+Table10: Experimentsonlargermodels(expandtransformersofPRMto10layers)withML-1M
+dataset.
+ML-1M
+Methods
+HR@6 NDCG@6 MAP@6 F1@6 AUC
+originalPRM 60.09 72.85 62.21 65.51 88.20
+originalPRM+DNR 64.89 77.67 68.00 70.71 92.75
+largerPRM 62.95 76.09 66.72 68.61 88.68
+largerPRM+DNR 65.87 78.72 69.33 71.95 89.19
+E.6 ONLINEA/BTEST
+TobetterinvestigatetheeffectivenessofourDNRinanonlineenvironment,weconductanA/Btest
+onanindustrialplatformwithvideofeedsto100+millionsofusersdaily.
+Detailed Experimental Settings for Online Test The multi-stage pipeline of the online system
+consistsofthreestages: retrieval,ranking,andreranking. Inthefinalrerankingstage,thetop-6items
+foruserexposureareselectedfromacandidatesetof50itemsgeneratedbytherankingstage. During
+therankingprocess,ascoringmodelcomputesmulti-dimensionalfeaturesforeachitem. Among
+these,weutilizePCTR(predictedprobabilitythatthevideowillbewatchedformorethan3seconds)
+astheprimaryretrievalscorex ,whichcorrespondstothe“realshow”metricintheonlinesystem.
+u
+Notethatthefinalrerankingstageconsidersthecombinationoftheretrievalstageandthemiddle
+ranking stage as a holistic previous stage, so the output PCTR scores from the ranking stage are
+consideredas“retrievalscore”inthisfinalstage. DNRisappliedtogenerateanewsetofscoresfor
+50selecteditemsandthetop-6itemsarechosenasthefinalexposure.
+ExperimentResultsForouronlineexperiments,thetotaltrafficisrandomlydivided,with12.5%
+allocatedtotheDNRmethodand12.5%tothebaselinemethod. Eachexperimentisconductedfor
+atleast7daystoensurethereliabilityoftheresults. TheDNRmethoddemonstratesasignificant
+improvementinrealshow(,i.e.,thecumulativenumberofvideoswatchedbyusers),increasingitby
+1.089%. TheseresultsindicatethattheDNRmethodcanestimatePCTRmoreaccurately,whichis
+stronglycorrelatedwithrealshow. Additionally,theindustrialrecommendationenvironmentinvolves
+various other metrics in addition to the realshow metric, including but not limited to app usage
+time, watch time, share-rate, like-rate, and comment-rate. We provide the corresponding results
+in Table 11. We can see that, in our scenario, watch-time and share-rate are slightly negatively
+impacted,whilelike-rateandcomment-rateareslightlypositivelyimpacted,indicatingapotential
+trade-offbetweenmetrics. Notably,whilethewatchtimeexhibitedaslightdecrease,weadditionally
+observedthatthelong-termDAUslightlyincreasedby0.01%[-0.012%,+0.012%],whichisnearly
+reachingastatisticallysignificantimprovement. Thispotentiallysuggeststhattheslightreduction
+inviewingdurationislikelyattributabletousersexploringabroaderrangeofclickedvideos,while
+moresignificantlong-termindicatorsremainpositive. Beyondthese,theimpactonallothermetrics
+isnotstatisticallysignificant,whichvalidatestheeffectivenessofourmethod. Itisworthnotingthat
+achievingperformancegainsacrossallonlinemetricsisinherentlyamulti-objectivechallenge—an
+areathatremainsakeyfocusforfuturework. Additionally,webelieveapplyingDNRtootherxTR
+signals(e.g.,watchtimeandshare-rate)holdssignificantpotentialforfurtherimprovements.
+E.7 EXPERIMENTSONDIVERSERETRIEVERS
+To better illustrate the generalizability of DNR across different retrievers, we implemented the
+dual-tower (DT) model as a stronger retriever. The comparison results in the retrieval stage are
+summarizedinTable12,andthecomparisonresultsinthererankingstagearesummarizedinTable
+13. WecanseethatDT+DNRoutperformsDT+PRM,validatingthegeneralizabilityofourmethod
+andthesustainedadvantageofthedenoisingframework.
+Theoretically,therewillalwaysbeanempiricalerrorthatupperboundstheoverallrecommender
+system,whichaimstominimizethe"optimizableerror",andtherewillbenoroomforthereranker
+to"denoisethescores"iftheretrieveritselfachievethisbound. Yet,thistheoreticalboundisstill
+20
+DenoisingNeuralRerankerforRecommenderSystems
+0.78
+0.77
+0.76
+0.75
+0.2 0.4 0.6 0.8 1.0
+c
+6@GCDN
+ML-1M
+0.72
+w/ G
+w/ B
+DNR 0.70
+0.68
+0.66
+0.64
+0.2 0.4 0.6 0.8 1.0
+c
+6@GCDN
+Kuaivideo
+w/ G 0.830
+w/ B
+DNR 0.825
+0.820
+0.815
+0.810
+0.805
+0.2 0.4 0.6 0.8 1.0
+c
+6@GCDN
+Book
+w/ G
+w/ B
+DNR
+Figure 6: Sensitivity of DNR to the hyperparameter λ on different datasets, which controls the
+c
+degreeofnoiseinjection.
+0.775
+0.770
+0.765
+0.760
+0 50 100 150 200
+e
+6@GCDN
+ML-1M
+DNR-G 0.71
+DNR-B 0.70
+0.69
+0.68
+0.67
+0.66
+0.65
+0 50 100 150 200
+e
+6@GCDN
+Kuaivideo
+DNR-G
+DNR-B 0.84
+0.83
+0.82
+0.81
+0 50 100 150 200
+e
+6@GCDN
+Book
+DNR-G
+DNR-B
+Figure 7: Sensitivity of DNR to the hyperparameter λ on different datasets, which decides the
+e
+epochswheretheadversariallearningstarts.
+0.78
+0.77
+0.76
+0.75
+0.74
+0.2 0.4 0.6 0.8 1.0
+m
+6@GCDN
+ML-1M
+0.74
+DNR-G
+DNR-B
+0.72
+0.70
+0.68
+0.66
+0.2 0.4 0.6 0.8 1.0
+m
+6@GCDN
+Kuaivideo
+0.840
+DNR-G
+DNR-B 0.835
+0.830
+0.825
+0.820
+0.815
+0.810
+0.2 0.4 0.6 0.8 1.0
+m
+6@GCDN
+Book
+DNR-G
+DNR-B
+Figure8: SensitivityofDNRtothehyperparameterλ ondifferentdatasets,whichcontrolsthe
+m
+magnitudeoftheaugmentation.
+21
+DenoisingNeuralRerankerforRecommenderSystems
+metric performanceboost statisticallysignificant(p<0.05)
+overallapp-time -0.011% no
+realshow +1.089% yes
+watch-time -0.091% no
+share-rate -0.758% no
+like-rate +0.609% no
+comment-rate +0.574% no
+save-rate -0.690% no
+profile-click-rate +0.129% no
+LongtermDAU +0.01% yes
+Table11: ExtendedonlineA/Btestresults.
+impracticalforasingleretrieverinmostindustrialplatforms,duetovariousreasonsincluding(but
+notlimitedto)thecomputationalbottleneck,multi-tasktrade-off,andfilteringonlarge-scaledynamic
+candidatepool. Amoreadvancedretrievermeansasmallerremainingerrorthatcanbeoptimized,
+whichindicatesthatthererankerwillsolveasimplerdenoisingproblemandsimplerrerankerdesign.
+Inthiscase,adiminishingmarginalgainonlyindicatesadiminishingcomputationalrequirementin
+thererankingstage. Ingeneral,theadvantageofthedenoisingformulationismaintainedregardless
+oftheretrieveremployed.
+Table12: TheAUCperformanceofthedifferentretrievers,includingthematrixfactorization(MF)
+modelanddual-towermodel.
+ML-1M Kuaivideo Book
+MF 79.20% 89.62% 88.82%
+DT 79.86% 90.38% 90.0%
+Table13: Theperformancecomparisonofrerankersondifferentretrievers.
+ML-1M Kuaivideo Book
+Methods
+NDCG@6 MAP@6 NDCG@6 MAP@6 NDCG@6 MAP@6
+MF+PRM 72.85 62.21 55.93 42.97 76.88 66.44
+MF+PIER 75.99 65.98 65.11 52.55 80.22 71.62
+MF+DNR 77.67 68.00 70.15 58.12 83.53 75.54
+DT+PRM 76.68 67.37 65.77 53.41 81.18 72.72
+DT+PIER 76.36 66.35 68.34 56.26 81.55 72.79
+DT+DNR 77.96 68.78 70.96 58.87 84.42 77.11
+E.8 EXPERIMENTSONDNR’SDIVERSITY
+Since biases in the retriever’s scores may not align with ground-truth user preferences, they will
+be"denoised"iftheyconstitutenoiseinthescoresignal. Unlikealternativemethodsthatleverage
+retrieverscoresdirectly,DNR’sprimaryadvantageliesindenoisingunreliablescoresenabledbyits
+noise-awaretrainingparadigm,asevidencedbyTable2. Forexample,aspecificusermaynotlikea
+certainvideoevenifitispopular. Whenthenoise-awareDNRfindsthisnoiseandcorrectsit,the
+resultingpredictionbecomesmoreaccurate,morepersonalized,andmorediverse.
+We conduct additional experiments on the diversity of the final recommendations by comparing
+the Coverage@1 and coverage@6 metrics of the rerankers’ outputs. As shown in Table 14, the
+experimentalresultsdemonstratethatDNR’sdenoisingcapabilityenablesittomitigateincorrect
+biasesinretrieverscores,therebyachievinggreaterdiversitycomparedtobaselinererankers(e.g.,
+PRMandPIER).
+22
+DenoisingNeuralRerankerforRecommenderSystems
+Table14: ThediversityperformancecomparisonofDNRanddifferentrerankers.
+ML-1M Kuaivideo Book
+Methods
+C@1 C@6 NC@1 C@6 C@1 C@6
+PRM 0.5366 0.9080 0.7609 0.9648 0.4364 0.8584
+Pier 0.5429 0.9073 0.7554 0.9571 0.4238 0.8663
+DNR 0.5626 0.9109 0.7923 0.9702 0.4786 0.8721
+E.9 COMPUTATIONALANALYSIS
+Theoretically,ourmethoddoesnotchangethecomputationalcostduringinferencesincewecan
+adoptthesamererankingmodelstructure(e.g.,PRMPeietal.(2019)). Inthetrainingphase,we
+includeanadditionalnoisegeneratorthatmayrequireO(1)computationaloverhead, whosecost
+dependsonthegenerator’sstructure. Empirically,thegeneratordoesnothavetobesophisticated,
+andthecomputationaloverheadcanbetrivialcomparedtothereranker’straining.
+Tobetterdemonstratecomputationalcost,wecomparetheper-epochtrainingtimeofDNRagainst
+severalbaselinererankers,includingPRMPeietal.(2019),PierShietal.(2023),DCDRLinetal.
+(2024),anda"w/score"variant—whereretrieverscoresaredirectlyusedasinputtothereranker. In
+table15,wepresentthetimecostcomparisonfordifferentrerankerbaselinesineachtrainingepoch.
+Thevariant“w/score”denotesmethodsincorporatingretrieverscoresasinputfeatures,regardlessof
+thespecificintegrationmethod(e.g.,concatenation,plus,orweightedcombination). Ourproposed
+DNRdemonstratescompetitivetrainingefficiency,withtimecostscomparabletobothPRMandw/
+scorebaselinesacrossalldatasets(ML-1M,KuaiVideo,andBook). Thisvalidatesthecomputational
+efficiencyofourapproachwhilemaintainingcompetitiveperformance.
+Table15: Comparisonoftimecosts.
+Datasets ML-1M Kuaivideo Book
+PRM 01m01s 02m21s 01m42s
+Pier 01m54s 04m11s 02m36s
+DCDR 02m27s 04m58s 03m02s
+w/score 01m03s 02m49s 01m46s
+DNR 01m06s 03m12s 01m51s
+F LIMITATION AND DISCUSSION
+F.1 LIMITATIONS
+ComputationalCost: ComparedtoadirectoptimizationframeworkwithEq.(2)thatonlylearnsθ,
+ourframeworkrequiresextraeffortstotrainaposteriormodelϕ(ifusinglearnableposterior)with
+threeadditionallosstermstoback-propagate. Thismightmultiplythetrainingcostforseveralfolds.
+Fortunately,ϕisnotinvolvedininference,sotheinferencecoststaysthesame.
+F.2 FUTUREDIRECTIONS
+Multi-taskScenarios: Whenausercanengagewithanitemwithmultiplebehaviors(e.g.,like
+andshareanewsstory),DNRmayadapttothisscenariobysimplyformulatingamulti-dimensional
+responsespaceforz andx . Yet,differentbehaviorsignalsmaytypicallyfollowaheterogeneous
+u u
+distribution where a uniform modeling technique might become sub-optimal. Additionally, the
+problemmaybecomeevenmoresophisticatedwhenthereexistmultipleretrieversthatestimatethe
+samemetric,especiallyinindustrialsettings. Inthiscase,onemayhavetocomeupwithamore
+articulatedintegrationmethodtoclarifytheconnectionsbetweentheuserfeedbackanddifferent
+retrieverscores. Thus,webelieveitisworthfurtherinvestigatinghowtheproposedframeworkmay
+accommodatethemulti-tasksolutions.
+23
+DenoisingNeuralRerankerforRecommenderSystems
+Joint Optimisation of Multi-stages: Since our “retriever-aware reranker” is a complementary
+piecetothe“reranker-awareretriever”work,webelieveoptimizingthetwocomponentsend-to-end
+jointlyisaverypromisingdirectionforfutureresearch. Thepotentialliesintacklingthecoremulti-
+stagechallenges: effectivelyaligningthedivergenttrainingobjectives,reliablyback-propagating
+non-uniformfeedbacksignalsacrossthestages,andallowingflexiblemodelswitchforanystage.
+Multi-stage vs. End-to-End: Recent advances in end-to-end recommenders have witnessed
+significantadvances,andevidenceDengetal.(2025);Kongetal.(2025)hasshownthatend-to-end
+recommendersarepotentiallymoreeffectivesincetheynolongerneedtoworryabouttheconsistency
+challenge in the multi-stage framework. Yet, there is still no evidence of a general superiority
+comparingthesetwoparadigms,andthereisstillnooptimalsolutionforafullyconsistentmulti-stage
+recommender.
+G USE OF LLMS
+Largelanguagemodels(LLMs)wereusedonlytoaidwritingpolish—includingrefiningsentence
+phrasing, logicalflow, andproseclarity—withoutalteringoriginalmeaningsortechnicaldetails.
+LLMsdidnotparticipateincoreresearchtasks(e.g., experimentdesign, dataprocessing, model
+training,resultanalysis,ordraftingkeytechnicalcontent).
+24

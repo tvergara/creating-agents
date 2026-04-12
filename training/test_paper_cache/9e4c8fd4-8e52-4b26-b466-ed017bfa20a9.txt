@@ -1,0 +1,939 @@
+STRUCTURALLY HUMAN, SEMANTICALLY BIASED:
+DETECTING LLM-GENERATED REFERENCES WITH
+EMBEDDINGS AND GNNS
+MelikaMobini VincentHolst
+VrijeUniversiteitBrussel VrijeUniversiteitBrussel
+Melika.Mobini@vub.be Vincent.Thorge.Holst@vub.be
+FlorianoTori AndresAlgaba VincentGinis
+VrijeUniversiteitBrussel VrijeUniversiteitBrussel VrijeUniversiteitBrussel
+Floriano.Tori@vub.be Andres.Algaba@vub.be SEAS,HarvardUniversity
+Vincent.Ginis@vub.be
+ABSTRACT
+Large language models are increasingly used to curate bibliographies, raising
+the question: are their reference lists distinguishable from human ones? We
+build paired citation graphs, ground truth and GPT-4o-generated (from paramet-
+ricknowledge),for10,000focalpapers(≈275kreferences)fromSciSciNet,and
+added a field-matched random baseline that preserves out-degree and field dis-
+tributions while breaking latent structure. We compare (i) structure-only node
+features(degree/closeness/eigenvectorcentrality,clustering,edgecount)with(ii)
+3072-D title/abstract embeddings, using an RF on graph-level aggregates and
+GraphNeuralNetworkswithnodefeatures. StructurealonebarelyseparatesGPT
+fromgroundtruth(RFaccuracy≈0.60)despitecleanlyrejectingtherandombase-
+line(≈0.89–0.92). Bycontrast,embeddingssharplyincreaseseparability: RFon
+aggregatedembeddingsreaches≈0.83,andGNNswithembeddingnodefeatures
+achieve 93% test accuracy on GPT vs. ground truth. We show the robustness of
+our findings by replicating the pipeline with Claude Sonnet 4.5 and with multi-
+pleembeddingmodels(OpenAIandSPECTER),withRFseparabilityforground
+truthvs.Claude≈ 0.77andcleanrejectionoftherandombaseline. Thus, LLM
+bibliographies, generated purely from parametric knowledge, closely mimic hu-
+man citation topology, but leave detectable semantic fingerprints; detection and
+debiasingshouldtargetcontentsignalsratherthanglobalgraphstructure.
+1 INTRODUCTION
+LargeLanguageModels(LLMs)(Brownetal.,2020)increasinglysynthesizescientificknowledge
+and autonomously draft literature reviews (Delgado-Chaves et al., 2025; Dennsta¨dt et al., 2024;
+Gougherty&Clipp,2024;Kang&Xiong,2024;Skarlinskietal.,2024;Susnjaketal.,2024). This
+raisesacorequestionaboutwhattheyinternalizefromscience:beyondsurfaceform,dotheyrepro-
+ducethestructuralandsemanticregularitiesofcitationbehaviorthatscaffoldscholarlyknowledge?
+To situate our evaluation, we connect to broader capability frameworks for LLMs (Chang et al.,
+2024; McDermott, 1976). Prior work reports that LLM-written bibliographies often look struc-
+turallyplausiblewhilebeingsemanticallyunreliable(Tangetal.,2024;Lietal.,2023;Chuetal.,
+2024;Lietal.,2024a).
+Wemakethistensionconcrete:HowdocitationgraphsinducedbyLLM-suggestedreferencescom-
+pare, structurally and semantically, to ground truth citation graphs? Are LLM-generated graphs
+realistic enough to pass structural scrutiny yet betray detectable semantic shifts? Here we build
+on the earlier analyses of LLM bibliographies purely generated from parametric knowledge, i.e.,
+withoutaccesstoexternaldatabases(Algabaetal.,2024;Mobinietal.,2025;Algabaetal.,2025).
+Thesestudiesfindclosealignmentwithhumancitationnetworksacrossobservablecharacteristics
+1
+Figure 1: Overview of the experimental pipeline comparing graph structure and semantic
+embeddings of LLM-generated and human citation networks. The study involves comparing
+the citation networks of focal papers created using ground truth references and LLM-generated
+references.Randombaselinesaregeneratedbyreshufflinggroundtruthreferences.Graphproperties
+and semantic embeddings are compared, and various GNN models are employed to differentiate
+betweengeneratedandgroundtruthgraphs.
+(titlelength,teamsize,citationandreferencecounts),alongsidesystematicdifferences:LLMsrein-
+forcetheMattheweffect(highermediancited-bycounts, preferenceforprestigiousvenues), favor
+recency, shorter titles, and fewer authors, reduce self-citations, and match focal-paper similarity
+at the level of off-the-shelf embeddings. Local graph motifs likewise resembled human networks.
+What remains unresolved is whether one can reliably distinguish LLM vs. ground truth reference
+listsusingonlytheirinducedcitationgraphsandtextualsignals.
+We address this, see figure 1 with a progressive modeling strategy from interpretable features to
+deep graph learning. First, we aggregate node-level structural metrics into graph descriptors and
+evaluate their discriminability with a Random Forest (RF) (Breiman, 2001) over three classes: (i)
+groundtruthgraphsbuiltfromhumanreferences, (ii)generatedgraphsbuiltfromLLM-suggested
+references,and(iii)domain-matchedrandomizedgraphs. Thesestructuralfeaturescleanlyseparate
+both (i) and (ii) from random baselines but do not separate (i) from (ii) at statistically significant
+levels. Motivated by this, we next use title-based semantic embeddings with RF, which markedly
+improves discrimination. Finally, we train Graph Neural Networks (Gori et al., 2005; Scarselli
+et al., 2005; Zhou et al., 2020; Wu et al., 2021) that learn jointly from structure and node text,
+yieldingfurthergains. Unlikesingle-citationauditssuchasLLM-Check(Sriramananetal.,2024),
+weevaluateentirereferencelistsviatheirinducedcitation-graphstructureandembeddingcohesion.
+IfLLMsmimichuman-liketopologyyetretainadistinctsemanticfingerprint, detectionanddebi-
+asing should target content signals rather than coarse graph structure. This matters for automated
+literature-review tools, citation recommendation systems, and “LLM-in-the-loop” scientific work-
+flows.
+2 RELATED WORK
+There is a fast-growing literature on using LLMs as research assistants to support paper
+search/reading, drafting surveys, and even automating parts of reviewing, which also surfaces re-
+curringconcernsaboutreliabilityandevaluationinscholarlytasksLinetal.(2023a);Zhuangetal.
+(2025);Chenetal.(2025);Wuetal.(2025);Lietal.(2024b);Skarlinskietal.(2024);Susnjaketal.
+(2024).Whilemostdiscussionstartsfromsyntheticprose,thesameproblemappearsinmore“struc-
+tured”scholarlyartifactsthatLLMsincreasinglyproduce,mostnotablyreferencelists,whereout-
+putscanlooksuperficiallyplausiblewhilestillbeingsystematicallywrong,incomplete,orskewed.
+RecentworkhasbeguntomeasurehowLLM-producedbibliographiescomparetohumanones,of-
+tenfindingthatreferencelistscanmatchmanycoarsebibliometricandgraph-structuralregularities
+evenwhenselectiondiffersinmorelatentwaysAlgabaetal.(2024);Mobinietal.(2025);Algaba
+etal.(2025). Wepositionourcontributioninthisgapbyusingtheinducedcitationgraphandshow
+why topology-only approaches can be weak, motivating an approach that fuses network structure
+withsemanticrepresentations.
+2
+Anotherstrandcomesfromscientometricsandcitationnetworkanalysis,whichtreatscitationstruc-
+ture as a signal of how knowledge and attention organize at scale, where we ask what kinds of
+distortions might appear when LLMs mediate scholarly discourse Lepori et al. (2025); Bai et al.
+(2025). This connects naturally to work on citation generation and citation recommendation: as
+LLMsareincreasinglyaskedto“suggestreferences,”theyeffectivelybecomerecommenderswhose
+choices may feed back into discovery, reading, and ultimately credit assignment. Recent studies
+alreadypointtosystematicdisparitiesinwhogetsrecommendedandwhogetscited—acrossdemo-
+graphics,geography,andmajority/minoritystatus—raisingtheprospectthatLLM-drivenreference
+selection could amplify existing inequalities in visibility Tian et al. (2025); He (2025); Liu et al.
+(2025).
+3 CONSTRUCTING CITATION NETWORKS
+We use the open-source dataset from Algaba et al. (2025) which consists of 10,000 focal papers
+(with274,951accompanyingreferences)sampledfromtheSciSciNet(Linetal.,2023b)database.
+ThesampleisdrawnfrompaperswhicharepublishedinQ1journalsbetween1999and2021,have
+between3and54references, andhaveatleastonecitation. Additionally, theselectedfocalpaper
+musthaveadefined“topfield,”avalidDOI,andanavailableabstract. Foreachfocalpaper,GPT-4o
+is prompted to suggest references based on the paper’s title, authors, publication year, venue, and
+abstract. Thenumberofrequestedreferencescorrespondstothenumberofgroundtruthreferences
+citedbyeachfocalpaper. TheexistenceoftheLLM-generatedreferencesisdeterminedbycross-
+verificationwiththeSciSciNet(Linetal.,2023b)databasethroughfuzzymatchingwithtitlesand
+authors,usingconservativesimilaritythresholds. Formoredetails,werefertoAlgabaetal.(2025).
+Inarobustnessanalysis,werepeattheentiregenerationpipelinewithClaudeSonnet4.5,usingthe
+sameprompts,requestedreferencecounts,andfuzzy-matchingfiltersasforGPT-4o. Thisyieldsa
+second set of LLM-generated citation graphs paired to the same focal papers. We reuse the same
+graphconstructionandstructuraldescriptors.
+AsshowninFigure2thefocalpaperformstheprimarynode(bluenode),withreferencescatego-
+rizedinto:
+• Greennodes: ReferencescitedbythefocalpaperandsuggestedbyGPT-4o.
+• Yellow nodes: Non-isolated GPT-generated references, not cited by the focal paper but
+connectedtootherreferences.
+• Orange nodes: Isolated GPT-generated references, neither cited nor connected to other
+references.
+• Greynodes: groundtruthreferencesnotsuggestedbyGPT-4o.
+Edges between nodes represent citations retrieved from the SciSciNet dataset. Each focal paper
+initiallyhasafullgraphcomprisinggroundtruthandGPT-generatedreferences. Thisfullgraphis
+thensplitintotwosub-graphs:
+• Generated graph: Contains the focal paper and GPT-generated references (blue, green,
+yellow, and orange nodes). Some citations produced by the model were not present in
+the focal paper’s ground truth reference list and we represent these exactly as the model
+predicted,asingleedgefromthefocalpapertoeachpredictedcitationnode.
+• Groundtruthgraph: Containsthefocalpaperandgroundtruthreferences(blue,green,and
+greynodes).
+We quantified the semantic role of isolated nodes by comparing cosine-similarity distributions for
+randomreferences,ground-truthreferences,non-isolatedGPTreferences,isolatedGPTreferences,
+andreferencessharedbetweenGPTandtheground-truthbibliography,asshowninAppendixFig-
+ure 18. To evaluate GPT-generated reference lists, we need a random baseline that matches the
+visiblestatisticsthemodelcouldexploit(e.g.,citationfrequencies,publicationyears,topicallabels)
+while deliberately breaking the latent citation structure of the ground truth graph. We therefore
+introduce a random baseline on the field level. In line with (Lin et al., 2023b), field labels are
+derived from the MAG (Microsoft Academic Graph) fields-of-study records: we use the Level-0
+fieldsas“topfields”andtheLevel-1fieldsas“subfields”,basedonthefieldassignmentsprovided
+3
+in SciSciNet. When a paper has multiple field entries, we keep the field with the highest normal-
+ized citation count, implicitly assuming that this field is more relevant to that paper. For all focal
+papers, we then construct a synthetic citation graph by reassigning each focal paper’s references
+to random papers from the same research field. Concretely, within each (top) field of study, we
+uniformlypermutethegroundtruthreferences,i.e.,awithout-replacementshuffleatthefieldlevel,
+andthenattachthepermutedreferencesbacktotheiroriginalfocalpapers. Thispreserveseachfo-
+calpaper’sout-degree(referencecount)andthefield-leveldistributionsofcitationfrequenciesand
+publicationyears,whilepotentiallydestroyingthelatentcitationstructurethatmakesgroundtruth
+graphsinformative. Wealsoconstructananalogoussubfield-levelrandombaselineusingthesame
+procedure, butnow withinSciSciNet’s finer classification into 292subfields (nestedwithin 19 top
+fields in total). This analysis yields qualitatively similar results, see Appendix figures 12 and 13.
+Finally, weconstructatemporallyconstrainedrandombaselineinwhichresampledreferencesare
+drawnfromthesamefieldbutrestrictedtopublicationyears≤thefocalpaper’syear. Intheoriginal
+field-levelreshuffling, temporalorder(referencepublishedbeforethefocalpaper)ispreservedfor
+roughly80%offocal–referencepairs,whereasunderthetemporallyconstrainedbaselinefewerthan
+1%ofedgesviolatetemporalorder,comparedtoabout6%ofGPT-generatedsuggestionsthatpoint
+topaperspublishedafterthefocalpaper. StructuralscatterplotsandRFperformanceforthistem-
+poralbaseline(seeAppendixFigure14andtable11)closelymirrortheoriginalrandombaseline:
+random graphs remain clearly separable from both ground truth and LLM-generated graphs, even
+underexplicittimeconstraints.
+Toensureafaircomparison,werandomlyremoveasubsetofreferencesfromgroundtruthgraphs
+and random graphs to match the size of the generated graph. We remove 779 graphs as we only
+keptgraphswithatleastoneexistinggeneratedreferencefromGPT-4ographsand89fromClaude
+graphs,andendupwith9,218and9908graphspergroupforGPT-4oandClauderespectively. We
+preservethestrictdirectionalityofeachedge,yieldingadirectedcitationgraph. Doingso,thecom-
+parisons reflect the chronological flow of scientific knowledge (who cites whom) and the inherent
+causal patterns of clustering and centrality, rather than losing structural resolution by trivializing
+edgestoundirected.
+4 CLASSIFYING CITATION GRAPHS USING GRAPH TOPOLOGY
+Weconductacomprehensivequantitativeanalysisofeachcitationgraphtocharacterizeglobaltopol-
+ogyandtestwhetherstructurealoneseparatesgroundtruthfromGPT-generatedinstances. Wede-
+liberatelyrestrictedourselvestointerpretabledescriptorsthatscalewellandtransferacrossgraphs
+of different sizes: degree centrality, closeness centrality, eigenvector centrality (Freeman, 1978),
+clustering coefficient, and edge count. These capture complementary local and global aspects of
+citationstructure(connectivityconcentration,pathaccessibility,prestigeamplification,localtriadic
+closure, and overall density). For node-level quantities we used normalized definitions to ensure
+comparabilitywhengraphorderanddensityvary;graph-leveldescriptorswereformedbyaggregat-
+ingnodemetricsusingsummarystatistics(mean,median,interquartilerange,andmaxima-to-mean
+ratios),sothatscaledifferencesdonotrequireadhocrescaling.
+Figure 2 reports distributions over all 9,218 graphs. The box plots reveal that centrality profiles
+inGPT-generatedgraphscloselymatchgroundtruthinbothmediansandIQRs,withsimilarlyoc-
+casional high-degree nodes. In other words, the concentration of visibility and reach—how much
+“attentionmass”accumulatesonafewnodes—looksnearlyidenticalacrossthetwosets. Forclus-
+tering,mediansareagaincomparable,butthegroundtruthsetexhibitsawiderIQRindicatingthat
+the model sometimes produces unusually dense local closure. By contrast, the field-matched ran-
+domgraphsremaintightlycenteredatlowclustering, withnarrowdispersion, underscoringalack
+oftriadicclosure.
+Further, Figure 2(b) shows a joint view of average degree centrality and clustering coefficient.
+Ground truth and GPT-generated graphs overlap almost entirely within structural constraints: as
+averagedegreerises,thecombinatoricsofsharedneighborsmaketriadicclosuremorelikely,push-
+ingpointsupwardinclustering;simultaneously,extremelyhighaveragedegreewithonlymoderate
+clusteringisscarce,whichexplainsthelownumberofpointsinthatportionoftheplane. Random
+graphs, in contrast, collapse toward the low-degree/low-clustering corner, reflecting their tree-like
+sparsity.
+4
+Figure2: PipelinetogeneratethegroundtruthandGPT-generatedcitationgraphsandfea-
+ture histograms (a) The distributions of four node-level metrics computed for each graph. The
+ground truth and generated references for degree centrality indicate similar medians and inter-
+quartile ranges, suggesting the frequent presence of high-degree hub nodes. Random graphs dis-
+tribution of degree centrality values differs in shape, as their hub nodes are only the focal papers.
+Forclosenesscentralitygroundtruthgraphsandgeneratedgraphscurvesclusterintheupperhalfof
+thescale,indicatingconsistentlyshortgeodesicdistances. Randomgraphsshowlowervalueswith
+minimal variance, revealing their sparse and lessinterconnected structure. Allthree sets display a
+positive skew for eigenvector centrality with slightly lower median for random graphs. The clus-
+teringcoefficientsofgroundtruthandGPTgraphshavesimilarmid-rangemedians,whilerandom
+graphsarecenteredaroundzero, confirmingtheabsenceoftriangle-basedlocalcohesion. (b)The
+scatterplotwithmarginalhistograms,eachpointrepresentsonegraph,groundtruthandgenerated
+graphs both concentrate in the mid-range of degree centrality and clustering. Random graphs, by
+contrast, cluster tightly at low values on both axes, showing their consistently sparse and unstruc-
+turedtopology. Marginaldensityplotsalongthetopandrightpanelsshowtheunivariatedistribu-
+tionsofdegreecentralityandclusteringcoefficient,respectively. (c)Themeannodedegreeineach
+graphagainstitsmax-to-meandegreeratioinrandomgraphtypesconcentrateatlowmeandegrees,
+withgroundtruthandgeneratedgraphsshowingnearlyidenticalpeaksinbothhistogramandden-
+sity. Ingroundtruthandgeneratedgraphs,meandegreeandratiotradeoffsmoothlywhereasmean
+degree increases, the relative prominence typically diminishes. Random graphs differ by showing
+awiderrangeofratiovaluesandaconsistentlylowermeandegree. (d)Thetotalnumberofedges
+isplottedagainstitsmeannodedegree. Thereddashedlineindicatesacompletegraph,whilethe
+green dotted curve represents a tree graph. Both the generated and ground truth graphs show a
+clearupwardtrend, graphswithmoreedgesunsurprisinglyhavehigheraveragedegrees, andtheir
+pointcloudslargelyoverlap. Thisshowsthatthegenerativemodelaccuratelyreproducestheempir-
+icalscalingbetweengraphdensityandper-nodeconnectivity,mimickingthescalingofgroundtruth
+graphs,whichliesbetweensparsetreegraphsandfully-connectedcompletegraphs.Randomgraphs
+breakthispatternbyclusteringtightlyatlowaveragedegrees,indicatingasparseattachmentmodel
+that lacks the varied connectivity patterns seen in other sets. (e) The scatter of Edges vs. Nodes
+bothgroundtruthandgeneratedgraphsliepredominantlybetweentheseextremesbycoveringthe
+entirerange,whereastherandomgraphsresembletree-likegrowthrepresentinguniformlyminimal
+connectivity.
+Additional pairwise relations reinforce this picture. The coupling between mean degree and the
+maximum-to-meandegreeratioinFigure2(c)issimilaringroundtruthandGPT-generatedgraphs,
+indicating a comparable extent of hub dominance relative to overall connectivity. Likewise, edge
+countvs.meandegreeandedgecountvs.nodecounttracefamiliesoftrendsconsistentwithrealistic
+densities: both human and GPT-generated graphs fall between tree and complete-graph bounds,
+whereas random graphs tend to cluster near the tree limit. The near-complete overlap of ground
+5
+Graphproperties Groundtruthvs. GPT Groundtruthvs. Random GPTvs. Random
+MeanAccuracy 0.6079±0.0058 0.8956±0.0024 0.9275±0.0059
+MeanF1-score 0.6061±0.0055 0.8946±0.0026 0.9272±0.0060
+Table1: PerformanceoftheRFongraphproperties. Thetableshowsthemeanaccuracyand
+F1-scoreobtainedfromapplyingaRFclassifieracross10independentrunswithdifferentrandom
+seeds,utilizinggraph-basedfeatures.Thedatasetwaspartitionedintotraining/validationandtesting
+subsets, with a trainset of 0.7 and a validation/test size of 0.15. The number of estimators sets to
+100.Giventhebalancednatureofthedatasetandthebinaryclassificationsetting,accuracyisrobust,
+butwealsousedF1tominimizefalsepositivesandnegatives.
+truthandGPT-generatedpointcloudsacrosstheseprojectionsindicatesthatthegenerativeprocess
+reproduces the characteristic coupling between global connectivity and local cohesiveness that we
+observeinhumanbibliographies, notmerelymatchingmarginaldistributionsbutalsomultivariate
+relationshipsamongdescriptors.
+Importantly, these similarities persist despite topical matching of the random baseline: even when
+drawn from the same broad field, random graphs systematically exhibit lower connectivity, min-
+imal clustering, and sparser, star- or tree-like topologies. This separation highlights a qualitative
+distinction: random graphs fail to instantiate the hub-rich, locally cohesive patterns that empirical
+citationnetworksdisplay, whereasGPT-generatedgraphsdocapturethesesignaturesatbothlocal
+and global scales. In that sense, the structural realism of GPT-generated bibliographies extends
+beyondsingle-featurealignmenttojoint,topology-levelconstraints.
+Wethenassesswhetherthesestructuraldescriptorssufficeforautomateddiscriminationbytraining
+aRandomForest(RF)(Breiman,2001)ontheaggregatedgraph-levelfeaturesandevaluatedthree
+binary tasks: Ground truth vs. GPT-generated, Ground truth vs. Random, and GPT-generated vs.
+Random(Table1). Againstrandombaselines,structureishighlyinformative: weobtainaccuracies
+of 0.8956±0.0024 (Ground truth vs. Random) and 0.9275±0.0059 (GPT vs. Random), with
+comparableF1-scores,confirmingthatrealisticcitationtopologyisfarfromrandomevenunderfield
+controls. However,whendirectlycontrastingGPT-generatedwithgroundtruth,performancedrops
+to near-chance: Mean Accuracy 0.6079±0.0058, Mean F1-score 0.6061±0.0055. Within this
+descriptor family, then, structural properties alone do not reliably differentiate LLM from human
+reference lists at scale. Running the same experiment with Claude-generated graphs shows the
+same pattern: near-chance Claude vs ground truth on structure, but again a clean separation from
+the random baseline see Appendix Figure 5 and table4. Taken together, these results support two
+conclusions that guide the rest of the paper. First, GPT-generated bibliographies are structurally
+realistic: theirglobaltopology,centralityconcentration,andlocalclosurecloselytrackgroundtruth
+citationgraphs,andtheyoccupyessentiallythesameregionofthestructuralfeaturespace. Second,
+anysystematicdifferencesthatremainareunlikelytobecapturedbycoarsestructuralsummaries;
+todetectresidualsignatures,onemustlookbeyondtopology—towardtextual/semanticsignalsand
+modelsthatcanfusenodecontentwithstructure.
+5 CLASSIFYING CITATION GRAPHS USING LLM EMBEDDINGS
+To complement our structural analysis, we measure content-level alignment by extracting embed-
+dings of the title and abstract for all the focal papers, and embeddings of the titles of the ground
+truthandGPT-generatedreferencesusingtheOpenAItext-embedding-3-largemodel. Thisresults
+in a 3072-dimensional embedding vector for each focal paper and reference which is used as the
+nodefeatures. Wethenproceedbycomputingthesumoverallgroundtruthreferencesembedding
+vectors,overallGPT-generatedreferencesembeddingvectors,andoverallrandomreferencesem-
+beddingvectorsforeachfocalpaper. Toassesstherobustnessofouranalysis,wedothesameanal-
+ysiswiththeSPECTER2(Singhetal.,2023)embeddingmodelwhichresultsina768-dimensional
+embedding vector, see Appendix Figure 8 and Figure 10. For titles only, we use the adhoc-query
+fine-tunedversion,andfortitleandabstractcombinationsofthefocalpapers,weusetheproximity
+fine-tunedversion.
+6
+Figure 3: PCA of graph embeddings with Cosine/EU Distances (a) Summing 3072-d node
+embeddings to graph level, visualize the embedding space with 2D PCA (contours). (b) Cosine
+alignment (node level). Three graph-wise alignment diagnostics: mean of focal with reference,
+mean of reference with reference, and focal vs. sum of references, capturing how well references
+align with the focal paper and with each other. (c) Euclidean dispersion (node level). Distance-
+spacecounterpartsofmeanfocalwithreference,meanreferencetoreference,andfocalvs. sumof
+references,quantifyingsemanticspread.
+Figure3showsa2DPCAofthegraph-levelembeddingswithcontoursshowingsubstantialoverlap
+betweengroundtruthandLLMgraphs,whilerandomgraphsoccupyadistinctregion. Importantly,
+this 2-D projection is purely illustrative: the first two principal components explain only about
+6% of the variance in the 3072-dimensional title embeddings, and several hundred components
+are needed to explain more than 90% of the variance. The classifiers we report operate in this
+higher-dimensional semantic subspace, not in the compressed 2-D view, see Appendix Figure 16
+andFigure17. Foreverygraphwemeasurethesimilaritiesandthedistancesbetweennodes. The
+cosine similarity and distance scores exhibit a strong semantic alignment of generated references
+withgroundtruthreferencescomparetoweakalignmentinrandomgraphs.
+We then apply the same RF classifier on the aggregated embedding vectors. As shown in Table
+2,classificationperformancesignificantlysurpassestheoneachievedwithstructuralfeaturesalone:
+distinguishinggroundtruthfromGPT-generatedgraphsreachesameanaccuracyof0.8346±0.0063,
+comparedto≈0.6withpurelystructuralmetrics. BothgroundtruthandGPT-generatedgraphsare
+well-separated from random baselines, achieving over 0.90 accuracy in both cases. These effects
+persist across encoders: GPT-4o references embedded with SPECTER (Singh et al., 2023) and
+Claude Sonnet 4.5 references embedded with OpenAI/SPECTER remain separable from ground
+truth references (embedded with SPECTER, and OpenAI/SPECTER, respectively), mirroring the
+backboneresultsofGPT-4oreferencesembeddedwithOpenAI,seeAppendixFigure6andtable7
+and5and8.
+In our RF across all trees, the average leaf depth clusters around ≈ 10 levels—showing that early
+splits do most of the discriminative work (See Appendix Figure 20). These results suggest that
+semanticembeddingscapturehighlydiscriminativeinformation.
+Inboththestructuralandthesemanticsettings,performancedeviatedfromafield-matchedrandom
+baseline that simulates bibliographies assembled by uniformly sampling references from the focal
+paper’sarea. ThispatternprovidesinitialevidencethatLLMsretrievetopicallyrelevantreferences
+across domains using their parametric knowledge. These observations motivate our next step to
+evaluatearangeofGNNarchitecturesthatcanjointlyexploittopologyandsemanticstotestwhether
+learned message passing (Gilmer et al., 2017) can match or surpass the signal exposed by these
+simplerbaselines.
+6 CLASSIFYING CITATION GRAPHS USING GNNS
+Models GraphNeuralNetworks(GNNs)havebecometheleadingdeeplearningmethodstoop-
+erateongraph-structureddata. StandardGNNarchitecturesincludeGraphConvolutionalNetworks
+(GCNs)(Kipf&Welling,2016),GraphAttentionNetworks(GATs)(Velicˇkovic´etal.,2017),Graph-
+7
+Titleembeddings Groundtruthvs. GPT Groundtruthvs. Random GPTvs. Random
+Accuracy 0.8346±0.0063 0.9077±0.0062 0.9527±0.0017
+MeanF1-score 0.8345±0.0063 0.9070±0.0063 0.9526±0.0017
+Table2:PerformanceoftheRFonembeddings.ThetableshowsthemeanaccuracyandF1-score
+obtained from applying a RF classifier across 10 independent runs with different random seeds,
+utilizingtextualembeddingsovergraphs.
+SAGE (Hamilton et al., 2017), and Graph Isomorphism Networks (GINs) (Xu et al., 2018). Each
+model offers unique strengths in capturing structural information, scalability, and representational
+poweramongvariousapplications. Untilnow,evaluationofthesemodelshasprimarilyfocusedon
+traditionalcitationnetworks(Shchuretal.,2018). Duetotheirconceptualdiversityandrobustper-
+formanceacrossvarioustasks, thesemodelsserveasstandardbenchmarksforafairandthorough
+evaluationofGNNs(Zhouetal.,2020;Erricaetal.,2019).
+Experimental setup Reliable comparison of GNN models is often hindered by inconsistent ex-
+perimentalconditions,incompletereporting,andtheuseofdifferentdatasplits. Ourresultsarepro-
+ducedusingaconsistentevaluationstrategytocomparedifferentGNNarchitecturesonourdataset.
+Earlierworkhasdemonstratedthatperformanceinnodeclassificationtasksishighlysensitivetothe
+choiceoftraining, validation, andtestsplits(Shchuretal.,2018). Toreducetheinfluenceofsuch
+variability,weadoptmultiplerandomseedsandaverageresultsacrossdifferentdatasplitsandini-
+tializations. Finally,wereportthefinalresultsonthevalidationsetforeachhyperparametersetup.
+WepresentthehyperparametersearchgridintheAppendixtable12. Foreachmodelwethenselect
+thebestperformingsetupandcomputetheperformanceonthetestset. Thisoffers,combinedwith
+thedistributionofthevalidationperformance,atransparentwaytocomparedifferentmodelsover
+theentirehyperparametergridwhilestillmaintainingadirectcomparisononthetestset.
+StructuralattributesareusuallyincorporatedintonodefeaturesinGNNstoimproveperformance.
+This strategy benefits from the expressive power of aggregation functions like summation, but it
+can also limit a model’s ability to adapt to graphs exhibiting unfamiliar degree distributions. For
+instance, (Cui et al., 2022) found that sum-based aggregation remarkably outperforms mean ag-
+gregationinstructuralnodeclassificationtasks,becauseitmaintainsneighborhoodcountsandthus
+embodiescriticalstructuralinformation.Meanwhile,(Lee&Yoon,2022)indicatethataveragenode
+degreeisakeyfeatureinfluencingGNNgeneralizationtounseengraphs,andsupportformodular
+updatemechanismstobetteradapttographswithheterogeneousdegreedistributions. Topreserve
+consistency,allmodelsinourstudyaretrainedandtestedusingthesamenodefeaturerepresenta-
+tions.Weperformedthreesetsofpairwisecomparisonsbetweengraphtypes:GPTvs.Groundtruth,
+GPTvs. Random,andGroundtruthvs. Randomoncewithgraphpropertiesandoncewithsemantic
+based vectors. Following the construction of citation graphs, we extracted structural features and
+embeddingbasedvectorsforeachnodeandassignedtheseasinputfeaturesfordownstreamlearn-
+ingtasks. Eachnodewasassignedafive-dimensionalfeaturevectorconsistingofdegreecentrality,
+closeness centrality, eigenvector centrality, clustering coefficient, and the graph’s total number of
+edges,whichisagraphlevelfeaturesbuthereassignedasnodefeatureinGNNtrainingusingthe
+graphforstructuralfeatures. Anda3072-dimensionalfeaturevectorwasmadeforeachnodeinthe
+graphs for GNN embedding-based comparisons. For each pairwise comparison we used a binary
+labeltodifferentiatebetweenGPT,groundtruthorrandomgraphs.
+Thedatasetwassplitintotraining,validation,andtestsetsinproportionsof70,15,and15,respec-
+tivelyusingstratifiedsplitsinsuchamannerthatifagroundtruthfocalpaperappearedinthetrain
+dataset, its respective random graph also appeared in the same split set. To ensure reproducibility
+and consistency across multiple models and experiments, the random seed was fixed during split-
+ting. Althoughthesplitsweredeterministic,internalorderingwasshuffledbeforetrainingtoavoid
+learningbiasestiedtosequence. Eachmodelwastrainedusingaconsistentoptimizationprotocol.
+ForalllearningweusedtheAdamoptimizer(Kingma&Ba,2014).
+Results Figure4summarizestheperformanceoffourGNNarchitecturesacrossourclassification
+tasks,GCN,GAT,GIN,andGraphSAGE.Thereportedaccuraciesarethefinalvalidationaccuracies
+overthesweepofhyperparameters. Wechoosetoreportthefullperformanceonhyperparameters
+8
+Figure4: Distributionoffinalvalidationaccuracyoverthesweepofhyperparametersusing
+differentmodelsEachpanelsummarizingtheperformanceoffourGNNarchitecturesonvalidation
+setacrossourbinaryclassificationtasksusingdifferentseeds. AbovefiguresshowtheGNNusing
+thegraphpropertiesandthebottomfiguresarerelatedtotheGNNresultsusingembeddingvectors.
+Withineverypanel,thetopaxisshowskernel-densityestimates(KDEs)ofper-runfinalaccuracies,
+andthebottomaxisshowseachGNNarchitectureboxplotsmedians,interquartileranges,whiskers,
+andoutliers. Thebarplotsillustratingthemeanstandarddeviationofaccuracyonvalidationdataset
+acrossdifferentmodelsshowingconsistencyovermodels. Eachsweepconsistsof500hyperparam-
+etersetups.
+toprovideatransparentperformanceoverviewinsteadofsimplyhighlightingthetopperformer. We
+do provide the top performing result for completness in Table 3 for the test dataset and the best
+hyperparametersinTable13and14. Theupperrowofthefigureshowstheperformancewhenwe
+onlyusethegraphpropertiesasfeaturevectors,whilethebottomrowhighlightstheperformances
+when feature vectors are the embedding vectors used previously. In this setting, GNNs achieve
+high separability for GPT vs. Random with a high density across GNN architectures, reflecting
+substantial structural differences between generated and randomized citation networks. However,
+performance drops sharply in GNN experiments using graph properties for the GPT vs. ground
+truthclassification,withaccuraciesclusteringaroundchancelevel.Usingdifferentmodelscouldnot
+increasetheaccuracies,indicatingthatstructuralfeaturesalongwithmessagepassingareinsufficient
+for distinguishing LLM-generated graphs from ground truth citation graphs. We also show the
+resultsfortheGNNperformanceoftheClaudereferencesintheAppendixFigures7and9andthe
+performance of GPT-4o references using OpenAI embeddings (See Appendix Figure 11, and the
+performanceofGNNinthetestset6. TrainingonGPT-4oandtestingonClaudeSonnet4.5yields
+substantialabove-chancegeneralizationforallGNNs(SeeresultsinAppendix8);anRFtrainedon
+GPT-4oalsoreaches≈0.72whenthegeneratorisswappedattesttime(SeeresultsinAppendix9).
+Whenreplacingnodeembeddingswithi.i.d. vectorsofmatcheddimensionality,RF/GNNaccuracy
+collapsestochance,showingthatthegainsaretheresultofsemanticstructureratherthanthenumber
+offeatures,seeAppendixresults15.
+9
+To assess robustness, we quantify distributional saturation as runs accumulate using permutation-
+averaged Wasserstein distance (see Appendix figure 19), showing that distributions saturate early
+andadditionalsweepshavemarginalimpact.
+Byusingembeddingbasedfeatures,weobserveanimprovementintheGPTvs. groundtruthtask:
+allGNNarchitecturessurpasschanceperformancebyasignificantmargin. Thisindicatesthat,al-
+thoughGPT-generatedcitationgraphsmimicthestructuralpropertiesofgroundtruthnetworks,their
+semantic embeddings encode subtle but learnable differences in language patterns. These results
+suggest that the primary signature distinguishing LLM-generated from human-generated citation
+graphsliesnotintopologybutinsemanticcontent.
+7 DISCUSSION
+Wepresentalarge-scale,pairedevaluationofLLM-producedbibliographiesagainsthumanground
+truth,supplementedbyafield-matchedrandombaselines. Ouranalysisproceedsfrominterpretable
+graph-leveldescriptorstocontent-awaregraphneuralnetworks,cleanlydecomposingwhatiscap-
+turedbycitationtopologyversusnodesemantics. Acrosstransparentdescriptorsandstructure-only
+models, LLM-generated citation graphs are essentially indistinguishable from human ones, while
+therandombaselineiscleanlyrejected.Incorporatingtitle/abstractembeddingschangesthepicture:
+content-awaremodelsreliablyseparateLLMgraphsfromgroundtruth,indicatingthatresidualdif-
+ferencesresideinsemanticsratherthantopology. Westrengthenouranalysisbyincludingfurther
+robustnesschecks.Wecheckedthatourresultsdonotdependontheembeddingbackboneordimen-
+sionalityoftheembeddingvectors,arerobustundertwoadditionalrandombaselinescontrollingfor
+subfieldandpublicationyearofthefocalpaper,andevengeneralizetocross-generatorexperiments.
+Practically, this hints that auditing and debiasing LLM-generated bibliographies should prioritize
+contentsignals(e.g.,embeddingdistributions,topicaldrift,recencytilt)overcoarsestructuralfea-
+tures. Detection pipelines built on text embeddings or text+graph hybrids are therefore the right
+tool;structure-onlydiagnosticswillunder-detect.
+Methodologically,ourprotocol(pairedgraphs,domain-matchedrandomization,andastepwisepath
+from transparent features to content-aware GNNs) constitutes a general recipe for stress-testing
+bibliographicauthenticitywithoutrelyingonmanualcuration.
+8 CONCLUSION, LIMITATIONS AND FUTURE WORK
+Our work analyses two LLM families over multiple embedding backbones while focusing on ti-
+tle/abstracttextratherthanfull-text. Inthecurrentanalysis, wefocussolelyontheparametrically
+retrieved references, allowing for a stricter lab setting and probing directly the biases of the mod-
+els. Wedonotconsiderthereferencesthatwouldbeobtainedwhenmodelshaveaccesstoexternal
+databases. Future work could probe which semantic dimensions drive separability and what they
+could mean (recency, prestige, method vs. theory, author overlap). Taken together, our results
+suggestasimpleoperatingprinciple: today’sLLMscanconvincinglymimictheshapeofcitation,
+but not yet its semantics and it is therefore in this semantic fingerprint that reliable detection (and
+eventualcorrection)mustoperate.
+10
+Table3: Resultsontestset(↖Accuracy,↘F1).
+GroundtruthvsGPT RandomvsGPT
+Model
+Graphproperties Embeddings Graphproperties Embeddings
+57.73 93.10 88.51 95.23
+GCN ±2.10 ±0.55 ±0.31 ±4.99
+56.83 93.10 88.38 95.18
+±4.10 ±0.55 ±0.32 ±4.16
+55.59 93.14 88.51 95.85
+GraphSage ±1.93 ±0.51 ±0.27 ±2.35
+55.27 93.14 88.37 95.84
+±2.18 ±0.51 ±0.30 ±2.38
+57.40 93.78 88.53 95.50
+GAT ±2.44 ±0.43 ±0.31 ±0.56
+57.03 93.78 88.41 95.49
+±3.17 ±0.43 ±0.32 ±0.56
+51.71 93.28 88.47 97.39
+GIN ±2.70 ±0.57 ±0.27 ±0.23
+47.23 93.28 88.34 97.40
+±6.81 ±0.57 ±0.28 ±0.23
+11
+ACKNOWLEDGEMENTS
+ThisresearchwassupportedbyfundingfromtheFlemishGovernmentunderthe“Onderzoekspro-
+grammaArtificie¨leIntelligentie(AI)Vlaanderen”program. AndresAlgabaacknowledgessupport
+fromtheFrancquiFoundation(Belgium)throughaFrancquiStart-UpGrantandafellowshipfrom
+theResearchFoundationFlanders(FWO)underGrantNo.1286924N.VincentGinisacknowledges
+support from Research Foundation Flanders under Grant No.G032822N and G0K9322N. The re-
+sourcesandservicesusedinthisworkwereprovidedbytheVSC(FlemishSupercomputerCenter),
+fundedbytheResearchFoundation-Flanders(FWO)andtheFlemishGovernment.
+REFERENCES
+Andres Algaba, Carmen Mazijn, Vincent Holst, Floriano Tori, Sylvia Wenmackers, and Vincent
+Ginis. Large language models reflect human citation patterns with a heightened citation bias.
+arXivpreprintarXiv:2405.15739,2024. doi: 10.48550/arXiv.2405.15739.
+AndresAlgaba,VincentHolst,FlorianoTori,MelikaMobini,BrechtVerbeken,SylviaWenmackers,
+andVincentGinis.Howdeepdolargelanguagemodelsinternalizescientificliteratureandcitation
+practices? arXivpreprintarXiv:2504.02767,2025. doi: 10.48550/arXiv.2504.02767.
+Xiaomei Bai, Fuli Zhang, Jiaying Liu, Xiaoxia Wang, and Feng Xia. Revolutionizing scholarly
+impact: advanced evaluations, predictive models, and future directions. Artificial Intelligence
+Review,58(10):311,2025. doi: 10.1007/s10462-025-11315-6.
+Leo Breiman. Random forests. Machine Learning, 45(1):5–32, 2001. doi: 10.1023/A:
+1010933404324.
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D. Kaplan, Prafulla Dhariwal,
+ArvindNeelakantan,PranavShyam,GirishSastry,AmandaAskell,etal. Languagemodelsare
+few-shotlearners. arXivpreprintarXiv:2005.14165,2020. doi: 10.48550/arXiv.2005.14165.
+YupengChang,XuWang,JindongWang,YuanWu,LinyiYang,KaijieZhu,HaoChen,Xiaoyuan
+Yi,CunxiangWang,YidongWang,WeiYe,YueZhang,YiChang,PhilipS.Yu,QiangYang,and
+Xing Xie. A survey on evaluation of large language models. ACM Transactions on Intelligent
+SystemsandTechnology,15(3):39:1–39:45,2024. doi: 10.1145/3641289.
+Qiguang Chen, Mingda Yang, Libo Qin, Jinhao Liu, Zheng Yan, Jiannan Guan, Dengyun Peng,
+Yiyan Ji, Hanjing Li, Mengkang Hu, et al. Ai4research: A survey of artificial intelligence for
+scientificresearch. arXivpreprintarXiv:2507.01903,2025. doi: 10.48550/arXiv.2507.01903.
+Zhibo Chu, Zichong Wang, and Wenbin Zhang. Fairness in large language models: A taxonomic
+survey. ACM SIGKDD Explorations Newsletter, 26(1):34–48, 2024. doi: 10.1145/3682112.
+3682117.
+Hejie Cui, Zijie Lu, Pan Li, and Carl Yang. On positional and structural node features for
+graph neural networks on non-attributed graphs. In Proceedings of the 31st ACM Interna-
+tional Conference on Information & Knowledge Management, pp. 3898–3902, 2022. doi:
+10.1145/3511808.3557661.
+Fernando M. Delgado-Chaves, Matthew J. Jennings, Antonio Atalaia, Justus Wolff, Rita Horvath,
+ZeinabM.Mamdouh,JanBaumbach,andLindaBaumbach. Transformingliteraturescreening:
+Theemergingroleoflargelanguagemodelsinsystematicreviews. ProceedingsoftheNational
+AcademyofSciences,122(2):e2411962122,2025. doi: 10.1073/pnas.2411962122.
+FabioDennsta¨dt,JohannesZink,PaulMartinPutora,JannaHastings,andNikolaCihoric. Titleand
+abstractscreeningforliteraturereviewsusinglargelanguagemodels: anexploratorystudyinthe
+biomedicaldomain. SystematicReviews,13(1):158,2024. doi: 10.1186/s13643-024-02575-4.
+Federico Errica, Marco Podda, Davide Bacciu, and Alessio Micheli. A fair comparison of graph
+neuralnetworksforgraphclassification. arXivpreprintarXiv:1912.09893,2019. doi: 10.48550/
+arXiv.1912.09893.
+12
+LintonCFreeman. Centralityinsocialnetworks: Conceptualclarification. SocialNetworks,1(3):
+215–239,1978. doi: 10.1016/0378-8733(78)90021-7.
+Justin Gilmer, Samuel S Schoenholz, Patrick F Riley, Oriol Vinyals, and George E Dahl. Neural
+message passing for quantum chemistry. In Proceedings of the 34th International Conference
+on Machine Learning, pp. 1263–1272. PMLR, 2017. URL https://proceedings.mlr.
+press/v70/gilmer17a.html.
+MarcoGori,GabrieleMonfardini,andFrancoScarselli.Anewmodelforlearningingraphdomains.
+InProceedings.2005IEEEinternationaljointconferenceonneuralnetworks,2005.,volume2,
+pp.729–734.IEEE,2005. doi: 10.1109/IJCNN.2005.1555942.
+Andrew V Gougherty and Hannah L Clipp. Testing the reliability of an ai-based large language
+model to extract ecological information from the scientific literature. npj Biodiversity, 3(1):13,
+2024. doi: 10.1038/s44185-024-00043-9.
+WillHamilton,ZhitaoYing,andJureLeskovec. Inductiverepresentationlearningonlargegraphs.
+AdvancesinNeuralInformationProcessingSystems,30,2017. URLhttps://arxiv.org/
+abs/1706.02216.
+Jiangen He. Who gets cited? gender-and majority-bias in llm-driven reference selection. arXiv
+preprintarXiv:2508.02740,2025. doi: 10.48550/arXiv.2508.02740.
+HaoKangandChenyanXiong.Researcharena:BenchmarkingLLMs’abilitytocollectandorganize
+information as research agents. arXiv preprint arXiv:2406.10291, 2024. doi: 10.48550/arXiv.
+2406.10291.
+Diederik P Kingma and Jimmy Ba. Adam: A method for stochastic optimization. arXiv preprint
+arXiv:1412.6980,2014. doi: 10.48550/arXiv.1412.6980.
+Thomas N. Kipf and Max Welling. Semi-supervised classification with graph convolutional net-
+works. arXivpreprintarXiv:1609.02907,2016. doi: 10.48550/arXiv.1609.02907.
+HyungeunLeeandKijungYoon.Towardsbettergeneralizationwithflexiblerepresentationofmulti-
+module graph neural networks. arXiv preprint arXiv:2209.06589, 2022. doi: 10.48550/arXiv.
+2209.06589.
+Benedetto Lepori, Jens Peter Andersen, and Karsten Donnay. Generative ai and the future of sci-
+entometrics: current topics and future questions. arXiv preprint arXiv:2507.00783, 2025. doi:
+10.48550/arXiv.2507.00783.
+HaitaoLi, QianDong, JunjieChen, HuixueSu, YujiaZhou, QingyaoAi, ZiyiYe, andYiqunLiu.
+LLMs-as-judges: a comprehensive survey on LLM-based evaluation methods. arXiv preprint
+arXiv:2412.05579,2024a. doi: 10.48550/arXiv.2412.05579.
+Sihang Li, Jin Huang, Jiaxi Zhuang, Yaorui Shi, Xiaochen Cai, Mingjun Xu, Xiang Wang, Lin-
+fengZhang,GuolinKe,andHengxingCai. Scilitllm: Howtoadaptllmsforscientificliterature
+understanding. arXivpreprintarXiv:2408.15545,2024b. doi: 10.48550/arXiv.2408.15545.
+Yingji Li, Mengnan Du, Rui Song, Xin Wang, and Ying Wang. A survey on fairness in large
+languagemodels. arXivpreprintarXiv:2308.10149,2023. doi: 10.48550/arXiv.2308.10149.
+JialiangLin,JiaxinSong,ZhangpingZhou,YidongChen,andXiaodongShi. Automatedscholarly
+paper review: Concepts, technologies, and challenges. Information fusion, 98:101830, 2023a.
+doi: 10.1016/j.inffus.2023.101830.
+ZihangLin,YianYin,LuLiu,andDashunWang.Sciscinet:Alarge-scaleopendatalakeforthesci-
+enceofscienceresearch. ScientificData,10(1):315,2023b. doi: 10.1038/s41597-023-02198-9.
+YixuanLiu,A´belElekes,JianglinLu,RodrigoDorantes-Gilardi,andAlbert-La´szlo´ Baraba´si. Un-
+equalscientificrecognitionintheageofllms. InFindingsoftheAssociationforComputational
+Linguistics: EMNLP 2025, pp. 23558–23568, 2025. doi: 10.18653/v1/2025.findings-emnlp.
+1279.
+13
+Drew McDermott. Artificial intelligence meets natural stupidity. SIGART Newsl., 57:4–9, 1976.
+doi: 10.1145/1045339.1045340.
+Melika Mobini, Vincent Holst, Floriano Tori, Andres Algaba, and Vincent Ginis. How deeply do
+LLMsinternalizehumancitationpractices? agraph-structuralandembedding-basedevaluation.
+In ICLR 2025 Workshop on Human-AI Coevolution, 2025. URL https://openreview.
+net/forum?id=DTt2F2lCeh.
+Franco Scarselli, Sweah Liang Yong, Marco Gori, Markus Hagenbuchner, Ah Chung Tsoi, and
+Marco Maggini. Graph neural networks for ranking web pages. In The 2005 IEEE/WIC/ACM
+International Conference on Web Intelligence (WI’05), pp. 666–672, 2005. doi: 10.1109/WI.
+2005.67.
+OleksandrShchur,MaximilianMumme,AleksandarBojchevski,andStephanGu¨nnemann. Pitfalls
+of graph neural network evaluation. arXiv preprint arXiv:1811.05868, 2018. doi: 10.48550/
+arXiv.1811.05868.
+Amanpreet Singh, Mike D’Arcy, Arman Cohan, Doug Downey, and Sergey Feldman. SciRepE-
+val: A multi-format benchmark for scientific document representations. In Houda Bouamor,
+Juan Pino, and Kalika Bali (eds.), Proceedings of the 2023 Conference on Empirical Meth-
+ods in Natural Language Processing, pp. 5548–5566, Singapore, December 2023. Associa-
+tion for Computational Linguistics. doi: 10.18653/v1/2023.emnlp-main.338. URL https:
+//aclanthology.org/2023.emnlp-main.338.
+MichaelDSkarlinski,SamCox,JonMLaurent,JamesDBraza,MichaelaHinks,MichaelJHam-
+merling, Manvitha Ponnapati, Samuel G Rodriques, and Andrew D White. Language agents
+achievesuperhumansynthesisofscientificknowledge. arXivpreprintarXiv:2409.13740, 2024.
+doi: 10.48550/arXiv.2409.13740.
+Gaurang Sriramanan, Siddhant Bharti, Vinu Sankar Sadasivan, Shoumik Saha, Priyatham Kat-
+takinda,andSoheilFeizi. LLM-check:Investigatingdetectionofhallucinationsinlargelanguage
+models. In The Thirty-eighth Annual Conference on Neural Information Processing Systems,
+2024. URLhttps://openreview.net/forum?id=LYx4w3CAgy.
+Teo Susnjak, Peter Hwang, Napoleon H Reyes, Andre LC Barczak, Timothy R McIntosh, and
+Surangika Ranathunga. Automating research synthesis with domain-specific large language
+modelfine-tuning. arXivpreprintarXiv:2404.08680,2024. doi: 10.48550/arXiv.2404.08680.
+Xuemei Tang, Xufeng Duan, and Zhenguang G Cai. Are LLMs good literature review writers?
+evaluating the literature review writing ability of large language models. arXiv e-prints, pp.
+arXiv:2412.13612,2024. doi: 10.48550/arXiv.2412.13612.
+YifanTian,YixinLiu,YiBu,andJiqunLiu. Whogetsrecommended? investigatinggender,race,
+and country disparities in paper recommendations from large language models. arXiv preprint
+arXiv:2501.00367,2025. doi: 10.48550/arXiv.2501.00367.
+Petar Velicˇkovic´, Guillem Cucurull, Arantxa Casanova, Adriana Romero, Pietro Lio, and Yoshua
+Bengio. Graphattentionnetworks. arXivpreprintarXiv:1710.10903,2017. doi:10.48550/arXiv.
+1710.10903.
+Yutao Wu, Xiao Liu, Yunhao Feng, Jiale Ding, and Xingjun Ma. Paperask: A benchmark for
+reliabilityevaluationofllmsinpapersearchandreading.arXivpreprintarXiv:2510.22242,2025.
+doi: 10.48550/arXiv.2510.22242.
+Zonghan Wu, Shirui Pan, Fengwen Chen, Guodong Long, Chengqi Zhang, and Philip S Yu. A
+comprehensive survey on graph neural networks. IEEE Transactions on Neural Networks and
+LearningSystems,32(1):4–24,2021. doi: 10.1109/TNNLS.2020.2978386.
+Keyulu Xu, Weihua Hu, Jure Leskovec, and Stefanie Jegelka. How powerful are graph neural
+networks? arXivpreprintarXiv:1810.00826,2018. doi: 10.48550/arXiv.1810.00826.
+Jie Zhou, Ganqu Cui, Shengding Hu, Zhengyan Zhang, Cheng Yang, Zhiyuan Liu, Lifeng Wang,
+Changcheng Li, and Maosong Sun. Graph neural networks: A review of methods and applica-
+tions. AIOpen,1:57–81,2020. doi: 10.1016/j.aiopen.2021.01.001.
+14
+ZhenzhenZhuang, JiandongChen, HongfengXu, YuwenJiang, andJialiangLin. Largelanguage
+modelsforautomatedscholarlypaperreview: Asurvey. InformationFusion,pp.103332,2025.
+doi: 10.1016/j.inffus.2025.103332.
+15
+APPENDIX
+PROMPTING GPT-4O
+The GPT-references in the dataset from Algaba et al. (2025) were generated using the following
+promptingpt-4o-2024-08-06:
+Thesystempromptforeachfocalpaperis:
+Below,wesharewithyouthetitle,authors,year,venue,andabstractofascientific
+paper. Canyouprovide{n}referencesthatwouldberelevanttothispaper?
+Theuserpromptcontainsbasicbibliographicmetadataandtheabstract:
+Title: {PaperTitle}
+Authors: {Author_Name}
+Year: {Year}
+Venue: {Journal_Name}
+Abstract: {Abstract}
+Here{n}issettothegroundtruthnumberofcitedworksforthatfocalpaper.Wesubsequentlyparse
+themodel’ssuggestionsforbibliometricdata(title,authors,numberofauthors,venue,publication
+year)inapostprocessingstepusingasecondprompt(calledviagpt-4o-mini-2024-07-18):
+Below,wesharewithyoualistofreferences.Couldyouforeachreferenceextract
+theauthors,thenumberofauthors,title,publicationyear,andpublicationvenue?
+Pleaseonlyreturntheextractedinformationinamarkdowntablewiththeauthors,
+numberofauthors,title,publicationyear,andpublicationvenueascolumns. Do
+notreturnanyadditionalinformationorformatting.
+16
+PROMPTING CLAUDE SONNET 4.5
+Following the methodology of Algaba et al. (2025), we generate reference suggestions using the
+followingpromptinClaude-sonnet-4-5-20250929: Thesystempromptforeachfocalpaperis:
+Below,wesharewithyouthetitle,authors,year,venue,andabstractofascientific
+paper. Canyouprovide{n}referencesthatwouldberelevanttothispaper?
+Theuserpromptcontainsbasicbibliographicmetadataandtheabstract:
+Title: {PaperTitle}
+Authors: {Author_Name}
+Year: {Year}
+Venue: {Journal_Name}
+Abstract: {Abstract}
+Here{n}issettothegroundtruthnumberofcitedworksforthatfocalpaper.
+17
+CITATION NETWORKS
+LetG=(V,E)beasimpledirectedgraph,whereV denotesthesetofnodesandE denotestheset
+ofdirectededges. Let|V|denotethenumberofnodes. Foranodev ∈ V withtotaldegreedv,the
+degreecentralityCD(v)canbedefinedas
+dv
+CD(v)= ,
+|V|−1
+reflectingthefractionofpossibleconnectionsthatv actuallyhas. Thedistancebetweentwonodes
+u,v ∈ V is denoted by d(u,v) and equals the numbers of edges in the shortest path between the
+twonodes. Theclosenesscentralityofanodev ∈V isdeterminedbythereciprocaloftheaverage
+shortestpathfromvtoallothernodes:
+|V|−1
+CC(v)= .
+d(u,v)
+Pu̸=v
+LetCE(v)betheeigenvectorcentralityofnodev ∈V definedas
+1
+CE(v)= X CE(u),
+λ
+u∈N(v)
+whereλisthelargesteigenvalueoftheadjacencymatrixofthegraph.
+Lete(v)denotethenumberofedgesamongitsneighbors. Theclusteringcoefficientofvisdefined
+as
+2e(v)
+C(v)= .
+dv(dv−1)
+18
+ALTERNATIVE GENERATORS AND ENCODERS
+ExtendedtoClaudeanddecoupledgenerator/encoderpairsconfirmthatthesemanticfingerprintis
+nottiedtoasinglegenerator/encoderpair.
+Figure5: StructuralcomparisonofcitationgraphswhenreferencesaregeneratedbyClaude.
+ThefiguremirrorsthepipelineanddescriptorsusedintheGPT-4oanalysis. Thesepatternsconfirm
+that Claude bibliographies closely mimic human citation topology and that structural summaries
+alonecannotreliablyexposethegenerator.
+Graphproperties Groundtruthvs. Claude Groundtruthvs. Random Claudevs. Random
+MeanAccuracy 0.5389±0.0084 0.9601±0.0039 0.9701±0.0024
+MeanF1-score 0.5386±0.0085 0.9600±0.0039 0.9700±0.0025
+Table 4: Performance of the RF on Claude graphs. The table reports mean accuracy and
+meanF1-scoreover10runswithdifferentrandomseeds,usingthesamestructuraldescriptorsand
+70/15/15 train/validation/test split as in the GPT-4o analysis. Structure-only features remain only
+weaklyinformativeforGroundtruthvs. Claude,whilegroundtruthvs. randomandClaudevs. ran-
+domareclassifiedwithhighaccuracy,confirmingthatClaudereproducesrealisticcitationtopology
+butishardtodistinguishfromhumangraphsbasedoncoarsestructurealone.
+Figure 6: Embedding-space comparison for Claude graphs using OPENAI Semantic compar-
+ison of citation graphs with Claude-generated references. As in the GPT-4o case, these results
+demonstrate that Claude retrieves topically appropriate references yet leaves a consistent seman-
+tic fingerprint that can be exploited for detection, in contrast to the near-indistinguishability at the
+purelystructurallevel.
+19
+Titleembeddings Groundtruthvs. Claude Groundtruthvs. Random Claudevs. Random
+Accuracy 0.7688±0.0067 0.9428±0.0038 0.9546±0.0031
+MeanF1-score 0.7687±0.0067 0.9426±0.0038 0.9545±0.0031
+Table5: PerformanceoftheRFonClaudegraphsusingOpenAiembeddings. Usingthesame
+3072-dimensional OPENAI embeddings and RF protocol as in the GPT-4o experiment, we obtain
+substantiallyhigherseparabilitythanwithgraphproperties:Groundtruthvs.Claudereaches≈0.77
+accuracy,whilebothclassesremaincleanlyseparablefromtherandombaseline. Thisreplicatesthe
+pattern that semantic content carries a much stronger detection signal than topology, with slightly
+lowerground-truth–vs–LLMseparabilityforClaudethanforGPT-4o.
+Figure7: PerformanceoftheGNNforClaudedataset. Eachpanelsummarizestheperformance
+offourGNNarchitecturesonthevalidationsetacrossourbinaryclassificationtasksusingdifferent
+seeds. ThefiguresarerelatedtotheGNNresultsusingOpenAIembeddingvectors. Withinevery
+panel,thetopaxisshowskernel-densityestimates(KDEs)ofper-runfinalaccuracies,andthebottom
+axisshowseachGNNarchitecture’sboxplotsmedians,interquartileranges,whiskers,andoutliers.
+20
+Table6: ResultsontestsetforClaudedataset(↖Accuracy,↘F1).
+GroundtruthvsClaude RandomvsClaude
+Model
+Graphproperties Embeddings Graphproperties Embeddings
+50.16 94.50 94.79 95.23
+GCN ±0.79 ±0.5 ±2.00 ±4.99
+47.81 94.50 94.78 96.66
+±1.71 ±0.14 ±2.03 ±5.65
+50.08 94.34 95.44 96.15
+GraphSage ±1.06 ±0.5 ±0.37 ±1.55
+43.01 94.4 96.56 96.55
+±6.40 ±0.23 ±0.45 ±1.65
+50.25 94.58 95.67 95.50
+GAT ±0.69 ±0.55 ±0.32 ±0.56
+47.47 94.12 96.34 96.44
+±4.54 ±0.34 ±0.34 ±0.66
+50.39 94.22 94.81 97.39
+GIN ±0.93 ±0.44 ±1.08 ±0.23
+33.50 94.18 94.79 97.67
+±0.41 ±0.34 ±1.09 ±0.44
+21
+Figure 8: Embedding-space comparison for Claude graphs using SPECTER. Summing 768-d
+nodeembeddingstographlevel,visualizetheembeddingspacewith2DPCA(contours). Semantic
+comparison of citation graphs with Claude-generated references. As in the GPT-4o case, these
+results demonstrate that Claude retrieves topically appropriate references yet leaves a consistent
+semantic fingerprint that can be exploited for detection, in contrast to the near-indistinguishability
+atthepurelystructurallevel.
+Titleembeddings Groundtruthvs. Claude Groundtruthvs. Random Claudevs. Random
+Accuracy 0.6878±0.0099 0.9289±0.0058 0.9421±0.0039
+MeanF1-score 0.6873±0.0100 0.9286±0.0059 0.9419±0.0039
+Table 7: Performance of the RF on Claude graphs using SPECTER embeddings. The table
+showsthemeanaccuracyandF1-scoreobtainedfromapplyingaRFclassifieracross10independent
+runswithdifferentrandomseeds,utilizingtextualembeddingsovergraphs.
+22
+Figure 9: Performance of the GNN for Claude dataset using SPECTER embeddings. Each
+panelsummarizingtheperformanceoffourGNNarchitecturesonvalidationsetacrossourbinary
+classificationtasksusingdifferentseeds.ThefiguresarerelatedtotheGNNresultsusingSPECTER
+embeddingvectors. Withineverypanel,thetopaxisshowskernel-densityestimates(KDEs)ofper-
+runfinalaccuracies,andthebottomaxisshowseachGNNarchitectureboxplotsmedians,interquar-
+tileranges,whiskers,andoutliers.
+23
+Figure 10: PCA for GPT-4o graph embeddings with Cosine/EU Distances on SPECTER em-
+beddingsSumming768-dnodeembeddingstographlevel,visualizetheembeddingspacewith2D
+PCA (contours). The cosine alignment and Euclidean dispersion (node level) in three graph-wise
+alignment diagnostics: mean of focal with reference, mean of reference with reference, and focal
+vs. sumofreferences,capturinghowwellreferencesalignwiththefocalpaperandwitheachother.
+Similartographproperties,thereisaslightchangeregardingtheembeddingfeaturesintherandom
+subfieldbaseline.
+Titleembeddings Groundtruthvs. GPT Groundtruthvs. Random GPTvs. Random
+Accuracy 0.7502±0.0093 0.8865±0.0060 0.9344±0.0035
+MeanF1-score 0.7498±0.0093 0.8854±0.0062 0.9342±0.0035
+Table8: PerformanceoftheRFonGPT-4ographsusingSPECTER.Thetableshowsthemean
+accuracyandF1-scoreobtainedfromapplyingaRFclassifieracross10independentrunswithdif-
+ferentrandomseeds,utilizingtextualembeddingsovergraphs.
+Figure11: Distributionoffinalvalidationaccuracyoverthesweepofhyperparametersusing
+differentmodelsonGPT-4ographsusingSPCETERembeddingsEachpanelsummarizingthe
+performanceoffourGNNarchitecturesonvalidationsetacrossourbinaryclassificationtasksusing
+differentseeds. ThefiguresarerelatedtotheGNNresultsusingembeddingvectors. Withinevery
+panel,thetopaxisshowskernel-densityestimates(KDEs)ofper-runfinalaccuracies,andthebottom
+axisshowseachGNNarchitectureboxplotsmedians,interquartileranges,whiskers,andoutliers.
+24
+CROSS MODEL EXPERIMENT
+Wefurtherprobecross-modelgeneralization. TrainingGCN,GIN,GAT,andGraphSAGEonGPT-
+4ovs. ground-truthgraphs(usingOpenAItitleembeddings)andthenevaluatingontestsetswhere
+GPT-4o graphs are replaced by Claude graphs yields accuracies around 0.68-0.80. These results
+suggestthatthesemanticfingerprintexposedbyourmodelsistoalargeextentsharedacrossGPT-
+4oandClaude,eventhoughfine-grainedcitationpatternsremainmodel-specific.
+Titleembeddings Groundtruthvs. Generated
+MeanAccuracy 0.7205±0.0052
+MeanF1-score 0.7163±0.0055
+Table9: RFcross-modeltable. RandomForesttrainedtodistinguishground-truthvs. generated
+citationgraphsusingsummed3072-dimensionaltitleembeddings. Despitethisgeneratorswap,the
+classifierattains≈0.72accuracy.
+Model Accuracy F1
+GCNNet 0.8001 ±0.0149 0.7947 ±0.0166
+GINNet 0.7619 ±0.0194 0.7507 ±0.0233
+GATNet 0.6793 ±0.0158 0.6500 ±0.0231
+GraphSAGENet 0.7042 ±0.0125 0.6853 ±0.0161
+Table 10: Results on test set for cross-model GNNs. GCN, GIN, GAT, and GraphSAGE are
+trainedtoclassifyground-truthvs. GPT-4ographsusingOpenAItitleembeddingsasnodefeatures,
+andthenevaluatedonatestsetwheretheGPT-4oisreplacedbyClaudegraphs. Allarchitectures
+generalise substantially above chance , even though their detailed citation patterns are not seen
+duringtraining.
+25
+RANDOM SUBFIELD BASELINE
+As a robustness check, we provide the same analysis for classifying citation graphs using graph
+topology and LLM embeddings, but with a second, more fine-grained, random baseline. This
+Subfield-Randombaselinerestrictsthesamplingtopaperswithinthesamesub-field,providedthat
+thesub-fieldcontainsatleast30papers.
+Figure 12: Pipeline to generate the citation graphs and feature histograms The box plot of
+distributionsoffournode-levelmetricscomputedforeachgraph. Fourscatterplotsofjointfeatures
+withmarginalhistogramswhereeachpointrepresentsonegraph,groundtruthandgeneratedgraphs
+and random graphs. In all scatter plots ground truth and GPT-generated graphs overlap almost
+entirelywhereastherandomgraphsexhibitsdifferently,muchliketherandombaselineinthesame
+field that represent uniformly minimal connectivity, even though they were generated within the
+samesub-fields. TheresultsexhibitquitesimilarpropertiestotherandomfieldshowninFigure2.
+Figure13: PCAofgraphembeddingswithCosine/EUDistancesSumming3072-dnodeembed-
+dingstographlevel,visualizetheembeddingspacewith2DPCA(contours). Thecosinealignment
+andeuclideandispersion(nodelevel)inthreegraph-wisealignmentdiagnostics:meanoffocalwith
+reference, mean of reference with reference, and focal vs. sum of references, capturing how well
+references align with the focal paper and with each other. Similar to graph properties, there is a
+slightchangeregardingtheembeddingfeaturesintherandomsubfieldbaseline.
+26
+RANDOM TEMPORAL ORDERED PRESERVE
+Here, we examine the temporal aspect of the random baseline in detail. In the original field-level
+reshuffling, temporal order (reference published before the focal paper) is in fact preserved for
+roughly80%offocal–referencepairs,eventhoughthiswasnotenforcedbyconstruction.Webuilta
+new,stricterrandombaselinewhereweexplicitlyconditiononpublicationyear,sothatfocalpapers
+are only assigned references from earlier years; under this construction, fewer than 1% of edges
+violatetemporalorder. ForGPT-generatedreferencesthemselveswefindthatabout6%ofexisting
+suggestionspointtopaperspublishedafterthefocalpaper. Importantly,usingthetemporallycon-
+strained baseline leaves our main conclusions unchanged: random graphs remain easy to separate
+frombothgroundtruthandLLMgraphs.
+Figure 14: structural comparison with temporally constrained random baseline. Structural
+comparison between ground-truth citation graphs, GPT-generated graphs, and temporally con-
+strainedrandomgraphs. InallscatterplotsgroundtruthandGPT-generatedgraphsoverlapalmost
+entirelywhereastherandomgraphsexhibitsdifferently,muchliketherandombaselineinthesame
+fieldthatrepresentuniformlyminimalconnectivity,eventhoughtheyweregeneratedwithinexplic-
+itly condition on publication year. Our main results remain unchanged, with random graphs still
+clearlyseparablefrombothgroundtruthandLLM-generatedgraphs.
+Graphproperties Groundtruthvs. GPT Groundtruthvs. Random GPTvs. Random
+MeanAccuracy 0.6119±0.0103 0.8546±0.0064 0.8837±0.0052
+MeanF1-score 0.6099±0.0101 0.8533±0.0066 0.8831±0.0051
+Table11: PerformanceoftheRFusingtemporalpreservedrandombaselinegraphproperties.
+Random Forest performance on graph-level structural descriptors for distinguishing ground-truth,
+GPT-generated,andtemporallyconstrainedrandomcitationgraphs.
+27
+RANDOM-VECTOR CONTROL AND PCA-K ABLATION
+Totestwhethertheaccuracygainsaremerelyaside-effectofhighdimensionality,weruntwocon-
+trols. First,wereplaceallsemanticnodeembeddingswith3072-dimensionali.i.d. randomvectors
+of matching dimensionality to GPT-generated references and ground-truth references : in this set-
+tingbothRFandGNNscollapsetochanceperformanceonlybyexploitingtrivialsizedifferences.
+Second, we project title embeddings to k principal components and retrain GNNs: train and vali-
+dation accuracy closely tracks cumulative explained variance, dropping toward chance for small k
+andrecoveringonlywhenweretainalargefractionofthesemanticvarianced ∈ 8,32,512,1024.
+Together,thesecontrolsindicatethatseparabilitycomesfromsemanticcontentratherthanfromthe
+sheernumberofembeddingdimensions. FortheRF,ground-truth–vs–generatedaccuracydropsto
+0.5047,i.e. atchance. Thisshowsthatwhatmattersisnottherawdimensionalitybutthestructured
+semanticinformationintheembeddings.
+Figure 15: Accuracy of GNN classifiers trained on node embeddings to distinguish GPT-
+generated from ground-truth citation graphs. The inset reports the control experiment where
+semanticnodeembeddingsarereplacedbyrandomvectorsofthesamedimensionality: inthisset-
+ting,allarchitecturesdropbacktochance-levelaccuracy.
+28
+Figure16: Effectofembeddingprojectiondimensiononclassificationaccuracy Trainandvali-
+dationaccuracyforGNNclassifierdistinguishingGPT-generatedfromground-truthcitationgraphs
+whenthe3072-dimensionaltitleembeddingsarelinearlyprojectedtosmallerdimensions. Curves
+showthemeanacrossseeds. Thisdimensionality-controlledablationindicatesthattheadvantageof
+semanticembeddingsisnotmerelyduetohavingmorefeatures,buttotheinformationtheyencode
+aboutcitationcontent.
+29
+Figure17:Cumulativeexplainedvarianceoftitle-embeddingPCA. Cumulativefractionofvari-
+anceexplainedbyprincipalcomponentsofthe3072-dimensionaltitleembeddings,aggregatedover
+all focal and reference papers. The first two components used in the 2-D visualization of Figure
+3 captureonly asmall fractionof the totalvariance (6%), and thecurve continues torise steadily.
+A few hundred components explain over 90%. This confirms that the 2-D PCA plot is a heavily
+compressedview,whileclassifiersoperateinamuchhigher-dimensionalsemanticsubspace.
+30
+ISOLATED NODE SEMANTIC ROLE
+WeexaminethesemanticroleofisolatedGPT-generatedreferencesbymeasuringcosinesimilarities
+betweentheirembeddingsandtherestofthegraph.
+Figure 18: Semantic role of isolated nodes For each reference node, we compute the mean
+cosinesimilaritybetweenitstitleembeddingandtheembeddingsofallothernodes(includingthe
+focalpaper)inthesamegraph. Theboxviolinindicatestheempiricaldistributionwiththemedian
+marked in black. Random references have substantially lower similarity and a narrower spread,
+while all three GPT categories are much closer to ground truth. Isolated nodes sit slightly below
+non-isolatedandin-paperreferencesbutremainfarfromtherandombaseline,suggestingthatthey
+aresemanticallyplausiblebutmoreperipheraladditionsratherthanoff-topichallucinations.
+31
+HYPERPARAMETER SETUP
+Table12: HyperparametersearchspaceandtrainingsetupforGNNexperiments.
+Hyperparameter SearchSpace/Setting
+BatchSize {8000, 10000, 13000}
+HiddenDimensions {32, 64, 128}
+NumberofGNNLayers {1, 2, 3, 4}
+LearningRate Continuousin[10−4, 10−2]
+DropoutRate Continuousin[0.0, 0.5]
+WeightDecay Continuousin[0.0, 0.01]
+TrainingEpochs Maximumof500
+EarlyStopping Patience=15epochs(novalidationimprovement)
+TuningStrategy Randomsearchperarchitecture/task
+Table13: Finalhyperparameters(GroundtruthvsGPT)
+Graphproperties Embeddings
+Hyperparameter
+GCN GraphSage GAT GIN GCN GraphSage GAT GIN
+Learningrate(10−4) 47.3668 8.8814 10.2697 47.3791 1.8859 5.7781 51.0714 15.4030
+Hiddendim 64 32 64 32 128 128 128 64
+Dropout 0.1494 0.2391 0.0003 0.0026 0.3582 0.4984 0.3426 0.2535
+Numlayers 1 1 1 1 4 3 4 3
+Weightdecay 0.0006 <0.0001 0.0003 0.0026 0.0054 0.0049 <0.0001 0.0005
+Batchsize 13000 8000 8000 13000 8000 10000 8000 8000
+Table14: Finalhyperparameters(RandomvsGPT)
+Graphproperties Embeddings
+Hyperparameter
+GCN GraphSage GAT GIN GCN GraphSage GAT GIN
+Learningrate(10−4) 48.4246 19.2918 69.6247 26.3361 84.7239 94.0900 27.2811 15.4219
+Hiddendim 32 64 64 32 32 32 32 128
+Dropout 0.0312 0.2455 0.2268 0.0075 0.4938 0.2636 0.0621 0.4876
+Numlayers 4 1 1 1 3 2 3 2
+Weightdecay 0.0006 0.0002 0.0010 0.0013 0.0006 0.0002 0.0016 0.0001
+Batchsize 13000 8000 13000 10000 10000 13000 8000 8000
+32
+SATURATION ANALYSIS
+Figure19: SaturationanalysisacrossdifferentmodelsPanelsarearrangedbytask(rows: Graph
+Properties,Embeddings)andsupervision(columns: GPTvsRandom,GPTvsGroundTruth). Top
+panels:permutation-averagedWasserstein-1distancebetweensuccessivecumulativesubsetsofruns
+(20-100%). Curvesareaveragedover500randompermutations;Smallervaluesandplateausshow
+distributional saturation. Across settings, the Wasserstein distance drops sharply by ≈ 30-40% of
+runsandflattensbeyond≈ 60-70%,suggestingtheadditionalrunsprovideonlyalimitedmarginal
+benefit;model-wiseconvergenceratesarebroadlysimilar,withdifferencesreflectedintheaccuracy
+distributionsasshowninthebottompanels.
+33
+RANDOM FOREST
+Figure20: Random-forestoverviewExampledecisiontreeillustratingtheearlysplitsonembed-
+dingfeatureswhereGiniisnodeimpurity.Boxesuseseparatecolorsperclasswherebluepresenting
+GPTclassandorangepresentingthegroundtruthclass.Histogramoftheaverageleafdepthpertree
+intheforestshowingthatmosttreesarerelativelyshallow,nearly9levelsonaverage;Cumulative
+shareoftotalGinidecreaseasafunctionofdepth,indicatingthatthevastmajorityofimpurityre-
+ductionoccurswithinthefirst≈10–11levels.
+34

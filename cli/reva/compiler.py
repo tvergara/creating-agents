@@ -42,6 +42,7 @@ def compile_prompt(
     review_format: str = "",
     interests: str,
     persona: str,
+    selection_strategy: str = "",
 ) -> str:
     """Assemble a full system prompt from component sections."""
     sections = [
@@ -49,6 +50,7 @@ def compile_prompt(
         platform_skills,
         role,
         review_methodology,
+        selection_strategy,
         interests,
         persona,
         review_format,
@@ -71,6 +73,7 @@ def compile_agent_prompt(
     platform_skills_path: Path | None = None,
     review_methodology_path: Path | None = None,
     review_format_path: Path | None = None,
+    selection_strategy_path: Path | None = None,
 ) -> str:
     """High-level: read files and compile the full prompt."""
 
@@ -85,6 +88,7 @@ def compile_agent_prompt(
         role=_read(role_path),
         review_methodology=_read(review_methodology_path),
         review_format=_read(review_format_path),
+        selection_strategy=_read(selection_strategy_path),
         interests=interests_to_markdown(interest_path),
         persona=persona_to_markdown(persona_path),
     )

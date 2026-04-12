@@ -1,0 +1,2662 @@
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+NEON: NEGATIVE EXTRAPOLATION FROM
+SELF-TRAINING IMPROVES IMAGE GENERATION
+SinaAlemohammad†, ZhangyangWang†, RichardG.Baraniuk∗
+†ECEDepartment,TheUniversityofTexasatAustin
+∗ECEDepartment,RiceUniversity
+ABSTRACT
+ScalinggenerativeAImodelsisbottleneckedbythescarcityofhigh-qualitytraining
+data. Theeaseofsynthesizingfromagenerativemodelsuggestsusing(unveri-
+fied) synthetic data to augment a limited corpus of real data for the purpose of
+fine-tuninginthehopeofimprovingperformance. Unfortunately,however,the
+resultingpositivefeedbackloopleadstomodelautophagydisorder(MAD,aka
+modelcollapse)thatresultsinarapiddegradationinsamplequalityand/ordiversity.
+Inthispaper,weintroduceNeon(forNegativeExtrapolationfrOmself-traiNing),
+anewlearningmethodthatturnsthedegradationfromself-trainingintoapowerful
+signalforself-improvement. Givenabasemodel,Neonfirstfine-tunesitonits
+ownself-synthesizeddatabutthen,counterintuitively,reversesitsgradientupdates
+toextrapolateawayfromthedegradedweights. WeprovethatNeonworksbecause
+typicalinferencesamplersthatfavorhigh-probabilityregionscreateapredictable
+anti-alignmentbetweenthesyntheticandrealdatapopulationgradients,whichneg-
+ativeextrapolationcorrectstobetteralignthemodelwiththetruedatadistribution.
+Neonisremarkablyeasytoimplementviaasimplepost-hocmergethatrequiresno
+newrealdata,workseffectivelywithasfewas1ksyntheticsamples,andtypically
+useslessthan1%additionaltrainingcompute. WedemonstrateNeon’suniversality
+acrossarangeofarchitectures(diffusion,flowmatching,autoregressive,andinduc-
+tivemomentmatchingmodels)anddatasets(ImageNet,CIFAR-10,andFFHQ).
+In particular, on ImageNet 256x256, Neon elevates the xAR-L model to a new
+state-of-the-artFIDof1.02withonly0.36%additionaltrainingcompute. Codeis
+availableathttps://github.com/VITA-Group/Neon
+L-RAx
+noeN+L-RAx
+Figure1: Goodtogreat:Neon’sstate-of-the-artperformanceonImageNet-256.Neonelevatesapowerful
+baseline generative model (xAR-L, top row) to a new level of sharpness and realism (bottom row) with a
+simplepost-hocmerge. Thisleapinquality,improvingtheFréchetInceptionDistance(FID)from1.28toa
+record-breaking1.02,isaccomplishedwithonly0.36%extratrainingcompute.
+Correspondingauthor:sina.alemohammad@austin.utexas.edu
+1
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+1 INTRODUCTION
+Moderngenerativemodelsforimageshaveachievedremarkablephotorealismthroughcontinuous
+advances in architectures, training methods, and scale. Diffusion models (Ho et al., 2020; Song
+et al., 2021), flow matching approaches (Lipman et al., 2023; Liu et al., 2023), autoregressive
+architectures(Dingetal.,2021;Yuetal.,2022),andfew-stepgenerators(Songetal.,2023;Zhou
+etal.,2025a)nowformthebackboneoflarge-scaleimagegenerationsystems.Despitetheseadvances,
+themostreliablepathtostate-of-the-artperformanceremainsscaling: evermoreparameters,ever
+largerdatasets,andeverincreasingcompute(Kaplanetal.,2020;Henighanetal.,2020).
+Importantenergysustainabilityissuesaside,thisscalingparadigmfacesafundamentalbottleneck:
+high-qualitytrainingdata. Curatingdiverse,rights-clearedimagedatasetsisexpensiveandtime-
+consuming, with diminishing returns as existing sources are exhausted (Villalobos et al., 2022;
+Muennighoffetal.,2023). Asthegapbetweenmodelcapacityandavailabletrainingdatawidens,
+thefieldmustexplorealternativepathstomodelimprovementthatdonotrelyonever-largerreal
+datasets.
+Theeaseofsynthesizingdatafromgenerativemodelshasinspiredarangeofmodelimprovement
+approachestoaugmentalimitedrealdataset. Atthesimplisticend,onecanfine-tuneamodelon
+its own generated outputs. However, such naïve self-training has been shown to lead to “model
+autophagydisorder”(MAD)(Alemohammadetal.,2024a)ormodelcollapse(Shumailovetal.,2024),
+wherediversityand/orqualitydegrades. Atthecomplicatedend,researchershaveavoidedcollapse
+throughsophisticatedworkaroundslikeexternalverifiersforsyntheticdataquality(Fengetal.,2024),
+auxiliarydiscriminatornetworks(Kimetal.,2023a),negativeguidanceduringinference(Alemoham-
+madetal.,2024b),andlikelihood-baseddiscriminationbetweendistributions(Zhengetal.,2025).
+Whileeffective,theseapproachesaddsignificantcomputationaloverhead,arerestrictedtospecific
+architectures,orrequirecomplexiterativetraining.
+Neon. Inthispaper,weshowthatthereishiddenpromiseindirectlyfine-tuningamodelonitsown
+generateddata. Ourkeyinsightisthatthedegradationduetoself-trainingisnotrandomnoisebut
+ratherapowerfulsignalthatisanti-alignedwiththereal-datapopulationgradient. Neon(Negative
+Extrapolationfromself-traiNing)exploitsthisanti-alignmentthroughasimpleparametermerge.
+Givenabasemodelwithparametersθ trainedonrealdata,wefirstapplythenaïveself-training
+r
+approach: wegeneratesyntheticsamplesandbrieflyfine-tunetoobtaintheparametersθ thatexhibit
+s
+degradedperformance. Then,ratherthanusingθ directly,weperformnegativeextrapolation:
+s
+θ =θ w(θ θ )=(1+w)θ wθ , w >0, (1)
+Neon r s r r s
+− − −
+wherewcontrolstheextrapolationstrength. Thevectorθ θ correspondstothesyntheticgradient
+s r
+−
+direction; because this direction is anti-aligned with the (infinite real data) population gradient,
+reversingitreducesthetruedatariskandredistributesprobabilitymasstounder-representedmodes.
+Contributions. [C1]WeintroduceNeon,adeceptivelysimplepost-processingmethodthatimproves
+generativemodelsbyreversingtheirdegradationonself-generateddata(Section3). Incontrastto
+existingmethodsforsyntheticdataaugmentation,Neonrequiresnoadditionalrealtrainingdata,no
+accesstotheoriginaltrainingdata,noauxiliarymodels,nolikelihoodcomputation,andnoinference
+modifications. [C2]Weproverigorouslythatmode-seekinginferencesamplerscreateapredictable
+anti-alignmentbetweenthesyntheticandpopulationgradientsthatguaranteestheeffectivenessof
+negative extrapolation (Section 3.1). [C3] We demonstrate Neon’s universality across diffusion,
+flow matching (Section 4.1), autoregressive (Section 4.2), and few-step (Section 4.3) models on
+CIFAR-10,FFHQ,andImageNetwith<1%additionalcomputeandasfewas1ksyntheticsamples.
+Forexample,onImageNet-256,NeonelevatesxAR-LfromanFIDof1.28tothestate-of-the-art1.02
+usingonly0.36%additionalcompute. [C4]WeshowthatNeon’simprovementmechanismoperates
+throughaprecision-recalltrade-offthatredistributesprobabilitymassfromover-tounder-represented
+modes(Section4.1). [C5]WedemonstratethattheNeondegradationsignalistransferable,which
+enablessyntheticdatafromonemodelarchitecturetoimproveanother(Section4.4).
+2 BACKGROUND
+Notation and definitions. Let be a training data set drawn from p . A training algorithm
+data
+D
+produces the generative model G , whose output is a score, velocity, or logit depending on the
+θ
+2
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+model family. The training budget is the cumulative number of images seen (in millions):
+B
+=(globalsteps) (globalbatchsize). Aninferenceroutine withhyperparametersκinducesa
+B × I
+samplingdistributionq . Denotetheidealizeddistributionwithoutinference-timemodifications
+θ,κ
+(e.g.,guidance)byp
+θ
+:=q θ,∅. Weusedist(, )foragenericdivergence, forsetcardinality,and
+· · |·|
+theshorthand
+x := M1/2x , x,y :=x⊤My, A := M1/2AM−1/2 ,
+M 2 M op,M op
+∥ ∥ ∥ ∥ ⟨ ⟩ ∥ ∥ ∥ ∥
+foranypositive-definitematrixM,where , , ,and arethestandardEuclideannorm,
+2 op
+∥·∥ ⟨· ·⟩ ∥·∥
+innerproduct,andoperatornorm. Letkdenote103.
+Visualgenerativemodels. Manyimagegeneratorstraceapathfromnoisetodataviaanaffine
+interpolation x = α(t)x +σ(t)ϵ for t [0,1], with x p , ϵ (0,I), and boundary
+t 0 0 data
+∈ ∼ ∼ N
+conditionsα(0)=1, σ(0)=0, α(1)=0, σ(1)=1,inducingp =p andp = (0,I)(Song
+0 data 1
+N
+etal.,2021;Lipmanetal.,2023).
+Diffusion models (Ho et al., 2020; Song et al., 2021) train G (x,t) to approximate the score
+θ
+logp (x)(orequivalently,predictnoise). Atinference,thelearnedscoredrivesthereverse-time
+x t
+∇
+SDEorprobability-flowODE.
+Flowmatching(Lipmanetal.,2023;Tongetal.,2024)learnstheconditionalvelocityv⋆(x ,ϵ,t)=
+0
+α′(t)x +σ′(t)ϵ by regressing G (x ,t) with squared error; sampling integrates x˙ = G (x ,t)
+0 θ t t θ t
+fromt=1tot=0.
+Few-stepgeneratorsreducesamplingcostbycollapsingmanysteps. Consistencymodels(Song
+et al., 2023) predict x directly from (x ,t); IMM (Zhou et al., 2025a) learns direct transitions
+0 t
+x =G (x ,t s)withmoment-matching,enablingqualitywithT 1–8steps.
+s θ t
+→ ≈
+Autoregressivemodels(Tianetal.,2024;Renetal.,2025)factorizeimagesintotokensy = (x)
+1:N
+T
+andmodelp(y )= N p(y y ),whereG (y )outputsnext-tokenlogitstrainedvia
+1:N i=1 π(i) | π(<i) θ <i
+cross-entropy. The ordering π and decoding choices (temperature, top-k) form part of inference
+hyperparametersκ. Q
+Self-training and collapse. When models iteratively train on their own synthetic outputs, they
+exhibit what has been termed MADness or model collapse: E[dist(p ,p )] grows over time
+data θt
+(Alemohammadetal.,2024a;Shumailovetal.,2024;Dohmatobetal.,2024). Pureself-training
+diverges,whilemixingrealandsyntheticdataconvergestodegradedequilibria(Bertrandetal.,2023;
+Gerstgrasseretal.,2024). Whileexternalsignalsbeyondthetrainingdatacanpreventcollapse(Feng
+etal.,2024;Alemohammadetal.,2024b),thesemethodsrequireadditionalresourcessuchasverifiers
+orfreshdata.
+Relatedworkonsyntheticdatatraining. Severalrecentmethodssuccessfullyleveragesynthetic
+dataformodelimprovement,butrequiresignificantarchitecturalconstraintsorcomputationalover-
+head. Discriminator Guidance (Kim et al., 2023a) trains a post-hoc discriminator on real versus
+generatedsamplesacrossdiffusiontimesteps,usingitsgradientstocorrectthescorefunctiondur-
+ing sampling. While effective, it adds inference overhead and remains diffusion-specific. SIMS
+(Alemohammadetal.,2024b)employsself-generateddataasnegativeguidancetosteerdiffusion
+trajectoriesawayfromdegradedmanifolds,butsimilarlyrequiresinference-timemodificationsandis
+limitedtodiffusionmodels. DirectDiscriminativeOptimization(DDO)(Zhengetal.,2025)refor-
+mulateslikelihood-basedmodelsasimplicitdiscriminatorsvialog-likelihoodratiosbetweentarget
+andreferencemodels,enablingstrongimprovementsfordiffusion(viaELBO)andautoregressive
+models,butfundamentallycannotapplytolikelihood-freearchitectureslikeflowmatching(Lipman
+et al., 2023) or inductive moment matching (Zhou et al., 2025a). Self-Play Fine-Tuning (Yuan
+etal.,2024)iterativelypitsmodelsagainstearliercheckpoints,surpassingRLHFmethodsonhuman
+preferencebenchmarksbutrequiringmultipletrainingroundsandsubstantialcomputationaloverhead.
+In contrast to these methods, Neon requires no auxiliary models, no inference modifications, no
+likelihoodcomputations,andworksacrossallarchitectureswithasimplepost-hocparametermerge.
+3 NEON: NEGATIVE EXTRAPOLATION FROM SELF-TRAINING
+When models train on synthetic samples produced by their inference procedure (what we call
+I
+“self-training”),theypredictablydegrade. Neonexploitsthis: byreversingthedegradationdirection,
+wecanimproveamodelwithoutadditionalrealdata. StartingfromabasegeneratorG (typically
+θr
+3
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Figure2: Neon’skeyidea:syntheticdegradationandreal-
+data improvement point in opposite directions. This toy
+2DGaussianexampleplotsasaheatmapthelogWasserstein
+distancetothetruedatadistributionp fromthegenerative
+data
+modelG .Weseethatupdatingthemodel’sparameters
+θ(ws,wo)
+inthereverseofthedirectiontheywouldbeupdatedbyfine-
+tuningonself-synthesizeddata(increasingw )achievessimilar
+s
+improvementstofine-tuningthebasemodelwith4×morereal
+data(increasingw ).
+o
+trainedonrealdata),we:(i)generatethesyntheticdataset onceusingtest-timeinference (G ;κ),
+S I
+θr
+(ii)briefly(e.g.,using<1%oftheoriginaltrainingbudget)fine-tunethegeneratoron toobtain
+S
+thedegradedG ,and(iii)negativelyextrapolateviatheparametermerge:
+θs
+θ :=θ w(θ θ )=(1+w)θ wθ , (2)
+Neon r s r r s
+− − −
+wherew >0controlstheextrapolationstrength. Algorithm1providesthefulldetails.
+Algorithm1Neon: NegativeExtrapolationfromSelf-Training
+Require: BasemodelG ,inferenceroutine withhyperparametersκ
+θr
+I
+Hyperparameters: Syntheticdatasetsizen = ,extrapolationstrengthw,trainingbudget
+s
+1: x ns wherex q inducedby (G |S ; | κ) ▷sampleusingtest-timeinferenc B e
+S ←{ i }i=1 i ∼ θr,κ I θr
+2: G FineTune(G , , ) ▷brieflyfine-tuneonsyntheticdata
+θs
+←
+θr
+S B
+3: θ (1+w)θ wθ ▷reversethedegradation
+Neon r s
+← −
+Output: FinalgeneratorG
+θNeon
+3.1 WHYNEONWORKS
+Geometricintuitionviaatoystudy. Tovisualizewhynegativeextrapolationfromdegradation
+succeeds,considera2DGaussianexamplewherep = (µ ,Σ ). WetrainabasemodelG
+data
+N
+true true θr
+on1krealsamplesandthendefinetwodirectionsinparameterspace: thedegradationdirection
+fromfine-tuningthebasemodelon105 syntheticsamplesfromG toobtainG ,andanoracle
+θr θs
+improvementdirectionfromfine-tuningon5krealsamples(theoriginal1krealdatapointsplus4k
+newones)toobtainG . Weevaluatemodelsinthe2Dspanofthesedirections:
+θo
+θ(w ,w ) = θ + w (θ θ ) +w (θ θ ) (3)
+s o r s r s o o r
+− −
+−degradationdirection(Neon) oracleimprovementdirection
+wherew
+s
+controlstheamountofnegativeex|tra{pzolat}ion(Neon)andw
+o
+a|dds{rzeal}-dataimprovement
+(oraclebaseline). Figure2visualizesourkeyfinding: movingbackwardsalongtheNeondirection
+alone(w =0)yieldssubstantialimprovement,indicatingthattheoppositeofdegradationdirection
+o
+andadditionalreal-dataimprovementdirectionbothpointtowardsabetterapproximationofthetrue
+datadistribution.
+Theoreticalanalysis. Wenowformalizetheintuitionprovidedbythetoyexample. Weprovethat
+typicalinferencesamplerscausethesyntheticandrealdatagradientstopointinoppositedirections,
+enablingnegativeextrapolationtoreducethetruedatarisk.
+Set-up. Letℓ (x)bedifferentiablelossfunctionand (θ):=E [ℓ (X)]thecorresponding
+θ
+R
+data pdata θ
+risk. Letθ∗ argmin (θ)andwriteθ = θ∗+εwith ε 2 = ε⊤H ε. Letq denote
+∈ θ R data r ∥ ∥Hd d θr,κ
+thefixedsamplerconstructedonceatθ . Define
+r
+ϕ (x):= ℓ (x), H := 2 (θ∗)=E ∂ ϕ (X) ,
+θ ∇ θ θ d ∇ R data pdata θ θ θ=θ∗
+R syn (θ):=E x∼qθr,κ [ℓ θ (x)], r d := ∇ θ R data (θ) θr , r(cid:2)s := ∇ θ R (cid:3)syn (θ) θr .
+LetP ≻ 0beapreconditionerandsetK :=H d 1/2PH d 1/2w (cid:12) (cid:12)ithmI ⪯ K ⪯ MI. (cid:12) (cid:12)
+We say the synthetic and real data gradients are anti-aligned at θ if their preconditioned inner
+r
+productisnegative
+s:= r , P r <0.
+d s
+⟨ ⟩
+4
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Neonimprovesunderanti-alignment. Shortsyntheticfine-tuningyieldsθ =θ αP r +O(α2),
+s r s
+whichNeonreverses: θ =θ +wαPr +O(wα2). ATaylorexpansionofth − eriskyields
+Neon r s
+(wα)2
+(θ )= (θ )+wαs+ r⊤P⊤ 2 (θ )P r +O (wα)3 . (4)
+R data Neon R data r 2 s ∇ R data r s
+When s < 0, the negative linear term dominates for small w > 0, ensuring that(cid:0) ((cid:1)θ ) <
+data Neon
+(θ ).When islocallyconvexatθ (i.e., 2 (θ ) 0),theoptimalw∗R = s/(αz)>
+data r data r data r
+0 R ,wherez :=r⊤P R⊤ 2 (θ )Pr .1 SeeAppe ∇ ndi R xB.2fort ⪰ heproof. −
+s ∇ R data r s
+Sampler-inducedanti-alignment. Let
+b := E
+qθr,κ
+ϕ θ∗(X) , ∆ := E
+qθr,κ
+J θ∗(X)
+−
+E
+pdata
+J θ∗(X) , J θ∗(x):=∂
+θ
+ϕ
+θ
+(x)
+θ∗
+, (5)
+andmeasuret(cid:2)heirsizes(cid:3)intheH d –geome(cid:2)tryby (cid:3) (cid:2) (cid:3) (cid:12)
+(cid:12)
+η 0 := ∥ b ∥H d −1 , η 1 := ∥ ∆ ∥op,H d −1 .
+DefinetheanglebetweenthemodelerrorεandthesamplerbiasbintheH –geometryby
+d
+ε, H−1b
+cosφ := ⟨ d ⟩ Hd [ 1,1]. (6)
+ε H−1b ∈ −
+∥ ∥ Hd∥ d ∥ Hd
+Intuitively,cosφ<0meansthatthesampler’sbiaspointsisinadirectionopposingthecurrenterror,
+favoringanti-alignment.
+Theorem1(Anti-alignmentunderinferencemismatch). LetK :=H1/2PH1/2withspectralbounds
+d d
+mI K MI. Thenthealignments= r , Pr obeys
+d s
+⪯ ⪯ ⟨ ⟩
+s M(1+η ) ε 2 mη ε [ cosφ] + O( ε 3 ).
+≤ 1 ∥ ∥Hd − 0 ∥ ∥ Hd − + ∥ ∥Hd
+Consequently,asufficientconditionfors<0isthattheleadingtwotermsontheright-handsidebe
+negative. Inparticular,forcosφ<0andsufficientlysmall ε ,
+∥ ∥
+Hd
+mη
+0
+ε < ( cosφ) = s<0.
+∥ ∥
+Hd
+M(1+η ) − ⇒
+1
+SeeAppendicesB.2–B.3fortheproof.
+Mode-seekingsamplersinduces<0. Theinferenceroutinesofmanyoftoday’sgenerativemodels
+canbewrittenasamonotonereweightingofthereferencemodel
+q(x) f logp (x) p (x), withf nondecreasingandnota.e.constant.
+∝
+θr θr
+Suchmode-seekings(cid:0)amplersem(cid:1)phasizehigh-densityregionsand(tofirstordernearθ∗)produce
+anobtuseanglewithb,i.e.,cosφ<0in(6). CombiningthiswithTheorem1yieldsatransparent
+sufficientconditionfors<0nearstrongbasemodels(i.esmall ε );hence,negativeextrapolation
+∥ ∥
+Hd
+(w >0in(2)reducesthereal-datarisk .
+data
+R
+Someconcreteinstances: (i)AR:temperatureτ < 1andtop-p/k truncationyieldnondecreasing
+reweightingoflogp ;seeAppendixB.4fortheproofforARmodels. (ii)Diffusion/flow: finite-step
+θr
+ODEsolvers(includingclassifier-freeguidance(CFG)(Ho&Salimans,2022))inducemonotone
+terminalreweightingtofirstorderinstepsize;seeAppendixB.5fortheprooffordiffusionmodels.2
+WhenNeonfails. Neon’ssuccessrequiress<0(negativegradientalignment). Ifthesampleris
+notmode-seekingbutratherdiversity-seeking—meaningthatitupweightslow-probabilityregions
+via q(x) f(logp (x))p (x) with f nonincreasing — then our theory shows that s > 0 near
+∝
+θr θr
+goodmodels(small ε )andassumingmodestcurvaturetilt(i.e.,smallη ). Inthiscase,standard
+| |
+Hd 1
+self-training(movingtowardθ ,equivalenttonegativew)wouldactuallyimprovethemodel,while
+s
+Neon’sprescription(positivew)wouldharmit. Diversity-seekingsamplersarerareinpractice: they
+requiretemperatureτ > 1forARmodelsorspecializedsamplersthatdecreasecontractionnear
+1Localconvexityissufficientbutnotnecessary.Theresultholdsundertheweakerconditionofdirectional
+smoothnessalongthestepdirectiond=Pr
+s
+.SeeAppendixB.2fordetails.
+2Fortheproofoffinite-stepODEsolversbeingmode-seeking,weassumeinversecurvature–densitycoupling:
+contractionE[P k ∥∇x f(X tk ,t k )∥2 Fr |X 0 =x 0 ]decreaseswithlogp θr (x 0 ).
+5
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+2
+1.8
+1.6
+1.4
+1.2
+0 2 4 6
+B(Mi)
+DIF
+EDM-VP|CIFAR-10
+2.5
+2
+1.5
+1
+0.5
+0 1 2 3
+B(Mi)
+DIF
+EDM-VP|FFHQ64
+4
+3
+2
+0 1 2 3
+B(Mi)
+DIF
+FlowMatching|CIFAR-10
+|S|1k |S|1k |S|1k
+6k 5k 6k 25k 18k 25k
+100k 75k 100k
+Figure3: NeonconsistentlyimprovesFIDwithminimalself-trainingoverhead.MinimumFID(optimized
+overextrapolationstrengthw)vs.self-trainingbudgetB(millionsofimagesseenduringfine-tuningonS)for
+varyingsyntheticdatasetsizes|S|,onEDM-VP(CIFAR-10/FFHQ-64)andflowmatching(CIFAR-10).Optimal
+gainsuseB ≤ 3Mi(< 2%ofbasemodeltrainingcomputeforEDM;< 3%forflow),confirmingNeon’s
+efficiency.AtB=0,FIDreflectsthebasemodel(noNeon).
+3
+2.5
+2
+1.5
+1
+0 1 2 3
+w
+DIF
+0.7
+0.6
+0 1 2 3
+w
+noisicerP
+0.75
+0.7
+0.65
+0.6
+0 1 2 3
+w
+llaceR
+|B|3Mi |B|3Mi |B|3Mi
+4Mi 4Mi 4Mi
+5Mi 5Mi 5Mi
+6Mi 6Mi 6Mi
+Figure4: Neontradesprecisionforrecall,yieldingnetFIDimprovement.FortheEDM-VPmodeltrained
+onCIFAR-10,weplottheFID,precision,andrecallvs.negativeextrapolationstrengthwforvarioustraining
+budgetsB.Ineachcase,|S|=6k.
+modes for diffusion models, both of which are rare design choices. See Appendix B.7 for more
+details.
+Finite effects. Ouranalysisassumesthatthepopulationsyntheticgradientsr (θ ),butinpractice
+s r
+|S|
+weusefinite withbrieffine-tuningfromθ . Forcheckpointθ afterT stepswithstepsizeα,the
+r s
+S
+displacementd :=(θ θ )/(αT)concentrateson Pr(S)(θ )whenT issufficientlylargewhile
+T s r s r
+− −
+αT remainssmall,yieldingstable,low-varianceNeondirectionsdespitelimited . Thisproducesa
+|S|
+U-shapedperformancein : verysmallsetsarevariance-limited,verylargesetsamplifycurvature
+|S|
+effects(inflatingthequadraticterminourTaylorexpansion),whilemoderatesizesoptimallybalance
+thesecompetingfactors. SeeAppendixB.8forformalboundsandparameterselectionguidance.
+4 EXPERIMENTS
+WeevaluateNeonacrossfourmodelfamilies—diffusion(EDM(Karrasetal.,2022)),flowmatch-
+ing(Tongetal.,2024;2023),autoregressive(VAR(Tianetal.,2024),xAR(Renetal.,2025)),and
+few-step(IMM(Zhouetal.,2025a))—onImageNet(Dengetal.,2009),CIFAR-10(Krizhevsky&
+Hinton,2009),andFFHQ(Karrasetal.,2019).
+Foreachmodel,startingfromapubliccheckpointG ,wegeneratesyntheticdatasets usingthe
+θr
+S
+FID-optimal inference settings κ from each paper. We fine-tune on with the original training
+S
+recipeatreducedlearningrate(seeAppendixCfordetails). WereportFIDasourprimarymetric
+using10k/50ksamplesforhyperparametersearch/finalevaluation(Heuseletal.,2017),withPreci-
+sion/Recall(Kynkäänniemietal.,2019)atk =5nearestneighbors. Foracomprehensivecomparison
+ofNeonagainststate-of-the-artgenerativemodelsacrossallbenchmarks,pleaseseeTableA.1.
+4.1 DIFFUSIONANDFLOWMATCHINGMODELS
+WeevaluateNeonwiththeEDM-VP(Karrasetal.,2022)(CIFAR-10conditional,FFHQ-64uncondi-
+tional)andflowmatching(Tongetal.,2024;2023)(CIFAR-10unconditional)modelsusingpublic
+checkpoints. Thesyntheticdatasets weregeneratedwithdefaultinferencesettings.
+S
+6
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+1.6
+1.4
+0 2 4 6
+B(Mi)
+DIF
+xAR-B|ImageNet-256 xAR-L|ImageNet-256 VAR-d16|ImageNet-256 VAR-d30|ImageNet-512
+1.3
+2.5 |S|1k
+3 10k 1.2 90k
+750k
+1.1 2.5 2
+2
+0 2 4 6 0 2 4 6 0 1 2 3
+B(Mi) B(Mi) B(Mi)
+Figure5: Neonconsistentlyimprovesautoregressivemodelsacrossarchitecturesandresolutions. We
+plottheminimumFID(optimizedovermergeweightwandCFGscaleγ)versusthefine-tuningbudgetBfor
+varioussyntheticdatasetsizes|S|.Fromleft:xAR-BandxAR-LonImageNet-256(withxAR-Lachievinga
+state-of-the-art1.02FID),VAR-d16onImageNet-256,andVAR-d30onImageNet-512.
+FID
+4.0
+3.5
+3.0
+2.5 2.0
+1.5 0.0 0.2 0.4 0.6 0.w8 1.0 1.2 1.4 1.6
+γ
+Precision
+9 10 4.0
+8 7 3.5 6
+4 5 3.0
+2.5 3 2.0
+1.5 0.0 0.2 0.4 0.6 0.w8 1.0 1.2 1.4 1.6
+γ
+Recall
+0.950 4.0
+3.5 0.925
+3.0
+0.900
+0.875 2.5 0.850 0.825 2.0
+0 0 . . 7 8 7 0 5 0 1.5 0.0 0.2 0.4 0.6 0.w8 1.0 1.2 1.4 1.6
+γ
+AsymptoticRecall-Precision
+1 0.75
+0.70 0.8 PRreeccailslion
+0.65 0.6
+0.60 0.4 w w = = 0. 0 25 w=0.5
+w=0.75 0.2 w=1 0.55 0 5 10 15
+γ
+Figure6: Optimalprecision-recalltrade-offsforVAR-d16asafunctionofwandγ.Left:Heatmapsfor
+FID,precision,andrecallonImageNet-256(|S|=750k,B=1.25Mi)fromagridsearchoverwandγ. The
+starmarksthebestFID(w∗ ≈1.0,γ∗ ≈2.7)achievingFID2.01,unreachablebyeitherparameteralone.Right:
+Asymptoticprecision-recallcurvesshowingexpandedbehavioralrangethroughjointtuning.
+Results. Figure3plotstheFIDvs.thefine-tuningbudget forvarious .Neonachievessubstantial
+B |S|
+gainswithminimaloverhead: Neon+EDM-VPtrainedonCIFAR-10improvestheFIDfrom1.78
+to1.38usingonly6ksyntheticsamplesand1.75%extracomputecomparedtotrainingthebase
+model. Neon+EDM-VPtrainedonFFHQ-64improvestheFIDfrom2.39to1.12usingonly18k
+samplesand0.85%additionalcompute. Neon+FlowmatchingonCIFAR-10improvestheFIDfrom
+3.5 to 2.32 using only 25k samples and 3.2% additional compute. Neon’s performance shows a
+non-monotonicrelationshipwiththesyntheticdatasetsize ,withoptimalperformanceintherange
+|S|
+6k–25ksamples. Smaller requiremoreprecisewtuningbutconvergerapidly;larger support
+|S| |S|
+awiderrangeofw’sbutslowerconvergence.
+Figure4dissectsNeon’seffectonEDM-VPtrainedonCIFAR-10usingprecision-recallmetricswith
+=6k. TheFIDvs.weightrelationship(leftpanel)exhibitstheunimodalshapepredictedbyour
+T |S aylorseriesanalysis. Asfine-tuningprogresses,theoptimalw∗decreases,whichisconsistentwith
+w∗ s/(αz),whereαincreaseswithtrainingsteps. Theprecision-recalltrade-off(middle/right
+≈−
+panels)revealsNeon’smechanism: precisionmonotonicallydecreaseswithw,whilerecallfollows
+an inverted-U peaking near the FID-optimal weight. This aligns with our analysis: fine-tuning
+onsyntheticdataconcentratesprobabilitymassonwell-capturedmodes,degradingcoverage. By
+reversingthisdirection,Neonredistributesmassfromover-representedtounder-representedregions,
+tradingprecisionforimprovedrecallandyieldingnetFIDimprovement. Thesedynamicsintensify
+withlongerfine-tuning,withlatercheckpointsshowingsharperrecallpeaksandsteeperprecision
+drops. (SeeAppendixDforallmodels.)
+4.2 AUTOREGRESSIVEMODELS
+WeevaluateNeon’simpactonxAR-BandxAR-L(Renetal.,2025)(ImageNet-256),VAR-d16(Tian
+etal.,2024)(ImageNet-256),andVAR-d30(ImageNet-512). BothmodelfamiliesuseCFG,with
+VAR adding top-k/top-p sampling; these are mode-seeking samplers, and so our theory predicts
+Neonbenefits. Atevaluation,wejointlyoptimizeboththemergeweightwandCFGscaleγ. Co-
+optimizationiscrucialtoreachingthebestFID:wincreasesrecallatprecision’sexpense,whileγ
+doestheopposite.
+7
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+7.5
+7
+0 2 4 6
+B(Mi)
+DIF
+IMM|T=1 IMM|T=2 IMM|T=4 IMM|T=8
+4 2
+2.4
+2.2 1.8
+3.5
+2
+|S|1k 1.6
+30k
+1 7 5 5 0 0 k k 3 1.8
+1.4
+0 2 4 6 0 2 4 6 0 2 4 6
+B(Mi) B(Mi) B(Mi)
+Figure 7: Neondramaticallyimprovesfew-stepinferenceforIMMonImageNet-256. MinimumFID
+(optimizedoverwandγ)vs.fine-tuningbudgetBfordifferent|S|.SyntheticdataweregeneratedusingT=8,
+γ=1.5. From left: T=1,2,4,8 inference steps. Neon achieves substantial FID reductions with near-zero
+additionalcompute(<0.005%ofIMM’straining),withNeonimprovedmodelwith4-stepnearlymatching
+basemodelwith8-stepgenerationquality.
+Results. Figure5depictsthebestFIDafter(γ,w)gridsearchversusfine-tuningbudget ,testingup
+B
+to =750ksyntheticsamples. ThexARfamilyFIDimprovesmonotonically: xAR-Bfrom1.72
+|S|
+to1.31(750ksyntheticsamples,0.41%additionalcompute);xAR-Lfrom1.28tothestate-of-the-art
+FID1.02(750ksamples,0.36%additionalcompute),surpassingUCGM’s1.06(Sunetal.,2025).
+Evenwithjust1ksamples,thexARmodelsachievenear-optimalperformance(xAR-L:1.05,xAR-B:
+1.36),indicatingthatthedegradationdirectionstabilizesquicklyandrequiresminimalsyntheticdata
+toidentify. VAR-d16improvesfrom3.30to2.01(750ksamples,0.64%additionalcompute)but
+requireslargersyntheticdatasets—performancedegradeswith < 90k. VAR-d30achievesits
+|S|
+bestFIDof1.69withjust90ksamples;addingmoresyntheticdataprovidesnofurthermeaningful
+improvement,suggestingthemodelhasreacheditscapacityforNeon-basedenhancementatthis
+checkpoint.
+Figure6visualizesthe(w,γ)interactionforVAR-d16. TheFIDlandscape’sdiagonalvalleywith
+optimum(w∗ 1.0,γ∗ 2.7)yieldsFID2.01. Independentoptimization(γ=1.25)yieldsFID3.01—
+≈ ≈
+farworse. Jointtuningenablesprecision-recalltrade-offsunreachablebyeitherparameteralone: at
+theoptimum,precisiondropsto 0.87whilerecallrisesto 0.63. Therightmostpanelrevealsthe
+∼ ∼
+asymptoticbehavior: asγ increases,themodelsconvergetohighprecision(> 0.95)butseverely
+degraded recall (< 0.45), leading to mode collapse. Higher w values provide partial protection
+—atw = 2,thelow-recalllimitrisesto 0.55vs. 0.40atw = 0,demonstratinghownegative
+∼ ∼
+extrapolationcounteractsCFG’smode-seekingtendencyevenatextremeguidancescales.
+4.3 FEW-STEPGENERATORS
+We investigate Neon paired with Inductive Moment Matching (IMM) (Zhou et al., 2025a) on
+ImageNet-256. Wegenerated usingT=8stepswithCFGscaleγ=1.5. Atevaluation,wetested
+S
+themodelsacrossinferencestepsT 1,2,4,8 andjointlysearchedover(w,γ).
+∈{ }
+Results. Figure 7 plots the FID vs. the fine-tuning budget . Neon delivers dramatic improve-
+B
+mentsacrossallstepcountswithminimaloverheadrelativetoIMM’s40,960Mitrainingbudget.
+Performancescalesinverselywiththenumberofinferencesteps. NeonimprovesT=1(single-step)
+inference to an FID of 6.67. T=2 reaches 2.89; T=4 reaches 1.69; and T=8 reaches 1.46. Re-
+markably,4-stepinferencenearlymatchesbasemodelwith8-stepquality(1.69vs.1.98),effectively
+halvingtheinferencecost. UnlikeIMM’stensofthousandsofmillion-imagesteps,Neonachieves
+optimalperformancewithin2Miinallexperimentsfordifferent ,demonstratingrapiddegradation
+|S|
+directionstabilizationforfew-stepmodels. The30ksamplesweetspotacrossallT suggeststhat
+few-stepgeneratorsareparticularlywell-suitedforNeon,astheirtrainingalreadydistillsmulti-step
+dynamicsintocompacttransitions,makingthesyntheticdegradationsignalespeciallyinformative.
+4.4 ABLATIONSTUDIES
+Neon is transferable across different architectures. A key advantage of Neon is that
+the degradation signal is transferable across different model architectures. We confirm
+8
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+this empirically in Figure 8, by improving a baseline unconditional EDM-VP model (FID
+= 1.97) using synthetic data from different sources. While data from the model itself
+yields the strongest improvement (FID = 1.38), cross-architecture transfer is highly effective.
+2
+1.8
+1.6
+1.4
+0 2 4 6 8 10
+B(Mi)
+DIF
+Data from a flow matching model achieves an FID of
+1.59,andfromanIMMmodelreaches1.80. Thetheory
+expoundedinAppendixB.6formalizeswhyNeonistrans-
+ferable. ConsidermodelsAandBthatminimizethesame
+objectivewithHessiansH(A)andH(B).
+IftheseHessians
+d d
+arespectrallyclose(equivalentnormsuptoconstantsc,C)
+andthearchitecturesinducesimilarsamplerbiases(small
+mismatch ζ in the terms b,∆ defined in (5), then anti-
+alignmenttransfersfromonemodeltotheother. Thatis, EDM(self)
+Flow
+when model (A) satisfies s(A) µ < 0, any nearby IMM
+model(B)inheritss(B) µ/2 ≤ < − 0. Intuitively,models
+≤−
+learningsimilarrepresentationsexhibitsimilaroverconfi-
+Figure 8: Neon supports cross-
+dencepatterns,andsoonemodel’sdegradationdirection
+architecture synthetic data transfer.
+correctsanother’sbiases. ThismakesNeonpracticalwhen
+Weillustratebyusingsyntheticdatafroman
+generatingsamplesfromthetargetmodeliscostly.
+IMMandaFlowmodeltoimproveEDM-VP
+onCIFAR-10.
+Totestifanyout-of-distributiondatasetprovidesauseful
+signal, wereplacedthesyntheticdatawithCIFAR-10C
+(Hendrycks & Dietterich, 2019), a dataset of corrupted real images. Neon resulted in no FID
+improvement. ThisnullresultconfirmsthatNeonspecificallyleveragestheanti-alignmentfroma
+modeloveremphasizingitsownmodes—abiasabsentinstructuredcorruptionslikeCIFAR-10C.
+101
+100.5
+100
+10 20 30 40 50
+|D|(k)
+DIF
+Howgoodmustthebasemodelbe? Akeyquestionis
+whetherNeon’sbenefitsarelimitedtonearlyoptimalmod-
+EDM
+els,sinceourtheoryguaranteesanti-alignmentonlywhen EDM+Neon
+the model error ε is small. To test this condition’s
+F
+∥ ∥
+robustness,weappliedNeontoaspectrumofEDM-VP
+basemodelstrainedonCIFAR-10subsetsofvaryingsizes.
+Figure9showsthatNeonofferssubstantialimprovements
+across the entire quality spectrum. Strikingly, a model
+trainedononly30krealsamples(FID1.87)andimproved
+withNeonnearlymatchesthebaselinemodeltrainedon
+the full 50k dataset (FID 1.85). This demonstrates that
+Neoncancompensatefora40%reductioninrealtrain-
+ingdata,confirmingtheanti-alignmentcondition(s<0) Figure 9: Neondoesnotrequireanear-
+isnotfragilebutholdsacrossawiderangeofmodelquali- optimalbasemodeltosucceed.
+ties. Thisbodeswellfordata-scarceapplications.
+1.4
+1.35
+1.3
+0 2 4 6
+γ
+DIF
+Sensitivitytosyntheticdataquality. Ourmainexperi-
+mentsgeneratedsyntheticdatasetsusingoptimalinference
+settings for FID (e.g., γ = 2.7 for xAR-B). To test the
+sensitivitytothequalityof ,wetrainedNeon+xAR-Bon
+S
+ImageNet-256with =90kandvariedtheCFGscale
+|S| usedduringgeneration. Wegeneratedsyntheticdatasets
+withγ [0,6.2],fine-tunedoneach ,andthenoptimized
+∈ S
+thefinalNeonmodel. Figure10demonstratesNeon’sre-
+markable robustness: despite training on synthetic data
+of varying quality, the final FID remains near-optimal
+(1.30–1.31)foranyγ [1,3]. Evensuboptimalsynthetic
+∈
+datasetsyieldperformancewithin3%ofoptimal.Thissug-
+Figure 10: Neon does not require high-
+geststhatNeoncapturesthefundamentalmode-seeking
+qualitysyntheticdatatosucceed.
+biasratherthanrequiringpreciselytunedsyntheticdata.
+Onlyatextremevalues(e.g.,γ 6)doesperformancedegradesignificantly,likelyduetoexcessive
+≥
+modecollapsein .
+S
+9
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+5 CONCLUSIONS
+WehaveintroducedNeon,asimpleandefficientpost-processingmethodthatimprovesgenerative
+models by inverting the degradation caused by self-training. Neon is grounded in a key insight:
+commonmode-seekinginferencesamplersinduceapredictableanti-alignmentbetweengradients
+fromsyntheticandpopulationdata, explainingboththefailureofnaïveself-trainingandNeon’s
+success. Byextrapolatingawayfromthisdegradationdirection,Neoncorrectsthesampler’sinherent
+bias,redistributingprobabilitymassfromover-representedmodestounder-representedones,thereby
+enhancingrecallandoverallgenerationfidelity. Neon’seffectivenessacrossdiversemodelarchitec-
+turesandtrainingdatasetssuggeststhatwecanreframemodeldegradationnotasafailure,butasa
+structured,harnessablesignalforimprovementinanincreasinglydata-scarcefield. Ourworkalso
+positionsinferencesamplersasvaluablediagnostictoolsforuncoveringandremedyingamodel’s
+distributionalflaws.
+Neon opens several promising avenues for future work. First, can the degradation direction be
+estimated reliably without any self-training? Second, can we actively synthesize “optimal bad”
+datasets that elicit a stronger, more stable corrective signal? Third, in diversity-seeking regimes
+whereself-trainingpotentiallyalignspositivelywiththepopulationgradient(assumingsmallη ),the
+1
+forwardstepshouldhelp;identifyingdiversity-promotingsamplersthatinducepositivealignment
+wouldenabledirectself-improvementwithoutinversion. Inthemeantime,abi-directionalupdatethat
+blendstheforwarddiversity-seekingdirectionwiththereversedmode-seekingdegradationdirection
+isapracticalhybridtoexplore.
+Asthedemandformorecapablegenerativemodelsoutpacestheavailabilityofhigh-qualitytraining
+data,progresswilldependonnewmethodsthatextractmorevaluefrommodelsandtheirtraining
+data. Neondemonstratesthatevenseeminglyharmfulprocedures,whenproperlyunderstoodand
+corrected,canguideustowardbettermodels,showingthatsometimes,thepathforwardrequiresa
+deliberatestepbackward.
+ACKNOWLEDGMENTS
+ThisworkwassupportedinpartbyNSFAwards2145346(CAREER),02133861(DMS),2113904
+(CCSS),andtheNSFAIInstituteforFoundationsofMachineLearning(IFML);ONRN00014-23-1-
+2714;ONRMURIN00014-20-1-2787;DOEDE-SC0020345;andDOI140D0423C0076. Thanks
+to Predrag Neskovic for pushing us down the path towards understanding negative extrapolation
+and to Ahmed Imtiaz Humayun for early discussions and for suggesting Algorithm 1 for model
+self-improvementwithsyntheticdata.
+10
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+REFERENCES
+Sina Alemohammad, Josue Casco-Rodriguez, Lorenzo Luzi, Ahmed Imtiaz Humayun, Hossein
+Babaei,DanielLeJeune,AliSiahkoohi,andRichardBaraniuk. Self-consuminggenerativemodels
+go MAD. In International Conference on Learning Representations, 2024a. URL https:
+//openreview.net/forum?id=ShjMHfmPs0.
+Sina Alemohammad, Ahmed Imtiaz Humayun, Shruti Agarwal, John Collomosse, and Richard
+Baraniuk. Self-improvingdiffusionmodelswithsyntheticdata. arXivpreprintarXiv:2408.16333,
+2024b.
+Fan Bao et al. All are worth words: A vit backbone for diffusion models. arXiv preprint
+arXiv:2209.12152,2023.
+QuentinBertrand,AvishekJoeyBose,AlexandreDuplessis,MarcoJiralerspong,andGauthierGidel.
+On the stability of iterative retraining of generative models on their own data. arXiv preprint
+arXiv:2310.00429,2023.
+RichardP.Brent. AlgorithmsforMinimizationwithoutDerivatives. Prentice-Hall,1973.
+AndrewBrock,JeffDonahue,andKarenSimonyan. Largescalegantrainingforhighfidelitynatural
+imagesynthesis. InInternationalConferenceonLearningRepresentations,2019.
+HuiwenChangetal.Maskgit:Maskedgenerativeimagetransformer.InProceedingsoftheIEEE/CVF
+ConferenceonComputerVisionandPatternRecognition,2022.
+JiaDeng, WeiDong, RichardSocher, Li-JiaLi, KaiLi, andLiFei-Fei. Imagenet: Alarge-scale
+hierarchicalimagedatabase. InIEEEConferenceonComputerVisionandPatternRecognition,pp.
+248–255,2009. doi: 10.1109/CVPR.2009.5206848.
+PrafullaDhariwalandAlexanderQuinnNichol. DiffusionmodelsbeatGANsonimagesynthesis.
+InAdvancesinNeuralInformationProcessingSystems,2021. URLhttps://openreview.
+net/forum?id=AAWuCvzaVt.
+MingDing,ZhuoyiYang,WenyiHong,WendiZheng,ChangZhou,DaYin,JunyangLin,XuZou,
+ZhouShao,HongxiaYang,etal. Cogview: Masteringtext-to-imagegenerationviatransformers.
+AdvancesinNeuralInformationProcessingSystems,34:19822–19835,2021.
+ElvisDohmatob,YunzhenFeng,PuYang,FrancoisCharton,andJuliaKempe. Ataleoftails: Model
+collapseasachangeofscalinglaws. InInternationalConferenceonMachineLearning,2024.
+URLhttps://openreview.net/forum?id=KVvku47shW.
+YunzhenFeng,ElvisDohmatob,PuYang,FrancoisCharton,andJuliaKempe. Beyondmodelcol-
+lapse: Scalingupwithsynthesizeddatarequiresreinforcement. arXivpreprintarXiv:2406.07515,
+2024.
+KevinFransetal. One-stepimagesynthesisviaiterativerefinement. arXivpreprint,2024.
+ShanghuaGao,PanZhou,Ming-MingCheng,andShuichengYan. Maskeddiffusiontransformerisa
+strongimagesynthesizer. arXivpreprintarXiv:2303.14389,2023.
+MatthiasGerstgrasser,RylanSchaeffer,ApratimDey,RafaelRafailov,HenrySleight,JohnHughes,
+Tomasz Korbak, Rajashree Agrawal, Dhruv Pai, Andrey Gromov, et al. Is model collapse in-
+evitable? Breakingthecurseofrecursionbyaccumulatingrealandsyntheticdata. arXivpreprint
+arXiv:2404.01413,2024.
+DanHendrycksandThomasDietterich. Benchmarkingneuralnetworkrobustnesstocommoncorrup-
+tionsandperturbations. ProceedingsoftheInternationalConferenceonLearningRepresentations,
+2019.
+TomHenighan,JaredKaplan,MorKatz,MarkChen,ChristopherHesse,JacobJackson,Heewoo
+Jun,TomBBrown,PrafullaDhariwal,ScottGray,etal. Scalinglawsforautoregressivegenerative
+modeling. arXivpreprintarXiv:2010.14701,2020.
+11
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+MartinHeusel,HubertRamsauer,ThomasUnterthiner,BernhardNessler,andSeppHochreiter. Gans
+trainedbyatwotime-scaleupdateruleconvergetoalocalnashequilibrium. InAdvancesinNeural
+InformationProcessingSystems,pp.6626–6637,2017.
+JonathanHoandTimSalimans. Classifier-freediffusionguidance. arXivpreprintarXiv:2207.12598,
+2022.
+JonathanHo,AjayJain,andPieterAbbeel. Denoisingdiffusionprobabilisticmodels. arXivpreprint
+arXiv:2006.11239,2020.
+AllanJabri,DavidJ.Fleet,andTingChen. Scalableadaptivecomputationforiterativegeneration. In
+InternationalConferenceonMachineLearning,volume202ofProceedingsofMachineLearning
+Research,pp.5941–5963,2023.
+MingukKangetal. Scalingupgansfortext-to-imagesynthesis. arXivpreprintarXiv:2303.05511,
+2023.
+JaredKaplan,SamMcCandlish,TomHenighan,TomBBrown,BenjaminChess,RewonChild,Scott
+Gray,AlecRadford,JeffreyWu,andDarioAmodei. Scalinglawsforneurallanguagemodels.
+arXivpreprintarXiv:2001.08361,2020.
+AnimeshKarnewarandOliverWang. Msg-gan: Multi-scalegradientsforgenerativeadversarial
+networks. arXivpreprintarXiv:1903.06048,2019.
+Tero Karras, Samuli Laine, and Timo Aila. A style-based generator architecture for generative
+adversarial networks. In Proceedings of the IEEE/CVF Conference on Computer Vision and
+PatternRecognition,pp.4401–4410,2019.
+TeroKarras,MiikaAittala,JanneHellsten,SamuliLaine,JaakkoLehtinen,andTimoAila. Training
+generativeadversarialnetworkswithlimiteddata. AdvancesinNeuralInformationProcessing
+Systems,33:12104–12114,2020.
+TeroKarras,MiikaAittala,TimoAila,andSamuliLaine. Elucidatingthedesignspaceofdiffusion-
+basedgenerativemodels. InS.Koyejo,S.Mohamed,A.Agarwal,D.Belgrave,K.Cho,andA.Oh
+(eds.),AdvancesinNeuralInformationProcessingSystems,volume35,pp.26565–26577.Curran
+Associates,Inc.,2022.
+TeroKarras,MiikaAittala,TuomasKynkäänniemi,JaakkoLehtinen,TimoAila,andSamuliLaine.
+Guidingadiffusionmodelwithabadversionofitself. arXivpreprintarXiv:2406.02507,2024a.
+TeroKarras,MiikaAittala,JaakkoLehtinen,JanneHellsten,TimoAila,andSamuliLaine.Analyzing
+and improving the training dynamics of diffusion models. In Proceedings of the IEEE/CVF
+ConferenceonComputerVisionandPatternRecognition,pp.24174–24184,2024b.
+Dongjun Kim, Yeongmin Kim, Se Jung Kwon, Wanmo Kang, and Il-Chul Moon. Refining gen-
+erative process with discriminator guidance in score-based diffusion models. In International
+ConferenceonMachineLearning,volume202ofProceedingsofMachineLearningResearch,pp.
+16567–16598.PMLR,2023a.URLhttps://proceedings.mlr.press/v202/kim23i.
+html.
+Dongjun Kim et al. Consistency trajectory models: Learning probability flow ode trajectory of
+diffusion. arXivpreprintarXiv:2310.02279,2023b.
+DiederikPKingmaandRuiqiGao. Understandingdiffusionobjectivesasweightedelbo. arXiv
+preprintarXiv:2303.18103,2024.
+Alex Krizhevsky and Geoffrey Hinton. Learning multiple layers of features from tiny images.
+Technicalreport,UniversityofToronto,Toronto,Ontario,2009.
+Tuomas Kynkäänniemi, Tero Karras, Samuli Laine, Jaakko Lehtinen, and Timo Aila. Improved
+precisionandrecallmetricforassessinggenerativemodels. InAdvancesinNeuralInformation
+ProcessingSystems,pp.3927–3936,2019.
+12
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+TuomasKynkäänniemi,MiikaAittala,TeroKarras,SamuliLaine,TimoAila,andJaakkoLehtinen.
+Applying guidance in a limited interval improves sample and distribution quality in diffusion
+models. arXivpreprintarXiv:2404.07724,2024.
+SeungkwanLee,KwangheeKo,HyunseungLee,andHyunjunCho. Anycostgansforinteractive
+imagesynthesisandediting. ProceedingsoftheIEEE/CVFConferenceonComputerVisionand
+PatternRecognition,pp.14986–14996,2021.
+Tianhong Li et al. Autoregressive image generation without vector quantization. arXiv preprint
+arXiv:2406.11838,2024.
+Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel, and Matthew Le. Flow
+matchingforgenerativemodeling. InInternationalConferenceonLearningRepresentations,2023.
+URLhttps://openreview.net/forum?id=PqvMRDCJT9t.
+XingchaoLiu,ChengyueGong,andQiangLiu. Flowstraightandfast: Learningtogenerateand
+transferdatawithrectifiedflow. arXivpreprintarXiv:2209.03003,2023.
+Cheng Lu, Yuhao Zhou, Fan Bao, Jianfei Chen, Chongxuan Li, and Jun Zhu. Dpm-solver: A
+fast ode solver for diffusion probabilistic model sampling in around 10 steps. arXiv preprint
+arXiv:2206.00927,2022.
+NanyeMaetal. Sit: Exploringflowanddiffusiontransformers. arXivpreprintarXiv:2401.08740,
+2024.
+NiklasMuennighoff,AlexanderRush,BoazBarak,TevenLeScao,AleksandraPiktus,Nouamane
+Tazi,SampoPyysalo,ThomasWolf,andColinARaffel.Scalingdata-constrainedlanguagemodels.
+AdvancesinNeuralInformationProcessingSystems,36,2023.
+AlexanderQuinnNicholandPrafullaDhariwal. Improveddenoisingdiffusionprobabilisticmodels.
+arXivpreprintarXiv:2102.09672,2021.
+DogyunParketal. Caf: Constantaccelerationflowmatching. arXivpreprint,2024.
+WilliamPeeblesandSainingXie. Scalablediffusionmodelswithtransformers. InProceedingsof
+theIEEE/CVFInternationalConferenceonComputerVision,pp.4195–4205,2023.
+SuchengRen,QihangYu,JuHe,XiaohuiShen,AlanYuille,andLiang-ChiehChen. Beyondnext-
+token: Next-xpredictionforautoregressivevisualgeneration. arXivpreprintarXiv:2502.20388,
+2025.
+Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. High-
+resolutionimagesynthesiswithlatentdiffusionmodels. InProceedingsoftheIEEE/CVFConfer-
+enceonComputerVisionandPatternRecognition,pp.10684–10695,2022.
+AxelSauer,KatjaSchwarz,andAndreasGeiger. StyleGAN-XL:ScalingStyleGANtolargediverse
+datasets. InACMSIGGRAPH2022ConferenceProceedings,SIGGRAPH’22,pp.1–10,New
+York,NY,USA,2022.
+IliaShumailov,ZakharShumaylov,YirenZhao,NicolasPapernot,RossAnderson,andYarinGal. AI
+modelscollapsewhentrainedonrecursivelygenerateddata. Nature,631(8022):755–759,2024.
+YangSongandStefanoErmon. Improvedtechniquesfortrainingscore-basedgenerativemodels.
+AdvancesinNeuralInformationProcessingSystems,33:12438–12448,2020.
+YangSong,JaschaSohl-Dickstein,DiederikPKingma,AbhishekKumar,StefanoErmon,andBen
+Poole. Score-basedgenerativemodelingthroughstochasticdifferentialequations. arXivpreprint
+arXiv:2011.13456,2021.
+YangSong,PrafullaDhariwal,MarkChen,andIlyaSutskever. Consistencymodels. InInternational
+ConferenceonMachineLearning,pp.32211–32252.PMLR,2023.
+Peng Sun, Yi Jiang, and Tao Lin. Unified continuous generative models. arXiv preprint
+arXiv:2505.07447,2025. URLhttps://arxiv.org/abs/2505.07447.
+13
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Yuhta Takida, Masaaki Imaizumi, Takashi Shibuya, Chieh-Hsin Lai, Toshimitsu Uesaka, Naoki
+Murata,andYukiMitsufuji. SAN:InducingmetrizabilityofGANwithdiscriminativenormalized
+linearlayer. InTheTwelfthInternationalConferenceonLearningRepresentations,2024. URL
+https://openreview.net/forum?id=eiF7TU1E8E.
+YiTang,PengSun,ZhenglinCheng,andTaoLin. Gmem: Amodularapproachforultra-efficient
+generativemodels. arXivpreprintarXiv:2412.08781,2024.
+KeyuTian,YiJiang,ZehuanYuan,BingyuePeng,andLiweiWang. Visualautoregressivemodeling:
+Scalableimagegenerationvianext-scaleprediction.InAdvancesinNeuralInformationProcessing
+Systems,2024. URLhttps://openreview.net/forum?id=gojL67CfS8.
+AlexanderTong,NikolayMalkin,KilianFatras,LazarAtanackovic,YanleiZhang,GuillaumeHuguet,
+GuyWolf,andYoshuaBengio. Simulation-freeschrödingerbridgesviascoreandflowmatching.
+arXivpreprintarXiv:2307.03672,2023.
+AlexanderTong,KilianFatras,NikolayMalkin,GuillaumeHuguet,YanleiZhang,JarridRector-
+Brooks,GuyWolf,andYoshuaBengio. Improvingandgeneralizingflow-basedgenerativemodels
+with minibatch optimal transport. Transactions on Machine Learning Research, 2024. URL
+https://openreview.net/forum?id=CD9Snc73AW.
+ArashVahdat,KarstenKreis,andJanKautz. Score-basedgenerativemodelinginlatentspace. In
+Advances in Neural Information Processing Systems, 2021. URL https://openreview.
+net/forum?id=P9TYG0j-wtG.
+PabloVillalobos,JaimeSevilla,LennartHeim,TamayBesiroglu,MariusHobbhahn,andAnsonHo.
+Willwerunoutofdata? ananalysisofthelimitsofscalingdatasetsinmachinelearning. arXiv
+preprintarXiv:2211.04325,2022.
+Zhendong Wang, Yi Gu, Huangjie Zheng, Mingyuan Zhou, and Hai Huang. R3gan: Robust
+regularizedrecurrentgansforhigh-fidelityimagegeneration. arXivpreprintarXiv:2501.09876,
+2025.
+MarkWeber,LijunYu,QihangYu,XiangDeng,XiaohuiShen,DanielCremers,andLiang-Chieh
+Chen.Maskbit:Embedding-freeimagegenerationviabittokens.arXivpreprintarXiv:2409.16211,
+2024.
+JiahuiYu,YuanzhongXu,JingYuKoh,ThangLuong,GunjanBaid,ZiruiWang,VijayVasudevan,
+AlexanderKu,YinfeiYang,BurcuKaragolAyan,etal. Scalingautoregressivemodelsforcontent-
+richtext-to-imagegeneration. arXivpreprintarXiv:2206.10789,2022.
+Jiahui Yu et al. Vector-quantized image modeling with improved vqgan. arXiv preprint
+arXiv:2110.04627,2021.
+LijunYuetal. Magvit-v2: Languagemodelbeatsdiffusion–tokenizeriskeytovisualgeneration.
+arXivpreprintarXiv:2310.05737,2024.
+Huizhuo Yuan, Zixiang Chen, Kaixuan Ji, and Quanquan Gu. Self-play fine-tuning of diffusion
+models for text-to-image generation. In Advances in Neural Information Processing Systems,
+volume37,2024.
+BowenZhengandTianmingYang. Revisitingdiffusionmodels: Fromgenerativepre-trainingto
+one-stepgeneration. arXivpreprintarXiv:2506.09376,2025.
+Kaiwen Zheng, Yongxin Chen, Huayu Chen, Guande He, Ming-Yu Liu, Jun Zhu, and Qinsheng
+Zhang. Direct discriminative optimization: Your likelihood-based visual generative model is
+secretlyaGANdiscriminator. InInternationalConferenceonMachineLearning,2025. Spotlight.
+Linqi Zhou, Stefano Ermon, and Jiaming Song. Inductive moment matching. In International
+ConferenceonMachineLearning,2025a. URLhttps://openreview.net/forum?id=
+pwNSUo7yUb.
+MingyuanZhou,HuangjieZheng,YiGu,ZhendongWang,andHaiHuang.Adversarialscoreidentity
+distillation: Rapidlysurpassingtheteacherinonestep. InInternationalConferenceonLearning
+Representations,2025b. URLhttps://openreview.net/forum?id=lS2SGfWizd.
+14
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+A STATE OF THE ART COMPARISON
+TableA.1: Comprehensivecomparisonofgenerativemodelsacrossfourstandardbenchmarks. Best
+resultsarehighlightedin blue.
+(a)ResultsonCIFAR-10.
+Type Model NFE Uncond Cond
+NAG
+StyleGAN2-ADA(Karrasetal.,2020) 1 2.92 2.42
+StyleGAN-XL(Saueretal.,2022) 1 – 1.85
+SAN(Takidaetal.,2024) 1 1.85 1.36
+CAF(Parketal.,2024) 1 1.48 1.39
+wolF&.ffiD
+DDPM(Hoetal.,2020) 1000 3.17 –
+iDDPM(Nichol&Dhariwal,2021) 4000 2.90 –
+NCSN++(Song&Ermon,2020) 2000 2.20 –
+DPM-Solver(Luetal.,2022) 10 4.70 –
+LSGM(Vahdatetal.,2021) 138 2.10 –
+EDM-VP(Karrasetal.,2024b) 35 1.97 1.79
+GMem-XL(Tangetal.,2024) 35 – 1.22
+FlowMatching(Lipmanetal.,2023) 100 3.50 –
+RectifiedFlow(Liuetal.,2023) 127 2.58 –
+pets-weF CTM(Kimetal.,2023b) 2 1.87 –
+sCT(Songetal.,2023) 2 2.06 –
+IMM(Zhouetal.,2025a) 1 3.20 –
+coh-tsoP EDM+DG(Kynkäänniemietal.,2024) 53 1.77 1.64
+EDM+DDO(Zhengetal.,2025) 35 1.38 1.30
+EDM+SIMS(Alemohammadetal.,2024b) 70 1.33 –
+EDM+SiD2A(Zhouetal.,2025b) 1 1.49 1.39
+sruO
+(b)ResultsonFFHQ-64×64.
+Type Model NFE FID
+R3GAN(Wangetal.,2025) 1 1.95
+AnycostGAN(Leeetal.,2021) 1 2.52
+GAN
+MSG-GAN(Karnewar&Wang,2019) 1 2.70
+StyleGAN2(Karrasetal.,2019) 1 3.32
+EDM-G++(Karrasetal.,2024b) 71 1.98
+Diffusion EDM-VE(Karrasetal.,2024b) 79 2.53
+EDM-VP(Karrasetal.,2024b) 79 2.39
+SiD2A(Zhouetal.,2025b) 1 1.04
+EDM+SIMS(Alemohammadetal.,2024b) 158 1.04 Post-hoc.
+EDM+D2O(Zheng&Yang,2025) 1 1.08
+EDM+D2O-F(Zheng&Yang,2025) 1 0.85
+Ours EDM+Neon 79 1.12
+EDM+Neon 35 1.38 1.38
+Flow+Neon 100 2.32 –
+(c)ResultsonImageNet-256×256.
+Type Model NFE FID
+GigaGAN(Kangetal.,2023) 1 3.45
+GAN
+StyleGAN-XL(Saueretal.,2022) 1 2.30
+noisuffiD
+ADM(Dhariwal&Nichol,2021) 250 10.94
+LDM-4(Rombachetal.,2022) 250 10.56
+DiT-XL/2(Peebles&Xie,2023) 250 9.62
+U-ViT(Baoetal.,2023) 50 2.29
+MDT(Gaoetal.,2023) 250 6.23
+REPA-UCGM(Sunetal.,2025) 80 1.06
+MaskGIT(Changetal.,2022) 8 6.18
+Masked MAR(Lietal.,2024) 100 1.98
+MaskBit(Weberetal.,2024) 256 1.52
+VQGAN(Yuetal.,2021) 256 15.78
+VAR-d16(Tianetal.,2024) 10 3.30
+AR VAR-d30(Tianetal.,2024) 10 1.92
+xAR-B(Renetal.,2025) 40 1.72
+xAR-L(Renetal.,2025) 50 1.28
+pets-weF Shortcut(Fransetal.,2024) 1 10.60
+IMM(T=1)(Zhouetal.,2025a) 1 7.77
+IMM(T=8)(Zhouetal.,2025a) 8 1.99
+VAR-d16+DDO(Zhengetal.,2025) 10 2.54
+Post-hoc
+VAR-d30+DDO(Zhengetal.,2025) 10 1.79
+sruO
+(d)ResultsonImageNet-512×512.
+Type Model NFE FID
+BigGAN-deep(Brocketal.,2019) 1 8.43
+GAN StyleGAN-XL(Saueretal.,2022) 1 2.41
+SiD2A(Zhouetal.,2025b) 1 1.37
+VAR-d16+Neon 10 2.01
+xAR-B+Neon 40 1.31
+xAR-L+Neon 50 1.02
+IMM(T=8)+Neon 8 1.46
+IMM(T=4)+Neon 4 1.68
+IMM(T=2)+Neon 2 2.88
+IMM(T=1)+Neon 1 6.67
+noisuffiD
+ADM(Dhariwal&Nichol,2021) 250 23.24
+ADM-U(Dhariwal&Nichol,2021) 500 9.96
+DiT-XL/2(Peebles&Xie,2023) 250 12.03
+SiT-XL(Maetal.,2024) 250 8.30
+RiN(Jabrietal.,2023) 1000 3.95
+U-ViT-L(Baoetal.,2023) 512 3.54
+VDM++(Kingma&Gao,2024) 512 2.99
+EDM2-S(Karrasetal.,2024b) 63 1.73
+EDM2-XXL(Karrasetal.,2024b) 63 1.91
+MAGVIT-v2(Yuetal.,2024) 64 3.07
+Masked MAR-L(Lietal.,2024) 1024 2.74
+VAR-d36-s(Tianetal.,2024) 10 2.63
+AR xAR-L(Renetal.,2025) 50 1.70
+EDM2-S+SIMS(Alemohammadetal.,2024b) 63 1.73
+EDM2-L+DDO(Zhengetal.,2025) 63 1.21
+Post-hoc EDM2+AG(Karrasetal.,2024a) 63 1.25
+EDM2+SiD2A(Zhouetal.,2025b) 1 1.37
+Ours VAR-d30-s+Neon 10 1.70
+15
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Wesummarizeourresultsandprovideacomprehensivecomparisonwithstate-of-the-artgenerative
+modelsinTableA.1. ThefollowingsectiondiscussesNeon’sperformanceoneachbenchmarkin
+moredetail,highlightingitsstandingrelativetotop-performingmodelsandotherpost-hocmethods.
+CIFAR-10 OnbothconditionalandunconditionalCIFAR-10,NeonimprovestheEDM-VPbaseline
+toa1.38FIDwhilemaintainingits35NFE(Karrasetal.,2024b). Intheconditionalsetting,this
+is competitive with DDO, which achieves a 1.30 FID from the same base model but requires
+significantly more training compute ( 12% extra vs. Neon’s 1.75%) (Zheng et al., 2025). In the
+unconditionalsetting,Neon’s1.38FIDisidenticaltoDDO’sandclosetotheSOTAheldbySIMSat
+1.33FID(Alemohammadetal.,2024b). Notably,SIMSrequiresdoublingtheNFEto70,making
+Neonamoresampling-efficientalternative. NeonalsodemonstratesversatilitybyimprovingaFlow
+Matchingmodeltoa2.32FID(Lipmanetal.,2023).
+FFHQ-64x64 OnFFHQ,NeonsignificantlyenhancestheunconditionalEDM-VPmodel,lowering
+itsFIDfrom2.39to1.12with79NFE.Whilethestate-of-the-artisheldbytheone-stepD2O-Fat
+0.85FID(Zheng&Yang,2025),Neon’sperformanceishighlycompetitive. Itstandsagainstother
+post-hocmethodslikeSIMS(1.04FID,158NFE)(Alemohammadetal.,2024b)andtheone-step
+distilledSiD2A(1.04FID,1NFE)(Zhouetal.,2025b). Neonachievesitsstrongresultwithasimple
+parametermergethatpreservesthebasesampler’sstructure,offeringadistincttrade-offbetweenFID
+andNFE.
+ImageNet-256x256 OnImageNet-256,Neonsetsanewstate-of-the-art,improvingthexAR-L
+modelfromanalreadystrong1.28FIDto1.02FID(Renetal.,2025). Thissurpassestheprevious
+bestresultof1.06FIDfromREPA-UCGM(Sunetal.,2025). Neonalsodemonstratesitssuperiority
+overDDOonthisbenchmark;whenappliedtothesameVAR-d16basemodel(Tianetal.,2024),
+Neonachievesa2.01FID,whichisasignificantimprovementoverDDO’s2.54FID(Zhengetal.,
+2025). Furthermore,Neonconsistentlyimprovesotherarchitectures,includingxAR-B(1.31FID)
+andIMM(1.46FID).
+ImageNet-512x512 OnImageNet-512,NeonimprovestheVAR-d30modeltoa1.70FIDwith10
+NFE(Tianetal.,2024). Whilethestate-of-the-artbelongstoEDM2-L+DDOat1.21FID(Zheng
+et al., 2025), Neon’s result is competitive with other post-hoc methods applied to different base
+models,suchasEDM2-S+SIMS(1.73FID)(Alemohammadetal.,2024b). ItshowcasesNeon’s
+abilitytoenhanceautoregressivemodelsathigherresolutionswithitscharacteristiclowcompute
+overhead.
+Summary Acrossallbenchmarks,Neonprovestobeasimple,efficient,andbroadlyapplicable
+post-hocmethodforimprovinggenerativemodels.Itachievesanewstate-of-the-artonImageNet-256
+anddelivershighlycompetitiveresultselsewhere,oftenwithsuperiorsamplingefficiencycompared
+tootherpost-hoctechniques. AkeyfindingisthatNeon’seffectivenesscorrespondsdirectlytothe
+qualityofthebasemodelitenhances;applyingittoastrongerfoundationlikexAR-Lyieldsagreater
+improvementandthebestoverallperformance. ThispositionsNeonasareliabletoolforadding
+afinallayerofpolishtostrong,pre-existinggenerativemodelswithminimalcomputationaleffort.
+Crucially,sinceNeonimprovesthebasediffusionmodelitself,itsbenefitsarepotentiallyorthogonal
+todistillationmethods;onecouldapplySiD2AorD2O-FtotheNeon-enhancedmodelforfurther
+gains.
+16
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+B PROOFS AND DETAILED EXPLANATIONS
+B.1 ASSUMPTIONS,NOTATION,ANDIDENTITIES
+Assumptions. Letℓ (x)beadifferentiableper-examplelossand (θ):=E [ℓ (X)].
+θ
+R
+data pdata θ
+(A1) Datariskminimizer. θ∗
+∈
+argmin
+θ
+R
+data
+(θ), henceE
+pdata
+[ϕ θ∗(X)] = 0, whereϕ
+θ
+(x) :=
+ℓ (x).
+θ θ
+∇
+(A2) Regularity. Commonsupport;dominatedconvergence/interchangeoflimitsandexpectations;
+localLipschitzofϕ andH (x):=∂ ϕ (x)nearθ∗.
+θ θ θ θ
+(A3) Localneighborhood. θ =θ∗+εwithsmall ε ;allremaindersareO( ε 2 ).
+r ∥ ∥ Hd ∥ ∥Hd
+(A4) Rank. IfH := 2 (θ∗)isnotfullrank,interpretallstatementsonIm(H ).
+d data d
+∇ R
+Metricandbasicobjects. ThedataHessianisH
+d
+=
+∇
+2
+R
+data
+(θ∗)=E
+pdata
+[H θ∗(X)]. Weusethe
+M-inducedgeometry
+x,y :=x⊤My, x := M1/2x , A := M1/2AM−1/2 ,
+M M 2 op,M op
+⟨ ⟩ ∥ ∥ ∥ ∥ ∥ ∥ ∥ ∥
+andwrite , , forM = H . ForapreconditionerP 0,setK := H1/2PH1/2 with
+∥·∥ Hd ⟨· ·⟩ Hd d ≻ d d
+boundsmI K MI.
+⪯ ⪯
+B.2 NEONIMPROVESUNDERANTI-ALIGNMENT
+Alignmentscalarandsyntheticobjective. Let
+r := (θ) , (θ):=E [ℓ (X)], r := (θ) .
+d ∇ θ R data θr R syn qθr,κ θ s ∇ θ R syn θr
+Definethealignmentscalar(cid:12) (cid:12)
+(cid:12) (cid:12)
+s := r , P r . (B.1)
+d s
+⟨ ⟩
+TheoremB.1(One-stepNeonimprovement). Ashortsyntheticfine-tuneproducesθ =θ αPr +
+s r s
+O(α2)forsomeα>0. Forw >0,theNeonmergeis −
+θ = (1+w)θ wθ = θ +wαPr +O(wα2).
+Neon r s r s
+−
+LetH := 2 (θ ). Then
+d data r
+∇ R
+(wα)2
+b (θ ) = (θ ) + wαs + r⊤P⊤H P r + O (wα)3 . (B.2)
+R data Neon R data r 2 s d s
+Inparticular,ifs < 0thenforallsufficientlysmallw > 0wehbave
+data
+(θ
+N
+(cid:0)
+eon
+) < (cid:1)
+data
+(θ
+r
+). If
+R R
+moreoverH 0,writingq :=r⊤P⊤H Pr 0,any
+d ⪰ s d s ≥
+2s
+0b< w < guaranteebs
+data
+(θ
+Neon
+)
+data
+(θ
+r
+) (uptoO((wα)3)),
+−αq R ≤R
+andthequadraticproxyisminimizedatw∗ = s/(αq)>0.
+−
+Proof. Fromtheshortsyntheticfine-tunewehave
+θ =θ αPr +O(α2).
+s r s
+−
+Therefore
+θ =(1+w)θ wθ =θ +wαPr + O(wα2).
+Neon r s r s
+−
+Definetheunivariatefunction
+ψ(τ):= θ +τPr , andset τ =wα.
+data r s
+R
+ATaylorexpansionofψatτ =0gives(cid:0) (cid:1)
+τ2
+ψ(τ)=ψ(0) + τψ′(0) + ψ′′(0) + O(τ3).
+2
+17
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Bythechainrule,
+ψ′(0)= r , Pr = s, ψ′′(0)=r⊤P⊤H P r .
+d s s d s
+Substitutingτ =wαyields (cid:10) (cid:11)
+b
+(wα)2
+(θ )= (θ ) + wαs + r⊤P⊤H Pr + O (wα)3 ,
+R data Neon R data r 2 s d s
+whichisequationB.2. (cid:0) (cid:1)
+b
+Ifs<0,thelineartermisnegativeanddominatesforsufficientlysmallw >0,giving (θ )<
+data Neon
+R
+(θ ).
+data r
+R
+If,inaddition,H 0,thenψ′′(0) 0andthequadraticproxyτ ψ(0)+τs+ 1τ2ψ′′(0)is
+d ⪰ ≥ 7→ 2
+minimizedat
+s
+b τ∗ = > 0.
+−ψ′′(0)
+Since τ = wα, this gives the safe window 0 < w < 2s and the minimizer w∗ =
+−αψ′′(0)
+s s
+= .
+−αψ′′(0) −αr⊤P⊤H Pr
+s d s
+Remark B.2 (No convexity needed: directional smoothness). The PSD requirement on H can
+b d
+be replaced by an upper curvature bound along the step direction d := Pr . If there is L 0
+s dir
+w
+0
+i
+<
+th
+w
+d⊤
+< ∇
+2
+R dat 2 a s
+(θ
+r
++
+.
+τd)d
+≤
+L
+dir ∥
+d
+∥
+2
+2
+for τ near 0, then the same conclusion holds whbene ≥ ver
+−αLdir∥d∥2
+2
+B.3 ANUPPERBOUNDONsANDSUFFICIENTCONDITIONSFORANTI-ALIGNMENT
+Localexpansionatθ .
+r
+LemmaB.3(First-orderexpansionsofrealandsyntheticgradients). Letθ =θ∗+εwith ε
+r
+∥ ∥
+Hd
+smallandassume(A1)–(A4). Then
+r := (θ) =H ε+O( ε 2 ), (B.3)
+d ∇ θ R data θr d ∥ ∥Hd
+and,with (cid:12)
+(cid:12)
+b := E
+qθr,κ
+ϕ θ∗(X) , ∆ := E
+qθr,κ
+H θ∗(X)
+−
+E
+pdata
+H θ∗(X) ,
+r :=(cid:2) (cid:3)(θ) =H ε + b(cid:2)+∆ε (cid:3)+O( ε 2(cid:2) ), (cid:3) (B.4)
+s ∇ θ R syn θr d ∥ ∥Hd
+(cid:12)
+(cid:12)
+(cid:0) =:Rκ (cid:1)
+| {z }
+Proof. First-order expansion of the per-example gradient. By (A2) (regularity) and a first-order
+Taylorexpansionatθ∗,
+ϕ
+θr
+(x) = ϕ θ∗(x) + H θ∗(x)ε + ρ(x),
+where the remainder satisfies E ρ(X) = O( ε 2 ) and similarly E ρ(X) =
+pdata ∥ ∥ ∥ ∥Hd qθr,κ ∥ ∥
+O( ε 2 ).
+∥ ∥Hd (cid:2) (cid:3) (cid:2) (cid:3)
+Real-riskgradient. Takingexpectationunderp andusing(A1)–(A3),
+data
+r
+d
+=E
+pdata
+ϕ
+θr
+(X) =E
+pdata
+ϕ θ∗(X) +E
+pdata
+H θ∗(X) ε+E
+pdata
+ρ(X) =H
+d
+ε + O(
+∥
+ε
+∥
+2
+Hd
+).
+(cid:2) (cid:3) (cid:2)=0 (cid:3) (cid:2) (cid:3) (cid:2) (cid:3)
+| {z }
+Synthetic-riskgradient. Takingexpectationunderq ,
+θr,κ
+r
+s
+=E
+qθr,κ
+ϕ
+θr
+(X) =E
+qθr,κ
+ϕ θ∗(X) +E
+qθr,κ
+H θ∗(X) ε+E
+qθr,κ
+ρ(X) .
+(cid:2) (cid:3) (cid:2)=:b (cid:3) =(cid:2)Hd+∆ (cid:3) (cid:2) (cid:3)
+Hence | {z } | {z }
+r =b+(H +∆)ε + O( ε 2 ).
+s d ∥ ∥Hd
+18
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Equivalentresidualformusedlater. Itisconvenient(andusedinsubsequentbounds)torewritethis
+as
+r =H ε R + O( ε 2 ), where R := b+∆ε .
+s d − κ ∥ ∥Hd κ −
+Bothexpressionsareidenticaluptothefirst-orderterms,andthelatterisolatesthe“useful”H εpart
+(cid:0) (cid:1) d
+fromthesampler-inducedmismatchR .
+κ
+Angleandmagnitudes. DefinetheH –whitenedmagnitudes
+d
+η 0 := ∥ b ∥H d −1 , η 1 := ∥ ∆ ∥op,H d −1 ,
+andtheangle
+ε, H−1b
+cosφ := d Hd [ 1,1]. (B.5)
+∥
+ε(cid:10)
+∥ Hd
+H
+d
+−1 (cid:11)b
+Hd
+∈ −
+Equivalently,φistheEuclideananglebetween(cid:13)H1/2ε(cid:13)andH−1/2b. SetK := H1/2PH1/2 with
+(cid:13) d (cid:13) d d d
+spectralboundsmI K MI.
+⪯ ⪯
+TheoremB.4(Directionalupperboundfors). Withθ =θ∗+εand ε small,
+r
+∥ ∥
+Hd
+s M(1+η ) ε 2 mη ε cosφ + O( ε 3 ).
+≤ 1 ∥ ∥Hd − 0 ∥ ∥ Hd − + ∥ ∥Hd
+Consequently,asufficientconditionfors<0is
+(cid:2) (cid:3)
+mη
+ε < 0 cosφ with cosφ<0.
+∥ ∥
+Hd
+M(1+η ) −
+1
+(cid:0) (cid:1)
+Proof. UsingLemmaB.3,write
+s=ε⊤H PH ε ε⊤H Pb ε⊤H P∆ε + O( ε 3 ).
+d d − d − d ∥ ∥Hd
+Whitenwitha:=H1/2ε,˜b:=H−1/2b,∆˜ :=H−1/2∆H−1/2,andK :=H1/2PH1/2toget
+d d d d d d
+s = a⊤Ka a⊤K˜b a⊤K∆˜ a + O( a 3).
+− − ∥ ∥2
+Nowboundthethreepieces:
+a⊤Ka M a 2 =M ε 2 , a⊤K∆˜a Mη ε 2 .
+≤ ∥ ∥2 ∥ ∥Hd − ≤ 1 ∥ ∥Hd
+Forthelinearterm,writea⊤K˜b= K1/2a K1/2˜b cosθ,withθtheanglebetweenK1/2aand
+2 2
+∥ ∥ ∥ ∥
+K1/2˜b. Since K1/2x √m x ,
+2 2
+∥ ∥ ≥ ∥ ∥
+a⊤K˜b m a ˜b [cosθ] = m ε η [cosφ] .
+≥ ∥ ∥
+2
+∥ ∥
+2 +
+∥ ∥
+Hd 0 +
+Thus a⊤K˜b mη ε [cosφ] .Since[cosφ] 0and[ cosφ] [cosφ] ,wecan
+− ≤ −
+0
+∥ ∥
+Hd + +
+≥ −
++
+≥
+−
+replace [cosφ] bytheslightlylooserbutsign-robustterm [ cosφ] ,yieldingthestatedbound
++ +
+aftercol − lectingtermsandabsorbingO( a 3). − −
+∥ ∥2
+CorollaryB.5(Natural-gradientgeometry). IfP =H−1,thenK =I (som=M =1)and
+d
+s (1+η ) ε 2 η ε cosφ + O( ε 3 ).
+≤ 1 ∥ ∥Hd − 0 ∥ ∥ Hd − + ∥ ∥Hd
+η
+Thusitsufficesthat ε < 0 cosφ with(cid:2)cosφ<0(cid:3)toguarantees<0.
+∥ ∥
+Hd
+1+η −
+1
+(cid:0) (cid:1)
+Interpretation. η capturesthesampler’slinearbias(whitenedbyH );η itscurvaturetilt. From
+0 d 1
+TheoremB.4,theleadingtermsobey
+s ≲ M(1+η ) ε 2 mη ε ( cosφ),
+1 ∥ ∥Hd − 0 ∥ ∥ Hd −
+sowhenevertheangleisobtuse(cosφ<0,i.e.,H−1bpointsmostlyagainstε),thesubtractivelinear
+d
+termeventuallydominatesas ε 0. Equivalently: thereexistsathresholdε >0(depending
+∥ ∥
+Hd
+→
+0
+onm,M,η ,η and cosφ)suchthatifthemodelissufficientlyclosetooptimal, ε < ε ,
+0 1
+− ∥ ∥
+Hd 0
+thens<0. Inthissmall-errorregime,Neonreducesthereal-datariskbyTheoremB.1.
+Whatremains. Thenextsubsectionsshowthatunderthecommoninferenceruleswestudy,theangle
+conditioncosφ<0holdstofirstorder: forautoregressivemodels(temperatureτ <1,top-k,top-p),
+andfordiffusion/flowmodelsunderfinite-stepODEsampling. Wethereforeavoidrestatingseparate
+plug-incorollariesandsimplypointbacktotheboundabove.
+19
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+B.4 ACUTE-ANGLECONDITIONSTHATIMPLYs<0(ARMODELS)
+Lossandgeometry(AR). Forautoregressive(AR)modelsweusenegativelog-likelihood:
+ℓ (x)= logp (x), ϕ (x)= ℓ (x)= u (x),
+θ θ θ θ θ θ
+− ∇ −
+sothedataHessianistheFisher,H
+d
+=F =E
+pdata
+[u θ∗u⊤
+θ∗
+]. Forasamplerqlet
+b := E
+q
+ϕ θ∗(X) = E
+q
+u θ∗(X) .
+−
+Ourglobalangleis
+(cid:2) (cid:3) (cid:2) (cid:3)
+ε, F−1b
+F
+cosφ := ⟨ ⟩ [ 1,1],
+ε F−1b ∈ −
+F F
+∥ ∥ ∥ ∥
+soanti-alignmentcorrespondstocosφ<0.
+Definition(mode-seekingsamplers). Fixθ =θ∗+ε. Wecallqmode-seekingifitisamonotone
+r
+reweightingofthereferencemodel:
+q(x) w(x)p (x), w(x)=f logp (x) ,
+∝
+θr θr
+withf :R R nondecreasingandnota.e.constant. (ForARdecodingappliedtokenwise,the
+→ ≥0 (cid:0) (cid:1)
+overallsequencelawinheritsaproductofsuchnondecreasingreweights;wewriteitasf(logp (x))
+θr
+forbrevity.)
+CommonARsamplersaremode-seeking.
+• Temperature τ < 1. The sampler draws from q p1/τ, so f(z) = exp (1/τ 1)z with
+∝ θr { − }
+1/τ 1>0,hencef isstrictlyincreasing(neutralonlyatτ =1).
+−
+• Top-k. Keeponlytheklargestprobabilities: thereexistsathresholdz suchthatf(z)=⊮ z
+k
+{ ≥
+z ,anondecreasingstepfunction(neutralonlyatk =vocabularysize).
+k
+}
+• Top-p(nucleus). Keepthesmallestsetwhosecumulativemassexceedsp;thisinducesa(context-
+dependent)thresholdz andf(z)=⊮ z z ,againnondecreasing(neutralonlyatp=1).
+p p
+{ ≥ }
+LemmaB.6(Mode-seeking cosφ<0(firstorder)). Assumeq(x) f(logp (x))p (x)with
+f nondecreasing. Forθ
+=θ∗⇒
++εandsmall ε ,
+∝
+θr θr
+r F
+∥ ∥
+cosφ < 0 + O( ε ).
+F
+∥ ∥
+Proof. LetB(x):=ε⊤u θ∗(x). Then
+E [wB]
+ε, F−1E
+q
+[u θ∗]
+F
+=ε⊤E
+q
+[u θ∗(X)]=E
+q
+B(X) =
+E
+pθr
+[w]
+.
+pθr
+(cid:10) (cid:11) (cid:2) (cid:3)
+Afirst-orderexpansionaroundθ∗gives
+logp
+θr
+(x)=logp θ∗(x) + B(x) + O(
+∥
+ε
+∥
+2
+F
+),
+hencew(x)=f(logp (x))is(tofirstorder)anondecreasingfunctionofthescalarB(x).
+θr
+Replacingp θr byp θ∗ inbothnumeratoranddenominatorincursonlyO(
+∥
+ε
+∥
+F )relativeerror,so
+E [wB]
+E [B]= pθ∗ +O( ε 2).
+q E [w] ∥ ∥F
+pθ∗
+Now E
+pθ∗
+[wB] = Cov
+pθ∗
+(w,B) because E
+pθ∗
+[B] = ε⊤E
+pθ∗
+[u θ∗] = 0. Since w and B are
+nondecreasing(asfunctionsofB),themonotone-covarianceinequalityyieldsCov (w,B) 0,
+withstrict>0unlesswisa.e.constantorB isdegenerate. ThereforeE [B] 0to
+pθ
+fi
+∗
+rstorder ≥ ,i.e.
+q
+ε, F−1E
+q
+[u θ∗]
+F ≥
+0(uptoO(
+∥
+ε
+∥
+2
+F
+)). ≥
+F(cid:10)inally,b= E
+q
+(cid:11)[u θ∗]implies
+−
+cosφ= ⟨
+ε,F−1b
+⟩ F =
+ε, F−1E
+q
+[u θ∗]
+F 0 (strict <0generically),
+ε F−1b − ε F−1b ≤
+∥ ∥ F ∥ ∥ F (cid:10) ∥ ∥ F ∥ ∥ F(cid:11)
+uptoO( ε ).
+F
+∥ ∥
+Consequence. CombiningLemmaB.6withTheoremB.4yieldss<0forsufficientlysmall ε
+F
+∥ ∥
+(andtheexplicitwindowfollowsbysubstitutingH =F).
+d
+20
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+B.5 ACUTE-ANGLECONDITIONSTHATIMPLYs<0(DIFFUSION&FLOW)
+Lossandgeometry. Weusestandardpathwisequadraticlosses. Fordiffusionscoremodels,
+1
+(θ)= ω(t)E 1 s (X ,t) s⋆(X ,t) 2 dt,
+R diff pt 2∥ θ t − t ∥2
+Z0
+h i
+andforflowmatching,
+1
+(θ)= ω(t)E 1 v (X ,t) v⋆(X ,t) 2 dt.
+R flow pt 2∥ θ t − t ∥2
+Z0
+h i
+Letϕ (x):= ℓ(t)(x)andJ (x):=∂ ϕ (x) . DefinethepathwiseFisher
+θ,t ∇ θ θ t θ θ,t θ∗
+1 (cid:12)
+F := ω(t)E (cid:12) J (X )J (X )⊤ dt,
+path pt t t t t
+Z0
+(cid:2) (cid:3)
+andtheangle(mirroringtheARcase)
+cosφ path := ∥ ε ∥ (cid:10)F ε p , ath F p − F at 1 h p − b at p 1 h a b th p(cid:11)at F h pat F h path , b path :=E q hZ0 1 ω(t)ϕ θ∗,t (X t )dt i .
+(cid:13) (cid:13)
+Anti-alignmentcorrespondstoc(cid:13)osφ
+path
+<(cid:13)0.
+Finite-stepODEsolversaremode-seeking. Considertheprobability-flowODEwithvelocity
+f : Rd [0,1] Rd; fordiffusion,f(x,t) = σ(t)2 logp (x). Anexplicitone-stepscheme
+x t
+× → − ∇
+withstepsizehgives
+∂x
+k−1
+x =x +hf(x ,t ), J := =I+h f(x ,t ).
+k−1 k k k k x k k
+∂x ∇
+k
+Usingtrlog(I+A)=tr(A) 1tr(A2)+O( A 3)withA=h f (andtr(A2)= A 2 when
+− 2 ∥ ∥ ∇ x ∥ ∥Fr
+f issymmetric;otherwisetakeitssymmetricpart),
+x
+∇
+h2
+logdetJ =htr( f) f 2 + O(h3).
+k ∇ x − 2 ∥∇ x ∥Fr
+ChainingstepsandcomparingtotheexactODEyieldsaterminalreweightofthereferencelaw:
+1
+q(x ) exp hC¯(x )+o(h) p (x ), C¯(x ):= E f(X ,t ) 2 X =x , T 1/h.
+0 ∝ 2 0 θr 0 0 T ∥∇ x tk k ∥Fr 0 0 ≍
+n o hX k (cid:12) i
+(cid:12)
+Fordiffusion,f(x,t)= σ(t)2 logp (x)sothat f(x,t)= σ(t)2 2logp (x(cid:12)),hence
+− ∇ x t ∇ x − ∇x t
+1
+C¯(x )= E σ(t )4 2logp (X ) 2 X =x .
+0 T k ∥∇x tk tk ∥Fr 0 0
+hX k (cid:12) i
+(cid:12)
+Assumption(A-MONO:curvature–densitycoupling). Themapx (cid:12) C¯(x )isweaklyincreasing
+0 0
+inlogp (x );i.e.,iflogp (x ) logp (x′)thenC¯(x ) C¯(x′7→ ).
+θr 0 θr 0 ≤ θr 0 0 ≤ 0
+Intuition. Finite-stepintegratorsoverweighttrajectorieswithstrongercontraction(large f ).
+x
+Nearmodes,logp ismorecurved,contractionislarger,henceC¯(x )growswithlocalden ∥ s ∇ ity. A ∥ s
+t 0
+h 0,thebiasvanishesandq p (neutral).
+→ →
+θr
+Remark B.7 (Step-size scaling). From logdetJ = htr( f) h2 f 2 +O(h3), the per-
+k ∇ x − 2 ∥∇ x ∥Fr
+step excess contraction is δ = h2 f 2 +O(h3). Summing over T 1/h steps yields the
+k 2 ∥∇ x ∥Fr ≍
+terminalreweightexponent δ = hC¯(x )+o(h). Consequently,thepathwiselinearbiasb =
+k k 2 0 path
+E q [ 0 1 ω(t)ϕ θ∗,t (X t )dt]ob P eys ∥ b path ∥F p − ath 1 = O(h), andthecurvaturetilt ∥ ∆ path ∥op,F p − ath 1 = O(h).
+Bothvanishlinearlyash 0,makingthesamplerneutralinthelimit.
+R →
+21
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Flowmatching. Forupdatesx =x +hv (x ,t ),
+k−1 k θ k k
+h2
+logdetJ =htr( v ) tr( v )2 +O(h3),
+k x θ x θ
+∇ − 2 ∇
+soδ = h2 v 2 +O(h3) 0andthesamereweig (cid:0) htw. With (cid:1) theflowanalogueofA-MONO
+k 2 ∥∇ x θ ∥Fr ≥
+(theconditionalexpectationof v 2 increasinginlogp (x )),finite-stepflowsolversare
+k∥∇ x θ ∥Fr θr 0
+likewisemode-seeking.
+P
+Classifier-freeguidance(CFG)ismode-seeking. CFGmodifiesthediffusionvelocityviaaguided
+score
+s (x,t) = s (x,t) + γ s (x,t) s (x,t) , γ >0,
+γ uncond cond uncond
+−
+sotheprobability-flowvelocitybecomesf (x,t)= σ(t)2s (x,t). Repeatingthederivationabove
+γ (cid:0) γ (cid:1)
+−
+withf f yieldsthesamereweightform
+γ
+→
+q (x ) exp h2 C (x )+o(h2) p (x ),
+γ 0 ∝ 2 γ 0 θr,γ 0
+wherep istheguidedreferencelawannd o
+θr,γ
+C (x ) = E f (X ,t ) 2 X =x .
+γ 0 ∥∇ x γ tk k ∥Fr 0 0
+hX k (cid:12) i
+(cid:12)
+Because f = σ2 s +γ (s s ) , (cid:12)
+x γ x uncond x cond uncond
+∇ − ∇ ∇ −
+f 2 = f 2(cid:0)+ 2γ f, σ2 (s s (cid:1)) + γ2 σ2 (s s ) 2 .
+∥∇ x γ ∥Fr ∥∇ x ∥Fr ∇ x − ∇ x cond − uncond Fr − ∇ x cond − uncond Fr
+Near condition-relevant mode
+(cid:10)
+s, the guidance term increase
+(cid:11)
+s the mag(cid:13)nitude (and contraction(cid:13)) of
+theflow,soC (x )islargerinhigher-densityregionsofp ;thisis(cid:13)thesamecurvature–den(cid:13)sity
+γ 0 θr,γ
+couplingasA-MONO,nowfortheguideddynamics. Hencefinite-stepCFGismode-seekinginthe
+senseabove,andbecomesneutralash 0.
+→
+B.6 NEIGHBORMODELS: STABILITYANDUNIFORMNEONIMPROVEMENT
+Setup. Fixthesyntheticsamplerq generatedonceatthereferenceθ =θ∗+ε(soqisfrozen).
+θr,κ r
+Consideranyneighborcheckpoint
+θ = θ +δ = θ∗+(ε+δ), δ small.
+n r
+∥ ∥
+Hd
+Allquantitiesbelow(gradients,alignments)areevaluatedatθ ,butthesyntheticlawremainsq .
+n θr,κ
+Local expansions at a neighbor. By the same first-order argument as in Appendix B.2, with
+ε :=ε+δ,
+n
+r (θ ) = H ε + O( ε 2 ), r (θ ) = H ε + b + ∆ε + O( ε 2 ), (B.6)
+d n d n ∥ n ∥Hd s n d n n ∥ n ∥Hd
+whereR
+κ
+=b+∆εwithb:=E
+q
+[ϕ θ∗]and∆:=E
+q
+[J θ∗]
+−
+E
+pdata
+[J θ∗](asinAppendixB.3). Define
+s(θ):= r (θ),P r (θ) .
+d s
+⟨ ⟩
+PropositionB.8(AlignmentislocallyLipschitzinaneighborhood). LetK :=H1/2PH1/2 with
+d d
+mI ⪯ K ⪯ MI,andletη 0 := ∥ b ∥H d −1 ,η 1 := ∥ ∆ ∥op,H d −1 .ThereexistconstantsC 1 ,C 2 (depending
+onlyonM,η ,η andthelocalregularityfrom(A2))suchthat,forallsufficientlysmall δ ,
+0 1
+∥ ∥
+Hd
+s(θ ) s(θ ) C ε +η +1 δ + C ε +1 δ 2 .
+n − r ≤ 1 ∥ ∥ Hd 0 ∥ ∥ Hd 2 ∥ ∥ Hd ∥ ∥Hd
+Inparticula(cid:12)
+(cid:12)
+r,s(
+·
+)iscontin(cid:12)
+(cid:12)
+uousatθ(cid:0)r andvariesatm(cid:1)ostlinearlywit(cid:0)h
+∥
+δ
+∥
+Hd
+tofi(cid:1)rstorder.
+Sketch. Insert equation B.6 into s(θ) = r ,Pr and whiten with a := H1/2ε, d := H1/2δ,
+⟨ d s ⟩ d d
+˜b:=H−1/2b,∆˜ :=H−1/2∆H−1/2,K :=H1/2PH1/2towrite(cf.AppendixB.3)
+d d d d d
+s(θ) = a⊤Ka a⊤K˜b a⊤K∆˜a + O( a 3),
+− − ∥ ∥2
+and likewise with a a+d at θ . Expanding s(a+d) s(a) and bounding each term with
+n
+→ −
+K = M, ∆˜ η , ˜b = η yields the stated linear-plus-quadratic control in d =
+op op 1 2 0 2
+∥ ∥ ∥ ∥ ≤ ∥ ∥ ∥ ∥
+δ .
+∥ ∥
+Hd
+22
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+CorollaryB.9(Uniformanti-alignmentinaball). Assumes(θ ) µforsomemarginµ > 0.
+r
+≤ −
+Choose
+ρ > 0 suchthat C ε +η +1 ρ + C ε +1 ρ2 µ.
+1 ∥ ∥ Hd 0 2 ∥ ∥ Hd ≤ 2
+Thens(θ)
+≤−
+µ/2<0foreverynei(cid:0)ghborθwith
+∥
+θ
+−
+(cid:1) θ r
+∥
+Hd
+≤
+(cid:0)ρ. (cid:1)
+UniformNeonimprovementforasetofneighbors. Let θ : θ θ ρ beanyfinite
+N ⊆{ ∥ −
+r
+∥
+Hd
+≤ }
+collectionofneighborcheckpoints. Performoneshortsyntheticfine-tuneateachθ (samefrozen
+q)toobtainθ (θ)=θ αPr (θ)+O(α2),anddefinetheNeonmergeθ (θ)=( ∈ 1+ N w)θ wθ (θ).
+s s Neon s
+− −
+Theorem B.10 (Single w that safely improves all neighbors). Suppose s(θ) < 0 for all θ
+∈ N
+(e.g.,byCor.B.9). Assumeeither(i)H (θ) := 2 (θ) 0forallθ ,or(ii)auniform
+d data
+∇ R ⪰ ∈ N
+directionalcurvatureboundholds:
+d(θ)⊤ 2 θ+τd(θ) d b (θ) L d(θ) 2 forallθ , τ [0,τ ],
+∇ R data ≤ dir ∥ ∥2 ∈N ∈ 0
+whered(θ):=Pr s (θ). Le(cid:0)t (cid:1)
+s :=mins(θ) < 0, Q :=maxr (θ)⊤P⊤H (θ)P r (θ) (orL d(θ) 2under(ii)).
+min θ∈N max θ∈N s d s dir ∥ ∥2
+Thenany
+b
+2s
+min
+0 < w <
+−αQ
+max
+guarantees θ (θ) (θ)(uptoO((wα)3))foreveryθ .
+data Neon data
+R ≤R ∈N
+(cid:0) (cid:1)
+Proof. Applytheone-stepexpansionfromThm.B.1ateachθ andtaketheworst-case(most
+∈N
+conservative)quadraticcoefficientandthemostnegativelinearterm.
+RemarkB.11(Practicaltakeaway). Ifasinglebasecheckpointθ exhibitsanti-alignmentwithmargin
+r
+(negatives(θ )),thenallsufficientlycloseneighborsinherits(θ)<0andthusbenefitfromthesame
+r
+Neonrecipe. Inpractice,onecaneither(a)chooseasingleconservativewthatsafelyimprovesan
+entirevalidation-selectedpoolofnearbymodels,or(b)tunewpercheckpointusingitslocals(θ)
+andcurvatureproxy.
+Remark B.12 (Cross-architecture transfer). The same frozen sampler q can safely improve a
+θr,κ
+nearbycheckpointfromadifferentarchitecture,providedthetwomodelsarecloseinthedata-risk
+geometry.
+Concretely, let models (A) and (B) share the same per-example loss ℓ and data, with H(A) :=
+θ d
+2 (θ∗) and
+H(B)
+:= 2 (θ∗) their (population) Hessians at the same minimizer θ∗.
+G ∇ en R er d a a t t e a q oncea d tarefer ∇ enc R e d θ a ( t A a )formodel(A),andconsideraneighborθ(B)formodel(B).
+θr,κ r n
+IftheHessiansarespectrallycloseandtheirnormsareequivalentontherelevantsubspace,i.e.there
+exist0<c C < andasmallζ >0suchthat
+≤ ∞
+c ∥ v ∥H d (A) ≤∥ v ∥H d (B) ≤ C ∥ v ∥H d (A) and H d
+(B)
+− H d
+(A)
+op,(cid:16)H d (A) (cid:17) −1 ≤ ζ,
+(cid:13) (cid:13)
+andthesampler-inducedtermsareclose, (cid:13) (cid:13)
+∥
+b(B)
+−
+b(A)
+∥(H d (A))−1 + ∥
+∆(B)
+−
+∆(A)
+∥op,(cid:16)H d (A) (cid:17) −1 ≤ ζ,
+thenthealignmentscalarstransferscontinuously:
+s(B)(θ
+n
+(B))
+−
+s(A)(θ
+r
+(A))
+≤ O(ζ) + O ∥ θ n
+(B)
+− θ r
+(A)
+∥H d (A) .
+(cid:12) (cid:12) cross-archmismatch (cid:0) (cid:1)
+(cid:12) (cid:12) neighborshift
+Hence,ifs(A)(θ(A)) µ < 0withmarginand |{ th z e } cross-arc|hitecture{mzismatch}ζ andneighbor
+r
+distancearesmallen
+≤
+oug
+− h,thens(B)(θ(B))remainsnegative.
+Inturn,Thm.B.10providesasingle
+n
+mergeweightwthat(tosecondorder)reduces simultaneouslyforthe(A)and(B)neighbors.
+data
+R
+Practically, using a common preconditioner P defined in a data-geometry (e.g., an empirical H
+d
+estimate)furtherstabilizescross-architecturetransfer.
+23
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+B.7 WHENSELF-TRAININGHELPS
+First-ordereffectofself-training. Ashortsyntheticfine-tunetakesthestepθ =θ αPr +
+s r s
+O(α2). Thecorrespondingfirst-orderchangeinreal-datariskis −
+(θ ) (θ ) = α r , Pr +O(α2) = αs + O(α2).
+data s data r d s
+R −R − ⟨ ⟩ −
+s
+Thusself-traininghelps(decreases
+data
+)wh|en{sz>0}.
+R
+TheoremB.13(Directionallowerboundfors). Forθ =θ∗+εwith ε small,
+r
+∥ ∥
+Hd
+s (m Mη ) ε 2 Mη ε cosφ + O( ε 3 ).
+≥ − 1 ∥ ∥Hd − 0 ∥ ∥ Hd − + ∥ ∥Hd
+(cid:2) (cid:3)
+Proof. AllO()arein . Fromthelocalexpansions,
+· ∥·∥
+Hd
+s=ε⊤H PH ε ε⊤H Pb ε⊤H P∆ε + O( ε 3 ).
+d d − d − d ∥ ∥Hd
+Whitenwitha:=H1/2ε,˜b:=H−1/2b,∆˜ :=H−1/2∆H−1/2andK :=H1/2PH1/2toobtain
+d d d d d d
+s = a⊤Ka a⊤K˜b a⊤K∆˜ a + O( a 3).
+− − ∥ ∥2
+Lower bound each term: (i) a⊤Ka m a 2 = m ε 2 . (ii) Write a⊤K˜b =
+≥ ∥ ∥2 ∥ ∥Hd
+K1/2a K1/2˜b cosθ,withθtheEuclideananglebetweenK1/2aandK1/2˜b. Then
+∥ ∥∥ ∥
+a⊤K˜b K1/2a K1/2˜b [ cosθ] M a ˜b cosφ ,
+− ≥ −∥ ∥∥ ∥ − + ≥ − ∥ ∥ 2 ∥ ∥ 2 − +
+where we used K1/2x √M x and identify φ (the H –angle b (cid:2) etween ε (cid:3) and H−1b)
+∥ ∥ ≤ ∥ ∥ d d
+with θ up to whitening. This gives a⊤K˜b Mη ε [ cosφ] . (iii) a⊤K∆˜a
+− ≥ −
+0
+∥ ∥
+Hd
+−
++
+− ≥
+K ∆˜ a 2 Mη ε 2 . Combine(i)–(iii)andabsorbO( a 3).
+−∥ ∥ op ∥ ∥ op ∥ ∥2 ≥− 1 ∥ ∥Hd ∥ ∥2
+CorollaryB.14(Natural-gradientgeometry). IfP =H−1,thenK =I (som=M=1)and
+d
+s (1 η ) ε 2 η ε cosφ + O( ε 3 ).
+≥ − 1 ∥ ∥Hd − 0 ∥ ∥ Hd − + ∥ ∥Hd
+(cid:2) (cid:3)
+Diversity-seekingsamplersmakespositive(locally). Wesayq isdiversity-seekingifq(x)
+∝
+f(logp (x))p (x)withf nonincreasingandnota.e.constant.
+θr θr
+LemmaB.15(Diversity-seeking cosφ 0(firstorder)). IntheNLLspecialization(ϕ = u ,
+θ θ
+H
+d
+=F,b= E
+q
+[u θ∗]),iff isno ⇒ nincreas ≥ ingthen,forθ
+r
+=θ∗+εandsmall ε
+F
+, −
+− ∥ ∥
+cosφ 0 + O( ε ).
+F
+≥ ∥ ∥
+Proof. LetB(x):=ε⊤u θ∗(x). AsinAppendixB.4,logp
+θr
+(x)=logp θ∗(x)+B(x)+O(
+∥
+ε
+∥
+2
+F
+),
+so w(x) = f(logp (x)) is (to first order) a nonincreasing function of B(x). Replacing p by
+θr θr
+p M θ o ∗ n i o n to E n q e [B co ] v = ari E a E p n p θ c θ r e r [w [ w w B ] it ] h in o c p u p r o s s o it n e l m yO on ( o ∥ t ε o ∥ n F ic ) it r ie e s la g ti i v v e es e C rro o r v ,hen ( c w e , E B q ) [B] 0 = ;s E i E n p p c θ θ ∗ e ∗ [w E [w B ] ] + [B O ] ( = ∥ ε 0 ∥ , 2 F w ) e .
+w
+ha
+i
+v
+th
+e
+b
+E
+=
+pθ∗
+−
+[w
+E
+B
+q
+[u
+]
+θ
+≤ ∗]
+0
+w
+,
+e
+so
+ob
+E
+t
+q
+a
+[
+i
+B
+n
+]
+co ≤ sφ
+0t
+=
+ofi
+∥
+r
+ε
+⟨
+s
+∥
+ε
+t
+F
+,F
+o
+∥F
+r
+−
+d
+−
+1
+e
+b
+1
+r
+⟩
+b
+.
+F
+∥
+T
+F
+h
+≥
+ere
+0
+fo
+u
+r
+p
+e
+t
+p
+⟨ o
+θ ε ∗ ,
+O
+F
+(
+∥
+−
+ε
+∥
+1E
+F
+q
+)
+≤
+.
+[u θ∗]
+⟩
+F
+= E p
+q
+θ∗ [B]
+≤
+0,and
+Proposition B.16 (Self-training helps near good models under diversity seeking). Suppose f is
+nonincreasing (diversity seeking) so that Lemma B.15 gives cosφ 0 to first order. Then, for
+≥
+sufficientlysmall ε andη <m/M,
+∥ ∥
+Hd 1
+s (m Mη ) ε 2 + O( ε 3 ) > 0,
+≥ − 1 ∥ ∥Hd ∥ ∥Hd
+andtheself-trainingstepθ θ =θ αPr decreases tofirstorder. Inthenatural-gradient
+r s r s data
+case(P =H−1),itsuffices 7→ thatη <1 − . R
+d 1
+24
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Interpretation. ThelowerboundinThm.B.13isa“quadraticminuslinear”form: thecurvature-
+controlled term (m Mη ) ε 2 pushes s positive, while the bias term subtracts only when
+− 1 ∥ ∥Hd
+cosφ<0. Diversity-seekingsamplershavecosφ 0(LemmaB.15),sotheirleadingbehavioris
+s≳(m Mη ) ε 2 . Hence,closetoagoodmod ≥ el(small ε )andwithmodestcurvaturetilt
+− 1 ∥ ∥Hd ∥ ∥ Hd
+(η small),self-traininghelpswhereasNeon’sreversalwouldnot.
+1
+Examples.
+• HightemperatureinAR(τ >1): q p1/τ (f(z)=e(1/τ−1)z isnonincreasing) diversity-
+∝ θr ⇒
+seeking,cosφ 0tofirstorder.
+≥
+• Anti-modetruncations: proceduresthatdownweightpeaksandupweighttails(e.g.,sampling
+aftercomplementaryfilteringoftop-pmass)arenonincreasingtransformsoflogp ;thesame
+θr
+conclusionapplies.
+B.8 NOTESONFINITESYNTHETICSETANDEFFECTOFSHORTFINE-TUNING
+Themainanalysisassumesaninfinitesyntheticpoolandusesthepopulationsyntheticgradient. In
+practice, we generate one fixed synthetic set and perform a brief fine-tune before Neon. This
+S
+subsectionformalizestheeffectoffinite andshortfine-tuningonthedirectionusedbyNeonand
+S
+onitsdependenceon .
+|S|
+Setup. Fix a synthetic dataset = x n drawn once from q and then kept fixed. Let
+g(x,ζ;θ) Rpbetheper-exampl S egrad { ien i } t i o = f 1 thesyntheticloss(wi θ t r h ,κ internalrandomnessζ,e.g.,
+∈
+diffusiontime/noise),and
+n
+1
+g¯(x;θ):=E g(x,ζ;θ) , r (θ):=E g¯(x;θ) , r(S)(θ):= g¯(x ;θ).
+ζ s x∼qθr,κ s n i
+i=1
+(cid:2) (cid:3) (cid:2) (cid:3) X
+Shortfine-tuning(FT)fromθ usesstepsizeα>0,T steps,andapositive-definitepreconditioner
+r
+P:
+n
+1
+θ =θ αP r , r := g x ,ζ ;θ , k =0,...,T 1, (B.7)
+k+1 k k k i i,k k
+− n −
+i=1
+X (cid:0) (cid:1)
+where ζ
+i,k
+arefreshdrawsebachtimebthefixedexamplesarereused. Letθ
+s
+:=θ
+T
+anddefinethe
+{ }
+scaleddisplacement
+θ θ
+d := s − r Rp.
+T
+αT ∈
+Twofinite-sampleerrors. Dataseterror(finite ): atθ ,
+r
+|S|
+1
+Er(S)(θ ) =r (θ ), Cov r(S)(θ ) = Σ ,
+s r s r s r n data
+(cid:2) (cid:3) (cid:0) (cid:1)
+withΣ :=Cov g¯(x;θ ) . Thisis (n−1/2)andirreducibleunlessngrows.
+data x∼qθr,κ r
+O
+MonteCarlo(MC)errorin(cid:0)time/no(cid:1)ise: write
+r =r(S)(θ )+ξ , E[ξ θ ]=0, Cov(ξ θ )=Σ (θ ).
+k s k k k | k k | k mc k
+Localsmoothnbess. LetH (θ):= r(S)(θ). AssumethereexistsL 0suchthatforallvand
+s θ s dir
+∇ ≥
+τ [0,1],
+∈
+r(S)(θ +τv) r(S)(θ ) τH (θ )v 1L τ2 v 2. (B.8)
+s r − s r − s r 2 ≤ 2 dir ∥ ∥2
+(cid:13) (cid:13)
+LemmaB.17(Sho(cid:13)rt-FTdisplacement). UnderequationB.7(cid:13)andequationB.8,ifαT c/L
+dir
+fora
+(cid:13) (cid:13) ≤
+smallabsoluteconstantc,then
+T−1
+1
+d = P r(S)(θ )+ ξ + αT PH (θ ) r(S)(θ ) .
+T − s r T k ! O ∥ s r ∥ op ∥ s r ∥ 2
+k X =0 (cid:16) (cid:17)
+25
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+PropositionB.18(Directionconcentration). Supposeλ Σ (θ) σ2inaneighborhoodofθ .
+max mc r
+≤
+Thenforanyunitvectoru,
+(cid:0) (cid:1)
+2 P 2 σ2
+E u, d +P r(S)(θ ) ∥ ∥op + C2(αT)2,
+T s r ≤ T
+(cid:20)D E (cid:21)
+whereC dependsonlyonL , PH (θ ) and r(S)(θ ) . Hence,ifT andαT 0,
+dir s r op s r 2
+∥ ∥ ∥ ∥ →∞ →
+P
+d P r(S)(θ ).
+T −−→ − s r
+Learning-ratenote(why“small”helps). LemmaB.17andPropositionB.18showthecurvature
+biasofd scaleslike (αT),whiletheMCvarianceshrinkslike1/T. Thusdecreasingαreduces
+T
+O
+bias (keeps the trajectory in the local linear region) but does not change the 1/T variance term;
+increasingT averagesMCnoisebutincreasesbiasunlessαisreducedsothatαT stayssmall. A
+practicalregimeis
+c P σ
+αT and T largeenoughthat ∥ ∥ op P r(S)(θ ) .
+≤ L
+dir
+√T ≪ ∥ s r ∥ 2
+Quadratic proxy for Neon and finite . Let r (θ ) := (θ) and H :=
+|S| d r ∇ θ R data θr d
+2 (θ) . Define
+∇θR data θr (cid:12)
+(cid:12)
+(cid:12) (cid:12)s
+S
+:= r
+d
+(θ
+r
+), P r
+s
+(S)(θ
+r
+) , z
+S
+:= r
+s
+(S)(θ
+r
+) ⊤ P⊤H
+d
+P r
+s
+(S)(θ
+r
+).
+FortheNeonmerge(cid:10)θ Neon = (1+w)θ r(cid:11) wθ s andsh(cid:0)ortFT,th(cid:1)ereal-riskchangeadmitsthelocal
+−
+expansion
+∆ (w) wαs + 1(wα)2z ,
+R ≈ S 2 S
+withminimizerandminimum
+s s2
+w = S , ∆ S .
+S −αz RS ≈ −2z
+S S
+Usingd asaplug-inestimatefor P r(S)(θ ),sets := r (θ ), d andz := d ,H d .
+T s r T d r T T T d T
+− ⟨ − ⟩ ⟨ ⟩
+Then
+s T =s S + O P T−1/2+αT , z Tb =z S + O P T−1/2+αT b ,
+sow s /(αz )concentratesonw asT andαT 0.
+≈− T T (cid:0) S (cid:1) →∞ → (cid:0) (cid:1)
+RemarkB.19(W b hyperformancevs. isU-shaped) b . Writer
+s
+(S) =r
+s
++ε
+S
+withε
+S
+= P(n−1/2).
+|S| O
+Thebn b b
+s = r ,Pr + r ,Pε , z =r⊤P⊤H Pr + (cross/ε terms).
+S ⟨ d s ⟩ ⟨ d S ⟩ S s d s S
+For very small , variance dominates: s and z are noisy and the attainable improvement
+S S
+∆ s2/(2 | z S| ) is weak. For very large , variance vanishes (ε 0) but the synthetic
+RS ≈ − S S |S| S →
+direction Pr tends to align with high-curvature eigenvectors of H induced by mode-seeking
+s d
+samplers,increasingz fasterthan s grows;consequently ∆ shrinksslightly. Amoderate
+S | S | | RS|
+balances these effects: variance is small enough to stabilize s while the direction has not
+S
+|S|
+collapsedontothesharpestcurvature,keepingz moderate. Thisyieldstheempiricallyobserved
+S
+U-shapedcurveinNeonperformanceasafunctionof .
+|S|
+Takeaway. Withafixed,finitesyntheticsetgeneratedonce,shortfine-tuning(smallα,modestT so
+thatαT issmall)producesavariance-reducedandreliableestimateofthesyntheticgradientdirection
+P r(S)(θ ),stabilizingtheempiricalcoefficients(s ,z )andthemergeweightw. Verysmall is
+s r S S
+|S|
+variance-limited;verylarge inflatesz viacurvature,soabroad,moderate istypicallybest.
+S
+|S| |S|
+B.9 TOYEXPERIMENT
+Now we present a toy experiment to empirically validate and provide deeper intuition for the
+theoreticalresultspresentedinthepaper. Thegoalistocreateacontrolledenvironmentwherewe
+candirectlyobservetheeffectsofsamplerbehavioronself-trainingandmeasurethekeytheoretical
+quantity: thedirectionalalignmentbetweengradients.
+26
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+Setup. The task isto learn a2D Gaussiandistribution, (µ ,Σ ), where the meanis µ =
+ref ref ref
+[0,0]⊤andthecovarianceisΣ =[2,1;1,2]⊤. Weuseas N mallDenoisingDiffusionProbabilistic
+ref
+Model(DDPM)withanMLPbackbone,trainedoverashortdiffusionprocessofT =20stepswith
+acosinenoiseschedule. Abasemodel,θ ,istrainedforalongduration(10,000epochs)onasmall
+r
+datasetofN =103realsampleswithalearningrateof10−4toensureithasconverged.
+base
+To control the sampler’s behavior during synthetic data generation, we introduce a scalar hy-
+perparameter, ζ, which directly scales the model’s score. The standard score is defined as
+s (x ,t)= ϵ (x ,t)/√1 α¯ ,whereϵ isthemodel’snoiseprediction. Duringsampling,weuse
+θ t θ t t θ
+− −
+amodifiedscore,s˜ (x ,t)=ζ s (x ,t),togeneratesamples. Thisallowsustopreciselycontrol
+θ t θ t
+·
+thesampler’scharacteristics:
+• ζ >1: Thesamplerbecomesmode-seeking.
+• ζ <1: Thesamplerbecomesdiversity-seeking.
+• ζ =1: Thesamplerisneutral.
+Experiment1: FIDvs. MergeWeight. Inourfirstexperiment,wevalidatethemainpredictionof
+ourpaper. Wegeneratesyntheticdatasetsusingamode-seekingsampler(ζ =1.1)andadiversity-
+seekingsampler(ζ = 0.9). Wethenfine-tuneθ oneachofthesedatasetstoobtainaself-trained
+r
+modelθ . Weformamergedmodelviatheone-parameterextrapolationformula:
+s
+θ =(1+w)θ wθ =θ w(θ θ )
+w r s r s r
+− − −
+Apositiveweight(w > 0)correspondstoNeon’snegativeextrapolation,movingawayfromthe
+self-trainedmodel. Anegativeweight(w <0)correspondstopositiveextrapolation(interpolation).
+Letting w = α for α > 0, the formula becomes θ = (1 α)θ + αθ , which is standard
+w r s
+− −
+interpolationandequivalenttoastepofself-training.
+The results, shown in Figure B.1, perfectly match our theory. For the mode-seeking sampler,
+the optimal FID is achieved at w∗ > 0, demonstrating that negative extrapolation (Neon) helps.
+Conversely,forthediversity-seekingsampler,theoptimalFIDisachievedatw∗ <0,showingthat
+positiveextrapolation(self-training)isbeneficial.
+0
+−0.5
+−1
+−1.5
+−2
+−1 −0.5 0 0.5 1
+MergeWeight(w)
+)DIF(
+gol
+01
+FIDvs.wafter50FTEpochs
+0
+ζ=0.9(Diversity-seeking)
+ζ=1.1(Mode-seeking)
+−0.5
+−1
+−1.5
+−2
+−1 −0.5 0 0.5 1
+MergeWeight(w)
+)DIF(
+gol
+01
+FIDvs.wafter250FTEpochs
+ζ=0.9(Diversity-seeking)
+ζ=1.1(Mode-seeking)
+FigureB.1: FIDvs. MergeWeight(w)validation. Forthemode-seekingsampler(ζ =1.1),the
+optimalFIDisatw >0(Neonhelps). Forthediversity-seekingsampler(ζ =0.9),theoptimumisat
+w <0(self-traininghelps).
+Experiment2: GradientAlignmentvs. SamplerType. Inoursecondexperiment,wedirectly
+measurethedirectionalalignmentbetweentherealandsyntheticgradientsbycomputingtheircosine
+similarity, cos(ϑ) = ⟨rd,PAdamrs⟩ . We estimate the population real-data gradient r and the
+∥rd∥PAdam ∥rs∥PAdam d
+AdampreconditionerP fromalargesetofN =105realsamples. Wethensweepthescore
+Adam pop
+scaleζ acrosstherange[0.8,1.25]andcomputethecosinesimilarityforeachvalue.
+The results in Figure B.2 provide a clear visualization of the alignment direction. The cosine
+similarityispositivefordiversity-seekingsamplers(ζ <1),correspondingtoanacuteanglebetween
+thegradients. Thisconfirmstheyarealigned,andself-trainingshouldhelp. Thesimilaritybecomes
+27
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+negativeformode-seekingsamplers(ζ >1),correspondingtoanobtuseangle. Thisconfirmsthey
+areanti-aligned,andnegativeextrapolation(Neon)isthecorrectapproach. Furthermore,wenote
+thatattheneutralpointζ = 1,thecosinesimilarityisstillnegative. Thisprovidesapowerful
+validationofourtheoreticalfinding(AppendixB.5)thatanypractical,finite-stepODEsolver—which
+our DDPM sampler is an instance of—introduces a small discretization error that is inherently
+mode-seeking,thusproducinganegativealignmentevenwithoutexplicitscorescaling.
+0.5
+0
+−0.5
+0.8 0.9 1 1.1 1.2
+SamplerScoreScale(ζ)
+)ϑ(socytiralimiSenisoC
+GradientCosineSimilarityvs.SamplerType
+FigureB.2: Directmeasurementofthegradientalignmentdirection. Thecosinesimilaritycos(ϑ)
+ispositivefordiversity-seekingsamplers(ζ <1)andnegativeformode-seekingsamplers(ζ >1),
+crossingzeroattheneutralpointζ =1.
+28
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+C EXPERIMENTS DETAILS
+AkeyadvantageofNeonisitsimplementationsimplicity. Givenanexistingtrainingandgeneration
+scriptforabasemodel,Neonrequiresonlyaminimaladdonscriptthattakestwomodelcheckpoints
+andaweightwtoconstructthefinalmodelparameters. Toensurereproducibilityandbuilddirectly
+onpriorwork,allourexperimentsstartfromofficialpubliccodebasesandusepubliclyavailablepre
+trainedcheckpointsasourbasemodels. Therepositoriesweusedforeachmodelfamilyarelisted
+below:
+• DiffusionModels(EDM):NVlabs/edm
+• FlowMatching: atong01/conditional-flow-matching
+• AutoregressiveModels(VAR,xAR):FoundationVision/VARandOliverRensu/xAR
+• FewStepModels(IMM):lumalabs/imm
+Forthefinetuningstage,weadherecloselytothedefaulttrainingconfigurationsproposedbythe
+originalauthorsforeachmodel. Ourprimarymodificationinvolvesadaptingthelearningratepolicy
+forthefinetuningcontext. Thistypicallymeansusingasmalltargetlearningrate,whichinsome
+casesisreachedviaalinearwarmupschedule. Allothersettings,suchastheoptimizerandbatch
+size,remainunchanged. Duringthisprocess,wesavemodelcheckpointsperiodically(typicallyevery
+250kor500kimagesseen)toevaluateperformanceoverthecourseoftraining.
+Ourevaluationprocedureisasfollows. Foreachsavedcheckpoint,weperformahyperparameter
+search to find the optimal merge weight w (and CFG scale γ, where applicable). This search is
+conductedbygenerating10ksamplespersettingtocalculateapreliminaryFIDscore. Oncethe
+optimalhyperparametersareidentified,wegenerateafinalsetof50ksamplestocomputethefinal
+FIDscorereportedinthispaper.
+Below,wedetailthespecificconfigurationsforeachexperiment.
+EDM-VPonCIFAR-10.
+• Generation: Generatedwith-steps=18 -rho=7 -S_churn=0.
+S
+• Finetuning: Defaultscriptof-cond=1 -arch=ddpmppwithamodified-lr=1e-4. For
+theunconditionalexperiment,thescriptused-cond=0.
+• NeonEvaluation: Gridsearchovermergeweightw [0,3.0].
+∈
+EDM-VPonFFHQ-64.
+• Generation: Generatedwith-steps=40 -rho=7 -S_churn=0.
+S
+• Fine tuning: Default script of -cond=0 -arch=ddpmpp -batch=256
+-cres=1,2,2,2 -dropout=0.05 -augment=0.15withamodified-lr=4e-6.
+• NeonEvaluation: Gridsearchovermergeweightw [0,3.0].
+∈
+FlowMatchingonCIFAR-10.
+• Generation: Generatedusingthedopri5ODEsolverwith-integration-steps=100.
+S
+• Fine tuning: Default script of -ema_decay=0.9999 with a modified learning rate of
+-lr=2e-4.
+• NeonEvaluation: Gridsearchovermergeweightw [0,3.0].
+∈
+xAR-BonImageNet-256.
+• Generation: Generatedwith-cfg=2.7 -flow_steps=40 -num_iter=256.
+S
+• Fine tuning: Default script of -model=xar_base -vae_embed_dim=16
+-vae_stride=16 with a modified -blr=1e-6, using a linear warmup schedule over
+the7Miimagesseen.
+• NeonEvaluation: Jointgridsearchovermergeweightw [0,3.0]andCFGscaleγ [2.7,5.0].
+∈ ∈
+29
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+xAR-LonImageNet-256.
+• Generation: Generatedwith-cfg=2.3 -flow_steps=50 -num_iter=256.
+S
+• Fine tuning: Default script of -model=xar_large -vae_embed_dim=16
+-vae_stride=16 with a modified -blr=1e-6, using a linear warmup schedule over
+the7Miimagesseen.
+• NeonEvaluation: Jointgridsearchovermergeweightw [0,3.0]andCFGscaleγ [2.3,5.0].
+∈ ∈
+VAR-d16onImageNet-256.
+• Generation: Generated with -cfg=1.25 -top_k=900 -top_p=0.95
+S
+-model_depth=16.
+• Finetuning: Defaultscriptof-depth=16 -bs=786 -fp16=1 -alng=1e-4,modified
+tousealinearwarmuptoatargetlearningrateof1e-5over7.5Miimagesseen.
+• Neon Evaluation: Joint grid search over merge weight w [0,2.0] and CFG scale γ
+∈ ∈
+[1.25,4.0].
+VAR-d30onImageNet-512.
+• Generation: Generated with -cfg=2.0 -top_k=900 -top_p=0.95
+S
+-model_depth=16.
+• Finetuning: Defaultscriptof-depth=36 -bs=24 -fp16=1 -alng=5e-6 -saln=1
+-pn=512,modifiedtousealinearwarmuptoatargetlearningrateof1e-5over3Miimages
+seen.
+• NeonEvaluation: Jointgridsearchovermergeweightw [0,2.0]andCFGscaleγ [2.0,4.5].
+∈ ∈
+IMMonImageNet-256.
+• Generation: Generated using the imagenet256_ts_a2.pkl model with -T=8
+S
+-cfg_scale=1.5.
+• Finetuning: Defaulttrainingscriptwithamodifiedlearningrateof-lr=1e-6.
+• Neon Evaluation: For each T 1,2,4,8 , a joint grid search over w [0,5.0] and γ
+∈ { } ∈ ∈
+[1.0,3.0].
+MetricCalculationDetails. FortheEDMandflowmatchingmodels,weusedtheofficialFID
+calculation script from the NVlabs/edm repository. The pre computed reference statistics were
+downloadedfromtheURLprovidedbytheauthors. Forallautoregressive(xAR,VAR)andfew
+step(IMM)models,weusedthetorch-fidelitylibrary. ThereferencestatisticsforImageNet
+weresourcedfromtheopenai/guided-diffusionrepository. ForPrecisionandRecall,weextracted
+InceptionV3featuresandcomputedthemetricsusingtheprdclibrarywithk =5.
+PracticalNoteonNormalizationLayers. TheNeonmerge,θ =(1+w)θ wθ ,isapplied
+Neon r s
+−
+directlytomodelparameters. ThearchitecturesinourexperimentsuseLayerNorm,GroupNorm,
+or RMSNorm; since these do not have running statistics, no special handling (e.g., recomputing
+statisticswithaforwardpass)isrequired.
+PracticalNoteonMaskBuffers. TheNeonmergeappliesonlytothelearnedparameters(θ)ofa
+model. ArchitectureslikexARmayusefixedbuffersforattentionmaskscontaininginfinityvalues.
+Thesebuffersarenotparametersandshouldbeexcludedfromthemerge. Wefollowthestandard
+practiceofcopyingallbuffersdirectlyfromthebasemodelθ .
+r
+PracticalNoteonNumericalPrecision. Somemodelsusehalfprecision(fp16). Performingthe
+mergedirectlyinfp16using(1+w)θ wθ cancausenumericaloverflow. Toensurestability,
+r s
+−
+werecommendoneoftwoapproaches:
+1. Performthemergeinfp16usingthemorestableformula: θ w(θ θ ).
+r s r
+− −
+30
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+2. Castweightstoahigherprecision(e.g.,fp32)beforemerging,thencastbacktofp16.
+Weusethefirstapproachinourimplementationforitsstabilityandefficiency.
+PracticalNoteonEfficientHyperparameterSearch. Whileweperformedafullgridsearchfor
+thoroughness,amoreefficientsearchispossibleinpractice. Therelationshipbetweenthemerge
+weightwandFIDisstronglyunimodalandlocallyquadratic. Forfindinganoptimalw,onecanuse
+standard1DoptimizationalgorithmslikeBrent’sMethod(Brent,1973). Forjointlyoptimizingwand
+γ,thisextendstofittinga2Dquadraticsurface,whichwefoundrequiresonlysixwell-distributed
+pointstofindanear-optimalconfiguration.
+31
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+D ADDITIONAL EXPERIMENTS FOR DIFFUSION AND FLOW MATCHING
+MODELS
+Weextendtheprecision-recallanalysisfromSection4.1toadditionaldiffusionandflowmatching
+experiments. FigureD.1presentsthecompleteFID,precision,andrecallcurvesasafunctionof
+mergeweightwforEDM-VPonFFHQ-64andFlowMatchingonCIFAR-10.
+ForEDM-VPonFFHQ-64(toprow),weobservesimilardynamicstothosediscussedinthemain
+text. TheFIDcurvesexhibitthecharacteristicU-shapewithoptimalvaluesaroundw 1.0–1.5,
+≈
+achievingFIDaslowas1.12fromabaselineof2.39. Theprecisionmonotonicallydecreaseswith
+increasing w, dropping from approximately 0.78 to 0.40 as w increases from 0 to 3. The recall
+showstheexpectedinverted-Upattern,peakingneartheFID-optimalweightanddemonstratingthat
+Neon’simprovementstemsfromrecoveringunder-representedmodes. Asthefine-tuningbudget
+increasesfrom1.5Mito3Mi,theeffectsbecomemorepronounced: theFIDimprovementdeepens,
+theprecisiondropsteepens,andtherecallpeaksharpens.
+ForFlowMatchingonCIFAR-10(bottomrow),thepatternisconsistentbutwithmodel-specific
+characteristics. ThebaselineFIDof3.5improvesto2.32atoptimalw 1.0. Theprecision-recall
+≈
+trade-off is lessextreme thanfor EDM-VP, with precision declining from approximately 0.73 to
+0.55andrecallpeakingaround0.72. Thissuggeststhatflowmatchingmodelsmayhaveadifferent
+modecoverageprofilecomparedtodiffusionmodels, butstillbenefitfromNeon’sredistribution
+mechanism. Theoptimalmergeweightremainsrelativelystableacrossdifferentfine-tuningbudgets,
+indicatingrobustdegradationdirectionsforthisarchitecture.
+3
+2.5
+2
+1.5
+1
+0 1 2 3
+w
+DIF
+EDM-VP|FFHQ-64
+0.8
+0.6
+0.4
+0 1 2 3
+w
+noisicerP
+EDM-VP|FFHQ-64
+0.8
+0.75
+0.7
+0.65
+0.6
+0 1 2 3
+w
+llaceR
+EDM-VP|FFHQ-64
+4
+3.5
+3
+2.5
+2
+0 1 2 3
+w
+DIF
+FlowMatching|CIFAR-10
+0.75
+0.7
+0.65
+0.6
+0.55
+0 1 2 3
+w
+noisicerP
+FlowMatching|CIFAR-10
+0.7
+0.65
+0.6
+0 1 2 3
+w
+llaceR
+|B|1.5Mi |B|1.5Mi |B|1.5Mi
+2Mi 2Mi 2Mi
+2.5Mi 2.5Mi 2.5Mi 3Mi 3Mi 3Mi
+FlowMatching|CIFAR-10
+|B|1.5Mi |B|1.5Mi |B|1.5Mi 2.25Mi 2.25Mi 2.25Mi
+3Mi 3Mi 3Mi
+3.75Mi 3.75Mi 3.75Mi
+FigureD.1: Neon’sprecision-recalltrade-offacrossdiffusionandflowmatchingarchitectures.
+FID,precision,andrecallasfunctionsofmergeweightwforEDM-VPonFFHQ-64with =18k
+|S|
+(toprow)andFlowMatchingonCIFAR-10with = 25k(bottomrow),shownacrossdifferent
+|S|
+fine-tuningbudgets . Botharchitecturesexhibitthecharacteristicpattern: FIDreachesaminimum
+B
+atintermediatewvalues,precisionmonotonicallydecreases,andrecallfollowsaninverted-Ucurve
+peakingneartheFIDoptimum.
+32
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+E XAR-B ON IMAGENET-256 SYNTHESIZED IMAGES
+FigureE.1: Neonwith =4.25(Mi),w =1.4,γ =3.8, =750k,FID=1.31
+B |S|
+33
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+F XAR-L ON IMAGENET-256 SYNTHESIZED IMAGES
+FigureF.1: Neonwith =3.75(Mi),w =1.6,γ =2.7, =750k,FID=1.02
+B |S|
+34
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+G VAR-D16 ON IMAGENET-256 SYNTHESIZED IMAGES
+FigureG.1: Neonwith =1.25(Mi),w =1,γ =2.9, =750k,FID=2.01
+B |S|
+35
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+H IMM ON IMAGENET-256 SYNTHESIZED IMAGES
+FigureH.1: Neonwith =1.95(Mi),w =3.6,γ =1.8, =30k,FID=1.45
+B |S|
+36
+Neon: NegativeExtrapolationFromSelf-TrainingImprovesImageGeneration
+I VAR-D36-S ON IMAGENET-512 SYNTHESIZED IMAGES
+FigureI.1: Neonwith =1.20(Mi),w =0.6,γ =3.2, =90k,FID=1.69
+B |S|
+37

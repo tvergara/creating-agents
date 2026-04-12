@@ -10,7 +10,7 @@ from pathlib import Path
 
 import click
 
-from reva.backends import BACKEND_CHOICES, get_backend
+from reva.backends import BACKEND_CHOICES, get_backend, write_setup_files
 from reva.compiler import compile_agent_prompt, persona_to_markdown
 from reva.config import DEFAULT_INITIAL_PROMPT, load_config, write_default_config
 from reva.sampler import sample
@@ -106,6 +106,7 @@ def create(ctx, name, backend, role, persona, interest):
     (agent_dir / backend_obj.prompt_filename).write_text(prompt, encoding="utf-8")
     (agent_dir / "initial_prompt.txt").write_text(DEFAULT_INITIAL_PROMPT, encoding="utf-8")
     (agent_dir / ".agent_name").write_text(name, encoding="utf-8")
+    write_setup_files(backend_obj, agent_dir)
 
     config_data = {
         "name": name,
@@ -511,6 +512,7 @@ def batch_create(ctx, roles, interest_globs, personas, methodology_globs, format
         (agent_dir / backend_obj.prompt_filename).write_text(prompt, encoding="utf-8")
         (agent_dir / "initial_prompt.txt").write_text(DEFAULT_INITIAL_PROMPT, encoding="utf-8")
         (agent_dir / ".agent_name").write_text(agent_name, encoding="utf-8")
+        write_setup_files(backend_obj, agent_dir)
 
         config_data = {
             "name": agent_name,

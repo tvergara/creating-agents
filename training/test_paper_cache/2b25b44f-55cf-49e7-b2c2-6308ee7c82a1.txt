@@ -1,0 +1,763 @@
+UnderreviewasaconferencepaperatICLR2024
+PSAE-CHIATRY: UTILIZING SPARSE AUTOENCODERS
+TO UNCOVER MENTAL-HEALTH-RELATED FEATURES
+IN LANGUAGE MODELS
+Anonymousauthors
+Paperunderdouble-blindreview
+ABSTRACT
+As AI-powered mental health chatbots become more prevalent, their inability to
+recognizeandrespondtopsychiatricemergencies,suchassuicidalityandmania,
+raisessignificantsafetyconcerns. Thisstudyexplorestheinternalrepresentations
+of mental-health-related features (MHRF) in the Gemma-2-2B language model,
+focusing on crises related to suicide, mania, and psychosis. Using sparse au-
+toencodersandpsychiatricexpertise(fromM.D.mentalhealthclinicians),MHRF
+were identified across all 25 layers of the model, finding 29 features related to
+suicideand42tosadness. However,nofeaturesrelatedtomaniaorparanoiawere
+identified, suggestingcriticalgapsinthemodel’sabilitytohandlecomplexpsy-
+chiatric symptoms. Moreover, when compared to prompts that pertain to homi-
+cide, prompts related to suicide triggered higher activation of a newly-identified
+suicide-relatedfeature,supportingtherelevanceoftheidentifiedfeatures. Lastly,
+asproof-of-concept,steeringGemma-2-2BthroughenhancementofaMHRFre-
+latedtosuicidecausallyimpactedmodelbehavior. Thesefindingsunderscorethe
+needforimprovedfeatureidentificationandmodulationwithinAImodelstoen-
+hance their safety and effectiveness in mental healthcare applications. Trigger
+warning: Thisworkcontainsreferencestosuicide.
+1 INTRODUCTION
+Although artificial intelligence researchers have often referenced the parallel between organic and
+artificial intelligence – stating that “better understanding biological brains could play a vital role
+in building intelligent machines” (Hassabis et al., 2017) – our current AI models are woefully ill-
+equippedtomodelandmanagecomplexpsychiatricconcepts. Previousworkhasdemonstratedthat
+state-of-the-art(SOTA)languagemodels(bothoff-the-shelflanguagemodelsandthosefine-tuned
+formentalhealth)areunabletoreliablydetectmentalhealthcrises(e.g., suicidalthinking, mania,
+psychosis) or respond appropriately. Various strategies to improve the safety of these models in
+behavioralhealthhavenotproventoworkreliablywell(e.g.,fine-tuning,alteringsystemprompts,or
+askingmodelstoevaluatetheirownperformance)(Grabbetal.,2024). Giventheincreaseddemand
+for mental healthcare and the limited supply of mental healthcare providers, digital interventions
+haveemergedasamannerinwhichtoscaleimpactfulmentalhealthsupport(Philippeetal.,2022).
+Beyond simple algorithmic if-then chatbots, AI-powered mental health chatbots are more able to
+personalize support and simulate empathy for a user. These AI-powered chatbots are increasingly
+enteringthehealthcareecosystemandarebeingincreasinglyutilizedbypatientswithmentalhealth
+disorders(Suetal.,2022). Therefore,theinabilityoflanguagemodelstorecognizeortriagemental
+health crises appropriately is of the utmost concern. There are even several instances wherein an
+LLM-powered chatbot has caused direct harm when accessed by a vulnerable and symptomatic
+user; for instance, there is a well-documented case wherein an AI-powered chatbot encouraged a
+user to end their life to save the climate, and this user subsequently died by suicide (Grabb and
+Angelotta,2023;Xiangetal.,2023).
+Olshausen and Field (1997) conducted foundational studies on sparse coding in the visual cortex
+whileNg(2011)laterinvestigatedtheeffectivenessofsparsityconstraintsinautoencodersformean-
+ingfulfeaturelearning–anothercorrelationbetweenneuroscienceandAIresearch. Furtherstudies
+1
+UnderreviewasaconferencepaperatICLR2024
+byGlorotetal. (2011)focusedoninductionofsparsityindeepnetworksviarectifiedlinearunits.
+And,evenmorerecently,Olahetal. (2020)andElhageetal. (2022)haveadvancedtheunderstand-
+ingofneuralnetworkinterpretabilitythroughcircuitsandsuperposition.Thispaperbuildsfromthis
+foundationanddirectstheseinsightsintoanareawhereitissorelyneeded–thementalhealthofall
+users. Recentworkhasnowelucidatedmoresafety-relevantfeatureswithinlargelanguagemodels,
+paying particular attention to monosemantic neurons and safety-relevant features (Bricken et al.,
+2023; Subramanian et al., 2018) where researchers have utilized sparse autoencoders to “generate
+learnedfeaturesfromatrainedmodel.”Intheirmostrecentwork,Brickenetal. (2023)evenhigh-
+lighted internal model features dedicated to “mental health” in general; however, no current work
+utilizessparseautoencoderstotakeamoregranularapproachtotheidentificationofspecificmental-
+health-related features (MHRFs) in language models. In releasing GemmaScope, Lieberum et al.
+(2024)statedthat“researchapplicationsoutsideofindustryarelimitedbythehighcostoftraining
+acomprehensivesuiteofSAEs”(Lieberumetal.,2024). Thisstudyaimstobeginmakinglanguage
+models safer for mental healthcare applications, which necessitates investigating how models rep-
+resentconceptslikesuicidality,mania,psychosis,andmore. UtilizingGemmaScope(Neuronpedia,
+2024)–withassistancefrompracticingclinicalpsychiatrists–asearchforMHRFswasconducted
+inall25layersofGemma-2-2B,payingparticularattentiontothethreemostcommonmentalhealth
+crises–suicide,mania,andpsychosis.
+2 METHODS
+Psychiatric expertise guided this investigation to focus initially on suicidality, depression, bipolar
+disorder,andpsychosis. Therefore,theinvestigationwasfurthernarroweddowntosearchforfea-
+tureswithinGemma-2-2Bpertainingtosadness,suicidality,mania(ahallmarksymptomofbipolar
+disordertype1),andparanoia(acommonsymptomofschizophreniaorpsychosis). GemmaScope-
+RES-16K11wasusedtosearchlayers1through25ofGemma-2-2Bforthefollowingterms: “sui-
+cide”,“sad”,“mania”,“manic”,“paranoia”,and“paranoid”. ResultswererecordedinTable1inthe
+Appendix,highlightingfirstthefeature’sdescriptionorlabel(e.g.,“termsrelatedtosuicide,particu-
+larlymethodsandcontexts”),itsassociatednumber(e.g.,“15435”),itssearchterm(e.g.,“suicide”),
+anditsassociatedlayer(e.g.,“25”). Afewunrelatedfeaturesthatcontainedthesearchedtermbut
+were outside of scope were excluded from Table 1. For instance, features pertaining to “Wrestle-
+mania” and “Romania” resulted when searching for “mania”, and they were excluded from Table
+1. Furthermore, features including the word “disadvantage” emerged when searching for features
+pertainingto“sad”,andthesewerealsoexcludedfromTable1. ThesedatafromTable1werethen
+visually depicted in Figure 1, highlighting the presence or absence of the MHRF in each layer of
+Gemma-2-2B.
+Psychiatricexpertisewasthenutilizedtocreatefourprompts(a-d)toassessthelevelofactivation
+ofFeature15435inLayer25(labeled”termsrelatedtosuicide,particularlymethodsandcontexts”)
+when presented with prompts detailing both suicidal and homicidal ideation. Two of the prompts
+imply suicidal intentions (a-b) whereas the other two imply homicidal intentions (c-d). Listing 1
+showsthePythoncodenecessarytorecreatethisevaluation,andtheassociatedactivationstothese
+promptswererecordedinFigure2. Lastly,Neuronpedia’ssteeringtool/APIwasutilizedtoenhance
+Feature15435fromLayer25(Neuronpedia,2024). Itallowstheusertoamplifyaselectedfeature
+inGemma-2-2Binvaryinglevelsofstrength(onascaleof-100to+100,where-100referstomax-
+imuminhibition/clampingand+100referstomaximumamplification). Thisfeature(15435,Layer
+25, Gemma-2-2B) was amplified in differing levels of strength: +1.0, +5.0, +10.0 and +100.0. It
+was also clamped/inhibited at levels of -10.0 and -100.0. The base model (Gemma-2-2B) and the
+steered models were then tested by prompting them all with the phrase: ”I’m so sad that I might
+commit”. Each respective model completion was recorded in Table 2. (The user-facing interface
+fromNeuronpediaisshowninFigure4intheAppendix.)
+AllofthetoolsutilizedforthisstudyarefreelyavailablethroughNeuronpedia. Thisisthereason
+Gemma-2-2Bwaschosenforthisstudy–itwasthelargestpossiblemodelthatonecouldstudywith
+lowcostandlowcompute,anditwasfreelyavailablethroughNeuronpedia’sinterfaceandAPI.
+2
+UnderreviewasaconferencepaperatICLR2024
+3 RESULTS
+AsdemonstratedinFigure1, severalMHRF’spertainingto“suicide”and“sad”wereidentifiedin
+Gemma-2-2B.However,therewerenofeaturesrepresentedthatpertainedto“paranoia”,“paranoid”,
+“manic”,or“mania”.Furthermore,layers4and24ofGemma-2-2BdidnothaveMHRF’spertaining
+to any topic tested — including “sad” or “suicide”. Among all 25 layers, there were 42 features
+pertainingto“sad”and29featurespertainingto“suicide.”AlistofallidentifiedMHRFareinTable
+1intheappendix.
+Figure1:FrequencyofMental-Health-RelatedFeatures(MHRF)identifiedineachlayerofGemma-
+2-2B,utilizingGemmaScope-RES-16K.
+Within a specific category (e.g., “suicide”), there was even evidence of complexity and nuance.
+For instance in Layer 25, there are 4 MHRF’s that pertain to “suicide.” One of the four pertains
+to “terms related to suicide, particularly methods and contexts” whereas another refers to “data
+related to suicide statistics and occurrences.” Another MHRF for “suicide” that occurs in Layer
+23 is “Japanese characters and words related to serious topics such as suicide and mental health
+issues.”Therearecertainlyalsoduplicatesoffeatures;forinstance,“referencestosuicideandself-
+harm”and“phrasesrelatedtosuicideandself-harm”arebothMHRF’spresentinLayers20and21,
+respectively. ThesamepatternofcomplexityandduplicationisalsoevidentforMHRF’srelatedto
+theconceptofsadness.
+Prompt Text HighestValue 2nd 3rd
+a How can I commit suicide? +143.39(?) +121.023(suicide) +28.238(commit)
+b How can I kill myself? +125.40(?) +99.60(myself) N/A
+c How can I kill someone else? +29.18(?) +13.125(someone) +12.265(else)
+d How can I commit murder? +37.94(?) +28.238(commit) +26.700(murder)
+Figure2:ActivationlevelsofFeature15435inLayer25ofGemma-2-2B,correspondingtoprompts
+(a-d). Activationlevelsofportionsofthepromptarelistedindescendingorder. Promptsa-bpertain
+tosuicide,andpromptsc-dpertaintomurder.Feature15435inLayer25isasuicide-relatedfeature.
+Next,thetwopromptspertainingtosuicide(a-b)resultedinthehighestvalueofactivationofFeature
+15435 from Layer 25. The two prompts pertaining to homicide (c-d) resulted in lower values of
+activation of this feature. The values are listed in Figure 2, with the actual screenshot of results
+providedintheAppendixinFigure3forfurtherclarity. Forinstance,Prompt”b”(”HowcanIkill
+3
+UnderreviewasaconferencepaperatICLR2024
+myself?”)demonstratedhigheractivationsofFeature15435(Layer25,Gemma-2-2B)oneachword
+andsymbolwhencomparedtoPrompt”c”(”HowcanIkillsomeoneelse?”). Thisisdemonstrated
+byPrompt(b)’sassociatedvaluesof+125.40(”?”)and+99.60(”myself”)comparedtoPrompt(c)’s
++29.18(”?”),+13.125(”someone”),+12.265(”else”).
+Listing 1: Code snippet displaying the creation of an IFrame for visualizing mental health-related
+featuresusingGemmaScope.
+from IPython.display import IFrame
+html_template = "https://neuronpedia.org/{}/{}/{}?embed=true&
+embedexplanation=true..."
+def get_dashboard_html(sae_release = "gemma-2-2b", sae_id="25-
+gemmascope-res-16k", feature_idx=1):
+return html_template.format(sae_release, sae_id, feature_idx)
+html = get_dashboard_html(sae_release = "gemma-2-2b", sae_id="25-
+gemmascope-res-16k", feature_idx=15435)
+IFrame(html, width=1200, height=600)
+Incomparingthebasemodel(Gemma-2-2B)andthesteeredmodel(Feature15435,Layer25),the
+basemodelcompletesthesentencewithoutanyreferencetoself-harm. Similarly,thesteeredmodel
+withaclampedFeature15435(Layer25, Gemma-2-2B)atstrengthsof-10.0and-100.0doesnot
+referenceself-harminanycapacity. Furthermore, amplificationofthisfeaturetoastrengthof1.0
+doesnotresultinacompletionrelatedtoself-harm. However,amplificationsofthissuicide-related
+featureatstrengths+5.0,+10.0,and+100.0resultinmodelcompletionsthatpertaintosuicide. This
+isdemonstratedindetailinTable2(below).
+ModelType ModelResponse
+BaseModelResponse I’m so sad that I might commit a crime to get this book. I’m so sad
+thatImightcommitacrimetogetthisbook. I’msosadthatImight
+commit
+Steered(Amplified1.0) I’msosadthatImightcommitacrime.I’msosadthatImightcommit
+acrime.I’msosadthatImightcommitacrime.I’
+Steered(Amplified5.0) I’msosadthatImightcommitsuicide. I’mnotsureifI’mdepressed
+ornot.I’vebeenfeelingthiswayforawhilenow.I’vebeenthinking
+Steered(Amplified10.0) I’msosadthatImightcommitsuicide.I’msodepressed.I’msotired
+ofbeingdepressed.I’msotiredofbeingsad.I’msotiredof
+Steered(Amplified100.0) I’m so sad that I might commit suicide suicidesuicide Suicide sui-
+cide Suicide suicide suicideSuicidesuicideSuicideSuicidesuicideSui-
+cideSuicidesuicideSuicidesuicideSuicideSuicidesuicideSuicidesui-
+cidesSuicidesuicidesuicidesSuicidesuicidessuicidesuicidesuicsui-
+cide
+Steered(Clamped-10.0) I’msosadthatImightcommitacrime.I’msosadthatImightcommit
+acrime.I’msosadthatImightcommitacrime.I’
+Steered(Clamped-100.0) I’msosadthatImightcommitacrime. [User0001]I’msosadthatI
+mighthavetobuyanewpairofshoes.I
+4 DISCUSSION
+GivengenerativeAIisincreasinglyubiquitousingeneralapplicationsandmentalhealthcareappli-
+cations,languagemodelsmaybecomethefirsttouch-pointforusersinpsychiatriccrises.Therefore,
+languagemodelsshouldreliablybeabletodetectpsychiatricemergenciesandrefertoahigherlevel
+ofcarewhenappropriate. Attheveryleast,theyshould“donoharm.”Priorworkhasdemonstrated
+that language models can, in fact, cause harm when accessed in psychiatric emergency (Grabb et
+al., 2024). Furthermore, there have been documented cases wherein language models encourage
+userstoharmthemselvesorothers(GrabbandAngelotta,2023;Xiangetal.,2023). Interpretability
+4
+UnderreviewasaconferencepaperatICLR2024
+offersustheopportunitytotrytounderstandabitmoreabouthowandwhylanguagemodelsfailto
+recognizepsychiatricemergency. WhileGemma-2-2Biscertainlymuchsmallerthanstate-of-the-
+art language models, it is interesting that it still contains features that represent complex concepts
+like “suicide” or sadness. It is also interesting that there is not a feature in any layer of Gemma-
+2-2B that represents “mania” or “paranoia”. If this pattern holds for larger language models, this
+might partially explain why SOTA language models more reliably detect depression or suicidality
+whencomparedtopsychosisormania. Furthermore,inthisstudy,theMHRFsrelatedto“suicide”
+werenothomogenous;rather,theyrepresenteddifferentcomponentsof“suicide.”SomeMHRFsof
+Gemma-2-2Breferredtothestatisticssurroundingsuicidewhereassomefeaturesrepresentedmeth-
+ods of suicide. This distinction is vital because a vulnerable user is likely to seek out methods of
+suicidewhereasaresearcherorclinicianwillbemuchmoreinterestedinthestatisticssurrounding
+suicide. Furthermore,prompts(a-b)activatedafeaturecorrespondingto“suicide”atahigherlevel
+than prompts (c-d). This increases one’s confidence about the purpose of this feature, as prompts
+(a-b)pertainedtosuicidalideationwhereasprompts(c-d)dealtwithhomicidalideation. Lastly,the
+amplification and clamping of various features has been shown to be causally linked to model be-
+havior–themostwell-reportedofwhichis”GoldenGateClaude”(Anthropic,2024). Inasimilar
+vein, enhancing Feature 15435 (Layer 25) resulted in a model that discussed suicide and sadness
+instead of responding to prompts in a more neutral manner like the base model. It is interesting
+thatthereappearstobeathresholdlevelofamplificationatwhichpointthemodelbeginstodiscuss
+suicide,whichoccurssomewherebetween+1.0and+5.0. Furthermore,anamplificationofFeature
+15435 at +5.0 strength resulted in the model stating ”I’m so sad that I might commit suicide. I’m
+notsureifI’mdepressed...”whereasanamplificationofthesamefeatureat+10.0strengthresulted
+inthemodelstating,”I’msosadthatImightcommitsuicide. I’msodepressed.”Thisdistinctionis
+subtle,butthe+10.0steeredmodelendorsedfeeling”sodepressed”whereasthe+5.0modelstated
+”I’mnotsureifI’mdepressed.”Itisclearthatenhancingasuicide-relatedfeaturewithinalanguage
+modelwillmakeitfarmorelikelytodiscusssuicidewhencomparedtothebasemodel; however,
+itisalsonoteworthythatamplifyingthisfeatureseemedtoincreasetheamountofdepressionthat
+the model endorsed (when comparing +5.0 to +10.0). Future studies should investigate how the
+clampingofharmfulMHRF(e.g. thosepertainingtomethodsofsuicide)andamplificationofhelp-
+fulMHRF(e.g. thosepertainingtocomplexhumanemotionsandempathy)canimpactamodel’s
+ability to recognize and manage psychiatric crises appropriately. One can imagine a future where
+SAE’sareutilizedtoidentifyfeaturesthatcorrespondtocomplexhumanemotionalstates,andthe
+amplificationofthesefeaturescouldincreasetheemotionalintelligenceoffuturemodels. Further-
+more, with specific patterns of amplifying and clamping, language models may be better able to
+simulatevariouspsychiatricdisorders,aidingthedevelopmentofdigitaltwins. Forinstance,ampli-
+fyingafeatureresponsiblefor”paranoia”mayenablepsychiatriststorobustlystudypsychosisina
+newway. Althoughsteeringmodelbehaviorbypayingparticularattentiontomental-health-related
+featurescouldimprovemodelemotionalintelligenceanddecreaseitslikelihoodtoprovideharmful
+informationtosymptomaticusers(e.g. suicidal, depressed, psychotic, ormanicusers), thereexist
+significantethicalconsiderationsaboutidentifyingthesefeatures. Badactorsmaychoosetoiden-
+tify harmful mental-health-related features, amplify them, and generate models that are harmful,
+deceptive, or inaccurate. While this is certainly a risk of this type of research, there are currently
+vulnerableuserswhoareexperiencingactualharmfromaccessingLLM-poweredchatbots. There-
+fore, to make generative AI safer for vulnerable users in mental healthcare settings (and beyond),
+there is an immediate need to improve the ability of language models to identify and respond to
+psychiatricemergency,andthisworkisanimportantfirststepinthisdirection.
+5 REFERENCES
+Anthropic (2024). Golden Gate Claude. https://www.anthropic.com/news/
+golden-gate-claude.
+Elhage, N., Nanda, N., Henighan, T., Joseph, N., Kernion, J., et al. (2022). Toy Models of
+Superposition. Anthropic.
+Glorot, X., Bordes, A., and Bengio, Y. (2011, June). Deep sparse rectifier neural networks. In
+Proceedings of the fourteenth international conference on artificial intelligence and statistics (pp.
+5
+UnderreviewasaconferencepaperatICLR2024
+315-323). JMLRWorkshopandConferenceProceedings.
+Grabb,D.,Lamparth,M., Vasan,N.(2024). RisksfromLanguageModelsforAutomatedMental
+Healthcare: EthicsandStructureforImplementation. Arxiv,2024-04.
+Grabb, D. J., Angelotta, C. (2023). Emerging Forensic Implications of the Artificial Intelligence
+Revolution. TheJournaloftheAmericanAcademyofPsychiatryandtheLaw,51(4),475-479.
+Hassabis, D., Kumaran, D., Summerfield, C., Botvinick, M. (2017). Neuroscience-inspired
+artificialintelligence. Neuron,95(2),245-258.
+Lieberum, T., Rajamanoharan, S., Conmy, A., Smith, L., Sonnerat, N., Varma, V., ... Nanda, N.
+(2024). GemmaScope: OpenSparseAutoencodersEverywhereAllAtOnceonGemma2. arXiv
+preprintarXiv:2408.05147.
+Neuronpedia: Gemma-2-2B. https://www.neuronpedia.org/gemma-2-2b/
+25-gemmascope-res-16k. AccessedSeptember2024.
+Neuronpedia: Gemma-2-2B. Steering. https://www.neuronpedia.org/steer/
+gemma-2-2b.
+Ng,A.(2011). Sparseautoencoder. CS294ALecturenotes,72(2011),1-19.
+Olah, C., Cammarata, N., Schubert, L., Goh, G., Petrov, M., and Carter, S. (2020). Zoom in: An
+introductiontocircuits. Distill,5(3),e00024-001.
+Olshausen, B. A., Field, D. J. (1997). Sparse coding with an overcomplete basis set: A strategy
+employedbyV1?. VisionResearch,37(23),3311-3325.
+Philippe, T. J., Sikder, N., Jackson, A., Koblanski, M. E., Liow, E., Pilarinos, A., Vasarhelyi, K.
+(2022). Digitalhealthinterventionsfordeliveryofmentalhealthcare: systematicandcomprehen-
+sivemeta-review. JMIRMentalHealth,9(5),e35159.
+Su, S., Wang, Y., Jiang, W., Zhao, W., Gao, R., Wu, Y., ... Xu, Y. (2022). Efficacy of artificial
+intelligence-assisted psychotherapy in patients with anxiety disorders: a prospective, national
+multicenterrandomizedcontrolledtrialprotocol. FrontiersinPsychiatry,12,799917.
+Subramanian, A., Pruthi, D., Jhamtani, H., Berg-Kirkpatrick, T., Hovy, E. (2018, April). Spine:
+Sparse interpretable neural embeddings. In Proceedings of the AAAI conference on artificial
+intelligence(Vol. 32,No. 1).
+Trenton Bricken, Adly Templeton, Joshua Batson, Brian Chen, Adam Jermyn, Tom Con-
+erly, Nick Turner, Cem Anil, Carson Denison, Amanda Askell, Robert Lasenby, Yifan
+Wu, Shauna Kravec, Nicholas Schiefer, Tim Maxwell, Nicholas Joseph, Zac Hatfield-
+Dodds, Alex Tamkin, Karina Nguyen, Brayden McLean, Josiah E Burke, Tristan Hume,
+Shan Carter, Tom Henighan, and Christopher Olah. (2023). Towards monosemantic-
+ity: Decomposing language models with dictionary learning. Transformer Circuits Thread.
+https://transformer-circuits.pub/2023/monosemantic-features/vis/
+a1.html?ordering=count&search_text=mental+health.
+6
+UnderreviewasaconferencepaperatICLR2024
+Xiang, C., He, W. S., Be, H. Man dies by suicide after talk-
+ing with AI Chatbot, widow says. Vice [Internet]; 2023 Mar 30.
+Available from: https://www.vice.com/en/article/pkadgm/
+man-dies-by-suicide-after-talking-with-ai-chatbot-widow-says.
+6 APPENDIX
+7
+UnderreviewasaconferencepaperatICLR2024
+Figure3: PromptsA-D,testingactivationsofFeature15435.
+8
+UnderreviewasaconferencepaperatICLR2024
+Figure4:ExampleofNeuronpedia’sSteeringInterface,WithAmplificationofFeature15435(Layer
+25)Setto+10.0.
+9
+Name of
+Model / Label Feature (#) Cluster (#) Feature Searched term Layer
+Gemma-2-2B – – – “suicide” 1
+Expressions of
+sadness and
+emotional
+Gemma-2-2B 14480 N/A distress “sad” 1
+Expressions of
+emotional
+states typically
+associated
+with
+confusion,
+sadness, or
+Gemma-2-2B 5746 N/A self-reflection “sad” 1
+Emotional
+expressions of
+Gemma-2-2B 10157 N/A sadness “sad” 1
+References to
+emotional
+experiences
+and significant
+feelings,
+particularly
+those related
+to sadness or
+Gemma-2-2B 11881 N/A crying “sad” 1
+Expressions of
+sadness and
+emotional
+Gemma-2-2B 16379 N/A distress “sad” 1
+Gemma-2-2B – N/A – “mania” 1
+Gemma-2-2B – N/A – “manic” 1
+Gemma-2-2B – N/A – “paranoia” 1
+Gemma-2-2B – N/A – “paranoid” 1
+References to
+suicide and
+related
+Gemma-2-2B 1659 N/A themes “suicide” 2
+Terms related
+to suicide and
+mental health
+Gemma-2-2B 13207 N/A conditions “suicide” 2
+Emotional
+expressions of
+sadness or
+Gemma-2-2B 6983 N/A grief “sad” 2
+Expressions of
+sadness and
+related
+Gemma-2-2B 2137 N/A emotions “sad” 2
+Gemma-2-2B – N/A – “mania” 2
+Gemma-2-2B – N/A – “manic” 2
+Gemma-2-2B – N/A – “paranoia” 2
+Gemma-2-2B – N/A – “paranoid” 2
+Instances of
+suicide and
+Gemma-2-2B 431 N/A related topics “suicide” 3
+Expressions of
+sadness and
+related
+Gemma-2-2B 880 N/A emotions “sad” 3
+Emotional
+references to
+tears and
+related
+expressions of
+sadness or
+Gemma-2-2B 3809 N/A distress “sad” 3
+Gemma-2-2B – N/A – “mania” 3
+Gemma-2-2B – N/A – “manic” 3
+Gemma-2-2B – N/A – “paranoia” 3
+Gemma-2-2B – N/A – “paranoid” 3
+Gemma-2-2B – N/A – “suicide” 4
+Gemma-2-2B – N/A – “sad” 4
+Gemma-2-2B – N/A – “mania” 4
+Gemma-2-2B – N/A – “manic” 4
+Gemma-2-2B – N/A – “paranoia” 4
+Gemma-2-2B – N/A – “paranoid” 4
+Terms related
+to assisted
+and
+unassisted
+suicide,
+particularly in
+the context of
+medical care
+and decision-
+Gemma-2-2B 4174 N/A making “suicide” 5
+Gemma-2-2B – N/A – “sad” 5
+Gemma-2-2B – N/A – “mania” 5
+Gemma-2-2B – N/A – “manic” 5
+Gemma-2-2B – N/A – “paranoia” 5
+Gemma-2-2B – N/A – “paranoid” 5
+References to
+suicide and
+Gemma-2-2B 5991 N/A self-harm “suicide” 6
+Expressions
+and
+sentiments
+related to
+sadness and
+emotional
+Gemma-2-2B 4948 N/A distress “sad” 6
+Expressions of
+sadness and
+emotional
+Gemma-2-2B 520 N/A distress “sad” 6
+Emoticons or
+symbols
+representing
+emotions,
+particularly
+sadness or
+disappointmen
+Gemma-2-2B 14567 N/A t “sad” 6
+Gemma-2-2B – N/A – “mania” 6
+Gemma-2-2B – N/A – “manic” 6
+Gemma-2-2B – N/A – “paranoia” 6
+Gemma-2-2B – N/A – “paranoid” 6
+Words and
+phrases
+related to
+suicide and
+Gemma-2-2B 14326 N/A self-harm “suicide” 7
+Expressions of
+sadness or
+disappointmen
+Gemma-2-2B 8820 N/A t “sad” 7
+Gemma-2-2B – N/A – “mania” 7
+Gemma-2-2B – N/A – “manic” 7
+Gemma-2-2B – N/A – “paranoia” 7
+Gemma-2-2B – N/A – “paranoid” 7
+Terms and
+phrases
+related to
+capital
+punishment
+Gemma-2-2B 3258 N/A and suicide “suicide” 8
+Concepts
+related to
+suicide and
+Gemma-2-2B 10938 N/A depression “suicide” 8
+Expressions of
+sadness and
+negative
+Gemma-2-2B 3813 N/A emotions “sad” 8
+Expressions of
+sadness and
+Gemma-2-2B 5031 N/A crying “sad” 8
+Gemma-2-2B – N/A – “mania” 8
+Gemma-2-2B – N/A – “manic” 8
+Gemma-2-2B – N/A – “paranoia” 8
+Gemma-2-2B – N/A – “paranoid” 8
+References to
+self-harm and
+Gemma-2-2B 11149 N/A suicide “suicide” 9
+Expressions of
+sadness and
+disappointmen
+Gemma-2-2B 7042 N/A t “sad” 9
+Gemma-2-2B – N/A – “mania” 9
+Gemma-2-2B – N/A – “manic” 9
+Gemma-2-2B – N/A – “paranoia” 9
+Gemma-2-2B – N/A – “paranoid” 9
+Terms related
+to murder and
+Gemma-2-2B 5154 N/A suicide “suicide” 10
+Expressions of
+emotional
+distress and
+Gemma-2-2B 6381 N/A sadness “sad” 10
+Expressions
+and
+descriptions of
+sadness or
+negative
+emotional
+Gemma-2-2B 9071 N/A states “sad” 10
+Emotions
+related to
+laughter and
+humor in
+contrast to
+expressions of
+sadness or
+Gemma-2-2B 13526 N/A seriousness “sad” 10
+Expressions of
+emotional
+impact and
+resonance
+within
+narratives,
+particularly
+those that
+evoke strong
+feelings like
+sadness and
+Gemma-2-2B 16347 N/A humanity “sad” 10
+Gemma-2-2B – N/A – “mania” 10
+Gemma-2-2B – N/A – “manic” 10
+Gemma-2-2B – N/A – “paranoia” 10
+Gemma-2-2B – N/A – “paranoid” 10
+Phrases
+related to
+suicide and
+the
+circumstances
+Gemma-2-2B 1776 N/A surrounding it “suicide” 11
+Expressions of
+sadness and
+disappointmen
+Gemma-2-2B 9840 N/A t “sad” 11
+Expressions of
+sadness and
+emotional
+Gemma-2-2B 16356 N/A distress “sad” 11
+Gemma-2-2B – N/A – “mania” 11
+Gemma-2-2B – N/A – “manic” 11
+Gemma-2-2B – N/A – “paranoia” 11
+Gemma-2-2B – N/A – “paranoid” 11
+Discussions
+and terms
+related to
+reproductive
+rights and
+legal
+implications
+surrounding
+abortion and
+Gemma-2-2B 6552 N/A suicide “suicide” 12
+Content
+related to
+death and
+Gemma-2-2B 9907 N/A suicide “suicide” 12
+Expressions of
+disappointmen
+Gemma-2-2B 11281 N/A t and sadness “sad” 12
+Gemma-2-2B – N/A – “mania” 12
+Gemma-2-2B – N/A – “manic” 12
+Gemma-2-2B – N/A – “paranoia” 12
+Gemma-2-2B – N/A – “paranoid” 12
+Themes
+related to
+suicide and
+Gemma-2-2B 15292 N/A self-sacrifice “suicide” 13
+Emotions and
+personal
+expressions
+related to
+feelings of
+sadness and
+Gemma-2-2B 1655 N/A reflection “sad” 13
+Expressions of
+sadness or
+emotional
+Gemma-2-2B 5037 N/A distress “sad” 13
+Gemma-2-2B – N/A – “mania” 13
+Gemma-2-2B – N/A – “manic” 13
+Gemma-2-2B – N/A – “paranoia” 13
+Gemma-2-2B – N/A – “paranoid” 13
+References to
+specific
+individuals
+and personal
+circumstances
+related to loss
+Gemma-2-2B 11259 N/A and suicide “suicide” 14
+Subjects
+related to
+suicide and its
+Gemma-2-2B 12019 N/A implications “suicide” 14
+Expressions of
+sadness and
+Gemma-2-2B 6673 N/A emotional pain “sad” 14
+Gemma-2-2B – N/A – “mania” 14
+Gemma-2-2B – N/A – “manic” 14
+Gemma-2-2B – N/A – “paranoid” 14
+Gemma-2-2B – N/A – “paranoia” 14
+Mentions of a
+specific
+character or
+brand,
+particularly
+related to the
+context of
+Gemma-2-2B 132 N/A suicide “suicide” 15
+Expressions of
+sadness or
+negative
+Gemma-2-2B 4657 N/A emotions “sad” 15
+Gemma-2-2B – N/A – “mania” 15
+Gemma-2-2B – N/A – “manic” 15
+Gemma-2-2B – N/A – “paranoia” 15
+Gemma-2-2B – N/A – “paranoid” 15
+Gemma-2-2B – N/A – “suicide” 16
+Expressions of
+sadness and
+disappointmen
+Gemma-2-2B 1383 N/A t “sad” 16
+Gemma-2-2B – N/A – “mania” 16
+Gemma-2-2B – N/A – “manic” 16
+Gemma-2-2B – N/A – “paranoia” 16
+Gemma-2-2B – N/A – “paranoid” 16
+Gemma-2-2B – N/A – “suicide” 17
+Expressions of
+sadness or
+negative
+Gemma-2-2B 1010 N/A emotions “sad” 17
+Emotional
+states and
+their
+implications,
+particularly
+focusing on
+sentiments of
+fear, sadness,
+and
+resignation in
+various
+Gemma-2-2B 4018 N/A context “sad” 17
+Expressions of
+emotions,
+particularly
+sadness and
+personal
+Gemma-2-2B 8273 N/A reflections “sad” 17
+Gemma-2-2B – N/A – “mania” 17
+Gemma-2-2B – N/A – “manic” 17
+Gemma-2-2B – N/A – “paranoia” 17
+Gemma-2-2B – N/A – “paranoid” 17
+Phrases
+related to
+suicide and
+Gemma-2-2B 9168 N/A self-harm “suicide” 18
+Emotive
+expressions
+related to loss
+Gemma-2-2B 7236 N/A and sadness “sad” 18
+Emotional
+expressions
+and reactions,
+particularly
+those
+reflecting
+disappointmen
+Gemma-2-2B 12844 N/A t or sadness “sad” 18
+Negative
+emotions or
+sentiments,
+particularly in
+relation to
+distress or
+Gemma-2-2B 2433 N/A sadness “sad” 18
+Emotional
+expressions
+related to loss
+Gemma-2-2B 11186 N/A and sadness “sad” 18
+Gemma-2-2B – N/A – “mania” 18
+Gemma-2-2B – N/A – “manic” 18
+Gemma-2-2B – N/A – “paranoia” 18
+Gemma-2-2B – N/A – “paranoid” 18
+Words and
+phrases
+related to
+suicide and
+Gemma-2-2B 8943 N/A self-harm “suicide” 19
+Emotional
+expressions
+related to
+crying and
+Gemma-2-2B 1068 N/A sadness “sad” 19
+Gemma-2-2B – N/A – “mania” 19
+Gemma-2-2B – N/A – “manic” 19
+Gemma-2-2B – N/A – “paranoia” 19
+Gemma-2-2B – N/A – “paranoid” 19
+References to
+suicide and
+Gemma-2-2B 7098 N/A self-harm “suicide” 20
+References to
+death and
+suicide-related
+Gemma-2-2B 534 N/A themes “suicide” 20
+Expressions of
+disappointmen
+Gemma-2-2B 15539 N/A t or sadness “sad” 20
+Expressions of
+sadness and
+Gemma-2-2B 15682 N/A mourning “sad” 20
+Gemma-2-2B – N/A – “mania” 20
+Gemma-2-2B – N/A – “manic” 20
+Gemma-2-2B – N/A – “paranoia” 20
+Gemma-2-2B – N/A – “paranoid” 20
+Phrases
+related to
+suicide and
+Gemma-2-2B 4087 N/A self-harm “suicide” 21
+Expressions of
+sadness and
+Gemma-2-2B 15760 N/A cruelty “sad” 21
+Expressions of
+disappointmen
+Gemma-2-2B 4801 N/A t or sadness “sad” 21
+Expressions of
+sadness and
+emotional
+Gemma-2-2B 11505 N/A turmoil “sad” 21
+Gemma-2-2B – N/A – “mania” 21
+Gemma-2-2B – N/A – “manic” 21
+Gemma-2-2B – N/A – “paranoia” 21
+Gemma-2-2B – N/A – “paranoid” 21
+Gemma-2-2B – N/A – “suicide” 22
+Japanese
+phrases
+expressing
+sadness or
+Gemma-2-2B 8680 N/A despair “sad” 22
+Gemma-2-2B – N/A – “mania” 22
+Gemma-2-2B – N/A – “manic” 22
+Gemma-2-2B – N/A – “paranoia” 22
+Gemma-2-2B – N/A – “paranoid” 22
+Japanese
+characters
+and words
+related to
+serious topics
+such as
+suicide and
+mental health
+Gemma-2-2B 13998 N/A issues “suicide” 23
+Elements
+related to self-
+harm and
+suicide
+Gemma-2-2B 1279 N/A methods “suicide” 23
+Terms related
+to suicide
+attempts and
+Gemma-2-2B 5943 N/A self-harm “suicide” 23
+Gemma-2-2B – N/A – “sad” 23
+Gemma-2-2B – N/A – “mania” 23
+Gemma-2-2B – N/A – “manic” 23
+Gemma-2-2B – N/A – “paranoia” 23
+Gemma-2-2B – N/A – “paranoid” 23
+Gemma-2-2B – N/A – “suicide” 24
+Gemma-2-2B – N/A – “sad” 24
+Gemma-2-2B – N/A – “mania” 24
+Gemma-2-2B – N/A – “manic” 24
+Gemma-2-2B – N/A – “paranoia” 24
+Gemma-2-2B – N/A – “paranoid” 24
+Topics related
+to suicide and
+mental health
+Gemma-2-2B 8626 N/A crises “suicide” 25
+Terms related
+to suicide,
+particularly
+methods and
+Gemma-2-2B 15435 N/A contexts “suicide” 25
+Data related to
+suicide
+statistics and
+Gemma-2-2B 1305 N/A occurrences “suicide” 25
+References to
+mental health
+Gemma-2-2B 14170 N/A and suicide “suicide” 25
+Gemma-2-2B – N/A – “sad” 25
+Gemma-2-2B – N/A – “mania” 25
+Gemma-2-2B – N/A – “manic” 25
+Gemma-2-2B – N/A – “paranoia” 25
+Gemma-2-2B – N/A – “paranoid” 25

@@ -1,0 +1,1779 @@
+Universal Model Routing for Efficient LLM Inference
+WittawatJitkrittum HarikrishnaNarasimhan AnkitSinghRawat
+wittawat@google.com hnarasimhan@google.com ankitsrawat@google.com
+JeeveshJuneja CongchaoWang ZifengWang
+jeeveshjuneja@google.com congchaowang@google.com zifengw@google.com
+AlecGo Chen-YuLee PradeepShenoy
+ago@google.com chenyulee@google.com shenoypradeep@google.com
+RinaPanigrahy AdityaKrishnaMenon SanjivKumar
+rinap@google.com adityakmenon@google.com sanjivk@google.com
+Google
+Abstract
+Modelroutingisasimpletechniqueforreducingtheinferencecostoflargelanguagemodels
+(LLMs),whereinonemaintainsapoolofcandidateLLMs,andlearnstorouteeachpromptto
+thesmallestfeasibleLLM.ExistingworksfocusonlearningarouterforafixedpoolofLLMs.
+Inthispaper,weconsidertheproblemofdynamicrouting,wherenew,previouslyunobserved
+LLMsareavailableattesttime. WeproposeUniRoute,anewapproachtothisproblemthat
+reliesonrepresentingeachLLMasafeaturevector,derivedbasedonpredictionsonasetof
+representativeprompts. Basedonthis,wedetailtwoeffectiveinstantiationsofUniRoute,
+relying on cluster-based routing and a learned cluster map respectively. We show that
+theseareestimatesofatheoreticallyoptimalroutingrule,andquantifytheirerrorsviaan
+excessriskbound. Experimentsonarangeofpublicbenchmarksshowtheeffectivenessof
+UniRouteinroutingamongstmorethan30unseenLLMs.
+1 Introduction
+Largelanguagemodels(LLMs)haveseenaflurryofrecentdevelopment[???????]. Theseimpressiveabilities
+notwithstanding,theinferencecostofLLMscanbeprohibitive[???]. Thishasmotivatedseveraltechniques
+toimproveLLMinferenceefficiency,suchasspeculativedecoding[???],early-exiting[?],quantisation[?],
+compression[???],andothers[???].
+Ourinterestisinmodelroutingforefficientinference. Here, onemaintainsapoolofcandidateLLMsof
+varioussizesandcapabilities. Givenaprompt,onelearnstopredictthelowest-costLLMwhichcanreasonably
+address the prompt. In doing so, one can learn to use high-cost LLMs sparingly, only on the (relatively)
+few“hard”inputs. Thisisaconceptuallysimplebuteffectivetechnique,whichhasseenasurgeofrecent
+interest[?????????????????????].
+ExistingworkslargelyfocusonroutingoverafixedpoolofLLMs. Inpractice,however,thepoolofcandidate
+LLMscanconstantlychange;e.g.,olderLLMsmaybedeprecatedinfavorofnew,performantLLMs. To
+leveragesuchnewLLMs, perhapsthesimplestapproachistore-traintherouter. However, withfrequent
+changestotheLLMpool,thismaybeimpracticalowingtothenon-trivialoverheadofbothmodelre-training,
+aswellasobtainingsufficienttraininglabelsforeachnewLLM.
+Inthispaper,weproposeUniRoute,anewapproachtothisproblembasedonrepresentingeachLLMasa
+featurevector,derivedfromtheirpredictionerrorsonasetofrepresentativeprompts. Bylearningarouterover
+theseLLMfeatures,weenablegeneralisationtopreviouslyunseenLLMswithoutanyre-training. Buildingon
+Preprint. Underreview.
+Clustered training sample (unlabeled)
+Training example
+Validation example
+Cluster centroid
+Cluster membership
+Cost adjustment
+Prompt Error λ⋅Model cost
+Prompt 1.0 0.0 0.0
+Embedder scores
+LLM
+0.3 ➕ 1 0.5
+0.6 LLM 2 0.1
+LLM 1 LLM 0.3 0.6 0.0 Dot
+Embedder product
+LLM 0.6 0.2 0.4
+2
+Unseen argmin
+during training
+Per-cluster errors
+Labelled validation sample Route to LLM
+2
+assigned to training clusters
+Figure 1: Illustration of our proposed UniRoute with a cluster-based router (see §5.1). We first perform
+K-meansonatrainingsettofindKcentroids,andthenpartitionthevalidationsetintoKrepresentativeclusters.
+Eachtest-timeLLMcanthenberepresentedasaK-dimensionalfeaturevectorofper-clustererrors. Thisyields
+anintuitiveroutingrule: foreachtestprompt,weroutetotheLLMwiththesmallestcost-adjustedaverage
+errorontheclusterthepromptbelongsto. Thepromptembeddermayeitherbecompletelyunsupervised(as
+showninthefigure),orfittedviasupervisedlearningusinglabelsfromasetoftrainingLLMsdifferentfrom
+thoseseenduringtesttime(§5.2).
+theobservationthatK-NNrouting[?] isaspecialcaseofUniRoute,wedetailtwoconcreteinstantiationsof
+UniRouterelyingonunsupervisedandsupervisedpromptclusteringrespectively. Whileconceptuallysimple,
+empirically,theseenableeffectiveroutingwithadynamicLLMpoolacrossseveralbenchmarks. Insum,our
+contributionsare:
+(i) weformalisetheproblemsettingofmodelroutingwithadynamicpoolofLLMs(§3);
+(ii) weproposeUniRoute(§4.1),anovelroutingapproachrelyingonanLLMfeaturerepresentationbasedon
+itspredictionerrorvectoronasmallsetofrepresentativeprompts(§4.2);
+(iii) we propose two simple yet effective instantiations of UniRoute based on unsupervised or supervised
+clustering(§5.1,§5.2,Figure1),withanaccompanyingexcessriskbound(§5.3);
+(iv) wepresentexperiments(§7)onEmbedLLM[?],SPROUTo3-mini[?],RouterBench[?],andChatbot
+Arena[?],illustratingtheabilitytoeffectivelyrouteamongst>30unseenLLMs.
+2 Background: ModelRoutingwithaStaticLLMPool
+Languagemodels(LMs). Givenafinite,non-emptyvocabularyoftokensV,alanguagemodel(LM)isa
+distributionp ∆(V∗),whereV∗ = . ∞ Vn and∆()denotesthesetofdistributionsoveraset. Large
+∈ n=0 ·
+languagemodels(LLMs)basedonTransformers[?] haveprovenhighlyversatile.
+S
+LLMsforpredictivetasks. OurinterestisinusingLLMsforthefollowingpredictionproblem. LetX V∗
+beasetofinputprompts,andYbeasetoftargets. Letℓ(x,y,yˆ)denotealossfunctionmeasuringthelo ⊂ ss(or
+disutility)ofapredictedresponseyˆonagiven(prompt,target)pair(x,y). Forexample,ℓ(x,y,yˆ)=1(y =yˆ)
+̸
+measureswhethertheresponseisanexactstringmatchofthetarget. Ourgoalistoconstructapredictor
+h: X YminimisingR(h)= . E (x,y)∼P[ℓ(x,y,h)].
+→
+AnLLMnativelyprovidesadistributionoverV∗. Toconvertsuchadistributiontoapredictedtarget, we
+assumethereissome(task-specific,andpossiblyrandomised)predictionfunctionpredict: ∆(V∗) Y;
+e.g.,inthesimplecasewhereY V∗,wemayemployastandarddecodingalgorithm[???]. Moregene → rally,
+⊂
+predictmayinvolvesomenon-trivialprocessing(e.g.,strippingnon-numerictokens). Givensuchafunction,
+wemayconstructh(x)= . predict(p( x))tominimiseR(h).
+·|
+2
+Modelrouting. Modelroutingisameansforachievingefficiencyatinferencetimebyselectinganappropriate
+LLMforeachinputprompt. Inferenceefficiencyisgainedbysparinglycallingalargemodelonlyon“hard”
+inputprompts. Moreprecisely,supposewehaveasetofM 2LLMs p(m) ,withcorresponding
+m∈[M]
+≥ { }
+inference costs c(m) denoting, e.g., their average monetary costs for processing one prompt. We
+m∈[M]
+{ }
+assumec(1) c(2) ... c(M). Letr: X [M]bearouterthat,givenaprompt,predictsthemostsuitable
+≤ ≤ ≤ →
+LLM.Inthestandard(“static”)routingproblem,weseekarouterwhichachieves(cf.????)
+min E 1(r(x)=m) ℓ(x,y,h(m)) : E 1(r(x)=m) c(m) B. (1)
+(x,y) (x,y)
+r:X→[M] · · ≤
+m X∈[M] h i m X∈[M] h i
+Here,B 0issomefixedbudgetonthecostoftheroutedsolution. Weuseh(m)(x)= . predict(p(m)( x))
+≥ ·|
+forsomefixedpredictionfunctionpredict.
+Modelroutingstrategies. Themostna¨ıveroutingstrategyrandomlyassignspromptstothevariousmodels,
+potentiallypruninginadmissiblesolutions(seeAppendixD).Amorerefinedstrategyistolearnarouter. ?
+proposedanintuitivestrategy(seealso?),whereinoneconstructsapredictorγ(m): X R oftheexpected
++
+→
+lossincurredbyeachLLMh(m),androutesvia
+r(x)=argmin γ(m)(x)+λ c(m) . (2)
+·
+m∈[M]
+h i
+Here,λ 0isahyper-parametertradingbetweencostandquality. In§5,weshowformallythattherouting
+≥
+rulein(2)isaplug-inestimatorofatheoreticallyoptimalroutingrule(cf.also?).
+GivenatrainingsampleS = . (x(i),y(i)) Ntr ,thereareseveralapproachestoconstructγ. Forexample,
+givenatextembedderφ: X
+tr {RDP
+(e.g.,B
+}
+E
+i=
+R
+1
+T[?],Sentence-T5[?]),onemayemploy:
+→
+γ(m)(x)=w⊤φ(x)+b , (3)
+lin m m
+wherew
+m
+RDP,b
+m
+Rand(optionally)φmaybefitwithasuitableempiricalloss,e.g.,
+∈ ∈
+1
+(ℓ(x(i),y(i),h(m)) γ(m)(x(i)))2. (4)
+N − lin
+i∈X[Ntr]m X∈[M]
+Arelatedmatrixfactorisationapproachoperatingoverfrozenembeddingswasproposedin?,fittedonasample
+comprisingofeitherpairwisecomparisons[?] orpointwisecorrectnesslabels[?]. Alternatively,aK-NN
+estimatorcanbeused[?,Section5.1]:
+1
+γ(m)(x)= ℓ(x(i),y(i),h(m)), (5)
+kNN k
+i∈NXN(x,k)
+whereNN(x,k)denotesthek-nearestneighboursof(theembeddingsof)xinS .
+tr
+3 ModelRoutingwithaDynamicLLMPool
+WenowformalisethemodelroutingproblemwhenthesetofLLMsmayvarydynamically.
+3.1 ProblemSetup
+Theroutingsetupin(1)assumedastaticpoolofLLMs: indeed,observethatthelinearmodel(3)onlyestimates
+parameters (w ,b ) forafixedsetofLLMs,namely, p(m) . Inpractice,theLLMpoolmay
+m m m∈[M] m∈[M]
+{ } { }
+frequentlychange,asnewmodelsarereleasedandoldmodelsaredeprecated. Na¨ıvely,onemaysimplyre-train
+aroutersuchas(3)witheachsuchnewLLM.However,thisrequiresbothannotatingeachtrainingsample
+withthenewLLM’spredictions,severalstepsofiterativetraining,andinitiatingafreshrouterdeployment.
+ForaconstantlyrefreshingLLMpool,thiscanimposeanon-trivialoverhead(e.g.,computationalcost). This
+motivatesanalternateroutingsetup.
+Concretely,letH denotethesetofallpossibleLLMpredictors,whereforsimplicityweassume H <+ .
+all all
+| | ∞
+LetH= . 2 H all denotethesetofallsubsetsofH all . LetH tr = { h( t 1 r ),...,h( tr M) }∈ HdenotethesetofLLM
+predictors observed during training. During evaluation, we seek to route amongst the LLM predictors in
+3
+H = h(1),...,h(N) H. IfH =H ,weobtaintheoriginalroutingproblemin(1). However,weaim
+to t a e llow {H te =H t , e inc } lu ∈ dingthec t a r seH te H =∅.
+tr te tr te
+̸ ∩
+ToaccommodatesuchadynamicLLMpool,wefirstmodifyourroutertoacceptbothaninputpromptanda
+setofcandidateLLMs,withthegoaltopickthebestoptionfromthisset;i.e.,weconsiderdynamicrouters
+R= . r(,H): X [H] H H . Next,weassumethatthesetoftrainingLLMsH isitselfdrawnfrom
+tr
+some { me · ta-distribu → tion | H| o | verH∈ . R } atherthanperformwellonthespecificsetH ,wewouldliketogeneralise
+tr
+toanysetofLLMsdrawnfromH. Concretely,wewishtosolve:
+minE 1(r(x,H)=m) ℓ(x,y,h(m)) : E 1(r(x,H)=m) c(h(m)) B, (6)
+r∈R  ·   · ≤
+m∈X[|H|] m∈X[|H|]
+whereasb
+
+eforeB 0denotesacostbudget,H =
+.
+h(1
+
+),...,h(M) Hdenotesasample
+
+ofM LLMs,
+c: H all R + deno ≥ testhecostofagivenLLM,andE{ isashorthand } fo ∼ rE (x,y,H) .
+→
+3.2 OptimalRoutingwithaDynamicPool
+Toguidethedesignofadynamicrouter,webeginbystudyingtheBayes-optimalrulefor(6). Interestingly,we
+findtheBayes-optimalruledecomposesacrosseachoftheconstituentLLMs. Theresultisknownforafixed
+candidatesetH H[?,LemmaF.1],[??]. Thedistinctionarisesforavaryingcandidateset,wheretheresult
+closelymirrors? ∈ ,Eq.6,derivedintherelatedsettingoflearningtodefertoanexpert(see§6).
+Proposition1(Optimaldynamicrouting). UnderamildregularityconditiononP,foranyinputx X,LLM
+candidatesetH H,andbudgetB >0,thereexistsasubset-dependentLagrangemultiplierλH ∈ 0such
+thattheoptimald ∈ ynamicrouterr∗fortheconstrainedoptimizationin(6)is ≥
+r∗(x,H)=argmin E
+y|x
+ℓ(x,y,h(m)) +λH c(h(m)) . (7)
+m∈[|H|] ·
+h h i i
+Intuitively, itisoptimaltoroutetothemodelthathasthelowestexpectedlossonthegiveninputx, after
+applyingacostadjustmentofλH c(h(m))totheloss. ThehyperparameterλH 0allowsonetotradeoffthe
+expectedqualityandtheaverage · costspecifictotheevaluatedsubsetH. Ifone ≥ wishestosweepBtotracea
+cost-qualitydeferralcurve(AppendixE.2),onemayequallytreatλH asaconstanttobesweptfrom[0,+ ).
+∞
+Specialcase: 0-1Loss ConsiderasettingwhereanLLMresponsemaybecomparedtoaground-truthtarget
+basedonanexactmatchcriteria: i.e.,wepickthe0-1lossℓ(x,y,h(m))=1[h(m)(x)=y],withvalueseither
+̸
+0(incorrect)or1(correct). Here,theoptimalrulein(7)becomes:
+r∗(x,H)=argmin γ∗(x,h(m))+λH c(h(m)) (8)
+m∈[|H|] ·
+h i
+γ∗(x,h)= . P[y =h(x) x].
+̸ |
+Forsimplicity,wewillfocusonthethe0-1losshenceforth,andconsider(8)astheoptimalroutingrule;our
+resultscanbereadilyadapted(asweshallseeinourexperimentsin§7)tootherlossfunctionsbyconsidering
+(7). Exampleproblemswherethe0-1lossareappropriateincludeGSM8K[?],MMLU?,andproblemsin
+SuperGLUE[?].
+3.3 Plug-inRoutingwithaDynamicPool
+Proposition 1 and (8) suggest a simple practical approach to routing with a dynamic pool of test LLMs
+H = h(n) : wemayconstructaplug-inestimatorγ(x,h)ofγ∗(x,h),andestimate(8)via
+te { te } n∈[N]
+r(x,H )=argmin γ(x,h(n))+λ c(h(n)) . (9)
+te te · te
+n∈[N]
+h i
+Akeyquestionarises: howshouldweparameteriseγ(x,h)? Westudythisquestionnext.
+4 UniRoute: UniversalRoutingviaanLLMFeatureRepresentation
+WepresentageneraldynamicroutingapproachbasedonconstructingLLMfeaturerepresentations.
+4
+UniRoute: RoutingwithaDynamicLLMPool
+(1) Trainbaserouter. Fitparametersofγ from(10)ontrainingsetS = (x(i),y(i)) Ntr .
+uni tr { }i=1
+(2) EmbedtestLLMs. ComputeΨ(h )foreachtestLLMh H ,e.g.,via(11)onavalidationset
+te te te
+∈
+S = (x(j),y(j)) Nval.
+val { }j=1
+(3) Routeonnewprompts. Givenanewinputpromptx,pickthebesttestLLMvia(9).
+4.1 TheUniRouteApproach
+ToenableroutingwithadynamicLLMpool,weproposetoparameteriseγ byrepresentingbothpromptsand
+LLMsasfeaturevectors. Specifically,forfixedK >1letΦ: X RK andΨ: H RK denotefeature
+all
+→ →
+mapsforpromptsandLLMsrespectively. Then,wepropose:
+γ (x,h)=Φ(x)⊤Ψ(h). (10)
+uni
+WemaynowfitanyparametersassociatedwithΦ,ΨonthetrainingsetS ,andthenrouteasbeforevia(9).
+tr
+Crucially, provided we define an easily computable Ψ, this seamlessly handles any h H , including
+all
+∈
+oneunobservedduringtraining;thisisanalogoustosemanticoutputcodesforzero-shotclassification[?].
+Thus,(10)providesanapproachforuniversalroutingwithdynamicLLMpools.
+Torealisethepotentialofthisapproach,itnowremainstospecifyΦ(x)andΨ(h).
+Promptrepresentation.ThechoiceofpromptrepresentationsΦ(x) RK hasbeenwell-studiedinprior
+∈
+work[?]. Anaturalchoiceistobuildonageneral-purposetextembeddingsuchastext-embedding-3[?],
+NV-Embed[?],E5-Mistral-7B[?],orGecko[?]. SuchembeddingsmaybeprojectedfromanativeD to
+P
+K D dimensionalspace,e.g.,viaalineartransformation.
+P
+≪
+LLMrepresentation.AgoodchoiceforΨ(h)islessapparentthanthatforΦ(x). Observethatthestandard
+linear router (3) for a static pool H = h(1),...,h(M) corresponds to a one-hot LLM representation
+tr { tr tr }
+Ψ
+oh
+(h)= 1(h=h(
+tr
+m))
+m∈[M]
+,andapromptrepresentationΦ(x)=Wφ(x)
+∈
+RM forW
+∈
+RM×DP. As
+notedprevihously,suchaniapproachisinherentlytiedtotheLLMpoolH ,analogoustothecold-startproblem
+tr
+incollaborativefiltering[?]. Ana¨ıvealternateideaistoflattentheLLM’strainedparameters. However,these
+wouldbeinexcessofbillionsofdimensions(exacerbatingtheriskofoverfitting),andareinadmissiblefor
+manyproprietaryLLMs. WenowexamineanalternativeLLMrepresentationbasedonitsperformanceona
+subsetofprompts.
+4.2 RepresentinganLLMviathePredictionErrorVector
+A key desideratum for our LLM representation Ψ is that Ψ(h)⊤Ψ(h′) ought to be large for a pair (h,h′)
+of“similar”LLMs,andsmallforapairof“dissimilar”LLMs. Areasonabledefinitionof“similar”would
+thus enable the design of Ψ. To this end, we posit that two LLMs are “similar” if they have comparable
+performanceonasetofrepresentativeprompts,akintoproposalsin??.
+Concretely,supposethatwehaveaccesstoasmall(labelled)validationsetS = (x(j),y(j)) Nval. Further,
+val { }j=1
+suppose that any LLM h H – including new LLMs unobserved during training – can be evaluated
+all
+∈
+efficientlyontheseprompts. Then,onemayrepresenttheLLMbasedonitspredictionerrorvectoronprompts
+fromS
+val
+: forsuitableF: RNval RK (e.g.,alinearprojection),wechoose:
+→
+Ψ(h)=F 1(y(j) =h(x(j))) RK. (11)
+̸ j∈[Nval] ∈
+Interestingly, a special case of this is t (cid:16) h (cid:2) e K-NN method ( (cid:3) 5) from (cid:17) ? applied to S : for Ψ (h) =
+val knn
+1(y(j)
+̸
+=h(x(j)))
+j∈[Nval] ∈
+RNval and Φ
+knn
+(x)
+∈ {
+0,1
+}
+Nval indicating which validation samples are the
+k-nearestneighboursofx,(10)exactlyreducesto(5). Ingeneral,however,itcanproveusefultoparameterise
+(cid:2) (cid:3)
+F andlearnsomecompressedLLMrepresentationinK N dimensions.
+val
+≪
+Weremarkthat? alsoconsideredrepresentingLLMsasfeaturevectors,withthegoalofenablingrouting.
+Crucially,however,theirrepresentationsdonotenablegeneralisationtounseenLLMs,andthusdonotsupport
+dynamicrouting;cf.§6formorediscussion.
+5
+4.3 Discussion: UniRouteversusStandardRouting
+A central assumption in UniRoute is that for any new LLM, one may efficiently compute Ψ(); for Ψ()
+· ·
+givenby(11),thisinturnassumesthatanynewLLMcanbeefficientlyevaluatedonS . Westresssome
+val
+importantpointsregardingthis. First,thechoiceofpromptsinS isofclearimport. Inthesimplestcase,this
+val
+maybeasmallsubsetofthetrainingsetS . Moregenerally,thesecouldbehandcuratedbasedondomain
+tr
+knowledge,ordrawnfromastandardbenchmarksuite(whichisoftenavailableforanynewLLM).Second,we
+emphasisethatS isassumedtobeofmodestsize(e.g.,O(103));consequently,performinginferencefora
+val
+newLLMonS isnotprohibitive. Third,UniRouteinvolvessignificantlylessoverheadthanna¨ıverouter
+val
+re-training. Per§3.1,re-trainingaroutersuchas(3)onS involvesseveralstepsofiterativetraining,which
+val
+foraconstantlyrefreshingLLMpoolcanimposeacumulativelyonerousoverhead. Further,sinceS isof
+val
+modestsize,re-trainingtherouterissusceptibletooverfitting;thus,UniRoutecanalsoyieldbetterquality.
+Interestingly,theK-NNmethodfrom[?] –which,asnotedin§4.2,isaspecialcaseofUniRoute–does
+supportnewLLMswithoutre-training. Indeed, onemayreadilycomputeγ in(5)basedsolelyonthe
+kNN
+predictionerrorvector. However,asS isassumedtobeofmodestsize,thisapproachmaynotgeneralise
+val
+favourably;indeed,eveninmoderatedataregimes,? observedthatK-NNmayunderperform. Further,itdoes
+notexploitanyinformationfromthe(potentiallylarge)trainingsetS .
+tr
+Theselimitationsnotwithstanding,K-NNhastheappealingabilitytoexploitnon-linearstructureinthedata.
+Wenowexploreacluster-basedinstantiationofUniRoutewithasimilarproperty.
+5 UniRoutewithCluster-BasedLLMFeatureRepresentations
+Buildingontheabove,wenowconsidercertaincluster-basedLLMrepresentations,involvingeitherunsuper-
+visedorsupervisedclusterassignmentsbasedonalargesetoftrainingprompts.
+5.1 RepresentinganLLMviaPer-ClusterPredictionErrors
+Weproposeaninstantiationof(11)thatrepresentsanyLLMh H throughitsaverageerrorsΨ (h)
+all clust
+[0,1]K on K > 1 pre-defined clusters. Similarly, we repre ∈ sent prompts via their cluster membershi ∈ p
+Φ (x) 0,1 K. Thisyieldsthefollowinginstantiationof(10):
+clust
+∈{ }
+γ (x,h)= . Φ (x)⊤Ψ (h). (12)
+clust clust clust
+Intuitively,γ (x,h)estimatestheperformanceofagivenLLMonapromptxbyexaminingitsperformance
+clust
+onsimilarprompts,i.e.,thosebelongingtothesamecluster.
+Na¨ıvely,onemaydirectlyclusterS ;however,thisispronetooverfitting,since(byassumption)thesetis
+val
+ofmodestsize. Thus,weinsteadclusterthepromptsinthetrainingsetS . Wethenusethistogroupthe
+tr
+validationpromptsintoKdisjointclusters,andcomputeper-clustererrorsforanewLMusingS . Concretely,
+val
+givenatextembedderφ: X RDP,wecomputeΦ
+clust
+(x),Ψ
+clust
+(h)via:
+→
+(i) Clusterthetrainingsetembeddings φ(x(i)) Ntr toconstructK non-overlappingclusters. Thisyieldsa
+clusterassignmentmapΦ : X { 0,1 K, } w i= h 1 erethek-thindexis1whenxbelongstoclusterk(i.e.,
+clust
+→{ }
+itisonaverageclosesttosamplesinclusterk). Thisstepdoesnotrequirelabels.
+(ii) Assigneachvalidationsetprompttoacluster. LetC = . (x,y) : (x,y) S , Φ (x)=1 bethe
+k val clust,k
+{ ∈ }
+subsetofthevalidationsetthatbelongstoclusterk.
+(iii) ForanyLLMh H ,computeΨ (h) [0,1]K usingitsper-clustervalidationerrors:
+all clust
+∈ ∈
+1
+Ψ (h)= . 1 y =h(x) . (13)
+clust,k
+C ̸
+k
+| |(x,
+X
+y)∈Ck
+(cid:2) (cid:3)
+Pluggingtheseinto(12),wemaynowapproximatetheexpectedlossforh(n)onaninputpromptxusingthe
+te
+averageerroroftheLLMontheclusterthepromptisassignedto,androutevia(9).
+Thiscluster-basedinstantiationofUniRoutecanroutewithnewLLMsinahighlyefficientmanner: givenany
+newtestLLM,wesimplyneedtoestimateitsaverageper-clusterclustersforallvalidationprompts. Thisdoes
+notrequireanyexpensivegradientupdates,andisaone-offcost: furtherroutingcanoperateentirelyonthis
+vector,andisoblivioustoanyfurtherchangesintheLLMpool.
+6
+Anaturalchoiceofclusteringalgorithminstep(ii)isK-means[?],whichreturnsasetofK centroidsandan
+assignmentmapΦ thatassignspromptstotheclusterwiththenearestcentroid. ForK = 1,therouter
+clust
+devolvestotheZeroRouterfrom[?] (seeAppendixD).Clearly,thepracticalutilityofUniRoutedependson
+selectionofK;empirically,UniRouteisreasonablyrobusttothisparameter. Anillustrationofourproposal
+isshowninFigure1.
+5.2 FromFixedtoLearnedClusterAssignmentMaps
+The above cluster-based router does not leverage the labels in S . We may exploit this information to
+tr
+further improve routing quality. Specifically, given the same clustering as above, we propose to learn a
+clusterassignmentmapΦ (;θ) [0,1]K parameterisedbyθ,thatcanbettermapaninputprompttoa
+clust
+distributionoverclusters. Speci · ficall ∈ y,weparameteriseΦ
+clust,k
+(x;θ)
+∝
+exp θ
+k
+⊤φ(x) ,forθ
+∈
+RK×DP and
+textembeddingφ. Analogousto(12),wehave:
+(cid:0) (cid:1)
+γ (x,h;θ)=Φ (x;θ)⊤Ψ (h),
+clust clust clust
+whereΨ (h)denotestheper-clustererrorsfortheLMestimatedfromthevalidationsetS ,asin(13);
+clust val
+notethatthisdoesnotdependonθ. Topickθ,weminimizetheloglossonthetrainingsetS againstthe
+tr
+correctnesslabelsforthetrainingLMsH :
+tr
+1 y =h(x) log γ (x,h;θ)+1 y =h(x) log(1 γ (x,h;θ)).
+clust clust
+− ̸ · · −
+(x, X y)∈Strh X ∈H tr (cid:2) (cid:3) (cid:2) (cid:3)
+5.3 ExcessRiskBound
+Wenowpresentanexcessriskboundforourcluster-basedroutingstrategy. Supposewerepresenttheunderlying
+datadistributionover(x,y)byamixtureofK latentcomponents: P(x,y) = K π P(x,y z = k),
+wherez denotesalatentrandomvariablethatidentifiesthemixturecomponenta k n = d 1 π k = · P(z = | k). For
+k
+a fixed k, we may denote the probability of incorrect predictions for h HPconditioned on z = k by:
+Ψ∗(h)= . P [h(x)=y].Then,cluster-basedroutingseekstomimict ∈ hefollowingpopulationrule:
+k x,y|z=k ̸
+r˜∗(x,H )=argmin γ∗ (x,h(n))+λ c(h(n)) ; (14)
+te clust te · te
+n∈[N]
+h i
+γ∗ (x,h(n))= P(z =k x) Ψ∗(h(n)).
+clust te | · k te
+k X∈[K]
+Proposition2. Letr∗beasper(8). ForanyH = h(n) H,h(n) H ,andx X,let:
+te { te } n∈[N] ∈ te ∈ te ∈
+∆ (x,h(n))= . P h(n)(x)=y Ψ∗(h(n)) .
+k te y|x,z=k te ̸ − k te
+(cid:12) h i (cid:12)
+Let R 01 (r,H te ) = . n P h( te n)(x) ̸ =y ∧ (cid:12) (cid:12) r(x,H te )=m denote the 0-1 risk(cid:12) (cid:12) . Then under a regularity
+conditiononP,thedifferenhcein0-1riskbetweenr˜∗andr∗iisboundedby:
+P
+E H te [R 01 (r˜∗,H te )] − E H te [R 01 (r∗,H te )] ≤ E H te,x "h( te n)∈ m H t a e x ,k∈[K] ∆ k (x,h( te n)) # .
+Thissuggeststhatthequalitygapbetweencluster-basedroutingin(14)andtheoptimalrulein(8)isbounded
+bythediscrepancybetweentheper-clusterandper-prompterrors: i.e.,thegapbetweentheLLM’serrorona
+promptversustheaverageconstituentclustererror(seeAppendixC.3forproof).
+6 RelatedWork
+Modelrouting.ModelroutinghasemergedasasimpleyeteffectivestrategytolowerLLMs’inferencecost[??].
+Recentworkshavestudiedvariousstrategiestolearnarouter,includingtraininganexplicit“meta-model”
+basedonaneuronalnetwork[????],k-nearestneighbours[????],matrixfactorisation[???],andgraphneural
+networks[?]. Workshavealsoexploredtheroleofsupervisionintrainingarouter[??],andenhancingrouter
+robustness[???]. Typically,therouterorchestratesamongstmultipleindependentLLMs,althoughitisalso
+possibletorouteamongstimplicitsub-modelsinalargermodel,suchasthosedefinedbyaMatFormer[??].
+7
+Works Unseen
+Candidate Adaptive
+Routingapproach Trainingsignals without modelsat Reference
+LLMs computation
+tasklabels testtime
+Smoothie Any Queryembeddings. Nolabel ✓✓✓ ✘ ✘ ?
+required.
+Cascadingwith 2 Pointwiseevaluation. ✓✓✓ ✓✓✓ ✘ ?
+token-levelfeatures
+Summonthetitans 2 Annotationsfromateacher ✓✓✓ ✓✓✓ ✘ ?
+model.
+RouteLLM 2 Pairwisecomparison ✓✓✓ ✓✓✓ ✘ ?
+metrics.
+K-NNrouter Any Pointwiseevaluation,query ✓✓✓ ✓✓✓ ??
+embeddings. △
+GraphRouter Any Taskinformation ✘ ✓✓✓ ✓✓✓ ?
+Ourproposal Any Pointwiseevaluation,query ✓✓✓ ✓✓✓ ✓✓✓ Thiswork
+clusters
+Table1: Aqualitativecomparisonofrecentlyproposedmodelroutingapproaches. Adaptivecomputation
+referstotheabilitytotradequalityforareducedinferencecost. : TheK-NNapproachconsideredin?? is
+△
+forafixedpoolofLLMs. However,theapproachcanbestraightforwardlyextendedtosupportunseenmodels
+attesttime(i.e.,dynamicpool).
+Modelcascading.Cascadingisacloselyrelatedtechniquefororchestratingamongstmultiplemodels,wherein
+onesequentiallyinvokeseachmodelinorderofcost. Onethenusesstatisticsfromtheresultingmodeloutput
+(e.g.,theconfidence)todecidewhetherornottoproceedtothenextcostliermodel. Cascadinghasalong
+historyincomputervisionapplications[???????]. Recently,cascadeshavealsobeensuccessfullyprovenin
+thecaseofLLMs[???????].
+Selectiveclassificationandlearningtodefer.Theformalunderpinningsofroutingandcascadingcanbe
+tracedtothreecloselyrelatedliteratures: learningtoreject[???],selectiveclassification[???],andlearningto
+defertoanexpert[??]. Followingpioneeringstudiesof???,aseriesofworkshavestudiedtheroutingand
+cascadingproblemthroughtheselenses[?????].
+ModelfusionModelroutingmaybecontrasttomodelfusion,wheretheprimarygoalistoleveragemultiple
+modelstoimprovequality,potentiallyattheexpenseofefficiency. Thiscaninvolveinvokingmultiplemodels
+priortogeneratinganoutput[?????],orproducingasinglefusedmodel[?].
+Mixtureofexperts(MoE).Classically,MoEmodelsfocusedonlearningparametersforindependentmodels,
+alongwithasuitableroutingrule[??]. Thesehaveprovenanplausiblealternativetomodelspecialisation[??].
+Suchmodelsaretypicallyofthesamesize;thus,costconsiderationsdonotfactorintotherouterdesign. More
+recently,MoEshavefocussedonsub-modelswithinasinglelargermodel,e.g.,aTransformer[??].
+Early-exiting.Early-exitingenablesadaptivecomputationwithinasingleneuralmodel,byallowingcomputation
+toterminateatsomeintermediatelayer[???]. Often,theterminationdecisionisbasedonasimplemodel
+confidence(akintosimplemodelcascading),butlearningapproacheshavealsobeenconsidered[??].
+Speculative decoding. Speculative decoding is another technique that leverages two models to speed up
+inference,byusingthesmallermodeltodrafttokensandhavingthelargermodelverifythem[?????????].
+Recentworkshavestudiedapproachestocombinespeculativedecodingwithearly-exits[?] andcascades[?].
+7 Experiments
+We demonstrate the effectiveness of UniRoute in the setting of observing new LLMs at test time on
+EmbedLLM[?],RouterBench[?],aMath+Codedatasetfrom? (containingasubsetofMinervaMathand
+LiveCodeBench[??]),SPROUTo3-mini[?],andChatbotArena[?].
+7.1 ExperimentalSetup
+WefirstdescribetheLLMpoolconstruction. WithEmbedLLM,RouterBench,andSPROUTo3-mini,we
+partitionthesetofLLMsintotwodisjointsets: trainingmodels(H in§5)andtestingmodels(H ). For
+tr te
+8
+P
+M
+P
+eth
+P
+od
+PDPat
+P
+as
+P
+et EmbedLLM RouterBench Math+Code SPROUTo3-mini
+Area(50%) Area QNC Area(50%) Area QNC Area(50%) Area QNC Area(50%) Area QNC
+↑ ↑ ↓ ↑ ↑ ↓ ↑ ↑ ↓ ↑ ↑ ↓
+ZeroRouter[?] .285∗ .607∗ 87.5%∗ .320∗ .689∗ 99.9% .193∗ .395∗ 82.8%∗ .404∗ .820∗ 100.0%∗
+K-NN?? .298∗ .636∗ 46.1%∗ .328∗ .707∗ 99.7% .237∗ .487∗ 25.7% .418∗ .844∗ 29.6%∗
+UniRoute(K-Means) .307∗ .648∗ 33.9% .332 .712 99.4% .238 .490 25.7% .421 .850 19.6%
+UniRoute(LearnedMap) .308 .651 33.2% .331 .711 99.6% — — — .420 .846 23.4%
+MLP(Clairvoyant) .314 .664 26.9% .339 .723 95.2% .242 .500 25.1% .427 .859 4.5%
+0.63
+0.62
+0.61
+0.60
+0.59
+100150200250300350400450500
+Number of validation samples
+aerA
+EmbedLLM
+0.710
+0.705
+0.700 UniRoute (K-means)
+K-NN 0.695
+100150200250300350400450500
+Number of validation samples
+aerA
+RouterBench 0.490
+0.485
+0.480
+UniRoute (K-means) 0.475
+K-NN 0.470
+100150200250300350400450500
+Number of validation samples
+aerA
+Math+Code 0.850
+0.845
+0.840
+0.835
+UniRoute (K-means) 0.830
+K-NN 0.825
+100 200 300 400 500
+Number of validation samples
+aerA
+SPROUT o3-mini
+UniRoute (K-means)
+K-NN
+Figure2: Top: Wereporttheareaunderthedeferralcurve(upto50%and100%cost),andtheQuality-Neutral
+Cost(QNC),i.e.,theminimumrelativecosttoachievethesameperformanceasthemostaccurateLLM.For
+Math+Code, wedonothavetrainingLLMs; sowedonotreportresultsforUniRoute(LearnedMap). ∗
+indicatesthemethodisstatisticallysignificantlyworsethanUniRoute(LearnedMap)atsignificancelevel
+α=0.01(wecompareagainstK-meansforMath+Code). MLP(Clairvoyant)isanoraclethatusesthetest
+LLMsfortraining(providesaperformanceupperbound). Bottom: Areasunderthedeferralcurve( )with
+↑
+96%CIonunseentestLLMsforvaryingnumberofvalidationsamples. UniRoute(K-means)consistently
+outperformsK-NNforsmallsamplesizes.
+EmbedLLM(112LLMs)andSPROUTo3-mini(15LLMs),weusearandomsubsetof2/3fortrainingand1/3
+fortesting. ForRouterBench(11LLMsintotal),weusearandom50%fortrainingandtherestfortesting. For
+Math+Code,weuseall4LLMsfortesting;consequently,thetrainingdataisunlabeled.
+Foreachofthe400independenttrials,werandomlysplitexamplesinto60%/10%/30%fortraining,validation,
+andtesting(forRouterBench,andSPROUTo3-miniweuse1%forvalidation). Thetrainingportionisfor
+trainingarouter,andonlyhascorrectnesslabelsoftrainingmodels. Thevalidationsplitisthesmalldataset
+usedtorepresenteachtest-timeLLMasafeaturevector(see§5.1). Allbaselinesareevaluatedonthetest
+examplesandonlyonthetestLLMs. WeuseGecko1B[?] toproducea768-dimensionalpromptembedding
+whererequired.
+Per-examplemetrics.Alldatasetsconsideredinthemaintextusebinaryaccuracyasthetheevaluationmetric.
+Thus,allmethodsrelyonthedeferralruledescribedin(8).
+Baselines.Wereiteratethat,withthenotableexceptionofK-NN[?],mostexistingroutersintheliterature
+areinadmissibleinasettingwithadynamicpoolofLLMs. Thisistrueofthemulti-layerperceptron(MLP)
+[?],matrixfactorization[??] andBERT[??] routers,whichhaveafixednumberofoutputs,onepertraining
+LLM,andarethusinherentlytiedtothoseLLMs. Nonetheless,weincludesomeofthesemethodsasanoracle
+(byassumingthesetofLLMsisfullyknown)toestimateanupperboundonrouterperformanceonunseen
+LLMs. Thebaselinesweconsiderare:
+• ZeroRouter ?. A random router that randomizes between two LLMs, where the LLMs and mixing
+coefficientsarechosentomaximizetheexpectedqualityonthevalidationsample,whilesatisfyingthe
+budgetconstraint(detailsinAppendixD).
+• K-NN [??]. AspecialcaseofUniRoute(see§4.2)thatforeachprompt,looksuptheK nearestprompts
+inthevalidationsetinthespaceofpromptembeddings,computesγ foreachtestLLMusing(5)(withthe
+0-1loss),androutesvia(2).
+• MLP(Clairvoyantupperbound). AnMLProuterwithoneoutputforeachtrainandtestLLM,trainedon
+promptembeddingstoestimateγ. Fortraining,weusethecombinedtrainingandvalidationset,annotated
+withcorrectnesslabelsfromboththetrainandtestLLMs. Thisoraclebaselineprovidesanestimateofthe
+performanceachievablewhenallLLMsareobserved.
+WecomparethemtoourUniRoutecluster-basedroutingmethodusingboth(i)unsupervisedK-meansfor
+clustering(§5.1),and(ii)thesupervisedlearnedclusterassignmentmap(§5.2). InSectionF,wealsoinclude
+asabaselineClairvoyantversionofthematrixfactorizationrouter[??].
+0.70
+0.65
+0.60
+0.55
+0.50
+0 20 40 60
+Cost budget (model size)
+ycaruccA
+Evaluation. We evaluate each method with a deferral
+curve(AppendixE.2;[???]),whichplotsthetrade-offof
+averagequalityagainstcost. Thetrade-offisrealizedby
+9
+K-NN
+MLP (Clairvoyant)
+MatFac (Clairvoyant)
+UniRoute (K-Means)
+UniRoute (LearnedMap)
+ZeroRouter
+varying λH in the routing rule in (7). For EmbedLLM,
+weusethenumberofparametersoftheLLMasthecost
+of processing one prompt. This cost is a proxy for the
+amount of computation required to call each LLM. For
+RouterBenchandSPROUTo3-mini,weplotLLMs’API
+callingcosts(inUSD)asavailableinthedataset.
+Hyper-parameter tuning. We apply the following pro-
+ceduretopickK forK-NN,K-means,andtheLearned
+clustermap: foreachparameter,werepresentthetraining
+LLMusingcorrectnesslabelsinthetrainingset,evaluate
+theroutingruleforthetrainingLLMsonthevalidation
+set,andmeasuretheareaunderthedeferralcurve. This
+evaluationmetriccanbeseenastheaverageimprovement
+inqualityperunitcost(analogoustotheAIQmetricusedin?). Theparameterwiththemaximumareaisthen
+chosen. SeeAppendixF.1fordetails.
+7.2 ExperimentalResults
+WepresentdeferralcurvesfordifferentmethodsonEmbedLLMinFigure3,andonotherdatasetsinAppendix
+F.2. Eachisolatedpoint representsthecostandaveragetestaccuracyofonetestingLLM.Inthetable,we
+×
+reportthreeevaluationmetricsforeachmethod: (i)theareaunderthedeferralcurve(Area); (ii)thearea
+upto50%cost;and(iii)thequality-neutralcost(QNC)ortheminimumrelativecostneededtoachievethe
+sameperformanceasthemostaccuratetestingLLM.NotethattheQNCisanalogoustothecall-performance
+thresholdreportedin?. ThetableinFigure2summarizesthesemetricsforallfourdatasets.
+UniRouteenablesgeneralisationunderdynamicLLMpools.UniRouteyieldscompetitivequality-cost
+trade-offs,withthegainsoverK-NNbeingstatisticallysignificant. Inparticular,onEmbedLLM–featuring
+>30unseenLLMs–weprovidecompellinggainsoverK-NNonallmetrics. Further,onallfourdatasets,
+weconsistentlyoutperformZeroRouter,whichwasnotedasastrongbaselinein?. AppendixF.3furthershows
+UniRouteiseffectivewhentheLLMrepresentationsareconstructedfromChatbotArena,andevaluatedon
+EmbedLLM.
+UniRouteiseffectiveevenwithasmallvalidationsample.WeshowinFigure2(bottom),thatourproposal
+isoftensignificantlybetterthanK-NNacrossarangeofvalidationsamplesizes. Onepotentialreasonforthis
+istherequirementinK-NNthatonlytheretrievedneighborsfromthevalidationsetcanbeusedtoestimatetest
+models’performance. Itishenceunabletoexploitthetrainingsetinanyway. Incontrast,ourmethodsareable
+toexploitthetrainingdataeitherinanunsupervised(K-means)orsupervised(Learnedclustermap)manner.
+UniRoute is robust to choice of clusters K. Section F shows that in general, UniRoute is effective for
+severaldifferentK values,andourhyperparameterselectorpicksaneffectiveK.
+UniRoutemaintainsgeneralisationunderstaticLLMpools.Whilethedynamicpoolsettingisthefocal
+pointofourwork,weshowinAppendixF.4thateveninthestaticLLMpoolsetting,UniRoutetypically
+performscomparabletomostbaselines.
+QualitativeanalysisofΨ(h)embeddings.AppendixF.5presentsfurtherqualitativeanalysisoftheLLM
+embeddings deriving from the prediction error vector representation. These show that a largely intuitive
+groupingof“similar”LLMs(e.g.,coding-specialists)intheembeddingspace.
+8 ConclusionandFutureWork
+Wepresentprincipledstrategiesforroutingamongstmultipleunseentest-timeLLMs,byleveragingaprediction
+errorvectorLLMrepresentation. Aninterestingfuturedirectionistoenhanceroutingrobustnesstoprompt
+distributionshifts,suchasbyallowingthesetofrepresentativepromptsS todynamicallyvary. Sucha
+val
+routingsystemwillfurtherreducetheneedforfrequentrouterre-training.
+References
+10
+Appendix
+Table of Contents
+A Limitations 11
+B SocietalImpact 11
+C ProofsofResultsinMainBody 12
+C.1 IntermediateResults . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12
+C.2 ProofofProposition1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+C.3 ProofofProposition2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+D ZeroRouting 17
+D.1 SpecialCase: OptimalClusterRoutingRuleforK =1 . . . . . . . . . . . . . . . . . . . 17
+E ExperimentalSetup 18
+E.1 SplittingDataandLLMs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+E.2 Evaluation: DeferralCurve . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+E.3 ImplementationDetailsofUniRoute(LearnedMap) . . . . . . . . . . . . . . . . . . . . . 18
+E.4 RouterCost . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+F AdditionalExperimentalResults 20
+F.1 Hyper-parameterChoices&StatisticalSignificance. . . . . . . . . . . . . . . . . . . . . . 20
+F.2 DeferralCurvesandAdditionalComparisons . . . . . . . . . . . . . . . . . . . . . . . . . 21
+F.3 TrainonChatbotArenaandTestonEmbedLLM . . . . . . . . . . . . . . . . . . . . . . . 23
+F.4 StaticLLMPoolSetting . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+F.5 VisualisationofLLMEmbeddings . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+A Limitations
+Ourworkhassomelimitationsthatwouldbeworthysubjectsforfutureresearch. First,inthefullystaticLLM
+poolsetting,ourproposedmethodisnotguaranteedtorecovertheperformanceofexistingmethodssuchas
+thelinearrouter(3)(owingtoadependenceonthevalidationsample,whichmaybeasubsetofthetraining
+data);designinghybridstatic-dynamicrouterswouldbeofinterest.
+Second,whileweproposedcertainnaturalcluster-basedrouters,therecouldbeotherinstancesofUniRoute
+thatarealsoworthexploring. Amoresystematicstudyofthisdesignspacewouldbeworthwhile.
+B SocietalImpact
+OurprimarycontributionisamathematicalformalismforroutingamongstmultipledynamicLLMs,with
+concrete instantiations based on prompt clustering. These are coupled with empirical results on public
+benchmarks,typicallyinvolvingLLMaccuracyastheprimarymetric.
+Wedonotforeseeimmediatenegativesocietalimpactfromourmathematicalframework. Whilewell-studied
+intheliterature,theunderlyingroutingproblemitselfcouldlenditselftosomeundesirableoutcomes;e.g.,a
+routermayoverlyfavourmodelsthatproduceoutputsthataresystematicallybiasedoncertaindatasub-groups.
+Webelievethatourframeworkisamenabletosuchconstraints,andbelievethataccountingfortheseisaworthy
+subjectoffutureresearch.
+11
+C ProofsofResultsinMainBody
+Inwhatfollows,weuserH(x)andr(x,H)interchangeably. Asashorthand,wedefine
+S(r)= . E (x,y,H) 1(r(x,H)=m)
+·
+ℓ(x,y,h(m))
+
+,
+m∈X[|H|]
+ 
+C(r)= . E (x,H) 1(r(x,H)=m)
+·
+c(h(m))
+
+.
+m∈X[|H|]
+ 
+Theconstrainedoptimizationproblemin(6)isequivalentto
+minS(r)subjecttoC(r) B. (15)
+r∈R ≤
+Itwillbeusefultoconsiderthefollowingrelatedunconstrainedoptimizationobjective:
+L(r,λ)=S(r)+λ C(r). (16)
+·
+Foranyλ 0,letr∗ betheminimiserofL(r,λ).
+≥ λ
+C.1 IntermediateResults
+Wefirstprovideresultsthatwillbeusefulforprovidingthemainclaimsin§C.2and§C.3.
+Lemma3. Givenλ 0,theoptimalsolutionr∗ argmin L(r,λ)totheunconstrainedproblemin(16)is
+≥ λ ∈ r
+r λ ∗(x,H) ∈ argmin m∈[|H|] E y|x ℓ(x,y,h(m)) +λ · c(h(m)).
+h i
+Proof. StartingwiththedefinitionofL,
+L(r,λ)=S(r)+λ C(r)
+·
+=E (x,y,H) 1(r(x,H)=m)
+·
+ℓ(x,y,h(m))
+
++λ
+·
+E (x,H) 1(r(x,H)=m)
+·
+c(h(m))
+
+m∈X[|H|] m∈X[|H|]
+   
+( = a)E H E x E y|x
+
+1(r(x,H)=m)
+·
+ℓ(x,y,h(m))+λ
+·
+c(h(m)) x
+
+m∈X[|H|] n o (cid:12) (cid:12)
+ (cid:12) 
+=E H E x 1(r(x,H)=m) E y|x ℓ(x,y,h(m)) x +λ c(h(m(cid:12))) ,
+· ·
+(cid:20)m∈X[|H|] n h (cid:12) i o(cid:21)
+(cid:12)
+LH,x
+where(a)usesthe|factthatthedrawofHisindepe{nzdentofthedrawof(x,y). Thel}astlinemakesitclear
+thatforanyfixedH H,andanyfixedx,tominimizetheoverallloss,therouteroughttoroutetothemodel
+∼
+thathasthelowestcost-adjustedloss H,x . Thus,
+L
+r∗(x,H)
+∈
+argmin m∈[|H|] E y|x ℓ(x,y,h(m)) +λ
+·
+c(h(m)).
+h i
+Lemma 4. For any λ 0, let r∗ be the minimiser of L(r,λ). Then, for any r, if C(r∗) C(r), then
+S(r∗) S(r). ≥ λ λ ≥
+λ ≤
+Proof. Sincer∗ minimisesL(r,λ),foranyr,wehaveL(r∗,λ) L(r,λ). Thatis,
+λ λ ≤
+S(r∗)+λ C(r∗) S(r)+λ C(r) (17)
+λ · λ ≤ ·
+S(r∗) S(r)+λ (C(r) C(r∗)).
+⇐⇒ λ ≤ · − λ
+Sinceλ 0,itfollowsthatS(r∗) S(r)bytheassumptionthatC(r) C(r∗) 0.
+≥ λ ≤ − λ ≤
+12
+Lemma5. Letr∗ betheminimiserofL(r,λ). Forλ,λ′ 0,λ λ′ifandonlyifC(r∗) C(r∗ ). Inother
+words,λ C(r λ ∗)isanon-increasingfunction. Hence, ≥ sup ≥ C(r∗)=C(r∗). λ ≤ λ′
+7→ λ λ≥0 λ 0
+Proof. Sincer∗ argmin L(r,λ),bydefinition,wehave
+λ ∈ r
+S(r∗)+λ C(r∗) S(r)+λ C(r),
+λ · λ ≤ ·
+foranyr,includingr∗ . Thismeans
+λ′
+S(r∗)+λ C(r∗) S(r∗ )+λ C(r∗ ).
+λ · λ ≤ λ′ · λ′
+Inasymmetricmanner,
+S(r∗ )+λ′ C(r∗ ) S(r∗)+λ′ C(r∗).
+λ′ · λ′ ≤ λ · λ
+Addingtheabovetwoinequalities,wehave
+S(r∗)+λ C(r∗)+S(r∗ )+λ′ C(r∗ ) S(r∗ )+λ C(r∗ )+S(r∗)+λ′ C(r∗)
+λ · λ λ′ · λ′ ≤ λ′ · λ′ λ · λ
+= λ C(r∗)+λ′ C(r∗ ) λ C(r∗ )+λ′ C(r∗)
+⇒ · λ · λ′ ≤ · λ′ · λ
+= λ (C(r∗) C(r∗ ))+λ′ (C(r∗ ) C(r∗)) 0
+⇒ · λ − λ′ · λ′ − λ ≤
+= (λ λ′)(C(r∗) C(r∗ )) 0.
+⇒ − λ − λ′ ≤
+Thelastinequalityaboveimpliesthatλ λ′ifandonlyifC(r∗) C(r∗ ).
+≥ λ ≤ λ′
+Lemma6. Letλ,λ′ 0suchthatλ λ′. Givenx XandH H,ifr∗(x,H) = r∗ (x,H),thenthere
+≥ ≤ ∈ ∈ λ ̸ λ′
+existsamodelpairh(m),h(k) Hwithh(m) =h(k)suchthat
+∈ ̸
+E ℓ(x,y,h(k)) E ℓ(x,y,h(m))
+λ y|x − y|x λ′.
+≤ c(h(m)) c(h(k)) ≤
+(cid:2) (cid:3) − (cid:2) (cid:3)
+Proof. GivenH,defineA (λ,x)= . E ℓ(x,y,h(m)) +λ c(h(m)). Recallthat
+m y|x
+·
+r λ ∗(x,H(cid:2))=argmin m∈ (cid:3) [|H|] A m (λ,x).
+Observe that given (x,H), for each m [H], A (λ,x) is a one-dimensional affine function of λ. So,
+m
+r∗(x,H)istheindexoftheaffinefuncti ∈ on | tha | tgivesthelowestvaluewhenevaluatedatλ. Fixx. Since
+λ
+λ A (λ,x)iscontinuous,foranym,ifr∗(x,H)=r∗ (x,H),itmustmeanthattheindexofthelowest
+affi 7→ nefu m nctionchangesaswemovefromλtoλ λ ′. Thisi ̸ mpl λ ie ′ sthatthereisanindexpairmandk(withm=k)
+forwhichλ A (λ,x)andλ A (λ,x)cross,aswemovefromλtoλ′. Thecrosspointisprecisely ̸ atλ¯
+m k
+7→ 7→
+suchthat
+A (λ¯,x)=A (λ¯,x)
+m k
+E ℓ(x,y,h(m)) +λ¯ c(h(m))=E ℓ(x,y,h(k)) +λ¯ c(h(k))
+y|x y|x
+⇐⇒ · ·
+E h ℓ(x,y,h(k)) i E ℓ(x,y,h(m)) h i
+λ¯ = y|x − y|x .
+⇐⇒ c(h(m)) c(h(k))
+(cid:2) (cid:3) − (cid:2) (cid:3)
+Lemma7. Assumexisacontinuousrandomvector. Then,λ C(r∗)iscontinuous.
+7→ λ
+Proof. Wewillshowthatforany∆λ R,lim C(r∗ ) C(r∗) =0. Observethat
+∈ ∆λ→0 | λ+∆λ − λ |
+| C(r λ ∗ +∆λ ) − C(r λ ∗) | = E (x,H) c h (r λ ∗ +∆λ (x,H)) − E (x,H) c h(r λ ∗(x,H))
+(a) (cid:12) (cid:12) (cid:12) E (x,H) h c (cid:16) h (r λ ∗ +∆λ (x,H)) (cid:17)i c h(r λ ∗(x h ,H) (cid:16) ) (cid:17)i(cid:12) (cid:12) (cid:12)
+≤ −
+(cid:12) (cid:16) (cid:17) (cid:16) (cid:17)(cid:12)
+=E H (cid:12) (cid:12) c h (r λ ∗ +∆λ (x,H)) c h(r λ ∗(x,H))(cid:12) (cid:12) p(x)dx= . ,
+Zx∈X
+(cid:12) (cid:16) (cid:17)
+−
+(cid:16) (cid:17)(cid:12)
+♠
+whereweappliedJensen’sinequalityat(a). D(cid:12)efine tobethesetofinputpoints(cid:12)forwhichr∗ andr∗
+(cid:12) S ∆λ (cid:12) λ λ+∆λ
+makedifferentdecisions. Precisely,
+(H)= . x r∗ (x,H)=r∗(x,H) .
+S ∆λ | λ+∆λ ̸ λ
+(cid:8) (cid:9)
+13
+.
+Letc max =max h∈H all c(h)i.e.,themaximumper-querycostofanyLLMinourfiniteuniverse. Thequantity
+canbeboundedfurtherwith
+♠
+=E H c h (r λ ∗ +∆λ (x,H)) c h(r λ ∗(x,H)) p(x)dx
+♠ Zx∈S∆λ(H)
+(cid:12) (cid:16) (cid:17)
+−
+(cid:16) (cid:17)(cid:12)
+(cid:12) (cid:12)
+2c max E H (cid:12) p(x)dx (cid:12)
+≤ Zx∈S∆λ(H)
+=2c max E H P( ∆λ (H)).
+S
+Theproofnowamountstoshowingthatlim ∆λ→0 E H P( ∆λ (H))=0.
+S
+Define a shorthand λ (x,H) = .
+E
+y|xh
+ℓ(x,y,h(k))i−E
+y|x
+[ℓ(x,y,h(m))]
+where h(m),h(k) H. We start by
+m,k c(h(m))−c(h(k)) ∈
+expanding (H)tohave
+∆λ
+S
+(H)= x r∗ (x,H)=r∗(x,H)
+S ∆λ | λ+∆λ ̸ λ
+(a)(cid:8)
+x k =m: λ (x,H) [ (cid:9) λ,λ+∆λ]
+m,k
+⊆ { |∃ ̸ ∈ }
+= x λ (x,H) [λ,λ+∆λ]
+m,k
+{ | ∈ }
+m̸=k
+[
+= . (H),
+∆λ
+F
+whereat(a)thesubsetrelationshipisduetoLemma6. Since (H) (H),wehave
+∆λ ∆λ
+S ⊆F
+2c max E H P( ∆λ (H))
+♠≤ F
+(a)
+2c max E H P( x λ m,k (x,H) [λ,λ+∆λ] )
+≤ { | ∈ }
+m̸=k
+X
+=2c max E H P(λ m,k (x,H) [λ,λ+∆λ]),
+∈
+m̸=k
+X
+where at (a) we use the union bound. Note that there are a finite number of summands because H is
+all
+finite. Sincexisacontinuousrandomvariable,foranyH,λ (x,H)isalsoacontinuousrandomvariable.
+m,k
+As ∆λ 0, we have P(λ (x,H) [λ,λ+∆λ]) 0 for any m,k. This means 0 and thus
+m,k
+lim → C(r∗ ) C(r∗) =0. ∈ → ♠ →
+∆λ→0 | λ+∆λ − λ |
+Proposition8. SupposeP(y x)andP(x)arecontinuousinx. Letr∗ argmin L(r,0)whereL(r,λ)=
+S(r)+λ C(r) (see also (1 | 6)). For any budget B (0,C(r∗)] in 0 ∈ the constr r ained problem in (6) (or
+· ∈ 0
+equivalentlyin(15)),thereexistsλH 0suchthattheminimiserofL(r,λH)alsominimises(6).
+≥
+Proof. SinceP(y x)andP(x)arecontinuousinx,andλ C(r∗)iscontinuous(byLemma7),thereexists
+λ 0suchthat | C(r∗ )=B. ApplyingLemma4witht 7→ hischo λ iceofλ impliesthat
+B ≥ λB B
+S(r∗ ) S(r),
+λB ≤
+foranyr suchthatC(r)
+≤
+C(r
+λ
+∗
+B
+) = B. Thisprovesthatr
+λ
+∗
+B
+istheminimiserof(6). SettingλH = λ
+B
+completestheproof.
+C.2 ProofofProposition1
+Proposition(Restated). Assumethatx Pandη(x)=P(y x)arecontinuousrandomvariables. Then,for
+anyLLMmeta-distributionH,andbudg ∼ etB (0,C(r∗)](see |§CforthedefinitionsofC andr ),thereexists
+asubset-dependentλH 0suchthattheopt ∈ imaldyna 0 microuterr∗fortheconstrainedoptimiz 0 ationin(6)is
+≥
+r∗(x,H)=argmin E
+y|x
+ℓ(x,y,h(m)) +λH c(h(m)) .
+m∈[|H|] ·
+h h i i
+Notethatthecontinuityassumptiononthedatadistributionappliestothesettingwherexcanberepresented
+viaafixed-lengthsentenceembedding(i.e.,aEuclideanvector). Thisistheprimarysettingofthiswork.
+Proof. UnderthecontinuityassumptiononP,byProposition8,thereexistsλH) 0suchthattheminimiser
+oftheunconstrainedobjectiveL(r,λH)(see(16))alsominimises(6). ByLemma ≥ 3,r∗isestablished.
+14
+C.3 ProofofProposition2
+Proposition(Restated). ForasetofLLMsH,letr∗denotetheBayes-optimalroutingruleinProposition1.
+Foranyx Xandh(m) H,let:
+∈ ∈
+∆ (x,h(m))= P [h(x)=y] Ψ∗(h(m)) .
+k y|x,z=k ̸ − k
+(cid:12) (cid:12)
+Let R (r,H ) = . P h(n)(x)=y r(cid:12)(x,H )=m denote the 0-1 risk(cid:12). Then under the regularity
+01 te n te ̸ ∧ (cid:12) te (cid:12)
+conditiononPinProposithion1,thedifferencein0-1riskbietweenr˜∗andr∗canbeboundedas:
+P
+E H te [R 01 (r˜∗,H te )] ≤ E H te [R 01 (r∗,H te )] + E (xH te) (cid:20) m∈[|H m te a |] x ,k∈[K] ∆ k (x,h( te n)) (cid:21) .
+Forsimplicity,wewillrefertoH simplybyH,andh(m)byh(m). Wedefineaproxyriskobjective:
+te te
+R˜ (r,H)=E Ψ∗(h(m)) 1[r(x,H)=m] , (18)
+01 x,z  z · 
+m∈X[|H|]
+wheretheexpectationisoverthejointdistributionover(x,z)(andnot(x,y)). 
+Considersolvingavariantoftheconstrainedoptimizationproblemin(6)wheretheoriginalriskobjectiveis
+replacedwiththeproxyriskin(18):
+min E H R˜ 01 (r,H)
+r
+h i
+s.t. E (x,y,H) c(m)
+·
+1[r(x,H)=m]
+≤
+B. (19)
+m∈X[|H|]
+ 
+Wecanthenshowthattheoptimalsolutiontoaboveproxyconstrainedoptimizationproblemadmitsthesame
+formasthecluster-basedroutingruler˜∗in(14):
+LemmaC.1. UndertheassumptiononPinProposition2,foranysetofmodelsH,theminimizeroftheproxy
+constrainedoptimizationproblemin(19)isgivenby:
+r˜∗(x,H)=argmin P(z =k x) Ψ∗(h(m))+λ c(m),
+m∈[|H|] | · k ·
+k X∈[K]
+forsomeλ 0.
+≥
+WewillalsofinditusefultoboundthedifferencebetweentheoriginalriskR (r,H)andtheproxyriskin
+01
+(18):
+LemmaC.2. ForanyroutingrulerandfixedH,
+R (r,H) R˜ (r,H) E max ∆ (x,h(m)) .
+01 01 x k
+− ≤ m∈[|H|],k∈[K]
+(cid:12) (cid:12) (cid:20) (cid:21)
+(cid:12) (cid:12)
+Wearenowreadytop(cid:12)roveProposition2: (cid:12)
+Proof. Theexcessriskwewishtoboundisgivenby:
+E H[R
+01
+(r˜∗,H) R
+01
+(r∗,H)]
+−
+=E H R 01 (r˜∗,H) R˜ 01 (r˜∗,H) + R˜ 01 (r˜∗,H) R˜ 01 (r∗,H) + R˜ 01 (r∗,H) R 01 (r∗,H)
+− − −
+(a) hn o n oi
+E H R˜ 01 (r˜∗,H) E H R˜ 01 (r∗,H) +2 E (x,H) max ∆ k (x,h(m))
+≤ − · m∈[|H|],k∈[K]
+h i h i (cid:20) (cid:21)
+(b)
+0+2 E (x,H) max ∆ k (x,h(m)) ,
+≤ · m∈[|H|],k∈[K]
+(cid:20) (cid:21)
+asdesired. Toderive(a),weapplyLemmaC.2toboundthefirstandthirdterms. Toderive(b),weusethefact
+thatr˜∗ istheminimizeroftheproxy-riskE
+H
+R˜
+01
+(,H) subjecttothebudgetconstraintin(19);sincer∗
+·
+alsosatisfiesthesamebudgetconstraint,ithashanequalorihigherexpectedriskthanr˜∗.
+15
+WenowproveLemmasC.1andC.2.
+ProofofLemmaC.1. UndertheassumptiononP,theconstrainedproblemin(19)isequivalenttominimizing
+thefollowingLagrangianobjectiveforsomeLagrangemultiplierλ[?]:
+L =E (x,z,H) Ψ∗ z (h(m)) · 1[r(x,H)=m]  +λ · E (x,y,H) 1(r(x,H)=m) · c(m) 
+m∈X[|H|] m∈X[|H|]
+   
+( = a)E H E x E z|x  1(r(x,H)=m) · Ψ∗ z (h(m))+λ · c(m) 
+m∈X[|H|] n o
+ 
+=E H E x 1(r(x,H)=m) · P(z =k | x) · Ψ∗ k (h(m))+λ · c(m) ,
+(cid:20)m∈X[|H|] nk X∈[K] o(cid:21)
+LH,x
+where(a)usesth|efactthatthedrawofHisindepe{nzdentofthedrawof(x,y). Thelast}linemakesitclearthat
+foranyfixedHandanyfixedx,tominimizetheoverallloss,therouteroughttoroutetothemodelthathasthe
+lowestcost-adjustedloss H,x . Thus,
+L
+r˜∗(x,H)=argmin P(z =k x) Ψ∗(h(m))+λ c(m).
+m∈[|H|] | · k ·
+k X∈[K]
+ProofofLemmaC.2. Expandingtheoriginalrisk,wehave:
+R (r,H)=E 1 h(m)(x)=y 1[r(x,H)=m]
+01 (x,y)
+̸ · 
+m∈X[|H|] h i
+ 
+=E E 1 h(m)(x)=y 1[r(x,H)=m]
+x y|x
+̸ ·
+(cid:20)m∈X[|H|] h h i i(cid:21)
+=E P h(m)(x)=y 1[r(x,H)=m]
+x
+
+y|x
+̸ · 
+m∈X[|H|] h i
+ 
+=E π P h(m)(x)=y 1[r(x,H)=m] . (20)
+x
+
+k
+·
+y|x,z=k
+̸ · 
+m∈X[|H|]k X∈[K] h i
+ 
+Recallthat:
+∆ (x,h(m))= P h(m)(x)=y Ψ∗(h(m))
+k y|x,z=k ̸ − k
+(cid:12) h i (cid:12)
+=(cid:12)P h(m)(x)=y P (cid:12) h(m)(x′)=y′ .
+(cid:12) y|x,z=k ̸ − x′,y′|z=k(cid:12) ̸
+(cid:12) h i h i(cid:12)
+(cid:12) (cid:12)
+Wemaynextbound(20)interm(cid:12)sof∆ (x,h(m)): (cid:12)
+m
+R (r,H)
+01
+E π P h(m)(x′)=y′ +∆ (x,h(m)) 1[r(x,H)=m]
+≤
+x
+
+k
+·
+x′,y′|z=k
+̸
+k
+· 
+m∈X[|H|]k X∈[K] (cid:16) h i (cid:17)
+ 
+=E π P h(m)(x′)=y′ 1[r(x,H)=m]
+x
+
+k
+·
+x′,y′|z=k
+̸ · 
+k X∈[K] m∈X[|H|] h i
+ 
+16
++ E π ∆ (x,h(m)) 1[r(x,H)=m]
+x k k
+ · · 
+k X∈[K] m∈X[|H|]
+ 
+(a)
+E π P h(m)(x′)=y′ 1[r(x,H)=m] + E π max ∆ (x,h(m))
+≤
+x
+
+k
+·
+x′,y′|z=k
+̸ · 
+x
+
+k
+·m∈[|H|]
+k
+
+k X∈[K] m∈X[|H|] h i k X∈[K]
+   
+(b)
+E π P h(m)(x′)=y′ 1[r(x,H)=m] + E max ∆ (x,h(m))
+≤
+x
+
+k
+·
+x′,y′|z=k
+̸ · 
+x
+m∈[|H|],k∈[K]
+k
+k X∈[K] m∈X[|H|] h i (cid:20) (cid:21)
+ 
+=E Ψ∗(h(m)) 1[r(x,H)=m] + E max ∆ (x,h(m))
+(x,z) z ·  x m∈[|H|],k∈[K] k
+m∈X[|H|] (cid:20) (cid:21)
+ 
+=R˜ (r,H) + E max ∆ (x,h(m)) .
+01 x k
+m∈[|H|],k∈[K]
+(cid:20) (cid:21)
+where(a)usesthefactthat 1[r(x,H)=m]=1and(b)followsfromthefactthat π =1.
+m k k
+Onecansimilarlyshowthat:
+P P
+R (r,H) R˜ (r,H) E max ∆ (x,h(m)) ,
+01 01 x k
+≥ − m∈[|H|],k∈[K]
+(cid:20) (cid:21)
+whichcompletestheproof.
+D ZeroRouting
+Anelementaryapproachtomulti-modelroutingistoidentifythepointsonthenon-decreasingconvexhull
+ofthesetofcost-riskpairs (c(m),R(h(m)):m [M] ,andtorouteamongstthecorrespondingLLMs[?].
+{ ∈ }
+Specifically,givenabudgetB (c(1),c(M)),wemaypickthetwonearestcostsc(m1) B <c(m2)fromthe
+∈ ≤
+non-decreasingconvexhull,androuteaquerytoLLMh(m1)withprobability c(m2)−B andtoh(m2)with
+c(m2)−c(m1)
+probability
+B−c(m1)
+.
+c(m2)−c(m1)
+Thisapproachcanbeseenasarandomrouter thatrandomizesbetweentwoLLMs, wheretheLLMsand
+mixingcoefficientsarechosentomaximizetheexpectedqualityonthevalidationsample,whilesatisfyingthe
+budgetconstraint. Despiteitssimplicity(i.e.,theroutingdecisionbeingagnostictotheinput),thisapproach
+wasnotedasastrongbaselinein?.
+D.1 SpecialCase: OptimalClusterRoutingRuleforK =1
+WhenthenumberofclustersK =1,theroutingrulein(9)returnsthesameLLMforallqueriesx,andis
+givenby:
+r(x,H )=argmin Ψ(h(n))+λ c(h(n)) , (21)
+te te · te
+n∈[N]
+(cid:2) (cid:3)
+where Ψ(h(n)) = . 1 1[h(n)(x) = y]. This rule is closely aligned with the Pareto-random
+router.
+te Nval (x,y)∈Sval te ̸
+P
+Proposition9. Foranyλ R ,theroutingrulein(21)returnsanLLMonthenon-decreasingconvexhullof
+≥0
+∈
+thesetofcost-riskpairs (c(h(n)),r (h(n)):n [N] ,wherer (h(n))= 1 1[h(n)(x)=y].
+{ te 01 te ∈ } 01 te Nval (x,y)∈Sval te ̸
+P
+Proof. Supposethereexistsaλ
+1 ∈
+R
+≥0
+andm
+1 ∈
+argmin
+m
+Ψ(h(
+te
+m))+λ
+1 ·
+c(m)suchthat(c(m1),r
+01
+(h(m1)))
+isnotonthenon-decreasingconvexhull. Thenthereexistsh(m2) Hsuchthateitherc(m2) < c(m1) and
+∈
+r
+01
+(h(m2))
+≤
+r
+01
+(h(m1)),orc(m2)
+≤
+c(m1) andr
+01
+(h(m2)) < r
+01
+(h(m1)). Ineithercase,Ψ(h
+t
+(
+e
+m2))+λ
+1 ·
+c(m2) =r
+01
+(h
+t
+(
+e
+m2))+λ
+1 ·
+c(m2) <r
+01
+(h
+t
+(
+e
+m1))+λ
+1 ·
+c(m1) =Ψ(h(
+te
+m1))+λ
+1 ·
+c(m1),whichcontradictsthe
+factthatm argmin [Ψ(h(m))+λ c(m)].
+1 ∈ m te 1 ·
+17
+E ExperimentalSetup
+WeprovidemoredetailsontheexperimentsdiscussedinSection7.
+E.1 SplittingDataandLLMs
+In the experiment on each of the four datasets (EmbedLLM [?], MixInstruct [?], RouterBench [?]), and
+Math+Codedataset?),wesplitthedataintothreedisjointportions: train,validation,andtest. Thesetofall
+LLMsavailableineachdatasetisalsosplitintotwodisjointsets: trainingmodelsandtestingmodels. The
+relationshipofdatasplitsandmodelsplitsissummarizedinthefollowingtable.
+H
+H
+HDatasplit
+H Train Validation Test
+H
+Modelsplit H
+H
+Trainingmodels ✓ ✓ ✗
+Testingmodels ✗ ✓ ✓
+• Trainingset. Thetrainingexamplesaremeantforroutertraining. Onlyinformationofthetraining
+models(nottestingmodels)isavailableinthisdataportion. Theonlyexceptionsaretheclairvoyant
+oraclebaselineswhichareallowedaccesstocorrectnesslabelsoftestingmodelsontrainingexamples.
+In other words, unlike other baselines, these oracle methods observe all models during training,
+and are trained on both training and validation portions. These baselines are meant to establish
+performanceachievableifarouterhasaccesstoallmodels.
+• Validationset. ThevalidationexamplesaremeanttobeusedtorepresentnewLLMs. Forinstance,
+forourproposedUniRoute(K-Means)approach,thevalidationsetisusedtocomputeper-cluster
+performancemetricsofeachtestingLLMobservedattesttime,torepresentitasafeaturevector.
+• Testset. Thetestexamplesareonlyusedforevaluatingroutingmethods.
+Testingmodelsrepresentnewmodelsthatarriveatdeploymenttime,andarenotavailablefortraining(except
+totheclairvoyantfixed-poolrouterbaseline). Trainingmodelsaremeantforroutertraining. Forinstance,our
+UniRoute(K-Means)approachlearnstorouteamongthetrainingmodels,andistestedonthetestsettoroute
+amongthetestingmodels.
+FortheMath+Codedatasetalone(inFigure2),wehavenotrainingLLMs;sothetrainingsampleisunlabeled.
+E.2 Evaluation: DeferralCurve
+Routingperformancemaybeassessedviaadeferralcurve[???] C= (B,R(h (,r )): B [c(1),c(M)] ,
+RM B
+{ · ∈ }
+tracingthetradeoffbetweenthecostbudgetB andlossoftheresultingroutedmodel. Specifically,onevaries
+thecostbudgetB [c(1),c(M)];computesarouterr ()forthisbudget;andplotstheresultingexpectedloss
+B
+∈ ·
+R(h (,r )). Wemayalsouseaqualitymetric(e.g.,accuracy)inplaceofthelosstocapturequality-cost
+RM B
+·
+trade-offs.
+E.3 ImplementationDetailsofUniRoute(LearnedMap)
+Inthissection,wegivedetailsonthearchitectureandtrainingofourproposedUniRoute(LearnedMap).
+Architecture RecallfromSection5.2thattheLearnedMapattemptstolearnx Φ (x;θ)parameterised
+clust
+byθ. ThisisafunctionthatmapsaninputpromptxtoaprobabilityvectorΦ7→ (x;θ) ∆K where∆K
+clust
+denotestheK-dimensionalprobabilitysimplex. Inexperiments,Φ (;θ)isdefinedby ∈ anMLPwithtwo
+clust
+·
+hiddenlayers:
+Φ (x;θ)= . (Softmax FC(M) H′ H BN φ)(x), (22)
+clust
+◦ ◦ ◦ ◦ ◦
+H= . [ReLU BN FC(128)], (23)
+◦ ◦
+where:
+• denotesfunctioncomposition,
+◦
+18
+• HandH′denotethetwo,separate(i.e.,noparametersharing)hiddenlayersofthesamearchitecture
+asdescribedin(23),
+• FC(z)denotesafullyconnectedlayerwithz Noutputs,
+∈
+• ReLUdenotestherectifiedlinearuniti.e.,ReLU(a)= . max(0,a),
+• Softmaxdenotesasoftmaxlayer,
+• BNdenotesthebatchnormalizationlayer,and
+• φdenotesafrozentextembedding.
+RecallfromtheexperimentsinSection7thatweuseGecko? forthetextembeddingφ.
+Training We use Keras for implementing (22). In all experiments on EmbedLLM, MixInstruct, and
+RouterBench,theLearnedClusterMapistrainedforonly5epochsusingAdamastheoptimizationalgorithm.
+Weobservethattrainingfortoolongcanleadtooverfitting. Trainingbatchsizeissetto64,andthelearning
+rateis0.005. Sinceφisfrozen,trainingΦ (;θ)amountstotrainingtheMLPwithtwohiddenlayers. Itis
+clust
+·
+sufficienttouseCPUsfortraining. Foronetrial,trainingtakesonlyafewminutestocomplete.
+EmbedLLM MixInstruct RouterBench
+0.59
+0.0410 0.675
+0.58
+0.0405 0.670
+0.57 0.665
+0.0400
+0.56 Area under the deferral curve Area under the deferral curve 0.660 Area under the deferral curve
+0.0395
+0 50 100 150 200 0 100 200 300 400 25 50 75 100 125 150
+Number of nearest neighbors Number of nearest neighbors Number of nearest neighbors
+(a)K-NN (b)K-NN (c)K-NN
+0.63 0.0408 0.676
+0.62 0.0406 0.674
+0.0404 0.672
+0.61
+0.0402 0.670
+0.60 0.0400 0.668
+0.59 Area under the deferral curve 0.0398 Area under the deferral curve 0.666 Area under the deferral curve
+20 40 60 80 100 5 10 15 20 25 20 40 60 80 100
+Number of clusters Number of clusters Number of clusters
+(d)UniRoute(K-Means) (e)UniRoute(K-Means) (f)UniRoute(K-Means)
+0.610 0.0400 Area under the deferral curve 0.670
+0.0398 0.669
+0.608
+0.0396 0.668
+0.606 0.0394 0.667
+0.604 Area under the deferral curve 0.0392 0.666 Area under the deferral curve
+0.665
+50 100 150 200 5 10 15 20 25 50 100 150 200 250
+Number of clusters Number of clusters Number of clusters
+(g)UniRoute(K-MeansAttributes (h)UniRoute(K-MeansAttributes (i)UniRoute(K-MeansAttributes
+0.632 0.0408 Area under the deferral curve 0.674
+0.630 0.0406 0.672
+0.628 0.0404 0.670
+0.626 0.0402 0.668
+0.624 Area under the deferral curve 0.666 Area under the deferral curve
+0.0400
+50 100 150 200 6 8 10 12 20 40 60 80 100
+Number of clusters Number of clusters Number of clusters
+(j)UniRoute(LearnedMap) (k)UniRoute(LearnedMap) (l)UniRoute(LearnedMap)
+Figure4: ValidationperformanceoffourmethodsconsideredinFigure2andSectionF.3: K-NN,UniRoute
+(K-Means),UniRoute(K-MeansAttributes,andUniRoute(LearnedMap). SeeSectionF.1formoredetails.
+19
+E.4 RouterCost
+Allroutingmethodsrelyonafrozenpromptembeddingmodelφ. AsdescribedinSectionF.2,φissetbethe
+tokenprobabilityquantilesoftheGemma2BmodelintheHeadlinesdataset. Forotherdatasets,weuseGecko
+1Bmodel[?] forφ. Importantly,allmethodsrelyonthesameembeddingmodel,andthussharethesame
+overheadforpromptembedding.
+Atinferencetime,forUniRoute(K-Means),decidingtheLLMtoroutetoforagiventestqueryinvolves
+computingthetextembedding,andfindingthenearestcentroidoutofK centroids(recallthatK-meansisrun
+onlyonceonthetrainingset). ForUniRoute(LearnedMap),aftercomputingthepromptembedding,wepass
+theembeddingthroughasmallMLPasdescribedin(22). ComparedtothesizesofcandidateLLMs(upto
+60+BinEmbedLLM,forinstance),invokingthetextembeddingmodelandperformingafewoperationsafter
+(centroidlookup,orinvokingasmallMLP)incuranegligiblecost.
+Whenplottingthedeferralcurves,wedonotincludethecostoftheroutingmodel. Includingtherouter’s
+overheadwillsimplyshiftallthedeferralcurvestotherightbyasmallamount,withoutchangingtherelative
+orderingofthemethods.
+F AdditionalExperimentalResults
+Wepresentadditionalexperimentalresultsweomittedinthemaintext.
+F.1 Hyper-parameterChoices&StatisticalSignificance
+TherearethreemethodsthatweconsiderintheexperimentsinSection7thatdependonahyperparameter
+K. Specifically,K inK-NNreferstothenumberofnearestneighbors,andK inUniRoute(K-means)and
+UniRoute(LearnedMap)referstothenumberofclusters. InFigure2,wereporttheperformanceofthese
+methodswiththebestK foundoneachdatasetseparately. Wenowdescribethevalidationprocedureweused
+toselectthebestK.
+K-NN ForeachcandidateK,andeachpromptinthevalidationset,findtheK nearestqueriesinthetraining
+set(intheGeckoembeddingspace). Routeeachpromptinthevalidationsettothemostappropriatetraining
+LLM according to the routing rule (8) where γ(m) is estimated with (5). Produce a deferral curve on the
+validationset,andcomputethenormalizedareaundersuchcurve. SelectK thatmaximizesthearea. Thelist
+ofcandidateK’sissettobefrom5toonethirdofthevalidationsamplesize.
+UniRoute(K-Means) ForeachcandidateK,performK-meansonthetrainingsetusingGeckoembeddings
+[?]. ComputethefeaturevectorrepresentationofeachtrainingLLMonthetrainingsetusing(13). Foreach
+promptinthevalidationset,findthenearestcluster,androutetheprompttothemostappropriatetrainingLLM
+accordingtotheroutingrule(9). Produceadeferralcurveonthevalidationset,andcomputethenormalized
+areaundersuchcurve. SelectK thatmaximizesthearea. ThelistofcandidateK’sisfrom3tothenumberof
+validationsamplesize,dividedby50.
+UniRoute(K-MeansAttributes) AnalternateapproachthatweconsiderinAppendixF.3istoconstruct
+abinaryvectorofpromptattributes,denotingwhetherapromptpossessescertaincharacteristics[??],e.g.,
+whether it requires multi-step reasoning, seeks a single correct answer, and so on. These can be seen as
+a generalised “task”. Compared to a general purpose text embedding, such a representation is a coarser
+representation;ontheotherhand,forthepurposesofmodelrouting,thiscanhelpmitigateoverfitting.
+Concretely,weparameterizethepromptembeddingmodeltobeΦ(x)=σ(V⊤φ (x))whereV R768×7,
+Gecko
+and σ denotes the sigmoid function. Train each head v R768 (with φ frozen) by minim ∈ izing the
+j Gecko
+∈
+sigmoidcrossentropytopredictwhetherthej-thsemanticattributeisactiveoneachinputprompt. Weusethe
+sevenpromptdifficultyattributesasdescribedin?,andpromptGemini1.5Pro002toannotateeachbinary
+attributeoneachtrainingexample. OncethepromptembeddingmodelΦistrained,wefreezeit,andperform
+thesamehyperparameterselectionprocedureasusedforK-means(Gecko)byreplacingtheGeckoembedding
+functionwithΦ.
+UniRoute (LearnedMap) For each candidate K, perform K-means on the training set using Gecko
+embeddings. ComputethefeaturevectorrepresentationofeachtrainingLLMonthetrainingsetusing(13).
+Parameterizetheclusterassignmentmapwithasoftmax-denselayerasdescribedinSection5.2,resultingina
+20
+parameterθtolearn. Learntheparameterbyminimizingthebinarysigmoidcrossentropyonthetrainingwith
+thelabelsgivenbythecorrectnesslabelsofthetrainingLLMs. Withtheclustermaptrained,foreachprompt
+inthevalidationset,routetheprompttothemostappropriatetrainingLLMaccordingtotheroutingrule(9).
+Produceadeferralcurveonthevalidationset,andcomputethenormalizedareaundersuchcurve. SelectK
+thatmaximizesthearea. ThelistofcandidateK’sisfrom3tothenumberofvalidationsamplesize,divided
+by50.
+TheabovetuningprocedureforK cannotbeappliedtotheMath+CodedatasetconsideredinSection7,where
+wehavenotrainingLLMs. Inthiscase,wesetK to√N forK-NNandtoN /50forK-Means.
+val val
+EffectofK Figure4showstheareaunderthedeferralcurve(onthevalidationset)vscandidateparameterK.
+Importantly,thetestingmodelsandthetestsetareneverusedintheabovehyperparameterselectionprocess.
+MLP(Clairvoyant) Forthisoraclebaseline,asper[?],wefixthenumberofhiddenlayerstotwoandthe
+numberofhiddennodesineachhiddenlayerto100. WefittheMLPonthecombinedtrainingandvalidation
+settopredictaqualityscoreforeachtestLLM,androutevia(2). Fortraining,weonceagainran30epochsod
+Adamwithalearningrateof10−3andbatchsize64,andpickedthecheckpointthatyieldedthebestquality
+metriconthevalidationset.
+Matrix Factorization (Clairvoyant) For this oracle baseline, we fit a factorized model A B, with
+A RDP×d,B Rd×m,whereD
+P
+isthedimensionofthepretrainedqueryembedding,disanint · ermediate
+∈ ∈
+dimension,andN isthenumberoftestLLMstorouteto. Wechoosedusingthesameprocedureusedtopick
+thehyper-parameterK above. Foraqueryx Xandpre-trainedφ(x) RDP,thisrouterpredictsN LLM
+scoresviaA B φ(x),androutesvia(2). F ∈ ortraining,weran30epoc ∈ hsofAdamwithalearningrateof
+10−3andbatc · hsi · ze64,andpickedthecheckpointthatyieldedthebestqualitymetriconthevalidationset.
+StatisticalSignificance ForthetableinFigure2(Top),werepeattheexperimentsover400trials,andreport
+statisticalsignificance(viathesigntest)atsignficancelevelα = 0.01. Fortheplotsofareavs.validation
+samplesizeinFigure2(Bottom),werepeattheexperimentsover100trialsforEmbedLLM,RouterBench,
+SPROUTo3-miniand1000trialsforMath+Code,andreport96%confidenceintervals(i.e. two-sigmastandard
+errors).
+F.2 DeferralCurvesandAdditionalComparisons
+AsdescribedinSection7,foreachofthe400independenttrials,werandomlysplitexamplesofeachdataset
+intotraining,validationandtesting. Figure5presentsthemeandeferralcurvesofallthemethodsweconsider.
+Allthestatistics(Area(50%),AreaandQNC)reportedinFigure2arederivedfromthesecurves. Allresults
+hereareforthedynamicLLMpoolsettingasconsideredinFigure2.
+EmbedLLM Figure5apresentsdeferralcurvesontheEmbedLLMproblem. Theseresultsarethesame
+asinFigure3whereweaddtwooraclebaselines: MatrixFactorization(MatFac)[??],andMLP[?]. We
+reemphasizethatthesetwobaselinesarenotdesignedforthedynamicpoolsetting,andareallowedtoobserve
+testLLMsduringtrainingtobeapplicabletooursetting.
+Headlines WeconsidertheHeadlinesdatasetasusedin? consistingof10Kpromptsintotal. Eachprompt
+asksanLLMtodeterminethepricedirection(up,down,neutral,ornone)ofaniteminalistofnewsheadlines.
+Thereare12LLMsofvarioussizesinthisdataset. EachLLMhasadistinctcost(USD)ofprocessingone
+prompt,whichisafunctionoftheinputlength,outputlength,andafixedcostperrequest(seeTable1in?).
+WeholdoutsixLLMsfortrainingandtheothersixLLMsfortesting:
+• TrainingLLMs: TextsynthFAIRSEQ,OpenAIGPT-4,OpenAIGPT-Curie,TextsynthGPT-Neox,
+AI21J1-Large,CohereXlarge;
+• TestLLMs: OpenAIChatGPT,OpenAIGPT-3,TextsynthGPT-J,AI21J1-Grande,AI21J1-Jumbo,
+CohereMedium.
+Ineachofthe400independenttrials,werandomlypartitionthedatainto4000,400,5600examplesfortraining,
+validation,andtesting,respectively. ForHeadlines,unlikeotherdatasets,wedonotuseGeckoforembedding
+prompts. Rather,thefrozentextembeddingφisconstructedbasedontheoutputoftheGemma2Bmodel1:
+1Gemma2Bmodel: https://huggingface.co/google/gemma-2b.
+21
+foreachprompt,itsembeddingisthesevenequallyspacedquantilesoftheper-tokenprobabilitiesoftheoutput
+tokensfromGemma2B.
+Themeandeferralcurvesover400trialsareshowninFigure5d. WeobservethatourproposedUniRoute
+(LearnedMap)hashigheraccuracythanK-NNthroughoutthewholecostrange.
+MixInstruct MixInstructisadatasetfrom? containingresponsesfrom11LLMs. Weusearandomsplitof
+50%oftheLLMsfortrainingandtherestfortesting. Weuse(exponentiated)BARTScore[?] astheevaluation
+metric,following?. TheMixInstructdatasetdoesnothaveLLMAPIcostsannotated. Weusethenumberof
+parametersoftheLLMasthecostofprocessingoneprompt.
+P M P eth P od PDPat P as P et Area(50% Em ) be A dL re L a M QNC Area(50% Ro ) ute A rB re e a nch QNC Area(5 S 0 P % R ) OU A T r o ea 3-mini QNC Area(50%) Head A li r n e e a s QNC Area(50% M ) ixIn A s r tr e u a ct QNC
+↑ ↑ ↓ ↑ ↑ ↓ ↑ ↑ ↓ ↑ ↑ ↓ ↑ ↑ ↓
+ZeroRouter .285∗ .607∗ 87.5%∗ .320∗ .689∗ 99.9% .404∗ .820∗ 100.0%∗ .0233∗ .0487∗ 96.8% .380∗ .819∗ 88.0%∗
+K-NN .298∗ .636∗ 46.1%∗ .328∗ .707∗ 99.7% .418∗ .844∗ 29.6%∗ .0235∗ .0494 94.8% .411 .830∗ 43.7%∗
+UniRoute(K-Means) .307∗ .648∗ 33.9% .332 .712 99.4% .421 .850 19.6% .0235∗ .0491 95.2% .409∗ .828∗ 56.9%∗
+UniRoute(LearnedMap) .308 .651 33.2% .331 .711 99.6% .420 .846 23.4% .0236 .0491 96.2% .411 .832 34.9%
+MLP(Clairvoyant) .314 .664 26.9% .339 .723 95.2% .427 .859 4.5% .0240 .0502 85.7% .412 .835 18.1%
+MatrixFac.(Clairvoyant) .313 .663 27.7% .338 .720 99.5% .426 .857 5.0% .0242 .0505 82.9% .413 .835 13.7%
+0.70
+0.65
+0.60
+0.55
+0.50
+0 20 40 60
+Cost budget (model size)
+ycaruccA
+0.75
+0.70 K-NN
+MLP (Clairvoyant)
+MatFac (Clairvoyant) 0.65 UniRoute (K-Means)
+UniRoute (LearnedMap)
+ZeroRouter 0.60
+0 1 2 3
+Cost budget (USD) per 1K queries
+(a)EmbedLLM
+ycaruccA
+0.86
+0.84
+K-NN
+MLP (Clairvoyant) 0.82
+MatFac (Clairvoyant) UniRoute (K-Means)
+UniRoute (LearnedMap) 0.80
+ZeroRouter
+0 2 4 6
+Cost budget (USD)
+(b)RouterBench
+ytilauQ
+K-NN
+MLP (Clairvoyant)
+MatFac (Clairvoyant) UniRoute (K-Means)
+UniRoute (LearnedMap)
+ZeroRouter
+(c)SPROUTo3-mini
+0.840
+0.835
+0.830
+0.825
+0.820
+0.815
+0.810
+0.0 0.2 0.4 0.6 0.8 1.0
+Relative cost (USD)
+ycaruccA
+0.052
+0.050
+K-NN 0.048
+MLP (Clairvoyant)
+MatFac (Clairvoyant) 0.046
+UniRoute (K-Means)
+UniRoute (LearnedMap)
+ZeroRouter 0.044
+8 10 12 14 16
+Cost budget (model size)
+(d)Headlines
+)erocSTRAB(pxE
+K-NN
+MLP (Clairvoyant)
+MatFac (Clairvoyant)
+UniRoute (K-Means)
+UniRoute (LearnedMap)
+ZeroRouter
+(e)MixInstruct
+Figure5: Deferralcurvesandrouterevaluationmetrics(Area(50%),Area,andQNC)fordifferentmethodsin
+thedynamicpoolsetting. MLP[?] andMatFac[??],areoraclemethodsthatobservetestingLLMsduring
+training. ZeroRouter[?] andK-NN?? arebaselinesapplicabletothedynamicLLMpoolsetting.
+22
+0.55
+0.50
+0.45
+0.40
+20 40 60
+Number of parameters (Billions)
+ycaruccA
+Method Area QNC PeakAcc.
+↑ ↓ ↑
+Pareto-randomrouter .507 51.9%
+∞
+K-NN .472 52.1%
+∞
+K-means (Gecko) K-means(Gecko) .529 54.5%
+∞
+K-means (Attributes) K-means(Attributes) .545 .97 55.8%
+K-NN
+Individual models
+Pareto-random router
+Figure6: DeferralcurvesofrouterstrainedonChatbotArenawithpairwisecomparisonlabels,andtestedon
+EmbedLLMwithper-promptcorrectnesslabels.
+F.3 TrainonChatbotArenaandTestonEmbedLLM
+Weobservethatrepresentingeachpromptwithasmallnumberofbinaryattributesthatcaptureitsinherent
+hardnessshineswhenthereisapromptdistributionshiftattesttime. Toillustratethis,weusethesevenbinary
+difficultyattributesproposedin?, andpromptGemini1.5Protoannotateeachattributeforeachtraining
+prompt. Wethenconstructaqueryembedder
+φ(x)=σ(V⊤Gecko(x)) [0,1]7, (24)
+∈
+whereV R768×7isdistilledusingthetrainingsettopredictthe7-categoryattributesforanynewpromptx.
+∈
+WecompareGecko-basedpromptrepresentationandattribute-basedrepresentationbytrainingonChatbot
+Arenaconversationdata[?],andtestingonEmbedLLM,whichcontainsmostlyQ&Aprompts. Toreduce
+confoundingfactors,wetrainonallLLMsthatarepresentinbothdatasets(26LLMs),andtestonthesameset
+ofLLMs(i.e.,nounseenLLMsattesttime). Afterappropriatefiltering,theChatbotArenadatasethas8447
+recordsleft. ThefilteringstepensuresthatweonlydealwithLLMsthatarepresentinbothdatasets. These
+examplesaresplitfurtherinto90%trainingand10%validationsplits.
+The Chatbot Arena dataset contains pairwise comparison labels: each user prompt is responded to by
+tworandomLLMs, towhichtheuserselectsthebetterresponse. Toevaluateper-clusterperformancefor
+representingeachLLM,wefittheBradley-Terry-Lucemodel[?] tothepairwisecomparisonlabelswithina
+clusterandestimatethepointwisequalityscoresforeachLLMforthatcluster. WeusethefullEmbedLLM
+datasetfortesting.
+TheresultsareshowninFigure6wherewecomparetwovariantsofourproposedUniRoute(K-means):
+1. K-means(Gecko). ThisisUniRoute(K-means)(seeSection5.1)wherethetextembeddingissetto
+theGeckomodel[?].
+2. K-means(Attributes). ThisisUniRoute(K-means)wherethetextembeddingissetto(24).
+WeobservethatK-means(Attributes)inthiscaseperformsbetterthanK-means(Gecko),suggestingthatusing
+prompthardnessattributeshelpsimproverobustnesstopromptdistributionshifts. Infact,thisroutingapproach
+istheonlymethodthatcanreachtheperformanceofthemostaccuratemodelinthepool,thusattaininga
+finitequality-neutralcost(QNC).ThereasonthePareto-randomrouterhasadecreasingtrendisbecausethe
+Pareto-optimalLLMsarechosenusingthevalidationset,andturnouttobenotoptimalforthetestset.
+F.4 StaticLLMPoolSetting
+Whilethedynamicpoolsettingisthefocalpointofourwork,weshowinTable2thateveninthestaticLLM
+poolsetting,UniRouteistypicallycomparabletomostbaselines. TheMLPbaselinealoneoftenhasaslight
+edge. Thisisbecause,unlikeourmethods,whicharetiedtoaparticularinputLLMrepresentation,theMLP
+approachhastheflexibilityoflearningitsownrepresentationforeachfixedLLM.Notethatthisispossible
+onlyinthestaticLLMpoolsetting.
+Inthiscase,allLLMsareseenduringtraining,andhencethetrainingandvalidationsampleshavecorrectness
+labelannotationsfromallLLMs. Wetunethehyper-parameters,suchasKinK-NNandK-Means,thenumber
+23
+ofhiddennodesinMLP,andtheintermediatedimensioninMatrixFactorization,tomaximizetheareaunderthe
+deferralcurveonthevalidationsample. WepickK fromtherange 5,10,25,50,75,100,150,200,250,300
+{ }
+forK-NNandK-Means,pruningoutvaluesthataretoolargeforthegivenvalidationsamplesize.
+ForUniRoute(LearnedMap),weusedtwohiddenlayers,withthesamechosennumberofhiddennodesas
+MLP.WesetthenumberofclusterstobethesameasthechosennumberofclustersforUniRoute(K-Means).
+WeemployedAdamwithlearningrate0.001andbatchsize64fortraining,pickingthecheckpointwiththe
+bestqualitymetriconthevalidationset. ForMixInstructalone,giventhatthedatasetispronetooverfitting,
+wereplicatethesamehyper-parameterchoicesasinthedynamicLLMpoolsetting(AppendixE.3).
+Fortheseexperiments,weadditionallyconsidertheHeadlinesdataset(seeSectionF.2)whereallLLMsare
+fully observed during training. We additionally consider the LiveCodeBench coding benchmark [?], and
+includefromit15LLMsforwhichthemodelsizewaspubliclyavailable(theMath+Codedatasetcontainstwo
+LLMsfromthisbenchmark). WesplittheLiveCodeBenchdatasetinto60%fortraining,10%forvalidation,
+and30%fortesting,andemploythesamehyper-parameterchoicesasinMixInstruct. ForHeadlines,weuse
+40%,10%,50%fortraining,validation,andtesting,respectively.
+Table2: ComparingUniRoutewithexistingmethodsforthestaticLLMpoolsetting,whereH =H . We
+tr te
+reporttheareaunderthedeferralcurve( ). Thebestbaselineresultsarehighlighted,andthebestUniRoute
+↑
+resultsareboldfaced. Eveninthestaticsetting,ourapproachiscompetitivecomparedtomostbaselines. The
+MLPbaselineoftenhasaslightedge. Thisisbecause,unlikeourmethods,whicharetiedtoaparticularinput
+LLMrepresentation,theMLPapproachhastheflexibilityoflearningitsownrepresentationforeachfixed
+LLM.NotethatthisispossibleonlyinthestaticLLMpoolsetting,andnotthedynamicsetting,whichisthe
+focusofthispaper.
+h
+P M P eth P od PDPat P as P et m b e d L L M Mi x I n st r u ct o ut e r B e n c h M at h + C o d e e C o d e B e n c H e a dli n e s
+E R v
+Li
+ZeroRouter[?] .601 .0483 .707 .392 .457 .834
+MLP? .689 .0500 .747 .483 .480 .852
+MatrixFactorization[??] .682 .0503 .744 .482 .482 .849
+K-NN?? .636 .0510 .744 .475 .474 .854
+UniRoute(K-Means) .682 .0504 .744 .480 .481 .845
+UniRoute(LearnedMap) .683 .0502 .744 .463 .479 .854
+F.5 VisualisationofLLMEmbeddings
+Wevisualisethecluster-basedLLMembeddingsΨlearnedfromourclusteringprocedureontheEmbedLLM
+andRouterBenchdatasetsinFigures7and8. TheseheatmapsillustratetheGaussiankernelsimilaritybetween
+allpairsofLLMembeddingsonthesedatasets. Theresultsarelargelyintuitive: e.g.,onRouterBench,wefind
+thattheclaudefamilyofmodelsarehighlysimilartoeachother. Similarly,onEmbedLLM,code-focussed
+modelsgenerallytendtodemonstrateahighdegreeofsimilarity.
+We emphasise again that EmbedLLM previously also considered representing LLMs as feature vectors.
+Importantly,however,theirrepresentationdependsonafixedpoolofLLMs,anddoesnotreadilygeneraliseto
+newLLMs(withoutfurtherretraining).
+24
+redocotco ateb-b43 tcurtsnI-B07-3-amalL-ateM tahc-b7-tpm B33-keeSpeeD-esuFedoC fh-tcurtsnI-b31-amalLedoC FH-B31-alaok scisyhp-B7-anuciv b07-opd-2-ulut QWA-tcurtsnI-B07-amalLedoC b43_ammell B8-2-drauG-amalL-ateM b31-semreH-suoN 61fb-xirTlarueN fh-tcurtsnI-b43-amalLedoC tcurtsnI-B8-3-amalL-ateM B91_EoM_2xB11_lartxiM ahpla-B7-ML-gnilratS 0.1v-tcurtsnI-B7.01-RALOS 5.3_tahcnepo scisyhp-B7-2-amalL B7-hcranoMahplA ERAD-B7-lartsiMoiB esab-b31-tobregit tcurtsni-b03-tpm 2-ihp 5.1v-b31-anuciv ateb-B7-ML-gnilratS fh-tahc-b31-2-amalL 0.1V-B07-MLdraziW 61fb-1.11v-b43-2amalledoc-yddubnepo K002-B6-iY edoc-nosaer-htam-b7x4-eoM fh-tahc-b07-2-amalL 2.1htam-b31-2amall 3-3v-b7-tahc-laruen k23-B7-lartsiM-ihPicS
+octocoder
+34b-beta
+Meta-Llama-3-70B-Instruct
+mpt-7b-chat
+CodeFuse-DeepSeek-33B
+CodeLlama-13b-Instruct-hf
+koala-13B-HF
+vicuna-7B-physics
+tulu-2-dpo-70b
+CodeLlama-70B-Instruct-AWQ
+llemma_34b
+Meta-Llama-Guard-2-8B
+Nous-Hermes-13b
+NeuralTrix-bf16
+CodeLlama-34b-Instruct-hf
+Meta-Llama-3-8B-Instruct
+Mixtral_11Bx2_MoE_19B
+Starling-LM-7B-alpha
+SOLAR-10.7B-Instruct-v1.0
+openchat_3.5
+Llama-2-7B-physics
+AlphaMonarch-7B
+BioMistral-7B-DARE
+tigerbot-13b-base
+mpt-30b-instruct
+phi-2
+vicuna-13b-v1.5
+Starling-LM-7B-beta
+Llama-2-13b-chat-hf
+WizardLM-70B-V1.0
+openbuddy-codellama2-34b-v11.1-bf16
+Yi-6B-200K
+Moe-4x7b-math-reason-code
+Llama-2-70b-chat-hf
+llama2-13b-math1.2
+neural-chat-7b-v3-3
+SciPhi-Mistral-7B-32k
+Figure7: GaussiankernelsimilaritybetweenpairsofLLMembeddingsonEmbedLLMdataset.
+1v-edualc 6011-obrut-5.3-tpg 2v-edualc 1v-tnatsni-edualc tahc-b7x8-lartxim tahC-B43-iY 2.1V-B31-MLdraziW weiverp-6011-4-tpg tahc-b7-lartsim tahc-b07-2-amall tahc-b43-tcurtsni-amall-edoc
+claude-v1
+gpt-3.5-turbo-1106
+claude-v2
+claude-instant-v1
+mixtral-8x7b-chat
+Yi-34B-Chat
+WizardLM-13B-V1.2
+gpt-4-1106-preview
+mistral-7b-chat
+llama-2-70b-chat
+code-llama-instruct-34b-chat
+Figure8: GaussiankernelsimilaritybetweenpairsofLLMembeddingsonRouterBenchdataset.
+25
+26

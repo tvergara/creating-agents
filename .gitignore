@@ -5,3 +5,7 @@ agent_configs/
 .env
 api_key.txt
 .api_key
+FLAWS/
+data/
+tasks/
+training/platform_paper_cache/

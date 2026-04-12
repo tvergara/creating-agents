@@ -1,0 +1,2763 @@
+PublishedasaconferencepaperatICLR2025
+FASTER CASCADES VIA SPECULATIVE DECODING
+HarikrishnaNarasimhan1, WittawatJitkrittum1, AnkitSinghRawat1
+SeungyeonKim2, NehaGupta3,†, AdityaKrishnaMenon1, SanjivKumar1
+1GoogleResearch, 2GoogleDeepMind, 3MistralAI
+{hnarasimhan, wittawat, ankitsrawat, adityakmenon, sanjivk}@google.com
+ABSTRACT
+Cascades and speculative decoding are two common approaches to improving
+language models’ inference efficiency. Both approaches interleave two models
+ofdifferentsizes,butviafundamentallydistinctmechanisms: cascadesemploya
+deferralrulethatinvokesthelargermodelonlyfor“hard”inputs,whilespecula-
+tivedecodingusesspeculativeexecutiontoprimarilyinvokethelargermodelin
+parallelscoringmode. Thesemechanismsofferdifferentbenefits: cascadesoffer
+compellingcost-qualitytrade-offs,oftenevenoutperformingthelargemodel;spec-
+ulativecascadesofferimpressivespeed-ups,whileguaranteeingquality-neutrality.
+Inthispaper,weleveragethebestofboththeseapproachesbydesigningnewspec-
+ulativecascadingtechniquesthatimplementtheirdeferralrulethroughspeculative
+execution. Wecharacterizetheoptimaldeferralruleforourspeculativecascades,
+andemployaplug-inapproximationtotheoptimalrule. ExperimentswithGemma
+andT5modelsonarangeoflanguagebenchmarksshowthatourapproachyields
+bettercost-qualitytrade-offsthancascadingandspeculativedecodingbaselines.
+1 INTRODUCTION
+Largelanguagemodels(LLMs)haveyieldedsignificantadvancesinqualityonarangeofnatural
+languageprocessingtasks(Radfordetal.,2018;Raffeletal.,2020;Brownetal.,2020;Blacketal.,
+2022;Chowdheryetal.,2022;Anil&etal.,2023;Touvronetal.,2023;Teametal.,2023;etal.,
+2024b;a),atthecostofanincreaseininferencelatency. Thishassparkedagrowingbodyofliterature
+onreducingLLMs’inferencecostswithout(overly)compromisingonquality(Elbayadetal.,2020;
+Popeetal.,2022;Schusteretal.,2022;Leviathanetal.,2023;Chenetal.,2023a;Shengetal.,2023;
+Sunetal.,2024). Onesuchlineofworkinvolvesconstructingafamilyofmodelsofvarioussizes
+(e.g.,asmallandlargemodel),andsuitablyorchestratingamongstthemtomakeaprediction. Two
+canonicalinstantiationsofthisstrategyaremodelcascading(Wangetal.,2020;Mamouetal.,2022;
+Varshney&Baral,2022;Khalilietal.,2022;Dohanetal.,2022;Chenetal.,2023b;Guptaetal.,
+2024;Dingetal.,2024)andspeculativedecoding(Sternetal.,2018;Chenetal.,2023a;Leviathan
+etal.,2023;Sunetal.,2024;Lietal.,2024a;Xiaetal.,2024).
+While similar in spirit, cascades and speculative decoding are fundamentally different in details.
+Cascadesemployadeferralruletoidentify“hard”inputs,andonlyinvokelargermodelsonsuch
+inputs. For example, in a two-model cascade, one first invokes the smaller model, and uses its
+associatedprobabilityofthegeneratedoutputtodecidewhethertodefertothelargermodel. By
+contrast, speculative decoding uses a small model to draft a block of tokens via standard auto-
+regressivedecoding,whicharethenverifiedinparallelbyalargemodel. Onethenacceptsalldrafted
+tokensuntilthefirst“implausible”one,whichisrolledbackbasedonthelargerLM’sprediction.
+Owingtotheirdifferentmechanisms,bothmethodshavecomplementarystrengths. Cascadesseekto
+outputdistributionsthathavethebestqualityforagivencostbudget,sometimesevenyieldingbetter
+qualitythantheindividualmodelstheyareconstructedwith(Jitkrittumetal.,2023;Kimetal.,2023)
+(§3). Bycontrast,speculativedecodingistheoreticallyguaranteedtomatchtheoutputdistribution(or
+acloseapproximationthereof(Tran-Thien,2023)),andispracticallyobservedtoprovideimpressive
+speed-ups(Sternetal.,2018;Chenetal.,2023a;Leviathanetal.,2023;Sunetal.,2024). Giventheir
+complementarynature,anaturalquestionarises: canweleveragethebestofbothtechniques?
+†WorkdonewhileworkingatGoogle.
+1
+PublishedasaconferencepaperatICLR2025
+In this paper, we do so by designing new
+techniquesfortwo-modelcascadesthatim-
+plementtheirdeferralruleinaspeculative
+manner: wehavethesmallermodelgener-
+ate drafts auto-regressively, and the larger
+model execute in parallel on the drafts to
+decide whether or not to defer on them.
+Figure 1: Speculative cascade inference between a
+Weshowthatthisspeculativecascadingap-
+smallandalargeLMviaadeferralrule.
+proachyieldsbettercost-qualitytrade-offs
+thanbothstandardcascadesandspeculativedecoding. Indetail,wemakethefollowingcontributions:
+(i) Weintroduceageneralrecipeforspeculativeexecution,whereweseektomimicageneraltarget
+distributionthatinterleavesthedrafter’sandverifier’sdistributions. Lossyspeculativesampling
+(Tran-Thien,2023)isaspecialcaseofthisrecipeforaparticulartargetdistribution(§4.1).
+(ii) We show how common cascading rules, such as Chow’s rule (Chow, 1970) and confidence-
+differencethresholding(Jitkrittumetal.,2023),canbeimplementedspeculativelybypluggingin
+theirtargetdistributionintoourframework. Werefertotheseasspeculativecascades(§4.2).
+(iii) Wecharacterizethetheoreticallyoptimaldeferralruleforaspeculativecascade,anddesigna
+speculativecascadingtechniquethatimplementsaplug-inestimatetotheoptimalrule(§4.3,
+Lemma4,Table1). Wealsopresenttoken-specificvariantsofourdeferralrules(§5).
+(iv) Throughexperimentswith Gemma(Teametal.,2024)andT5models(Raffeletal.,2020)on
+arangeofbenchmarklanguagetasksincludingsummarization,translation,reasoning,coding
+andQA,weshowthatspeculativecascadesareabletoprovidebettercost-qualitytrade-offsthan
+theirsequentialcascadeandspeculativedecodingcounterparts(§6).
+Overall,weaimtodevelopaprincipledapproachtotrade-offqualityandinferencecostsbyinter-
+leavingtwomodelsofdifferentsizes,withpromisingempiricalresults. Wehopetoinspirefuture
+researchadaptingtheproposedideaswithingredientsunderpinningthestate-of-the-artinspeculative
+decoding(Caietal.,2024;Lietal.,2024a;b;Chenetal.,2024).
+2 A TALE OF TWO EFFICIENT LM INFERENCE STRATEGIES
+LetVdenoteafinitevocabularyoftokens,withV∗ denotingthesetofallfinite-lengthsequences
+generated by this vocabulary. Let ∆V denote the set of all probability distributions over tokens
+in V. Given an arbitrary length sequence x = x x ...x ∈ V∗ and index i ≤ L, we denote
+1 2 L
+x = x x ...x . Alanguagemodel(LM)isaprobabilitydistributionoverV∗. LetPdenote
+<i 1 2 i−1
+thedatageneratingprobabilitydistributionoverV∗. Thiscouldbe,forexample,adistributionover
+prompt-responsepairsthattheLMmayencounterduringdeployment,oradistributionofsequences
+usedtopre-traintheLM.WewillmeasurethequalityofanLMbasedonhowcloselyitmimicsP.
+SupposeweareprovidedtwoLMsqandp,wherepisthelarger(moreexpensive)model. Ourgoal
+istodesignaninferencestrategythatselectivelyinvokesqandptotrade-offbetweenqualityand
+latency(whichmaybeapproximatedbythefractionoftimesthatpisinvoked). Wewilldenoteby
+q(x |x )theprobabilityqassociatestotokenx ∈ Vgivenprefixx ∈ Vt−1,andbyp(x |x )
+t <t t <t t <t
+thesamedistributionfrommodelp. Wheneveritisclearfromcontext,wewillhidetheconditioning
+onprefixx ,andusetheshorthandq (·)forq(·|x )andp (·)forp(·|x ).
+<t t <t t <t
+Cascadesareaneffectivestrategytotrade-offcostandqualitybyhavingthesmallermodelqhandle
+the“easy”samples,andthelargermodelphandlethe“hard”ones(Guptaetal.,2024;Yueetal.,
+2024). A common cascading approach is confidence thresholding or Chow’s rule (Chow, 1970;
+Jitkrittumetal.,2023),wherewefirstrunqontheinput,anddefertopwhenq’sconfidenceforits
+generatedresponseissufficientlylow. Thisstrategyistypicallyimplementedatthesequence-level,
+whereforagivenprefixx weinvokeq,evaluateitsmaximumconditionalprobabilityoverall
+<m
+responses,andcheckwhetheritfallsbelowathresholdα∈[0,1]:
+max q(x ...x |x )<1−α. (1)
+m m+n <m
+xm...xm+n
+Ifthisholds,wedefertoptogenerateanewresponse;otherwise,wegeneratearesponsewithq. One
+maytuneαtoachieveadesiredcost-qualitytrade-off. TheliteraturealsooffersvariantsofChow’s
+rulethatuseamorenuancedaggregationofper-tokenuncertainties(Guptaetal.,2024).
+2
+PublishedasaconferencepaperatICLR2025
+Table 1: Target distributions associated with different inference algorithms, where α is a free
+parameterandβ ≥1−αdependsonα,qandp. Thelastcolumnindicateswhethertheexecutionis
+sequential(Algorithm2),viaanoracle(Algorithm3),orspeculative(Algorithm5)(Leviathanetal.,
+2023). See(6)fordetailsonδ. ThethirdrowpresentsavariantoftheBiLDalgorithmofKimetal.
+(2023),whereD(q,p)isameasureofdiscrepancybetweenqandp;theoriginalalgorithmdiffersin
+theuseofadeterministicspeculativedecodingprocedurewithadynamicdraftwindow(see§B).
+Inferencestrategy Deferraldecisionδ(q,p) Targetdistributionπ(u) Execution
+SpecDecoding(Leviathanetal.,2023) - p(u) Speculative
+LossySpecDecoding(Tran-Thien,2023) - max{min{q(u),p(u)},p(u)} Speculative
+BiLD*variant(Kimetal.,2023) 1(cid:0)D(q,p)>α(cid:1) (1−δ)·q(u)+δ 1− · α p(u) β Speculative
+TokenCascade[Chow](Chow,1970) 1(cid:0)maxvq(v)<1−α(cid:1) (1−δ)·q(u)+δ·p(u) Sequential
+Oracle[Diff](Jitkrittumetal.,2023) 1(cid:0)maxvq(v)<maxvp(v)−α(cid:1) (1−δ)·q(u)+δ·p(u) Oracle
+SpecCascade[Chow] 1(cid:0)maxvq(v)<1−α(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+SpecCascade[Diff] 1(cid:0)maxvq(v)<maxvp(v)−α(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+SpecCascade[OPT] 1(cid:0)maxvq(v)<maxvp(v)−α·DTV(p,q)(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+Speculativedecodingisanalternatestrategythatappliestoken-levelinterleavingbetweenqandp,
+seekingtoprovablymatchthelargermodelqualityatareducedinferencecost(Sternetal.,2018;
+Leviathanetal.,2023).Givenaprefixx ,wedraftγdrafttokensx ,...,x viaauto-regressive
+<t t t+γ−1
+samplingfromq,andverifyifthesetokenscanbeacceptedbyrunningpinparallelontheγ prefixes
+x ,...,x . Wethenrollbacktothefirstrejectedtokent+j∗(wherej∗ ∈{0,1,...,γ−1}),
+<t <t+γ−1
+replacex withanewtoken,andrepeattheprocesswithprefixx .
+t+j∗ <t+j∗+1
+During the verification stage, a draft token x generated by q is accepted with probability
+t+j
+(cid:16) (cid:17)
+min 1,pt+j(xt+j) and rejected otherwise, recalling the shorthand q (·) = q(·|x ) and
+qt+j(xt+j) t+j <t+j
+p (·) = p(·|x ). A rejected token is then replaced by a new token sampled from a modi-
+t+j <t+j
+fieddistributionnorm(max{0, p (·)−q (·)}),wherenorm(·)denotesnormalizationtosum
+t+j t+j
+to1. Thissamplingprocessisprovablyequivalenttosamplingγ tokensauto-regressivelyfrompfor
+prefixx (Leviathanetal.,2023). WesummarizethisspeculativesamplingprocedureinAlgorithm
+<t
+1. Eachinvocationofthisalgorithmgeneratesatmostγ+1nexttokens(andatleastone)foragiven
+prefixx . Onemayrunthisalgorithmmultipletimestogenerateacompleteoutputsequence.
+<t
+Inpractice,onemayemployalossyvariant(Tran-Thien,2023)oftheabovesamplingthatallows
+some deviation from verifier’s distribution p. In this case, a draft token x is accepted with
+t+j
+(cid:16) (cid:17)
+probabilitymin 1, pt+j(xt+j) ,whereα∈[0,1)isastrictnessparameter,withhighervalues
+(1−α)·qt+j(xt+j)
+indicatinggreaterdeviationfromp. Arejectedtokenmaythenbereplacedbyatokensampledfrom
+(cid:16) (cid:110) (cid:111)(cid:17)
+theresidualdistributionnorm max 0, 1 ·p (·)−q (·) ,whereβ ≥1−αisaparameter
+β t+j t+j
+thatdependsonα,qandp. Acommonheuristicistosimplysetβ =1(Zhouetal.,2024).
+3 CASCADES MEET SPECULATIVE DECODING
+Bothcascadesandspeculativedecodinginterleavemodelsofdifferentsizestoreduceinferencecost,
+butfundamentallydifferinthemechanismstheyuse. Asasteptowardscomparingthestrengthsand
+weaknessesoftheseapproaches,wefirstdescribehowonemaydesignatoken-levelcascade.
+3.1 WARM-UP: TOKEN-LEVELCASCADES
+Itisstraightforwardtoextendthesequence-levelChow’srulefrom§2toformatoken-levelcascade
+between q and p. For a prefix x , we first compute the smaller model’s distribution q (·), and
+<t t
+checkwhethermax v∈V q t (v)isbelowapre-chosenthreshold. Ifso,weevaluatep t (·),andsample
+x ∼p (·);otherwise,wesamplex ∼q (·).
+t t t t
+Moregenerally,wemaydesignatoken-leveldeferralruler :Vt−1 →{0,1}thattakestheprefix
+x asinputandoutputsabinarydecision,withr(x )=1indicatingthatwedefertop(i.e.,draw
+<t <t
+asamplefrompratherthanq). Forexample,token-levelChow’srulecanbewrittenas:
+r Chow (x <t )=1 ⇐⇒ max v∈V q t (v)<1−α, (2)
+3
+PublishedasaconferencepaperatICLR2025
+whereαisathresholdparameter;thehigherthevalue,theloweristhefrequencyofdeferraltop.
+Onemayalsouseotherconfidencemeasuresthanthemaximumprobability, suchastheentropy
+ofthesmallmodel’sprobabilitydistribution. Weelaboratein§D.1thatthechoiceofconfidence
+measurewoulddependontheevaluationmetricofinterest;Equation(2)istypicallyprescribedwhen
+thecascade’squalityisevaluatedintermsofitsaccuracyagainstthedatageneratingdistributionon
+individualtokens,whereasentropyisprescribedwhenthemetricofinterestisthecross-entropyloss.
+3.2 OPTIMALTOKEN-LEVELCASCADEDEFERRAL
+WhileChow’srule(2)iseasytoimplement,itcanbesub-optimalifthesmallermodel’smax-token
+probabilityisnotreflectiveofwhichofthetwomodelsarebetterequippedtopredictthenexttoken
+foragivenprefix(Jitkrittumetal.,2023). Giventhis,itisnaturaltoaskwhattheoptimaldeferral
+rulerforatoken-cascadelookslike,andwhetherwecanreasonablyapproximatethisrule.
+Forthis,wemustfirstspecifyanobjectivetominimizeateachstept. Followingthepriorcascade
+literature (Jitkrittum et al., 2023; Gupta et al., 2024), a reasonable objective to minimize is the
+expectedlossfromthedeferralruleagainstthedatageneratingdistributionP,withanaddedcost
+for deferring to the larger model. We state this below for a fixed prefix x , using as before the
+<t
+short-handq (·)forq(·|x )andp (·)forp(·|x ):
+t <t t <t
+L def (r;x <t )=E v∼P(·|x<t) (cid:104)(cid:0) 1−r(x <t ) (cid:1) ·(cid:96)(v,q t )+r(x <t )· (cid:0) (cid:96)(v,p t )+α (cid:1)(cid:105) , (3)
+foracostpenaltyα≥0andlossfunction(cid:96):V×∆V →R
++
+. Commonchoicesfor(cid:96)includethe0-1
+loss(cid:96) (v,q )=1(v (cid:54)=argmax q (v(cid:48)))andthelogloss(cid:96) (v,q )=−log(q (v)).
+0-1 t v(cid:48) t log t t
+Lemma1(Optimaldeferralfortoken-levelcascades(Jitkrittumetal.,2023)). Theminimizerof(3)
+isoftheform:
+r∗(x <t )=1 ⇐⇒ E v∼P(·|x<t) [(cid:96)(v,q t )] > E v∼P(·|x<t) [(cid:96)(v,p t )]+α. (4)
+Intuitively,wecomparetheexpectedlossfromqwiththeexpectedcostofinvokingp,anddecide
+todeferwhenthelatterissmaller. Wenoteherethatthisoptimizationproblemissetupforafixed
+prefixx . Onemayalsoconsiderthecoupledoptimizationproblemacrossallpositions.
+<t
+Plug-in estimator for (4). The optimal rule in (4) requires computing expectations over the data
+generatingdistributionP(·|x ),whichisnotavailableduringinferencetime. Acommonapproach
+>t
+inthecascadesliteratureistoreplacetheexpectedlosseswiththemodels’confidenceestimates
+(Jitkrittumetal.,2023). Forexample,when(cid:96)=(cid:96) ,itmaybereasonabletouse1−max q (v)as
+0-1 v t
+anestimateoftheexpected0-1lossE xt∼P(·|x<t) [(cid:96) 0-1 (x t ,q t )]and1−max v p t (v)asanestimateof
+E xt∼P(·|x<t) [(cid:96) 0-1 (x t ,p t )].Theextenttowhichtheseestimatesareaccuratedependonhowwellqand
+parecalibrated(Guoetal.,2017). Theresultingplug-inestimatorfor(4)thresholdsthedifferenceof
+confidenceestimatesfrombothdistributions:
+rˆ (x )=1 ⇐⇒ max q (v) < max p (v)−α. (5)
+Diff <t v t v t
+(cid:80)
+Similarly,when(cid:96)=(cid:96) ,wemayusetheentropy− q (v)·log(q (v))fromq asanestimateof
+log v t t t
+itsexpectedlog-loss,andsimilarlyforp (see§D).
+t
+Remark 1 (Diff rule is not realizable with a token-level cascade). We cannot directly employ
+rˆ inatoken-levelcascade,asitneedsthelargemodeltobeinvokedateverystept. However,it
+Diff
+servesasanoraclethatallowstoanalyzethehead-roomavailabletoimproveuponChow’srule.
+3.3 CONTRASTINGTOKEN-LEVELCASCADEANDSPECULATIVEDECODINGTRADE-OFFS
+Token-levelcascadesandspeculativedecodingdifferinthedistributionovertokenstheyseekto
+mimic. Speculativedecodingseekstomimicthelargemodel’soutputdistribution,andisusually
+usedwhenonewantstomatchthequalityofthelargemodel. Ontheotherhand,token-levelcascades
+seektooutputdistributionsthatcloselyapproximatethelabeldistributionandpotentiallyoffergood
+cost-qualitytrade-offs,sometimesyieldingbetterqualitythaneventhelargemodel.
+Cascadesareusefulwhenthedraftmodelfaresbetterthantheverifieronsomeinputs,andonemay
+wanttoretainthedrafter’spredictionsevenwhenitdisagreeswiththeverifier. Evenincaseswhere
+4
+PublishedasaconferencepaperatICLR2025
+18
+17
+16
+15
+0.0 0.2 0.4 0.6 0.8 1.0
+#large-model deferrals / #tokens generated
+UELB
+WMT: Small Large
+14
+13
+Cascade [Chow] 12
+Oracle [Diff] 11
+0.0 0.2 0.4 0.6 0.8 1.0
+#large-model deferrals / #tokens generated
+2-EGUOR
+XSum: Base Large
+Cascade [Chow]
+Oracle [Diff]
+Figure2: Plotsofqualityasafunctionofthenumberofdeferralstothelargermodeldividedby
+thetotalnumberofgeneratedtokensforcascadesconstructedfromT5models(undertemperature
+samplingwithT =1). Theleft-mostpointrepresentsthesmallmodelandtheright-mostrepresents
+thelargemodel. Wecomparetoken-levelcascadesconstructedwithChow’srule(Chow)andanoracle
+deferralrule(Diff). Whilespeculativedecodingwillmatchthequalityofthelargemodel(seedashed
+horizontalline),theoracledeferralruleyieldssignificantlybetterqualityonarangeofdeferralrates.
+boththedrafterandverifierfarepoorlyonsomeinputs(e.g.,duetolabelnoise),onemaywantto
+ignorethedisagreementbetweenthedrafterandverifiertoavoidtriggeringunnecessaryroll-backs.
+As a concrete example, we consider token-level cascades of T5 models (Raffel et al., 2020) of
+twodifferentsizesfinetunedonaWMTEN→DEtranslationBojaretal.(2014)andanextreme
+summarization(XSum)task(Narayanetal.,2018). WeconstructthesecascadesusingChow’srule
+in(2),andtheDiffrulein(5),whichasnotedinRemark1,servesasanoracle. InFigure2,weplot
+qualityasafunctionoffractionofsamplesdeferredtothelargemodel(numberofdeferralsdivided
+bynumberofgeneratedtokens),aswevarythecostparameterα. Recallthatspeculativedecodingis
+guaranteedtomatchthequalityofthelargemodel. Incontrast,theDiffrulebasedcascadesyielda
+widerangeofcost-qualitytrade-offs,oftenoutperformingthelargemodel. EvenChow’srule,which
+issub-optimalforcascading(Jitkrittumetal.,2023),outperformsthelargemodelinasmallregion.
+AsnotedbyKimetal.(2023),thismaybeattributedtotheensemblingeffectinacascade.
+However,comparedtospeculativedecoding,token-levelcascadesmayrequireasignificantlylarger
+number of deferrals to the large model to achieve the same quality. This is because token-level
+cascadesareexecutedsequentially: wheneverqdefers,weexecuteponcetogenerateonenexttoken
+fortheprefixaccumulatedsofar,andthecontroltransfersbacktoq. Incontrast,speculativedecoding
+runspinscoringmodetoverifyγdrafttokensfromqinparallel.Moreover,thestochasticverification
+algorithminspeculativedecodingoftenresultsinfewertokensfromqgettingrejectedcomparedto
+thedeterministicdeferralrulesusedinacascade. Theseobservationsmotivateanaturalquestion:
+giventheircomplementarystrengths,howcanweleveragethebestofboththesetechniques?
+4 SPECULATIVE CASCADES: LEVERAGING THE BEST OF BOTH WORLDS
+Inaddressingtheabovequestion,wepresentourmaincontribution:speculativecascades,aprincipled
+approachtocombiningthebettertrade-offstoken-levelcascadesofferwiththefasterexecutionof
+speculativedecoding. Unliketoken-levelcascades,wherethelargemodeliscalledonlywhenthe
+smallmodeldefers,speculativecascadesinvokethelargemodelinparallelscoringmodeafterevery
+γ drafttokens. Consequently,theyhavetheaddedbenefitofbeingabletoimplementdeferralrules
+thatarenotrealizablewithasequentialcascade,andcanthuspotentiallyachievelowerlatencies.
+4.1 SPECULATIVEDECODINGWITHGENERALTARGETDISTRIBUTIONS
+Webeginbyconsideringagenericversionofspeculativedecodingthatseekstomimicageneraltarget
+distributionderivedfromthedrafter’sandverifier’sdistributions. Intheproposedsamplingprocedure
+outlinedinAlgorithm4,wesampletokensauto-regressivelyasbeforefromthedrafter’sdistribution.
+Duringtheverificationstep,however,wedonotcomparethedrafter’stokenprobabilitiesagainstthe
+verifier’sdistribution. Instead,weuseauser-specifiedtargetdistributionπ =T(q,p)∈∆Vderived
+fromthedrafter’sandverifier’sdistributionsatpositiont,forsomefunctionT(·,·)thatisinexpensive
+tocompute. Weacceptadrafttokenx whenq(x )≤π(x )andrejectitotherwisewithprobability
+t t t
+1− π(xt). Uponrejection,were-samplefromtheresidualdistributionnorm(max{0,π(·)−q(·)}).
+q(xt)
+Thisgeneralprocedurenotonlyencompassesstandardspeculativedecoding(Leviathanetal.,2023)
+forT(q,p)=p,butalsoincludeslossyspeculativedecoding(Tran-Thien,2023)asaspecialcase:
+5
+PublishedasaconferencepaperatICLR2025
+Lemma2. Algorithm4reducestothelossyspeculativesamplingprocedurein(Tran-Thien,2023)
+withparametersαandβ whenT(q,p)(v)=max{min{q(v), p(v)},p(v)}.
+1−α β
+4.2 FROMSEQUENTIALTOSPECULATIVECASCADES
+EquippedwithAlgorithm4,wenowproposenewcascadingtechniquesthatimplementtheirdeferral
+ruleinaspeculativemanner. Recallfrom§3.1thatatoken-levelcascadeoftwomodelsqandpis
+definedbyadeferralruler :Vt−1 →{0,1}. Foraprefixx ,thenext-tokendistributionatposition
+<t
+tmodeledbythiscascadecanbewrittenas:
+π(v)=(1−r(x ))·q (v)+r(x )·p (v).
+<t t <t t
+Infact,forallthedeferralrulesdescribedin§2,theresultingdistributioncanbedescribedbyatarget
+distributionfunctionT oftheform:
+δ
+T (q,p)(v)=(1−δ(q,p))·q(v)+δ(q,p)·p(v), (6)
+δ
+forsomefunctionδ : ∆V×∆V → {0,1}thatmapsdistributions(q,p)toabinarydecision. For
+(cid:0) (cid:1)
+example,toimplementChow’srule,wemaychooseδ(q,p)=1 max q(v)<1−α .
+v
+OurproposalistotheninvokethespeculativesamplingprocedureinAlgorithm4withT asthe
+δ
+targetdistributionfunction. WeoutlinethisgenericspeculativecascadingapproachinAlgorithm5,
+andcontrastitwiththesequentialexecutionofadeferralruleinAlgorithm2.
+Interestingly,asnotedbelow,theDiffrule,whichwasnotrealizablewithatoken-levelcascade,can
+(cid:0)
+beefficientlyimplementedwithaspeculativecascadedusingδ(q,p)=1 max q(v)<max p(v)−
+v v
+(cid:1)
+α .SeeTable1forasummaryofdifferentdeferralrulesandcorrespondingtargetdistributions.
+Remark2(Diffruleisrealizablewithaspeculativecascade). Inatoken-levelcascade,thelarge
+model’sdistributionpcannotbeusedatthetimethedeferraldecisionismade(seeRemark1),as
+thiswoulddefeatthepurposeofthecascade. Withaspeculativecascade,however,wecanemploy
+rulessuchasDiffthatdependonbothqandp. Thisisbecausewerunthelargemodelpinparallel
+ondraftsgeneratedbythesmallmodelq,allowingustocomputebothp(·)andq(·)oneveryprefix.
+Sofarwehaveconsidereddeferralrulesdesignedforusewith(sequential)token-levelcascades.
+Inwhatfollows,wederivetheoptimaldeferralrulerforaspeculativecascade,wherewesample
+speculativelyfromatargetdistributionπ =(1−r(x ))·q +r(x )·p usingq asthedrafter.
+<t t <t t t
+4.3 OPTIMALSPECULATIVECASCADEDEFERRAL
+Weseekadeferralruler :Vt−1 →{0,1}thattrades-offbetweenqualityandinferencecost. Aswith
+§2,wemeasurequalityintermsofthelossincurredagainstthedatageneratingdistribution. The
+inferencecost,ontheotherhand,cruciallydependsonhowfrequentlyadrafttokenisrejectedinthe
+verificationphase,triggeringarollback. Tothisend,weseektominimizetheexpectedlossfrom
+thedeferralrulesubjecttoaconstraintontheresultingrejectionrate. Morespecifically,(i)weshow
+thattherejectionratecanbecomputedusingasimpleclosed-formexpression(Lemma3);(ii)we
+formulateaconstrainedoptimizationobjective(7)andthecorrespondingtheLagrangian(8);(iii)
+wederivetheoptimaldeferralrulethatminimizestheLagrangian(Lemma4),approximateitwitha
+plug-inrule(10),andprovidearegretboundguaranteefortheapproximation(Lemma5).
+Lemma3. Foragivenprefixx ,andtargetdistributionπ =(1−r(x ))·q +r(x )·p ,the
+<t <t t <t t
+probabilityofatokendrawnfromdraftdistributionq beingrejectedisequalto:r(x )·D (p ,q ),
+t <t TV t t
+(cid:80)
+whereD (p,q)= max{0,p(v)−q(v)}istheTVdistancebetweenpandq.
+TV v∈V
+Intuitively, whenever r(x ) = 0, π(v) = q (v), and therefore there is no rejection or roll-back;
+<t t
+whenr(x )=1,therejectionrateequalsD (p ,q ),perLeviathanetal.(2023).
+<t TV t t
+Forafixedprefixx ,weformulatethegoaloffindingasolutionto:
+<t
+m
+r
+in E v∼P(·|x<t) (cid:104)(cid:0) 1−r(x <t ) (cid:1) ·(cid:96)(v,q t )+r(x <t )·(cid:96)(v,p t ) (cid:1)(cid:105) s.t. r(x <t )·D TV (p t ,q t ) ≤ B, (7)
+forsomebudgetB >0. Equivalently,onemayminimizeanunconstrainedobjectivesimilarto(3),
+forsuitablecostparameterα>0(see§D.5):
+L spec (r;x <t )=E v∼P(·|x<t) (cid:2)(cid:0) 1−r(x <t ) (cid:1) ·(cid:96)(v,q t )+r(x <t )· (cid:0) (cid:96)(v,p t )+α·D TV (p t ,q t ) (cid:1)(cid:3) , (8)
+6
+PublishedasaconferencepaperatICLR2025
+Algorithm1SpecDecode
+Algorithm4GenSpecSample
+Input: Modelsq,p,Prefixx ,Blocksizeγ
+Input: Modelsq,p,Targetdistr.T,Prefixx
+<t
+,Blocksizeγ
+<t
+T(q,p)=. p // Sample γ tokens auto-regressively from q
+Output: GenSpecSample(q,p,T,x
+<t
+,γ) for
+q
+j =
+(
+0
+·)
+to
+=.
+γ
+q
+−
+(·|
+1
+x
+do
+); x ∼q (·)
+t+j <t+j t+j t+j
+endfor
+Algorithm2TokenCascade
+// Run p in parallel to score γ draft tokens
+Input: Modelsq,p,Deferrallogicδ,Prefixx <t p t+j (·)=. p(·|x <t+j ), ∀j ∈[γ]≡{0,...,γ}
+q t (·)=. q(·|x <t ) π t+j =T(q t+j ,p t+j )
+ifδ(q ,∅)=0 then
+t // Find the earliest rejected draft token
+Samplex ∼q (·) (cid:16) (cid:110) (cid:111)(cid:17)
+t t a ∼Ber min 1,πt+j(xt+j) , ∀j ∈[γ−1]; a =0
+else j qt+j(xt+j) γ
+p t (·)=. p(·|x <t ); Samplex t ∼p t (·) j∗ =min{j ∈[γ] : a j =0}
+endif
+// Sample a new token from residual distribution
+Output: x
+t p (·)
+res =
+(cid:40)
+norm(max{0, π t+j∗(·)−q t+j∗(·)}) ifj∗ <γ
+Algorithm3OracleCascade
+π (·) else
+t+γ
+Inp q t u ( t · : )= M . o q d ( e ·| l x s < q, t p ); ,De p f t e ( r · r ) al =. lo p g ( ic ·|x δ, < P t r ) efixx <t Ou S tp am ut p : le x x t t , + .. j∗ ., ∼ x t+ p r j e ∗ s (·)
+ifδ(q ,p )=0 then
+t t
+Samplex ∼q (·)
+t t
+else Algorithm5SpecCascade
+Samplex t ∼p t (·) Input: Modelsq,p,Deferrallogicδ,Prefixx <t ,Blocksizeγ
+endif T (q,p)=. (1−δ(q,p))·q+δ(q,p)·p
+δ
+Output: x t Output: GenSpecSample(q,p,T δ ,x <t ,γ)
+Contrasting(8)withthedeferralriskin(3)foratoken-levelcascade,thedifferenceisthatthecostof
+deferringtothelargermodelisnolongeraconstant,butdependsonthesimilaritybetweenq and
+t
+p ,asmeasuredbythetotalvariation(TV)distancebetweenthem. AnalgoustoLemma1,wenext
+t
+derivetheoptimaldeferralrulefor(8),andthenconstructafeasibleestimatorforit.
+Lemma4(Optimaldeferralforspeculativecascades). Theminimizerof(8)isoftheform:
+r∗(x <t )=1 ⇐⇒ E v∼P(·|x<t) [(cid:96)(v,q t )] > E v∼P(·|x<t) [(cid:96)(v,p t )]+α·D TV (p t ,q t ). (9)
+Whenp andq aresimilar,therejectionrateforq islow,andhencethedeferraldecisionwilldepend
+t t t
+largelyonwhichofthetwomodelsyieldsalowerexpectedloss. Whenp andq areverydifferent,
+t t
+theoptimaldecisionistodefertop onlywhenityieldsasubstantiallylowerlossthanq .
+t t
+Plug-inestimatorfor(9). Theoptimalrulerequiresestimatingexpectationswithrespectthedata
+generatingdistributionP(·|x ).Weemploysimilarplug-inestimatorsastheonesusedwithtoken-
+<t
+levelcascades(§3.2).When(cid:96)=(cid:96) ,wereplacetheexpected0-1losswith(oneminus)themaximum
+0-1
+probabilityfromthemodel,givingus:
+rˆ (x )=1 ⇐⇒ max q (v) < max p (v)−α·D (p ,q ). (10)
+OPT <t v t v t TV t t
+Theefficacyoftheplug-inestimatordependsonhowcloselytheindividualmodelsapproximatethe
+datageneratingdistributionP(·|x );thisisformalizedbythefollowingregretbound:
+<t
+Lemma5(Regretboundforrˆ ). Suppose(cid:96)=(cid:96) . DenoteP (v)= . P(v|x ). Thenforfixedx :
+OPT 0-1 t <t <t
+L spec (rˆ OPT ;x <t )−min L spec (r;x <t ) ≤ max (cid:12) (cid:12) P t (v)−q t (v) (cid:12) (cid:12) + max (cid:12) (cid:12) P t (v)−p t (v) (cid:12) (cid:12).
+r v∈V v∈V
+OnecannowrunthespeculativecascadingprocedureinAlgorithm5using(10)asthedeferralrule;
+thecorrespondingδ(·)islistedinTable1. See§D.3forasimilarderivationfor(cid:96)=(cid:96) .
+log
+5 BEYOND CASCADED DEFERRAL: TOKEN-SPECIFIC INTERLEAVINGS
+Thedeferralruleswehaveseensofarin(5)and(10)decidebetweenthedrafter’sdistributionq (·)
+t
+andtheverifier’sdistributionp (·)bycomparingtheirmaximumtokenprobabilities. Adownsideto
+t
+7
+PublishedasaconferencepaperatICLR2025
+thiscascadedformofdeferralisthatthespecificdrafttokensampledx ∼q (·)maynotbethesame
+t t
+asthetokenthatmaximizesmaximizeq (·). Thus,evenwhenx isofpoorquality,wemayendup
+t t
+acceptingitbecauseq happenstobemorepeakedthanp .
+t t
+Token-specificinterleaving. Toalleviatetheaboveproblem,weproposetheuseoftoken-specific
+deferralrulesr :Vt−1×V→{0,1}thatuseboththeprefixx andacandidatetokenvtoprovide
+<t
+abinarydecisionr(x ,v) ∈ {0,1},with0indicatingthatthetokenisofacceptablequality. We
+<t
+maythenconstructatargetdistributionofthefollowingform:
+π (v)=q (v)·(1−r(x ,v))+p (v)·η, (11)
+Token t <t t
+whereη = (cid:80) r(x ,v(cid:48))·q (v(cid:48))isanormalizingtermchosentoensurethat (cid:80) π (v)=1.
+v(cid:48)∈V <t t v∈V Token
+Thistargetdistributioncloselymimicsq (·)ontokensthatthedeferralrulerdeemstobeofacceptable
+t
+quality,anddeferstop (·)otherwise. Onecanmodifythegenericspeculativesamplingalgorithmin
+t
+Algorithm4touseπ asthetargetdistribution,asshowninAlgorithm6in§E.
+Token
+Todesignthedeferralruler,weproposeaheuristicvariantoftheDiffruleinequation4(in§E,
+wediscussderivingasimilarvariantoftheOPTruleinequation9). Specifically,wecomparethe
+probabilitythatthedrafttokenvistheincorrectnexttokentox accordingtothedata-generating
+<t
+distributionPwiththeexpected0-1lossthatwewouldincurifweweretodefertotheverifierp :
+t
+r(x <t ,v)=1 ⇐⇒ 1−P(v|x <t ) > E v(cid:48)∼P(·|x<t) [(cid:96) 0-1 (v(cid:48),p t )]+α, (12)
+foracostparameterα. Thefollowingaresomesimpleplug-inapproximationsto(12),wherewe
+approximateP(v|x )witheitherq (v)orp (v),andtheexpected0-1lossusingmax p (v(cid:48)):
+<t t t v(cid:48) t
+rˆ (x ,v)=1 ⇐⇒ q (v) < max p (v(cid:48))−α (13)
+TokenV1 <t t v(cid:48) t
+rˆ (x ,v)=1 ⇐⇒ p (v) < max p (v(cid:48))−α (14)
+TokenV2 <t t v(cid:48) t
+rˆ (x ,v)=1 ⇐⇒ p (v) < max p (v(cid:48))·(1−α). (15)
+TokenV3 <t t v(cid:48) t
+where(15)usesamultiplicativeplug-inapproximation.
+Theresultingtargetdistributionshaveanintuitiveform. Forexample,with(13):
+π (v)=q (v)·1 (cid:0) v ∈T (cid:1) + p (v)· (cid:80) q (v(cid:48)), (16)
+TokenV1 t α t v(cid:48)∈/Tα t
+whereT ={v ∈V: q (v) ≥ max p (v(cid:48))−α}isthesetoftokensdeemedimportant. Forthese
+α t v(cid:48) t
+tokens,π approximatesq (·);fortherest,itisare-scaledversionofp (·).
+TokenV1 t t
+Contrastingwithlossyspeculativesampling.Recallthatlossyspeculativesampling(Tran-Thien,
+2023) also seeks to mimic a token-specific interleaving of q and p , given by π (v) =
+t t Lossy
+max{min{q (v),pt(v)},pt(v)},fortrade-offparametersα,β(Lemma2).However,insomesettings,
+t 1−α β
+thischoiceoftargetdistributionmayseverelylimittherangeofcost-qualitytrade-offsthatcanbe
+achievedbyvaryingαandβ. Forexample,notethatπ (v)=0wheneverp (v)=0,makingthe
+Lossy t
+trade-offparametersαandβ irrelevantforsuchtokens. Thiscanbeparticularlyproblematicwhen
+samplingwithasmalltemperatureorwhenapplyingtop-P sampling,whereq andp maynotshare
+t t
+thesamesupport. Incontrast,ourproposedapproachtotoken-specificdeferralenablesawiderrange
+oftrade-offsunderbothtemperatureandtop-P sampling,bycomputingthedeferralrulerin(11)on
+unscaledversionsofq andp ,whileinterleavingbetweenscaledversionsofq andp (see§C).
+t t t t
+Infact,intheextremecaseofgreedydecoding(samplingwithtemperatureT =0),π simply
+Lossy
+degeneratestop . Forthisspecialcase,Leviathanetal.(2023)proposeanalternatelossyversion
+t
+ofspeculativedecodingwithadeterministicrejectioncriterionsimilarto(15). Interestingly, our
+proposedTokenV3approachreducestothisvariantwhenT →0(see§C.4). ThusTokenV3canbe
+seenasagenericdeferralrulethatisapplicabletobothgreedyandnon-greedydecoding.
+6 EXPERIMENTAL RESULTS
+We compare our speculative cascading techniques with both sequential cascades and standard
+speculativedecodingonarangeoflanguagebenchmarks,includingtranslation,reasoning,coding,
+QA,etc. WeevaluatespeculativecascadesconstructedfromboththeT5v1.1familyofencoder-
+decodermodels(Raffeletal.,2020),andGemmav2decoder-onlymodels(Teametal.,2024).1
+1IllustrativecolabnotebookwithGemmamodelsavailableat: https://github.com/google-research/
+google-research/tree/master/speculative_cascades.
+8
+PublishedasaconferencepaperatICLR2025
+Table2: Reductioninlatency(T = 1,γ = 5)whenmatchingthequalityofthelargemodel(cols
+2–7),andthebestqualitymetricwithoutexceedingthelatencyofthelargemodel(cols8–13).Quality
+ismeasuredintermsofBLEUforWMTandROUGE-2forXSumandCNNDM.Rows1–4arethe
+baselines;Rows5–6containtheproposedmethodwitholddeferralrules(§3);Rows7–8arewith
+newdeferralrules(§4). See§F.2–F.3forresultswithvaryingtemperaturesandtop-P sampling.
+Latency↓whenmatchinglargemodel’squality Bestqualitywithoutexceedinglargemodel’slatency
+Small→Large Small→XL Small→Large Small→XL
+Method WMT XSum CNNDM WMT XSum CNNDM WMT XSum CNNDM WMT XSum CNNDM
+SeqCascade[Chow] 1.55× 0.84× 0.98× 2.46× 0.93× 0.94× 16.56 12.97 9.91 16.29 16.40 11.18
+TokenCascade[Chow] 1.03× 0.93× 1.40× 1.46× 0.82× 1.51× 16.52 13.30 10.36 16.65 17.09 11.44
+SpecDecode[Lossy] 1.61× 1.10× 1.57× 2.17× 1.28× 2.07× 17.26 13.90 10.43 16.94 17.36 11.53
+BiLD∗ 1.34× 1.04× 1.38× 1.85× 1.28× 1.84× 16.49 13.81 10.14 15.90 17.35 11.35
+SpecCascade[Chow] 1.43× 1.04× 1.41× 2.01× 1.28× 1.97× 17.76 13.82 10.28 16.35 17.36 11.39
+SpecCascade[Diff] 1.79× 1.17× 1.75× 2.44× 1.30× 2.15× 18.04 14.00 10.64 18.07 17.37 11.67
+SpecCascade[OPT] 1.95× 1.17× 1.80× 2.61× 1.34× 2.21× 18.33 14.10 10.86 18.09 17.48 11.85
+SpecCascade[Token] 1.85× 1.18× 1.89× 2.50× 1.40× 1.89× 22.50 15.85 12.63 22.70 18.79 12.63
+CascadesversusSpecDecodeevaluation.Ourevaluationprotocolismarkedlydifferentfromthe
+standardevaluationofspeculativedecodingalgorithms,wherethegoalistospeedupinferencewith
+alargemodelwhilepreservingitsoutputdistribution. Incontrast,ourfocusisontrading-offquality
+forlowerinferencecostsbyinterleavingtwomodelsofdifferentsizes. Wealsodonotclaimto
+developanewstate-of-the-artmethodforfastLMinference. Furthermore,thespeculativecascades
+wedesignbuildontheoriginalspeculativedecodingalgorithmLeviathanetal.(2023). Whileone
+couldpotentiallyalsoadaptourproposaltootherrecentvariantsofspeculativedecoding(Caietal.,
+2024;Lietal.,2024a),theseinvolveawhollyorthogonalsuiteoftechniquestowhatwepropose
+(suchasarchitecturalchanges,allowingformultipledrafts,distillation,andsoon;see§B).
+Proposedmethodsandbaselines. Weevaluateourproposedspeculativecascadeswithfourdeferral
+rules: (i)Chowin(2),(ii)Diffin(5),(iii)OPTin(10),and(iv)theToken-specificrulein(15). Of
+these,(i)and(ii)areexistingdeferralrules,while(iii)and(iv)arenewruleswepropose. Wealso
+presentresultsfortheV1andV2variantsofthetoken-specificrulesin§F.7.
+Wecomparethesewiththefollowingcascadingandspeculativedecodingbaselines:
+(i) Sequence-level cascade (Jitkrittum et al., 2023; Gupta et al., 2024) based on sequence-level
+Chow’srulein(1)(SeqCascade[Chow]).
+(ii) Token-levelcascadeoutlinedinAlgorithm2,withtoken-levelChow’srulein(2)usedfordeferral
+(Chow,1970;Guptaetal.,2022)(TokenCascade[Chow]).
+(iii) Lossyspeculativedecodingdescribedin§2,withbothβ =1(Leviathanetal.,2023;Zhouetal.,
+2024)(SpecDecode[Lossy])andβ tunedusingtheprocedureinTran-Thien(2023)(Lossy(cid:63)).
+(iv) Big-LittleDecoderapproach(Kimetal.,2023),withboththeoriginaldeterministicrejectionrule
+(BiLD),andthestochasticrejectionsamplingvariantoftheirmethoddescribedin§B(BiLD∗).
+Fine-tunedT5cascades.OurexperimentsonT5modelsarebasedonthesetupinZhouetal.(2024);
+see §F.1 for details. We use T5-small (77M) as the small model, and either T5-large (800M) or
+T5-XL(3B)asthelargemodel. Ineachcase,wesupervisedfine-tunethesemodelsonthreetasks:
+WMTEN→DEtranslation(Bojaretal.,2014),CNN/DMsummarization(Hermannetal.,2015),and
+XSumabstractivesummarization(Narayanetal.,2018). WeusetemperaturesT =0,0.1,0.5,1.0,
+andblocksizesγ = 3,5,7(fullresultsin§F).FollowingtheprotocolinLeviathanetal.(2023);
+Zhouetal.(2024),tomeasurelatency,weevaluatethewall-clockdecodingtimewithbatchsize1.
+In Table 2, we report for the each method, (i) the reduction in latency from T5 cascades when
+matchingthequalityofthelargemodel,and(ii)thebestqualityitcandeliverwithoutexceeding
+the latency of the large model. SeqCascade and TokenCascade are often seen to fare poorly on
+bothqualityandlatencymetrics,withtheexceptionofWMT,whereSeqCascadeyieldsnon-trivial
+speed-ups. SpecCascade[Token]oftenyieldsthehighestspeed-upandthebestqualitymetrics,with
+OPTcominginsecond. ThereasontheToken-specificrulefaresbetterthanOPTandDiffisbecause
+thelattercomputetheirdeferraldecisionsbasedonwhichofq (·)andp (·)ismorepeaked;thiscan
+t t
+beadisadvantagewhenthesampledtokenisnotclosetothedistributionmode,whichislikelyto
+happenwhenapplyingtemperaturesamplingwithahightemperature.
+9
+PublishedasaconferencepaperatICLR2025
+25
+20
+15
+10
+0.00 0.05 0.10 0.15 0.20 0.25 0.30
+Rejection rate
+UELB
+WMT 5-shot: 2B 27B (T = 1)
+21
+20
+19
+SpecDecode [Lossy] 18
+SpecCascade [OPT]
+SpecCascade [Token] 17
+0.00 0.05 0.10 0.15 0.20 0.25
+Rejection rate
+L-eguoR
+CNNDM 5-shot: 2B 27B (T = 1)
+0.7
+0.6
+SpecDecode [Lossy] 0.5
+SpecCascade [OPT]
+SpecCascade [Token] 0.4
+0.00 0.02 0.04 0.06 0.08 0.10 0.12
+Rejection rate
+hctaM
+tcaxE
+GSM8K 8-shot: 2B 27B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+0.32
+0.30
+0.28
+0.26
+0.24
+0.00 0.05 0.10 0.15 0.20 0.25
+Rejection rate
+1F
+WebQ 1-shot: 2B 27B (T = 1)
+0.5
+0.4
+0.3
+SpecDecode [Lossy]
+SpecCascade [OPT] 0.2
+SpecCascade [Token]
+0.00 0.05 0.10 0.15
+Rejection rate
+1@ssaP
+MBPP 3-shot: 2B 27B [PT] (T = 1)
+0.35
+0.30
+0.25
+0.20 SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token] 0.15
+0.0 0.1 0.2 0.3 0.4
+Rejection rate
+1F
+NaturalQA 1-shot: 2B 27B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+Figure3: Plotsofqualityvs.rejectionrateformethodsthatinterleaveGemma2BwithGemma27B
+(γ =1). Weuseinstruction-tunedmodels;forMBPPwereportadditionalresultswithpre-trained
+models. See§F.7forremainingplots,comparisonto(13–14)andresultson2B→9Bcascades.
+Wepresentplotsofqualityvs.latencyforthedifferentmethodsinFigure4in§F.Ineachcase,we
+varythetrade-offparameterα,andplotthequalitymetricasafunctionoftherelativelatencytothe
+largemodel. Whilemethodsthatusespeculativeexecutionareconsiderablyfasterthansequential
+cascades (TokenCascade [Chow]), the latter offer better quality in the low-latency regimes. This
+is because unlike speculative approaches, which always call the large model after every γ steps,
+sequentialcascadesinvokethelargemodelonlywhenthesmallmodeldefers. In§F.5–F.6,wepresent
+additionalcomparisonstoSpecDecode[Lossy(cid:63)],andtheoriginalBiLDalgorithm(Kimetal.,2023).
+Wealsoreportresultswithvaryingtemperaturesin§F.2,andwithtop-P samplingin§F.3. Asthe
+temperatureorP becomessmaller,SpecDecode [Lossy]yieldscomparablequalityasourmethods,
+but is severely limited in the range of cost-quality trade-offs it offers (see discussion in §5). In
+contrast,SpecCascade [Token]offersawiderrangeoftrade-offpointsevenforlowtemperatureor
+P values,andisabletomatchthequalityofthelargermodelatlowerlatencies(seeTable5).
+Few-shotGemmacascades. ToevaluatetheGemmamodelcascades,weusefew-shotprompting
+with 8 language benchmarks: WMT, CNN/DM, GSM8K, MBPP, SQuAD 2.0, WebQuestions,
+NaturalQAandTriviaQA;manyofthesefeatureintheSpecBenchsuite(Xiaetal.,2024). Figure3
+presentsplotsofqualityvs.rejectionratewitha2Bdrafterand27Bverifierforγ =1. Forbrevity,
+weonlycomparethemethodsthatfarethebestinthepreviousexperiments. Withtheexceptionof
+TriviaQA,SpecCascade [Token]isabletobothmatchthe27B’squalityatalowerrejectionrate
+andyieldthebestoverallquality,oftenbetterthan27B.Sinceallthreemethodsusetheexactsame
+implementationbutwithdifferentrejectioncriteria,wedirectlycomparetheirrejectionrates.
+Interestingly,theOPTruleisnotaseffectiveasitwaswiththeT5models. Weattributethistothe
+differencesindistributionsbetweenthetwosetups. WithT5,themaximumtokenprobabilityserved
+asagoodindicatoroftokenaccuracyforbothqandp. WithGemmamodels,however,weexpectthe
+largemodeltohaveacloseralignmentwiththedatageneratingdistribution(duetoitbeingseveral
+billionparametersapartfromthesmallermodel),andhenceusingthelargemodelprobabilitiesto
+measureconfidenceforboththesmallandlargemodel(15)yieldsbettertrade-offsthancomparing
+the modes from the two model distributions. More generally, we expect SpecCascade to yield
+significantgainsoverSpecDecodewhenthereexistsasliceofdatawherethesmallmodelperforms
+comparabletoorbetterthanthelargemodel. Thelargerthisslice,thelargeristheimprovement.
+Conclusions. Wehaveproposednewspeculativecascadingtechniquesthatuseacombinationof
+auto-regressivedraftingandparallelverificationtoimplementtheirdeferralrule,andshownthatthey
+yieldbettercost-qualitytrade-offsthanstandardsequentialcascadesandspeculativedecoding. A
+limitationofourapproachisthatwhileitofferslowerlatencyviaparallelexecution,italsoincurs
+a higher total compute cost compared to sequential cascades. In the future, we wish to replace
+ourplug-inestimatorswitharoutermodel(Guptaetal.,2024)trainedonground-truthsamplesto
+approximatetheoptimalrule,andtoextendourproposaltomorethantwomodels.
+10
+PublishedasaconferencepaperatICLR2025
+Acknowledgements.WethankAnandaTheerthaSureshandZitengSunforinsightfuldiscussions
+andforhelpimplementingspeculativecascadeswithGemmamodels.
+REFERENCES
+RohanAnilandetal. PaLM2technicalreport,2023.
+JacobAustin,AugustusOdena,MaxwellNye,MaartenBosma,HenrykMichalewski,DavidDohan,
+EllenJiang,CarrieCai,MichaelTerry,QuocLe,etal. Programsynthesiswithlargelanguage
+models. arXivpreprintarXiv:2108.07732,2021.
+JonathanBerant,AndrewChou,RoyFrostig,andPercyLiang. Semanticparsingonfreebasefrom
+question-answerpairs. InProceedingsofthe2013conferenceonempiricalmethodsinnatural
+languageprocessing,pp.1533–1544,2013.
+Sidney Black, Stella Biderman, Eric Hallahan, Quentin Anthony, Leo Gao, Laurence Golding,
+HoraceHe,ConnorLeahy,KyleMcDonell,JasonPhang,MichaelPieler,UsvsnSaiPrashanth,
+ShivanshuPurohit,LariaReynolds,JonathanTow,BenWang,andSamuelWeinbach. GPT-NeoX-
+20B:Anopen-sourceautoregressivelanguagemodel. InAngelaFan,SuzanaIlic,ThomasWolf,
+and Matthias Gallé (eds.), Proceedings of BigScience Episode #5 – Workshop on Challenges
+& Perspectives in Creating Large Language Models, pp. 95–136, virtual+Dublin, May 2022.
+AssociationforComputationalLinguistics. doi: 10.18653/v1/2022.bigscience-1.9. URLhttps:
+//aclanthology.org/2022.bigscience-1.9.
+Ondˇrej Bojar, Christian Buck, Christian Federmann, Barry Haddow, Philipp Koehn, Johannes
+Leveling,ChristofMonz,PavelPecina,MattPost,HerveSaint-Amand,etal. Findingsofthe2014
+workshoponstatisticalmachinetranslation. InProceedingsoftheninthworkshoponstatistical
+machinetranslation,pp.12–58,2014.
+TomBrown,BenjaminMann,NickRyder,MelanieSubbiah,JaredDKaplan,PrafullaDhariwal,
+Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel
+Herbert-Voss,GretchenKrueger,TomHenighan,RewonChild,AdityaRamesh,DanielZiegler,
+JeffreyWu,ClemensWinter,ChrisHesse,MarkChen,EricSigler,MateuszLitwin,ScottGray,
+BenjaminChess,JackClark,ChristopherBerner,SamMcCandlish,AlecRadford,IlyaSutskever,
+and Dario Amodei. Language models are few-shot learners. In H. Larochelle, M. Ranzato,
+R.Hadsell,M.F.Balcan,andH.Lin(eds.),AdvancesinNeuralInformationProcessingSystems,
+volume33,pp.1877–1901.CurranAssociates,Inc.,2020.
+TianleCai,YuhongLi,ZhengyangGeng,HongwuPeng,JasonDLee,DemingChen,andTriDao.
+Medusa: SimpleLLMinferenceaccelerationframeworkwithmultipledecodingheads. arXiv
+preprintarXiv:2401.10774,2024.
+CharlieChen,SebastianBorgeaud,GeoffreyIrving,Jean-BaptisteLespiau,LaurentSifre,andJohn
+Jumper. Acceleratinglargelanguagemodeldecodingwithspeculativesampling. arXivpreprint
+arXiv:2302.01318,2023a.
+LingjiaoChen,MateiZaharia,andJamesZou. FrugalGPT:Howtouselargelanguagemodelswhile
+reducingcostandimprovingperformance,2023b.
+ZhuomingChen,AvnerMay,RuslanSvirschevski,Yu-HsunHuang,MaxRyabinin,ZhihaoJia,and
+BeidiChen. Sequoia: Scalableandrobustspeculativedecoding. InTheThirty-eighthAnnual
+ConferenceonNeuralInformationProcessingSystems,2024. URLhttps://openreview.net/
+forum?id=rk2L9YGDi2.
+ZiyiChen,XiaocongYang,JiachengLin,ChenkaiSun,JieHuang,andKevinChen-ChuanChang.
+CascadespeculativedraftingforevenfasterLLMinference. arXivpreprintarXiv:2312.11462,
+2023c.
+CChow. Onoptimumrecognitionerrorandrejecttradeoff. IEEETransactionsoninformationtheory,
+16(1):41–46,1970.
+11
+PublishedasaconferencepaperatICLR2025
+Aakanksha Chowdhery, Sharan Narang, Jacob Devlin, Maarten Bosma, Gaurav Mishra, Adam
+Roberts,PaulBarham,HyungWonChung,CharlesSutton,SebastianGehrmann,ParkerSchuh,
+KensenShi,SashaTsvyashchenko,JoshuaMaynez,AbhishekRao,ParkerBarnes,YiTay,Noam
+Shazeer,VinodkumarPrabhakaran,EmilyReif,NanDu,BenHutchinson,ReinerPope,James
+Bradbury,JacobAustin,MichaelIsard,GuyGur-Ari,PengchengYin,TojuDuke,AnselmLev-
+skaya,SanjayGhemawat,SunipaDev,HenrykMichalewski,XavierGarcia,VedantMisra,Kevin
+Robinson,LiamFedus,DennyZhou,DaphneIppolito,DavidLuan,HyeontaekLim,BarretZoph,
+AlexanderSpiridonov,RyanSepassi,DavidDohan,ShivaniAgrawal,MarkOmernick,AndrewM.
+Dai,ThanumalayanSankaranarayanaPillai,MariePellat,AitorLewkowycz,EricaMoreira,Rewon
+Child,OleksandrPolozov,KatherineLee,ZongweiZhou,XuezhiWang,BrennanSaeta,Mark
+Diaz,OrhanFirat,MicheleCatasta,JasonWei,KathyMeier-Hellstern,DouglasEck,JeffDean,
+SlavPetrov,andNoahFiedel. PaLM:Scalinglanguagemodelingwithpathways,2022.
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser,
+MatthiasPlappert,JerryTworek,JacobHilton,ReiichiroNakano,etal. Trainingverifierstosolve
+mathwordproblems. arXivpreprintarXiv:2110.14168,2021.
+DujianDing,AnkurMallick,ChiWang,RobertSim,SubhabrataMukherjee,VictorRühle,Laks
+V.S.Lakshmanan,andAhmedHassanAwadallah. HybridLLM:Cost-efficientandquality-aware
+queryrouting. InTheTwelfthInternationalConferenceonLearningRepresentations,2024. URL
+https://openreview.net/forum?id=02f3mUtqnM.
+DavidDohan,WinnieXu,AitorLewkowycz,JacobAustin,DavidBieber,RaphaelGontijoLopes,
+Yuhuai Wu, Henryk Michalewski, Rif A. Saurous, Jascha Sohl-dickstein, Kevin Murphy, and
+CharlesSutton. Languagemodelcascades,2022. URLhttps://arxiv.org/abs/2207.10342.
+Maha Elbayad, Jiatao Gu, Edouard Grave, and Michael Auli. Depth-adaptive transformer. In
+InternationalConferenceonLearningRepresentations,2020. URLhttps://openreview.net/
+forum?id=SJg7KhVKPH.
+MostafaElhoushi,AkshatShrivastava,DianaLiskovich,BasilHosmer,BramWasti,LiangzhenLai,
+AnasMahmoud,BilgeAcun,SaurabhAgarwal,AhmedRoman,etal. Layerskip: Enablingearly
+exitinferenceandself-speculativedecoding. arXivpreprintarXiv:2404.16710,2024.
+DeepSeek-AIetal. Deepseek-v2: Astrong,economical,andefficientmixture-of-expertslanguage
+model,2024a. URLhttps://arxiv.org/abs/2405.04434.
+Grattafiorietal. TheLlama3herdofmodels,2024b. URLhttps://arxiv.org/abs/2407.21783.
+Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q. Weinberger. On calibration of modern neural
+networks. InProceedingsofthe34thInternationalConferenceonMachineLearning-Volume70,
+ICML’17,pp.1321–1330.JMLR.org,2017.
+NehaGupta,JamieSmith,BenAdlam,andZeldaEMariet. Ensemblesofclassifiers: abias-variance
+perspective. TransactionsofMachineLearningResearch,2022. URLhttps://openreview.net/
+forum?id=lIOQFVncY9.
+Neha Gupta, Harikrishna Narasimhan, Wittawat Jitkrittum, Ankit Singh Rawat, Aditya Krishna
+Menon,andSanjivKumar. Languagemodelcascades: Token-leveluncertaintyandbeyond. InThe
+TwelfthInternationalConferenceonLearningRepresentations,2024. URLhttps://openreview.
+net/forum?id=KgaBScZ4VI.
+KarlMoritzHermann, TomasKocisky, EdwardGrefenstette, LasseEspeholt, WillKay, Mustafa
+Suleyman,andPhilBlunsom. Teachingmachinestoreadandcomprehend. Advancesinneural
+informationprocessingsystems,28,2015.
+ColemanHooper,SehoonKim,HivaMohammadzadeh,HasanGenc,KurtKeutzer,AmirGholami,
+andSophiaShao. Speed: Speculativepipelinedexecutionforefficientdecoding. arXivpreprint
+arXiv:2310.12072,2023.
+WittawatJitkrittum,NehaGupta,AdityaKMenon,HarikrishnaNarasimhan,AnkitRawat,andSanjiv
+Kumar. Whendoesconfidence-basedcascadedeferralsuffice? AdvancesinNeuralInformation
+ProcessingSystems,36,2023.
+12
+PublishedasaconferencepaperatICLR2025
+MandarJoshi,EunsolChoi,DanielWeld,andLukeZettlemoyer. TriviaQA:Alargescaledistantly
+supervised challenge dataset for reading comprehension. In Proceedings of the 55th Annual
+MeetingoftheAssociationforComputationalLinguistics(Volume1: LongPapers),pp.1601–
+1611,Vancouver,Canada,July2017.AssociationforComputationalLinguistics. doi: 10.18653/
+v1/P17-1147. URLhttps://aclanthology.org/P17-1147.
+LeilaKhalili,YaoYou,andJohnBohannon.Babybear:Cheapinferencetriageforexpensivelanguage
+models,2022. URLhttps://arxiv.org/abs/2205.11747.
+Sehoon Kim, Karttikeya Mangalam, Suhong Moon, Jitendra Malik, Michael W Mahoney, Amir
+Gholami, and Kurt Keutzer. Speculative decoding with big little decoder. In Thirty-seventh
+ConferenceonNeuralInformationProcessingSystems,2023.
+TaehyeonKim,AnandaTheerthaSuresh,KishorePapineni,MichaelRiley,SanjivKumar,andAdrian
+Benton. Towardsfastinference: Exploringandimprovingblockwiseparalleldrafts. arXivpreprint
+arXiv:2404.09221,2024.
+Tom Kwiatkowski, Jennimaria Palomaki, Olivia Redfield, Michael Collins, Ankur Parikh, Chris
+Alberti,DanielleEpstein,IlliaPolosukhin,JacobDevlin,KentonLee,KristinaToutanova,Llion
+Jones,MatthewKelcey,Ming-WeiChang,AndrewM.Dai,JakobUszkoreit,QuocLe,andSlav
+Petrov. Naturalquestions: Abenchmarkforquestionansweringresearch. Transactionsofthe
+AssociationforComputationalLinguistics,7:452–466,2019. doi: 10.1162/tacl_a_00276. URL
+https://aclanthology.org/Q19-1026.
+YanivLeviathan,MatanKalman,andYossiMatias. Fastinferencefromtransformersviaspeculative
+decoding. In Andreas Krause, Emma Brunskill, Kyunghyun Cho, Barbara Engelhardt, Sivan
+Sabato,andJonathanScarlett(eds.),Proceedingsofthe40thInternationalConferenceonMachine
+Learning,volume202ofProceedingsofMachineLearningResearch,pp.19274–19286.PMLR,
+23–29Jul2023. URLhttps://proceedings.mlr.press/v202/leviathan23a.html.
+YuhuiLi,FangyunWei,ChaoZhang,andHongyangZhang. EAGLE:Speculativesamplingrequires
+rethinkingfeatureuncertainty. InInternationalConferenceonMachineLearning,2024a.
+YuhuiLi,FangyunWei,ChaoZhang,andHongyangZhang. EAGLE-2: Fasterinferenceoflanguage
+modelswithdynamicdrafttrees. InEmpiricalMethodsinNaturalLanguageProcessing,2024b.
+FangchengLiu, YehuiTang, ZhenhuaLiu, YunshengNi, KaiHan, andYunheWang. Kangaroo:
+Losslessself-speculativedecodingviadoubleearlyexiting. arXivpreprintarXiv:2404.18911,
+2024.
+Jonathan Mamou, Oren Pereg, Moshe Wasserblat, and Roy Schwartz. TangoBERT: Reducing
+inferencecostbyusingcascadedarchitecture,2022. URLhttp://arxiv.org/abs/2204.06271.
+XupengMiao,GabrieleOliaro,ZhihaoZhang,XinhaoCheng,ZeyuWang,ZhengxinZhang,Rae
+Ying Yee Wong, Alan Zhu, Lijie Yang, Xiaoxiang Shi, et al. Specinfer: Accelerating large
+languagemodelservingwithtree-basedspeculativeinferenceandverification. InProceedingsof
+the29thACMInternationalConferenceonArchitecturalSupportforProgrammingLanguages
+andOperatingSystems,Volume3,pp.932–949,2024.
+GiovanniMonea,ArmandJoulin,andEdouardGrave. Pass: Parallelspeculativesampling. arXiv
+preprintarXiv:2311.13581,2023.
+ShashiNarayan,ShayBCohen,andMirellaLapata. Don’tgivemethedetails,justthesummary!
+topic-awareconvolutionalneuralnetworksforextremesummarization. InProceedingsofthe2018
+ConferenceonEmpiricalMethodsinNaturalLanguageProcessing,pp.1797–1807,2018.
+Reiner Pope, Sholto Douglas, Aakanksha Chowdhery, Jacob Devlin, James Bradbury, Anselm
+Levskaya, Jonathan Heek, Kefan Xiao, Shivani Agrawal, and Jeff Dean. Efficiently scaling
+transformerinference,2022.
+Alec Radford, Karthik Narasimhan, Tim Salimans, Ilya Sutskever, et al. Improving lan-
+guageunderstandingbygenerativepre-training. https://cdn.openai.com/research-covers/
+language-unsupervised/language_understanding_paper.pdf,2018.
+13
+PublishedasaconferencepaperatICLR2025
+ColinRaffel,NoamShazeer,AdamRoberts,KatherineLee,SharanNarang,MichaelMatena,Yanqi
+Zhou,WeiLi,andPeterJ.Liu. Exploringthelimitsoftransferlearningwithaunifiedtext-to-text
+transformer. J.Mach.Learn.Res.,21:140:1–140:67,2020. URLhttp://jmlr.org/papers/v21/
+20-074.html.
+PranavRajpurkar,JianZhang,KonstantinLopyrev,andPercyLiang. SQuAD:100,000+questions
+formachinecomprehensionoftext. InProceedingsofthe2016ConferenceonEmpiricalMethods
+inNaturalLanguageProcessing,pp.2383–2392,Austin,Texas,November2016.Association
+forComputationalLinguistics. doi: 10.18653/v1/D16-1264. URLhttps://aclanthology.org/
+D16-1264.
+TalSchuster, AdamFisch, JaiGupta, MostafaDehghani, DaraBahri, VinhQ.Tran, YiTay, and
+DonaldMetzler. Confidentadaptivelanguagemodeling. InAliceH.Oh,AlekhAgarwal,Danielle
+Belgrave,andKyunghyunCho(eds.),AdvancesinNeuralInformationProcessingSystems,2022.
+URLhttps://openreview.net/forum?id=uLYc4L3C81A.
+YingSheng,LianminZheng,BinhangYuan,ZhuohanLi,MaxRyabinin,BeidiChen,PercyLiang,
+ChristopherRe,IonStoica,andCeZhang. FlexGen: High-throughputgenerativeinferenceof
+large language models with a single GPU. In Andreas Krause, Emma Brunskill, Kyunghyun
+Cho, Barbara Engelhardt, Sivan Sabato, and Jonathan Scarlett (eds.), Proceedings of the 40th
+InternationalConferenceonMachineLearning,volume202ofProceedingsofMachineLearning
+Research,pp.31094–31116.PMLR,23–29Jul2023. URLhttps://proceedings.mlr.press/
+v202/sheng23a.html.
+Benjamin Spector and Chris Re. Accelerating LLM inference with staged speculative decoding.
+arXivpreprintarXiv:2308.04623,2023.
+MitchellStern,NoamShazeer,andJakobUszkoreit. Blockwiseparalleldecodingfordeepautore-
+gressivemodels. CoRR,abs/1811.03115,2018. URLhttp://arxiv.org/abs/1811.03115.
+Ziteng Sun, Ananda Theertha Suresh, Jae Hun Ro, Ahmad Beirami, Himanshu Jain, and Felix
+Yu. Spectr: Fast speculative decoding via optimal transport. Advances in Neural Information
+ProcessingSystems,36,2024.
+GeminiTeam,RohanAnil,andetal. Gemini: Afamilyofhighlycapablemultimodalmodels,2023.
+Gemma Team, Morgane Riviere, Shreya Pathak, Pier Giuseppe Sessa, Cassidy Hardin, Surya
+Bhupatiraju, Léonard Hussenot, Thomas Mesnard, Bobak Shahriari, Alexandre Ramé, et al.
+Gemma2: Improvingopenlanguagemodelsatapracticalsize. arXivpreprintarXiv:2408.00118,
+2024.
+HugoTouvron,ThibautLavril,GautierIzacard,XavierMartinet,Marie-AnneLachaux,Timothée
+Lacroix,BaptisteRozière,NamanGoyal,EricHambro,FaisalAzhar,AurelienRodriguez,Armand
+Joulin,EdouardGrave,andGuillaumeLample. Llama: Openandefficientfoundationlanguage
+models,2023.
+Vivien Tran-Thien. An optimal lossy variant of speculative decoding, 2023. URL https:
+//vivien000.github.io... Unsupervised Thoughts (Blog). URL: https://github.com/
+vivien000/mentored_decoding.
+Neeraj Varshney and Chitta Baral. Model cascading: Towards jointly improving efficiency and
+accuracyofnlpsystems. arXivpreprintarXiv:2210.05528,2022.
+SiqiWang,HailongYang,XuezhuWang,TongxuanLiu,PengboWang,XuningLiang,KejieMa,
+TianyuFeng,XinYou,YongjunBao,etal. Minions: Acceleratinglargelanguagemodelinference
+withadaptiveandcollectivespeculativedecoding. arXivpreprintarXiv:2402.15678,2024.
+Xiaofang Wang, Dan Kondratyuk, Eric Christiansen, Kris M Kitani, Yair Alon, and Elad Eban.
+Wisdom of committees: An overlooked approach to faster and more accurate models. arXiv
+preprintarXiv:2012.01988,2020.
+HemingXia,ZheYang,QingxiuDong,PeiyiWang,YongqiLi,TaoGe,TianyuLiu,WenjieLi,and
+ZhifangSui. Unlockingefficiencyinlargelanguagemodelinference: Acomprehensivesurveyof
+speculativedecoding,2024.
+14
+PublishedasaconferencepaperatICLR2025
+Murong Yue, Jie Zhao, Min Zhang, Liang Du, and Ziyu Yao. Large language model cascades
+withmixtureofthoughtrepresentationsforcost-efficientreasoning. InTheTwelfthInternational
+Conference on Learning Representations, 2024. URL https://openreview.net/forum?id=
+6okaSfANzh.
+JunZhang,JueWang,HuanLi,LidanShou,KeChen,GangChen,andSharadMehrotra. Draft&
+verify: Losslesslargelanguagemodelaccelerationviaself-speculativedecoding. arXivpreprint
+arXiv:2309.08168,2023.
+YongchaoZhou,KaifengLyu,AnkitSinghRawat,AdityaKrishnaMenon,AfshinRostamizadeh,San-
+jivKumar,Jean-FrançoisKagy,andRishabhAgarwal.Distillspec:Improvingspeculativedecoding
+viaknowledgedistillation. InTheTwelfthInternationalConferenceonLearningRepresentations,
+2024. URLhttps://openreview.net/forum?id=rsY6J3ZaTF.
+15
+PublishedasaconferencepaperatICLR2025
+Appendix
+Table of Contents
+A Proofs 17
+A.1 ProofofLemma1 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+A.2 ProofofLemma2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+A.3 ProofofLemma3 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+A.4 ProofofLemma4 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+A.5 ProofofLemma5 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+B Furtherrelatedwork 21
+C ContrastingSpeculativeCascadesandLossySpeculativeSamplingunderDifferent
+SamplingSchemes 22
+C.1 Speculativecascadesundertemperaturesamplingandtop-P sampling . . . . . . 22
+C.2 Contrastingwithlossyspeculativesamplingundertemperaturesampling . . . . 22
+C.3 Contrastingwithlossyspeculativesamplingundertop-P sampling. . . . . . . . 23
+C.4 LossyspeculativegreedydecodingvariantbyLeviathanetal.(2023) . . . . . . 24
+D OptimalDeferral:AdditionalDiscussion 25
+D.1 DerivationofChow’srule . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+D.2 Optimalsequentialdeferralwhen(cid:96)=(cid:96) . . . . . . . . . . . . . . . . . . . . 25
+log
+D.3 Optimalspeculativedeferralwhen(cid:96)=(cid:96) . . . . . . . . . . . . . . . . . . . . 25
+log
+D.4 Optimalspeculativedeferralforgreedydecoding . . . . . . . . . . . . . . . . . 26
+D.5 Equivalencebetween(7)and(8). . . . . . . . . . . . . . . . . . . . . . . . . . 27
+E Token-specificSpeculativeCascade 28
+F AdditionalExperimentalDetails 29
+F.1 Experimentalsetupandhyper-parameters . . . . . . . . . . . . . . . . . . . . . 29
+F.2 Comparisonsundervaryingtemperaturesandgreedydecoding . . . . . . . . . . 32
+F.3 Comparisonsundertop-P sampling . . . . . . . . . . . . . . . . . . . . . . . . 33
+F.4 Comparisonsunderdifferentblocksizesγ . . . . . . . . . . . . . . . . . . . . 33
+F.5 BigLittleDecoder(BiLD)variants . . . . . . . . . . . . . . . . . . . . . . . . 33
+F.6 Lossyspeculativedecodingvariants . . . . . . . . . . . . . . . . . . . . . . . . 36
+F.7 Token-specificdeferralrulevariants . . . . . . . . . . . . . . . . . . . . . . . . 37
+G Limitations 39
+16
+PublishedasaconferencepaperatICLR2025
+A PROOFS
+A.1 PROOFOFLEMMA1
+Proof. Expandingthelossin(3),wehave:
+L (r;x )
+def <t
+= (cid:0) 1−r(x <t ) (cid:1) ·E xt∼P(·|x<t) [(cid:96)(x t ,q t )]+r(x <t )· (cid:0)E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α (cid:1)
+=r(x <t )· (cid:0)E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α−E xt∼P(·|x<t) [(cid:96)(x t ,q t )] (cid:1) + E xt∼P(·|x<t) [(cid:96)(x t ,q t )].
+Thisobjectiveisminimizedbyadeferralruler :Vt−1 →{0,1}thatminimizes,foreachprefixx ,
+<t
+thetermwithintheparenthesis. Thereforetheminimizerr∗(x )=1wheneverthetermwithinthe
+<t
+parenthesisisnegative:
+E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α−E xt∼P(·|x<t) [(cid:96)(x t ,q t )]<0,
+andr∗(x )=0otherwise. Re-arrangingthetermscompletestheproof.
+<t
+A.2 PROOFOFLEMMA2
+Proof. Theprooffollowsstraight-forwardlyfromtheresultsin(Tran-Thien,2023). Recallfrom§2
+thatthelossyspeculativedecodingprocedureof(Tran-Thien,2023)acceptsadrafttokenxwith
+probability:
+(cid:26) (cid:27)
+p(x)
+κ(x)=min 1, , (17)
+(1−α)·q(x)
+andreplacesarejecteddrafttokenwithatokensampledfromtheresidualdistribution:
+(cid:18) (cid:26) (cid:27)(cid:19)
+1
+p (x)=norm max 0, ·p(x)−q(x) , (18)
+res β
+forparametersα∈[0,1)andβ ≥1−α.
+WeneedtoshowthatrunningAlgorithm4withthetargetdistribution:
+(cid:26) (cid:26) (cid:27) (cid:27)
+p(x) p(x)
+π(x)=max min q(x), ,
+1−α β
+resultsinthesameacceptanceprobability(17)andresidualdistribution(18).
+TheacceptanceprobabilityforadrafttokenxwhenrunningAlgorithm4onπisgivenby:
+(cid:26) (cid:27)
+π(x)
+κπ(x)=min 1, .
+q(x)
+Thecorrespondingresidualdistributionisgivenby:
+pπ (x)=norm(max{0, π(x)−q(x)}).
+res
+Weconsiderthreepossiblecases:
+Case(i): q(x)> 1 ·p(x)≥ 1 ·p(x). Inthiscase,π(x)= 1 ·p(x). Asaresult:
+1−α β 1−α
+(cid:26) (cid:27)
+p(x)
+κπ(x)=min 1, =κ(x);
+(1−α)·q(x)
+(cid:18) (cid:26) (cid:27)(cid:19)
+1
+pπ (x)=norm max 0, ·p(x)−q(x)
+res 1−α
+(cid:18) (cid:26) (cid:27)(cid:19)
+1
+=0=norm max 0, ·p(x)−q(x) =p (x).
+β res
+17
+PublishedasaconferencepaperatICLR2025
+Case(ii): 1 ·p(x)≥ 1 ·p(x)>q(x). Inthiscase,π(x)= 1 ·p(x). Asaresult:
+1−α β β
+(cid:26) (cid:27) (cid:26) (cid:27)
+p(x) p(x)
+κπ(x)=min 1, =1=min 1, =κ(x);
+β·q(x) (1−α)·q(x)
+(cid:18) (cid:26) (cid:27)(cid:19)
+1
+pπ (x)=norm max 0, ·p(x)−q(x) =p (x).
+res β res
+Case(iii): 1 ·p(x)≥q(x)≥ 1 ·p(x). Inthiscase,π(x)=q(x). Asaresult:
+1−α β
+(cid:26) (cid:27)
+p(x)
+κπ(x)=1=min 1, =κ(x);
+(1−α)·q(x)
+(cid:18) (cid:26) (cid:27)(cid:19)
+1
+pπ (x)=0=norm max 0, ·p(x)−q(x) =p (x).
+res β res
+Inallthreecases,theacceptanceprobabilitiesandresidualdistributionsareidentical.
+A.3 PROOFOFLEMMA3
+Proof. Underatargetdistributionπ ,theprobabilityofadrafttokendrawnfromq beingisrejected
+t t
+isgivenby(Leviathanetal.,2023):
+(cid:18) (cid:26) (cid:27)(cid:19)
+rejectionprobability= (cid:88) q (v)· 1−min 1, π t (v)
+t q (v)
+v∈V t
+(cid:88)
+=1− min{q (v),π (v)}
+t t
+v∈V
+(cid:88) (cid:88)
+= π (v)− min{q (v),π (v)}
+t t t
+v∈V v∈V
+(cid:88)
+= max{0,π (v)−q (v)}.
+t t
+v∈V
+Expandingπ ,therejectionprobabilitybecomes:
+t
+(cid:88)
+rejectionprobability= max{0, (1−r(x ))·q (v)+r(x )·p (v)−q (v)}
+<t t <t t t
+v∈V
+Whenr(x )=1,wehave:
+<t
+(cid:88)
+rejectionprobability= min{0, p (v)−q (v)}=D (p ,q )=r(x )·D (p ,q ).
+t t TV t t <t TV t t
+v∈V
+Whenr(x )=0,wehave:
+<t
+rejectionprobability=0=r(x )·D (p ,q ),
+<t TV t t
+asdesired.
+A.4 PROOFOFLEMMA4
+Proof. Expandingthedeferralriskin(8),wehave:
+L spec (r;x <t )=r(x <t )· (cid:0)E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α·D TV (p t ,q t )−E xt∼P(·|x<t) [(cid:96)(x t ,q t )] (cid:1)
++E xt∼P(·|x<t) [(cid:96)(x t ,q t )].
+Thisobjectiveisminimizedbyadeferralruler :Vt−1 →{0,1}thatminimizes,foreachprefixx ,
+<t
+thetermwithintheparenthesis. Thereforetheminimizerr∗(x )=1wheneverthetermwithinthe
+<t
+parenthesisisnegative:
+E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α·D TV (p t ,q t )−E xt∼P(·|x<t) [(cid:96)(x t ,q t )]<0,
+andr∗(x )=0otherwise. Re-arrangingthetermscompletestheproof.
+<t
+18
+PublishedasaconferencepaperatICLR2025
+A.5 PROOFOFLEMMA5
+Forafixedprefixx ,wecanwritethedeferralriskin(8)as:
+<t
+L spec (r;x <t )=r(x <t )· (cid:0)E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α·D TV (p t ,q t )−E xt∼P(·|x<t) [(cid:96)(x t ,q t )] (cid:1) +C,
+whereC isatermindependentofthedeferralruler. Letr∗ : Vt−1 → {0,1}denotetheoptimal
+deferralrulethatminimizesL foranyprefixx . Wethenhave:
+spec <t
+L (rˆ ;x )−L (r∗;x )
+spec OPT <t spec <t
+=(rˆ OPT (x <t )−r∗(x <t ))· (cid:0)E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α·D TV (p t ,q t )−E xt∼P(·|x<t) [(cid:96)(x t ,q t )] (cid:1) .
+Addingandsubtractingmax v∈Vq
+t
+(v)−max v∈Vp
+t
+(v)tothetermwithinthesecondparenthesis,
+weget:
+L (rˆ ;x )−L (r∗;x )
+spec OPT <t spec <t
+(cid:18) (cid:19)
+=(rˆ (x )−r∗(x ))· maxq (v)+α·D (p ,q )−maxp (v)
+OPT <t <t t TV t t t
+v∈V v∈V
+(cid:18)
++(rˆ OPT (x <t )−r∗(x <t ))· E xt∼P(·|x<t) [(cid:96)(x t ,p t )]−E xt∼P(·|x<t) [(cid:96)(x t ,q t )]
+(cid:19)
+−maxq (v)+maxp (v)
+t t
+v∈V v∈V
+(cid:18) (cid:19)
+=(rˆ (x )−r∗(x ))· maxq (v)+α·D (p ,q )−maxp (v)
+OPT <t <t t TV t t t
+v∈V v∈V
+(cid:18) (cid:19)
++(rˆ OPT (x <t )−r∗(x <t ))· E xt∼P(·|x<t) [(cid:96)(x t ,p t )]−1+m
+v∈
+a
+V
+xp t (v)
+(cid:18) (cid:19)
++(rˆ OPT (x <t )−r∗(x <t ))· 1−m
+v∈
+a
+V
+xq t (v)−E xt∼P(·|x<t) [(cid:96)(x t ,q t )]
+(cid:18) (cid:19)
+≤(rˆ (x )−r∗(x ))· maxq (v)+α·D (p ,q )−maxp (v)
+OPT <t <t t TV t t t
+v∈V v∈V
+(cid:12) (cid:12)
++|rˆ OPT (x <t )−r∗(x <t )|· (cid:12) (cid:12)
+(cid:12)
+E xt∼P(·|x<t) [(cid:96)(x t ,p t )]−1+m
+v∈
+a
+V
+xp t (v) (cid:12) (cid:12)
+(cid:12)
+(cid:12) (cid:12)
++|rˆ OPT (x <t )−r∗(x <t )|· (cid:12) (cid:12)
+(cid:12)
+1−m
+v∈
+a
+V
+xq t (v)−E xt∼P(·|x<t) [(cid:96)(x t ,q t )] (cid:12) (cid:12)
+(cid:12)
+(cid:18) (cid:19)
+≤(rˆ (x )−r∗(x ))· maxq (v)+α·D (p ,q )−maxp (v)
+OPT <t <t t TV t t t
+v∈V v∈V
+(cid:124) (cid:123)(cid:122) (cid:125)
+term1
+(cid:12) (cid:12) (cid:12) (cid:12)
++ (cid:12) (cid:12)
+(cid:12)
+E xt∼P(·|x<t) [(cid:96)(x t ,p t )]−1+m
+v∈
+a
+V
+xp t (v) (cid:12) (cid:12)
+(cid:12)
++ (cid:12) (cid:12)
+(cid:12)
+1−m
+v∈
+a
+V
+xq t (v)−E xt∼P(·|x<t) [(cid:96)(x t ,q t )] (cid:12) (cid:12)
+(cid:12)
+(cid:124) (cid:123)(cid:122) (cid:125) (cid:124) (cid:123)(cid:122) (cid:125)
+term2 term3
+(19)
+wherewehaveusedthefactthat|rˆ (x )−r∗(x )|≤1.
+OPT <t <t
+We bound each term separately. For the first term, consider two cases: (i) max v∈Vq
+t
+(v)+α·
+D
+TV
+(p
+t
+,q
+t
+)−max v∈Vp
+t
+(v) ≤ 0 and (ii) max v∈Vq
+t
+(v)+α·D
+TV
+(p
+t
+,q
+t
+)−max v∈Vp
+t
+(v) > 0.
+When(i)holds,rˆ (x )=1;soirrespectiveofwhetherr∗(x )is0or1,
+OPT <t <t
+term ≤maxp (v)+α·D (p ,q )−maxq (v)≤0
+1 t TV t t t
+v∈V v∈V
+When(ii)holds,rˆ (x )=0;soirrespectiveofwhetherr∗(x )is0or1,
+OPT <t <t
+(cid:18) (cid:19)
+term ≤− maxp (v)+α·D (p ,q )−maxq (v) <0.
+1 t TV t t t
+v∈V v∈V
+19
+PublishedasaconferencepaperatICLR2025
+Thuswehave:
+term ≤0. (20)
+1
+Wenextmovetothesecondterm. Since(cid:96)=(cid:96) ,wehave:
+0-1
+(cid:12) (cid:12)
+term 2 = (cid:12) (cid:12)
+(cid:12)
+E xt∼P(·|x<t) [(cid:96)(x t ,p t )]−1+m
+v∈
+a
+V
+xp t (v) (cid:12) (cid:12)
+(cid:12)
+(cid:12) (cid:20) (cid:18) (cid:19)(cid:21) (cid:12)
+= (cid:12) (cid:12)
+(cid:12)
+E xt∼P(·|x<t) 1 x t (cid:54)=arg
+v∈
+m
+V
+axp t (v) −1+m
+v∈
+a
+V
+xp t (v) (cid:12) (cid:12)
+(cid:12)
+(cid:12) (cid:12)
+(cid:12) (cid:88) (cid:18) (cid:19)(cid:12)
+=(cid:12)maxp (v)− P(x |x )·1 x =argmaxp (v) (cid:12)
+(cid:12) t t <t t t (cid:12)
+(cid:12)v∈V xt∈V v∈V (cid:12)
+Letv∗ ∈argmax p (v). Then:
+v∈V t
+term =|p (v∗)−P(v∗|x )|≤max|p (v)−P(v|x )|. (21)
+2 t <t t <t
+v∈V
+Similarly,wecanshowthat:
+term ≤max|q (v)−P(v|x )|. (22)
+3 t <t
+v∈V
+Substituting(20)–(22)in(19)completestheproof.
+20
+PublishedasaconferencepaperatICLR2025
+Inferencestrategy Deferraldecisionδ(q,p) Targetdistributionπ(u) Execution
+SpecDecodingLeviathanetal.(2023) - p(u) Speculative
+LossySpecDecoding(Tran-Thien,2023) - max{min{p(u),q(u)},q(u)} Speculative
+BiLD*(Kimetal.,2023) 1(cid:0)D(q,p)>α(cid:1) (1−δ)·q(u)+δ 1− ·p α (u) β Speculative
+Cascade[Chow](Chow,1970) 1(cid:0)maxv∈Vq(v)<1−α(cid:1) (1−δ)·q(u)+δ·p(u) Sequential
+Cascade[ChowLog] 1(cid:0)entropy(q)>α(cid:1) (1−δ)·q(u)+δ·p(u) Sequential
+Oracle[Diff](Jitkrittumetal.,2023) 1(cid:0)maxv∈Vq(v)<maxv∈Vp(v)−α(cid:1) (1−δ)·q(u)+δ·p(u) Oracle
+Oracle[DiffLog] 1(cid:0)entropy(p)<entropy(q)−α(cid:1) (1−δ)·q(u)+δ·p(u) Oracle
+SpecCascade[Chow] 1(cid:0)maxv∈Vq(v)<1−α(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+SpecCascade[ChowLog] 1(cid:0)entropy(q)>α(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+SpecCascade[Diff01] 1(cid:0)maxv∈Vq(v)<maxv∈Vp(v)−α(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+SpecCascade[DiffLog] 1(cid:0)entropy(p)<entropy(q)−α(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+SpecCascade[OPT01] 1(cid:0)maxv∈Vq(v)<maxv∈Vp(v)−α·DTV(p,q)(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+SpecCascade[OPTLog] 1(cid:0)entropy(p)<entropy(q)−α·DTV(p,q)(cid:1) (1−δ)·q(u)+δ·p(u) Speculative
+Table 3: Target distributions associated with different inference algorithms, where α is a free
+parameterandβ ≥1−αisaparameterdependentonq,pandα. Thelastcolumnindicateswhether
+theexecutionissequential(Algorithm2),viaanoracle(Algorithm3),orspeculative(Algorithm
+5) (Leviathan et al., 2023). The third row presents a variant of the BiLD algorithm of Kim et al.
+(2023),whereD(q,p)isameasureofdiscrepancybetweenqandp;theoriginalalgorithmdiffers
+from(Leviathanetal.,2023)intheuseofadeterministicspeculativedecodingprocedurewitha
+dynamicdraftwindow(see§B).
+B FURTHER RELATED WORK
+Severalworkshavestudiedimprovingthedraftingprocessinspeculativedecoding;theseinclude
+havingthedrafterandverifiersharetheirbackbone(Sternetal.,2018;Kimetal.,2024;Caietal.,
+2024;Moneaetal.,2023;Hooperetal.,2023;Zhangetal.,2023;Elhoushietal.,2024;Liuetal.,
+2024),usingmultiplesmalldraftmodels(Chenetal.,2023c;Wangetal.,2024),usingtree-structured
+draftbatches(Spector&Re,2023;Miaoetal.,2024),distillingthedrafterwiththeverifier(Zhou
+etal.,2024),andleveragingmultiplesampleddrafts(Sunetal.,2024;Chenetal.,2024).
+TheworkthatismostcloselyrelatedtoourspecificproposalistheBigLittleDecoder(BiLD)(Kim
+etal.,2023),whichcanbeseenasanotherlossyvariantofspeculativedecoding(Leviathanetal.,
+2023;Tran-Thien,2023;Zhouetal.,2024). BiLDhastwophases: afallbackphase,duringwhichthe
+drafterqisrunauto-regressivelyuntilitsmaximumpredictedprobabilityissufficientlylow;anda
+rollbackphase,duringwhichtheverifierpisruninparallelontheprefixesgeneratedbyqandrolls
+backtothepointwhereD(q,p)>α,forametricDthatmeasuresdiscrepancyandthresholdα. The
+fallbackphaseimplementsChow’sdeferralrulein(2),andallowsforthedraftwindowsizetovary
+dynamicallybasedonanestimateofhowlikelythedrafttokenswillbeaccepted;therollbackphase
+canbeseenasadeterministicvariantoftherejectionsamplingalgorithmofLeviathanetal.(2023).
+AnadvantageofBiLDovertherejectionsamplingalgorithmin(Leviathanetal.,2023)istheuse
+of Chow’s rule to vary the draft window size. However, the final target distribution it seeks to
+mimic,T (q,p)(v)=1(D(q,p)≤α)·q(v)+1(D(q,p)>α)·p(v),isanapproximationtop;
+BiLD
+specifically,thetargetdistributionπ =T (q,p)ischosentosatisfyD(π,p)≤α. Hence,incases
+BiLD
+whereqdeviatessubstantiallyfromp,BiLDwouldchoosepasthetargetdistribution,evenwhenq
+offersbetterqualityonaprefix(wherequalitycanbemeasuredusingasuitablelossfunction). In
+contrast,ourproposedapproachin§4usesspeculativedecodingtoapproximatetargetdistributions
+thatseektooptimallycascadebetweenqandp. Inourexperiments,wecomparetheefficacyofusing
+T asthetargetdistributionwiththetargetdistributionsweproposeinthispaper(seeTable3).
+BiLD
+21
+PublishedasaconferencepaperatICLR2025
+C CONTRASTING SPECULATIVE CASCADES AND LOSSY SPECULATIVE
+SAMPLING UNDER DIFFERENT SAMPLING SCHEMES
+We contrast how speculative cascades and lossy speculative sampling behave under temperature
+sampling,top-P samplingandgreedydecoding.
+C.1 SPECULATIVECASCADESUNDERTEMPERATURESAMPLINGANDTOP-P SAMPLING
+Whenimplementingspeculativecascadeswithtemperaturesamplingandtop-P sampling,wecom-
+putethedeferralruleontheoriginaldistributionspandq,butusethedeferraldecisionstointerleave
+thetemperature-scaled(ortop-P truncated)versionsofpandq.
+For the cascaded deferral rules in Table 1, with the exception of OPT, we construct the target
+distributionin(6)asfollows:
+π˜ (v)=(1−δ(q ,p ))·S(q )(v)+δ(q ,p )·S(p)(v), (23)
+t t t t t t
+whereS : ∆V → ∆V denotesatransformationofthedistributionsuchastemperaturescalingor
+top-P truncation,andδ :∆V×∆V →{0,1}denotesthedeferralrule. OnemayrunAlgorithm5
+withπ˜ asthetargetdistribution,andS(q )andS(p )asthedrafterandverifierdistributions.
+t t t
+InthecaseoftheOPTrule,wewouldformulatetheconstrainedproblemin(7)tousetheTVdistance
+betweenthedistributionsS(q )andS(p )tomeasuretherejectionrate. Theoptimaldeferralrulein
+t t
+Lemma4wouldnowuseD (S(p ),S(q ))insteadofD (p ,q ). Toconstructaplug-inestimator
+TV t t TV t t
+to this optimal rule, we still prescribe using the unscaled probabilities q and p to estimate the
+t t
+expectedloss,givingus,for(cid:96)=(cid:96) :
+0-1
+δ(p ,q )=1 ⇐⇒ maxq (v) < maxp (v)−α·D (S(p ),S(q )).
+t t t t TV t t
+v v
+Forthetoken-specificdeferralrulesin§5,wecomputethetargetdistributionin(16)asfollows:
+π (v)=S(q )(v)·(1−r(x ,v))+S(p )(v)·η,
+Token t <t t
+where the deferral rule r(x ,v(cid:48)) is computed on unscaled distributions q and p , and η =
+<t t t
+(cid:80) v(cid:48)∈V r(x <t ,v(cid:48))·S(q t )(v(cid:48)) is a normalizing term. For example, for the TokenV3 deferral rule
+in(15),wecomputethetargetdistributionas:
+π(v)=S(q )(v)·1 (cid:0) v ∈T (cid:1) + S(p )(v)· (cid:88) S(q )(v(cid:48)),
+t α t t
+v(cid:48)∈/Tα
+whereT ={v ∈V: p (v) ≥ max p (v(cid:48))·(1−α)}isthesetoftop-rankedtokensbytheoriginal
+α t v(cid:48) t
+(unscaled)distributionp .
+t
+C.2 CONTRASTINGWITHLOSSYSPECULATIVESAMPLINGUNDERTEMPERATURESAMPLING
+Whenimplementinglossyspeculativedecodingundertemperaturesampling,followingLeviathan
+etal.(2023);Zhouetal.(2024);Tran-Thien(2023),wecomputetheacceptancecriterionandthe
+residual distribution using temperature-scaled drafter and verifier distributions. Specifically, we
+acceptadrafttokenvwithprobability:
+(cid:26) S(p )(v) (cid:27)
+min 1, t .
+(1−α)·S(q )(v)
+t
+Upon rejection, we replace the token by a new token sampled from a residual distribution again
+constructedfromtemperature-scaleddistributions:
+(cid:18) (cid:26) (cid:27)(cid:19)
+1
+norm max 0, ·S(p )(·)−S(q )(·) ,
+β t t
+(cid:80)
+whereβ ≥1−αisaparameterthatdependsonα,q andp ,andissuchthat π (v)=1.
+t t v∈V Lossy
+Theresultingtargetdistributionthatthemethodsamplesfromtakestheform:
+(cid:26) (cid:26) S(p )(v) (cid:27) S(p )(v) (cid:27)
+π (v)=max min S(q )(v), t , t .
+Lossy t 1−α β
+22
+PublishedasaconferencepaperatICLR2025
+Thischoiceoftargetdistributionmayseverelylimittherangeofcost-qualitytrade-offsthatcanbe
+achievedbyvaryingαandβ. Forexample,observethat
+S(p )(v)=0 =⇒ π (v)=0,
+t Lossy
+andsothethetrade-offparametersαandβ arenoteffectiveontokensforwhichS(p )(v)=0.
+t
+This problem is exacerbated when sampling with temperature 0 (i.e., greedy decoding) where
+π (v)becomesidenticaltop ,makingαandβ irrelevant.
+Lossy t
+Lemma6. Whensamplingwithtemperature0(i.e.,greedydecoding),π (v)=S (p ).
+Lossy 0 t
+Proof. Applyingtemperaturesamplingwithtemperature0toadistributionpisequivalenttosampling
+fromatransformeddistributionS (p),whereS (p)assignsaprobabilityof1toargmax p(v).When
+0 0 v
+S (p )(v)=0,wehavethat:
+0 t
+π (v)=max{min{S (q )(v),0},0}=0.
+Lossy 0 t
+Since (cid:80) π (v) = 1, it turns out that: π (v) = 1 whenever S (p )(v) = 1. Thus:
+v Lossy Lossy 0 t
+π (v)=S (p ).
+Lossy 0 t
+Incontrast,becausebothourcascadeddeferralruleandthetoken-specificdeferralrulesworkwith
+unscaleddistributions,theyprovidemeaningfultrade-offsundertemperaturesampling,including
+whensamplingwithtemperature0.
+C.3 CONTRASTINGWITHLOSSYSPECULATIVESAMPLINGUNDERTOP-P SAMPLING
+Whenimplementinglossyspeculativesamplingundertop-P sampling,weacceptadrafttokenv
+withprobability:
+(cid:26) S (p )(v) (cid:27)
+min 1, P t ,
+(1−α)·S (q )(v)
+P t
+whereS (p)truncatesthedistributionptoonlyretainthetop-P fractionoftokens(i.e. smallest
+P
+subsetoftokenswhosecumulativeprobabilityexceedsP).
+NoticethatasP getssmaller,S (p)assignszeroprobabilitiestoamajorityoftokens. Asaresultfor
+P
+mostdrafttokencandidatesv,theabovecriterionevaluatesto0,andthetrade-offparameterαhas
+noeffectonthosetokens. HenceasP →0,thetrade-offparameterαbecomesvacuous,andthus
+lossyspeculativedecodingfailstooffermeaningfultrade-offs. Infact,mirroringLemma6,lossy
+speculativedecodingbecomesidenticaltostandardloss-lessspeculativedecodingwhenP →0.
+Aspeculativecascadedoesnotsufferfromthesameissueasitusesthetrade-offparameterαnot
+asascalingparameterintheacceptancecriterion,buttoconstructanewtargetdistributionthatis
+amenabletoahigheracceptancerateevenundertop-P sampling. Forexample,withtheTokenV3
+deferralrulein(15),adrafttokenvisacceptedwithprobability:
+(cid:26) S (π (v)) (cid:27)
+min 1, P t ,
+S (q (v))
+P t
+whereπ isanewtargetdistributiondefinedusingthetrade-offparameterαthatinterleavesbetween
+t
+p andq asfollows:
+t t
+π (v)=S (q )(v)·1 (cid:0) v ∈T (cid:1) + S (p )(v)· (cid:88) S (q )(v(cid:48)),
+t P t α P t P t
+v(cid:48)∈/Tα
+whereT ={v ∈V: p (v) ≥ max p (v(cid:48))·(1−α)}isthesetoftoprankedtokensbytheoriginal
+α t v(cid:48) t
+untruncateddistributionp (·). Sincethetop-rankedtokensT arecomputedusingtheuntruncated
+t α
+distribution,varyingthetrade-offparameterαstillproducesmeaningfulcost-qualitytrade-offswhen
+speculativelysamplingfromπ (v).
+t
+23
+PublishedasaconferencepaperatICLR2025
+Table4: Acceptancecriterionfordifferentspeculativeinferencestrategiesundernon-greedyand
+greedydecoding. Rows2and3indicatesthatunder0temperature, speculativecascadewiththe
+TokenV3deferralrulehasanidenticalacceptancecriterionasSpecDecode [Lossy, Greedy]; see
+Lemma7.
+Method Ref. AcceptanceCriterion
+T >0 T =0
+SpecDecode [Lossy] Leviathanetal.(2023) min (cid:110) 1, (1− S α ( ) p · ( S v ( ) q ) (v)) (cid:111) 1(v=argmax v(cid:48) p(v(cid:48)))
+S S p p e e c c C D a e s c c o a d d e e [ [ L T o o s k s e y n , V3 G ] reedy] T L h ev is ia p t a h p a e n r etal.(2023) min (cid:110) 1,S S ( ( π q( ( v v ) ) ) ) (cid:111) , - whereπisin(16) p p ( ( v v ) ) ≥ ≥ ( ( 1 1 − − α α ) ) · · m m a a x x v v (cid:48) (cid:48) p p ( ( v v (cid:48) (cid:48) ) )
+C.4 LOSSYSPECULATIVEGREEDYDECODINGVARIANTBYLEVIATHANETAL.(2023)
+Forthespecialcaseofgreedydecoding,Leviathanetal.(2023)proposeanalternatelossyvariantof
+speculativedecoding(AppendixA.5intheirpaper),whereadrafttokenvisaccepteddeterministically
+wheneverp (v)≥(1−α)·max p (v(cid:48));whenthetokenisrejected,itisreplacedwithanewtoken
+t v(cid:48) t
+sampledfromp t (·). WewillrefertothisvariantasSpecDecode [Lossy, Greedy].
+WenowshowthattheproposedspeculativecascadeswiththeTokenV3deferralrule(15)isidentical
+toSpecDecode [Lossy, Greedy]whensamplingwithtemperature0.
+Lemma 7. For any fixed trade-off parameter α ∈ [0,1], SpecCascade [TokenV3] is identical to
+SpecDecode [Lossy, Greedy]whensamplingwithtemperature0.
+Proof. LetS (p)denoteatemperature-scaledone-hotversionofdistributionpwhichplacesallits
+0
+massonthemodeofp. Letp˜
+t
+= S
+0
+(p
+t
+)andq˜
+t
+= S
+0
+(q
+t
+). WiththeTokenV3rule,theacceptance
+criterioniscomputedagainstthetargetdistributionin(16)withtrade-offparameterα.
+π (v)=q˜(v)·1 (cid:0) v ∈T (cid:1) + p˜(v)· (cid:88) q˜(v(cid:48)),
+t t α t t
+v(cid:48)∈/Tα
+whereT ={v ∈V: p (v) ≥ max p (v(cid:48))·(1−α)}isthesetoftoprankedtokensbytheoriginal
+α t v(cid:48) t
+(unscaled)distributionp (·).
+t
+Undergreedydecoding,thedrafttokenisgivenbyv∗ =argmax q (v). Weconsidertwocases: (i)
+v(cid:48) t
+v∗ ∈T and(ii)v∗ ∈/ T .
+α α
+Inthefirstcase,wehaveπ (v∗)=q˜(v∗). Asaresult,adrafttokenvisacceptedwithprobability:
+t t
+(cid:26) S (q˜(v∗)) (cid:27) (cid:26) q˜(v∗) (cid:27)
+min 1, 0 t =min 1, t =1.
+S (q (v∗)) q˜(v∗)
+0 t t
+In the second case, it is clear that the draft token v∗ is not the maximizer of p (·). Furthermore,
+t
+π (v∗)=p˜(v∗). Asaresult,thedrafttokenv∗isrejectedsincetheacceptanceprobabilityforthe
+t t
+tokenbecomes:
+(cid:26) S (p˜(v∗)) (cid:27) (cid:26) p˜(v∗) (cid:27) (cid:26) 0 (cid:27)
+min 1, 0 t =min 1, t =min 1, =0.
+S (q (v∗)) q˜(v∗) q˜(v∗)
+0 t t t
+Itisthenreplacedwithatokensampledfrom:
+norm(max{0,S (p˜(·))−S (q (·))})=norm(max{0,p˜(·)−q˜(·)})=norm(p˜(·))=p˜(·),
+0 t 0 t t t t t
+whichwouldproducethetokenmaximizingp (·).
+t
+Inbothcases,thesamplingprocedureisidenticaltothatofSpecDecode [Lossy, Greedy].
+Table 4 summarizes the acceptance criteria for different speculative inference strategies under
+temperaturesamplingandwhattheyreducetoundergreedydecoding.
+24
+PublishedasaconferencepaperatICLR2025
+D OPTIMAL DEFERRAL: ADDITIONAL DISCUSSION
+Weprovideadditionaldiscussionforthedeferralrulesderivedin§3and§4.
+D.1 DERIVATIONOFCHOW’SRULE
+We show below that Chow’s rule is a plug-in estimator to the optimal solution to the following
+objective
+L rej (r;x <t )=E xt∼P(·|x<t) (cid:104)(cid:0) 1−r(x <t ) (cid:1) ·(cid:96)(x t ,q t )+r(x <t )·α (cid:105) , (24)
+wherethedeferralruleispenalizedwithaconstantpenaltyα ∈ [0,1]forchoosingtodefertothe
+largemodel.
+FollowingthesamestepsasLemma1,itiseasytoshow:
+Lemma8. Theminimizerof(24)isoftheform:
+r∗(x <t )=1 ⇐⇒ E xt∼P(·|x<t) [(cid:96)(x t ,q t )] > α. (25)
+If(cid:96)=(cid:96) ,onemayemployaplug-inestimatorto(25)byreplacingtheexpected0-1lossonq with
+0-1 t
+1−max v∈Vq
+t
+(v),givingusrˆ
+Chow
+(x
+<t
+)in(2). If(cid:96)=(cid:96)
+log
+,onemayreplacetheexpectedloglosson
+q withtheentropyofq ,givingus:
+t t
+(cid:0) (cid:1)
+rˆ (x )=1 ⇐⇒ entropy q(·|x ) >α, (26)
+ChowLog <t <t
+(cid:80)
+whereentropy(q)=− q(v)·log(q(v)).
+v∈V
+D.2 OPTIMALSEQUENTIALDEFERRALWHEN(cid:96)=(cid:96)
+log
+RecallthattheoptimaldeferralruleforasequentialcascadeinLemma1takestheform:
+r∗(x <t )=1 ⇐⇒ E xt∼P(·|x<t) [(cid:96)(x t ,q t )] > E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α.
+(cid:80)
+When (cid:96) = (cid:96) , we may use the entropy − q (v)·log(q (v)) from q as an estimate of its
+log v∈V t t t
+expectedlog-loss,andsimilarlyforp ,givingustheplug-inestimator:
+t
+(cid:80) (cid:80)
+rˆ (x )=1 ⇐⇒ q (v)·log(q (v)) < p (v)·log(p (v))−α. (27)
+DiffLog <t v∈V t t v∈V t t
+D.3 OPTIMALSPECULATIVEDEFERRALWHEN(cid:96)=(cid:96)
+log
+RecallthattheoptimaldeferralruleforaspeculativecascadeinLemma4takestheform:
+r∗(x <t )=1 ⇐⇒ E xt∼P(·|x<t) [(cid:96)(x t ,q t )] > E xt∼P(·|x<t) [(cid:96)(x t ,p t )]+α·D TV (p t ,q t ).
+When(cid:96)=(cid:96) ,onemayconstructaplug-inestimatorfortheaboverulebyreplacingtheexpected
+log
+loglosswiththeentropyfromthedistribution:
+(cid:80) (cid:80)
+rˆ (x )=1 ⇐⇒ q (v)·log(q (v)) < p (v)·log(p (v))−α·D (p ,q ).
+OPTLog <t v∈V t t v∈V t t TV t t
+(28)
+Lemma9(Regretboundforrˆ ). Suppose(cid:96)=(cid:96) . Supposeforafixedx ,|log(q (v))|≤B
+OPTLog log <t t q
+and|log(p (v))|≤B , ∀v ∈V,forsomeB ,B >0. Then:
+t p q p
+L spec (r OPT ;x <t )−m
+r
+inL spec (r;x <t ) ≤ B q · (cid:80) v∈V (cid:12) (cid:12) P(v|x <t )−q t (v) (cid:12) (cid:12)+B p · (cid:80) v∈V (cid:12) (cid:12) P(v|x <t )−p t (v) (cid:12) (cid:12).
+Proof. TheprooffollowssimilarstepstothatforLemma5,exceptinboundingtheresultingterm
+2
+andterm forthelogloss. Inthiscase,
+3
+(cid:12) (cid:12)
+(cid:12) (cid:88) (cid:12)
+term 2 =(cid:12) (cid:12) E xt∼P(·|x<t) [log(p t (x t ))]− p t (v)·log(p t (v))(cid:12) (cid:12)
+(cid:12) v∈V (cid:12)
+25
+PublishedasaconferencepaperatICLR2025
+(cid:12) (cid:12)
+(cid:12)(cid:88) (cid:88) (cid:12)
+=(cid:12) P(v|x )·log(p (v))− p (v)·log(p (v))(cid:12)
+(cid:12) <t t t t (cid:12)
+(cid:12) v∈V v∈V (cid:12)
+(cid:12) (cid:12)
+(cid:88)(cid:12) (cid:88) (cid:12)
+≤ (cid:12)P(v|x )− p (v)(cid:12)·log(p (v))
+(cid:12) <t t (cid:12) t
+v∈V(cid:12) v∈V (cid:12)
+(cid:12) (cid:12)
+(cid:88)(cid:12) (cid:88) (cid:12)
+≤B · (cid:12)P(v|x )− p (v)(cid:12).
+p (cid:12) <t t (cid:12)
+v∈V(cid:12) v∈V (cid:12)
+Similarly,
+(cid:12) (cid:12)
+(cid:88)(cid:12) (cid:88) (cid:12)
+term ≤ (cid:12)P(v|x )− q (v)(cid:12)·log(q (v))
+3 (cid:12) <t t (cid:12) t
+v∈V(cid:12) v∈V (cid:12)
+(cid:12) (cid:12)
+(cid:88)(cid:12) (cid:88) (cid:12)
+≤B · (cid:12)P(v|x )− q (v)(cid:12).
+q (cid:12) <t t (cid:12)
+v∈V(cid:12) v∈V (cid:12)
+Pluggingtheseboundsintotheequivalentof(19)inLemma5forthelog-losscompletestheproof.
+D.4 OPTIMALSPECULATIVEDEFERRALFORGREEDYDECODING
+Whenapplyingspeculativecascadeswithgreedydecoding,weshallseethatboththeoptimaldeferral
+ruleOPT(10)isequivalenttotheDiffdeferralrule(5).
+Asdetailedin§C.1,whenimplementingaspeculativecascadewithtemperature-scaleddistributions
+q˜
+t
+(v)∝q
+t
+(v)1/T andp˜
+t
+(v)∝p
+t
+(v)1/T respectively,foratemperatureparameterT >0,theDiff
+andOPTdeferralrulesarecomputedas:
+rˆ (x )=1 ⇐⇒ max q (v) < max p (v)−α,
+Diff <t v t v t
+and
+r˜ (x )=1 ⇐⇒ max q (v) < max p (v)−α·D (p˜,q˜).
+OPT <t v t v t TV t t
+OnemayrunAlgorithm5witheitherr orrˆ asthedeferralrule,andthetemperature-scaledq˜
+Diff OPT t
+asthedrafterdistributionandp˜ astheverifierdistribution.
+t
+Lemma10. WhenT →0,runningAlgorithm5withr˜ asthedeferralruleandq˜ andp˜ asthe
+OPT t t
+drafterandverifierdistributions,isequivalenttorunningitwithrˆ asthedeferralruleandq˜ and
+Diff t
+p˜ asthedrafterandverifierdistributions.
+t
+Proof. When T → 0, note that q˜ and p˜ are one-hot encodings of argmax q (v) and
+t t v∈V t
+argmax p (v)respectively. Asaresult,
+v∈V t
+(cid:18) (cid:19)
+D (q˜,p˜)=1 argmaxq (v)(cid:54)=argmaxp (v) .
+TV t t t t
+v∈V v∈V
+When running Algorithm 5 with r˜ as the deferral rule, we will accept a draft token v with
+OPT
+probability:
+(cid:26) (cid:27)
+(1−δ (q ,p ))·q˜(v)+δ (q ,p )·p˜(v)
+κ (v)=min 1, OPT t t t OPT t t t ,
+OPT q˜(v)
+t
+where
+(cid:18) (cid:18) (cid:19)(cid:19)
+δ (q,p) = 1 maxq(v) < maxp(v)−α·1 argmaxq(v)(cid:54)=argmaxp(v) .
+OPT
+v∈V v∈V v∈V v∈V
+When running Algorithm 5 with r˜ as the deferral rule, we will accept a draft token v with
+Diff
+probability:
+(cid:26) (cid:27)
+(1−δ (q ,p ))·q˜(v)+δ (q ,p )·p˜(v)
+κ (v)=min 1, Diff t t t Diff t t t ,
+Diff q˜(v)
+t
+26
+PublishedasaconferencepaperatICLR2025
+where
+(cid:18) (cid:19)
+δ (q,p) = 1 maxq(v) < maxp(v)−α .
+Diff
+v∈V v∈V
+Weconsidertwocases:
+(i) If argmax q (v) = argmax p (v), then q˜ = p˜, and irrespective of the outcome of
+v∈V t v∈V t t t
+δ (q ,p )orδ (q ,p ),wehavethatκ (v)=κ (v).Furthermore,thetokengetsaccepted
+OPT t t Diff t t OPT Diff
+inbothcases.
+(ii)Ifargmax q (v)(cid:54)=argmax p (v),then
+v∈V t v∈V t
+(cid:18) (cid:19)
+κ (v)=1−δ (q ,p )=1 maxq(v) ≥ maxp(v)−α =1−δ (q,p)=κ (v).
+OPT OPT t t Diff Diff
+v∈V v∈V
+Inthiscase,whenthedrafttokengetsrejected,withdeferralruler˜ ,wewillsampleanewtoken
+OPT
+fromtheresidualdistribution:
+p (v)∝ min{0,(1−δ (q ,p ))·q˜(v)+δ (q ,p )·p˜(v)−q˜(v)}
+OPT OPT t t t OPT t t t t
+= δ (q ,p )·min{0,p˜(v)−q˜(v)}
+OPT t t t t
+Whenatokengetsrejectedwithdeferralruler˜ ,wewillsampleanewtokenfromtheresidual
+Diff
+distribution:
+p (v)∝ δ (q ,p )·min{0,p˜(v)−q˜(v)}.
+Diff Diff t t t t
+Sinceargmax q (v)(cid:54)=argmax p (v),
+v∈V t v∈V t
+p (v)∝δ (q ,p )·min{0,p˜(v)−q˜(v)}=δ (q ,p )·min{0,p˜(v)−q˜(v)}∝p (v).
+OPT OPT t t t t Diff t t t t Diff
+Thusboththeacceptanceprobabilityandtheresidualdistributionsforrˆ arethesameastheone
+OPT
+wewouldhaveusedhadwerunAlgorithm5withrˆ asthedeferralrule.
+Diff
+D.5 EQUIVALENCEBETWEEN(7)AND(8)
+Sincetheprefixx isfixedin(7),theconstrainedoptimizationweseektosolveisofessentiallyof
+<t
+thefollowingform:
+min (1−r)·c +r·c s.t. r·c ≤B,
+0 1 2
+r∈{0,1}
+forsomecoefficientsc ,c ,c > 0. Sincer isabinaryvariable,wemayformulateanequivalent
+0 1 2
+unconstrainedproblemwiththesameminimizer:
+min (1−r)·c +r·c +α·r·c ,
+0 1 2
+r∈{0,1}
+wherewechooseα=0whenc ≤Bandchooseanα> 1 ·(c −c )otherwise.Thisunconstrained
+2 c2 0 1
+optimizationproblemisoftheformin(8).
+27
+PublishedasaconferencepaperatICLR2025
+E TOKEN-SPECIFIC SPECULATIVE CASCADE
+WeprovideamodificationofAlgorithm5toaccommodatethetoken-specificdeferralrulesin§5.
+Algorithm6TokenSpecCascade
+Input: Modelsq,p,Token-specificdeferralruler,Prefixx ,Blocksizeγ
+<t
+T (q,p)(v)=. q(v)·(1−r(x ,v))+p(v)· (cid:80) r(x ,v(cid:48))·q(v(cid:48))
+Token <t v(cid:48)∈V <t
+Output: GenSpecSample(q,p,T
+Token
+,x
+<t
+,γ)
+Optimal token-specific deferral. Similar to §4.3, we may consider deriving the optimal token-
+specificdeferralrule. Westartbyformulatingasimilaroptimizationobjectiveas§4.3. Forafixed
+prefixx ,thiswouldlooklike:
+<t
+m
+r
+in E v∼P(·|x<t)
+(cid:104)
+(cid:96)(v,π Token )
+(cid:1)(cid:105)
+(29)
+s.t. D (π ,q ) ≤ B,
+TV Token t
+.
+whereπ (v) = (1−r(x ,v))·q (v)+η·p (v)isthetargetdistributionresultingfromthe
+Token <t t t
+choiceofr,η = (cid:80) r(x ,v(cid:48))·q (v(cid:48))isanormalizationterm,andB >0isabudgetparameter.
+v(cid:48)∈V <t t
+However,unlike§4.3,theaboveconstrainedoptimizationproblemdoesnotdirectlylenditselfto
+asimpleclosed-formsolution. Insomehighlysimplisticspecialcases,wemaybeabletoderivea
+trivialsolution. Forexample,suppose(cid:96)=(cid:96) ,andthemodeofq coincideswiththatofP(·|x ),
+0-1 t <t
+i.e., argmax q (v) = argmax P(v|x ); then the optimal token-specific rule is given by
+v∈V t v∈V <t
+r(x ,v)=0,forallv ∈V.
+<t
+Undermorerealisticcases,wemaynotbeabletoderiveasolutionassimpleastheOPTrulein(10).
+Therefore,inourexperiments,weemploythethreeheuristicrulesinequations13–15,whichare
+motivatedbytheformofthesimplerDiffrulein(5).
+28
+PublishedasaconferencepaperatICLR2025
+27.0
+26.5
+26.0
+25.5
+25.0
+24.5
+24.0
+0.50 0.55 0.60 0.65 0.70
+Relative latency
+UELB
+WMT: Small Large (T=0.5)
+22
+20
+18
+16
+14
+0.4 0.5 0.6 0.7 0.8
+Relative latency
+UELB
+WMT: Small Large (T=1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+SpecCascade [Diff]
+SpecCascade [Chow]
+TokenCascade [Chow]
+BiLD*
+15.5
+15.0
+14.5
+14.0
+13.5
+13.0
+12.5
+0.45 0.50 0.55 0.60 0.65 0.70
+Relative latency
+2-EGUOR
+CNNDM: Small Large (T=0.5)
+12
+11
+10
+9
+8
+0.5 0.6 0.7 0.8
+Relative latency
+2-EGUOR
+CNNDM: Small Large (T=1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+SpecCascade [Diff]
+SpecCascade [Chow]
+TokenCascade [Chow]
+BiLD*
+18
+16
+14
+0.6 0.7 0.8 0.9 1.0
+Relative latency
+2-EGUOR
+XSum: Small Large (T=0.5)
+16
+14
+12
+10
+8
+0.6 0.7 0.8 0.9 1.0
+Relative latency
+2-EGUOR
+XSum: Small Large (T=1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+SpecCascade [Diff]
+SpecCascade [Chow] TokenCascade [Chow]
+BiLD*
+Figure 4: Plots ofquality vs. latency for T5models with temperatures T = 0.5 and T = 1, and
+blocksizeγ =5. EachmethodinterleavesT5-smallwithT5-large. Weincludespeculativecascades
+withtheChow,Diff,OPTandTokenV3(referredtoasToken)deferralrules,andcompareitwiththree
+baselines: SpecDecode [Lossy], TokenCascade [Chow]andBiLD∗. Thex-axistracksthelatency
+relativetothatofcallingthelargemodelonallinputs. Thehorizontaldottedlinedenotesthequality
+ofthelargemodel.
+F ADDITIONAL EXPERIMENTAL DETAILS
+Weprovideadditionaldetailsaboutourexperimentalsetupandadditionalexperimentalresults.
+F.1 EXPERIMENTALSETUPANDHYPER-PARAMETERS
+Wefirstelaborateonourexperimentalsetupandthehyper-parametersused.
+T5 datasets. For the WMT English to German translation task (Bojar et al., 2014), we use a
+validationsampleofsize3,000providedwiththedataset. Wesetthemaximuminputlengthto80
+andthemaximumoutputlengthto80. FortheExtremeSummarization(XSum)task(Narayanetal.,
+2018),weuseavalidationsampleofsize11,305,andsetthemaximuminputlengthto1,024and
+themaximumoutputlengthto64. FortheCNN/DailyMailsummarizationtask(Hermannetal.,
+2015),weuseavalidationsampleofsize13368,andsetthemaximuminputlengthto2,048andthe
+maximumoutputlengthto128. Following(Zhouetal.,2024),weuseROUGE-2astheevaluation
+metricforthesummarizationtasks.
+We note that Kim et al. (2023) report ROUGE-L metrics for CNN/DM, which generally tend to
+evaluatetohighervaluesthanROUGE-2. Furthermore,mostoftheirexperimentalresultsarewith
+29
+PublishedasaconferencepaperatICLR2025
+27.50
+27.25
+27.00
+26.75
+26.50
+26.25
+26.00
+25.75
+25.50
+0.425 0.450 0.475 0.500 0.525 0.550 0.575 0.600
+Relative latency
+UELB
+WMT: Small Large (T=0)
+19
+18
+17
+16
+15
+14
+0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90
+Relative latency
+2-EGUOR
+XSum: Small Large (T = 0)
+SpecDecode [Lossy, Greedy] / SpecCascade [Token]
+SpecCascade [Diff]
+SpecCascade [Chow]
+TokenCascade [Chow]
+BiLD*
+15.5
+15.0
+14.5
+14.0
+13.5
+0.40 0.45 0.50 0.55 0.60 0.65 0.70
+Relative latency
+2-EGUOR
+CNNDM: Small Large (T=0)
+SpecDecode [Lossy, Greedy] / SpecCascade [Token]
+SpecCascade [Diff]
+SpecCascade [Chow]
+TokenCascade [Chow]
+BiLD*
+Figure5: Plotsofqualityvs.latencyforT5modelswithgreedydecoding(T =0)withblocksize
+γ =5. EachmethodinterleavesT5-smallwithT5-large. Thex-axistracksthelatencyrelativetothat
+ofcallingthelargemodelonallinputs. Thehorizontaldottedlinedenotesthequalityofthelarge
+model. SpecDecode [Lossy, Greedy]isthegreedyversionoflossyspeculativedecodingproposed
+inLeviathanetal.(2023). SpecCascade [Token]usestheTokenV3deferralrulein(15). Asnotedin
+§C.4,whenT →0,SpecDecode [TokenV3]isidenticaltoSpecDecode [Lossy, Greedy].
+greedydecoding(T =0),andhence,theROUGE-Levaluationmetricstheyreportintheirpapertend
+tobehigherforthesameT5modelswhencomparedtoournumbersforROUGE-2withtemperature
+sampling.
+Gemmadatasets. InadditiontotheWMTEN→DEtranslationandtheCNN/DMsummarization
+datasets, we use the GSM8K (Cobbe et al., 2021) math reasoning dataset, the MBPP (Austin
+etal.,2021)Pythonprogrammingdataset,andfourquestion-answeringdatasets: NaturalQuestions
+(Kwiatkowskietal.,2019),TriviaQA(Joshietal.,2017),WebQuestions(Berantetal.,2013)and
+theStanfordQuestion-AnsweringDataset(SQuAD)2.0(Rajpurkaretal.,2016). Ineachcase,we
+sample1,000promptsforevaluation. Weemployfew-shotinference,andsetthemaximumoutput
+length to 80 for WMT, to 128 for CNN/DM, to 320 for GSM8K and MBPP, and to 5 for all the
+question-answeringdatasets.
+Models. WeconstructcascadesfromT5v1.1familyofencoder-decodermodels(Raffeletal.,2020),
+ofdifferentsizesT5-small(77M),T5-base(250M),T5-large(800M)andT5-XL(3B).2Wefollow
+theprotocolin(Zhouetal.,2024): weinitializewiththepubliccheckpoints,pre-trainthemfurther
+for 100K steps, and supervise finetune the pre-trained models on the three respective tasks. We
+finetunethemforamaximumof250KstepsonWMT,amaximumof100KstepsonXSumanda
+maximumof200KstepsonCNNDM.
+WeconstructtheGemmacascadesfrominstruction-tuneddecoder-onlyv2models. ForMBPPalone
+weadditionallyexperimentwithpre-trainedmodels. Weusea2Bdrafter,andeithera9Bverifieror
+a27Bverifier(Teametal.,2024).
+Run-timeevaluation. Foreachdataset,weevaluatethequalitymetricsontheentirevalidationset.
+Fortherun-timeanalysisintheT5experiments,weadopttheprotocolfollowedinLeviathanetal.
+(2023);Zhouetal.(2024). Werandomlysample500examplesfromthevalidationset,andcalculate
+thewall-clocktimetakenfordecodingwithabatchsizeof1. Werepeatthisforthreetrialsandreport
+theaveragerunningtime. AllmethodsarerunonthesameTPUv4device.
+2Thepre-trainedcheckpointsweuseareavailablehere.
+30
+PublishedasaconferencepaperatICLR2025
+22
+20
+18
+16
+14
+0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80
+Relative latency
+UELB
+WMT: Small Large (T=1)
+27.0
+SpecDecode [Lossy]
+SpecCascade [OPT] 26.5
+SpecCascade [Token]
+26.0
+25.5
+25.0
+24.5
+24.0
+0.50 0.55 0.60 0.65 0.70
+Relative latency
+UELB
+WMT: Small Large (T=0.5)
+27.5
+27.0
+26.5
+SpecDecode [Lossy]
+SpecCascade [OPT] 26.0
+SpecCascade [Token]
+0.50 0.55 0.60 0.65 0.70
+Relative latency
+UELB
+WMT: Small Large (T=0.1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+16
+14
+12
+10
+0.6 0.7 0.8 0.9 1.0
+Relative latency
+2-EGUOR
+XSum: Small Large (T=1.0)
+19
+18
+17
+16
+15
+SpecDecode [Lossy]
+14 SpecCascade [OPT]
+SpecCascade [Token] 13
+0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95
+Relative latency
+2-EGUOR
+XSum: Small Large (T=0.5)
+19
+18
+17
+16
+SpecDecode [Lossy]
+SpecCascade [OPT] 15
+SpecCascade [Token]
+14
+0.55 0.60 0.65 0.70 0.75 0.80 0.85 0.90 0.95
+Relative latency
+2-EGUOR
+XSum: Small Large (T=0.1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+12
+11
+10
+9
+8
+0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75
+Relative latency
+2-EGUOR
+CNNDM: Small Large (T=1)
+SpecDecode [Lossy]
+SpecCascade [OPT] 15.0
+SpecCascade [Token]
+14.5
+14.0
+13.5
+13.0
+12.5
+0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75
+Relative latency
+2-EGUOR
+CNNDM: Small Large (T=0.5)
+15.5
+15.0
+14.5
+SpecDecode [Lossy] 14.0
+SpecCascade [OPT]
+SpecCascade [Token] 13.5
+0.40 0.45 0.50 0.55 0.60 0.65 0.70
+Relative latency
+2-EGUOR
+CNNDM: Small Large (T=0.1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+Figure 6: Plots of quality vs. latency for T5 models with varying temperatures. Each method
+interleaves T5-small with T5-large. The x-axis tracks the latency relative to that of calling the
+largemodelonallinputs. Thehorizontaldottedlinedenotesthequalityofthelargemodel. Asthe
+temperaturedecreases,SpecDecode [Lossy]producesfeweruniquetrade-offpointsasitsacceptance
+criterion is less susceptible to changes in the trade-off parameter α. In contrast, SpecCascade
+[Token], which uses the TokenV3 deferral rule, offers a wider range of trade-off points; here the
+trade-offparameterisnotusedtoconstructatraded-offtargetdistribution,anddoesnotfeatureasa
+scalingtermintheacceptancecriterion.
+T5hyper-parameters. FortheT5experiments,unlessotherwisespecified,wesettheblock-sizeγ
+to5forallmethodsthatusespeculativeexecution. Forthetoken-levelcascades,weallowthesmall
+modeltopredictforamaximumof10tokens(similarto(Kimetal.,2023)),beforeinvokingthe
+largemodel. Thiswasneeded,asotherwise,thesmallmodelwouldpredictalongsequence,and
+wheniteventuallydeferstothelargemodel,thelargemodelisbottle-neckedbythepre-fillingofthe
+longprefixaccumulatedbythesmallmodel. Wevarythetrade-offparameterαtovarythelatency
+andplotqualityasafunctionoflatency.
+Gemmainference. WhenimplementingspeculativecascadesandspeculativedecodingwithGemma
+models,weuseblock-sizeγ =1. Inthiscase,foreachprefixx ,wehavethedraftergenerateone
+<t
+drafttokenx forthenextstep. Wetheninvoketheverifierwiththesameprefix,andeitheraccept
+t
+thedrafttokenx ,orrejectandreplaceitwiththeverifier’sprediction. Werepeatthisprocessto
+t
+generatetheentireresponse.
+BiLDbaseline. FortheBiLDmethod,weadoptthesamediscrepancymetricDas(Kimetal.,2023)
+forgreedydecoding:
+(cid:18) (cid:18) (cid:19)(cid:19)
+D(q,p)=−log p argmaxq(v) ,
+v∈V
+31
+PublishedasaconferencepaperatICLR2025
+25
+24
+23
+22
+21
+0.45 0.50 0.55 0.60 0.65 0.70 0.75
+Relative latency
+UELB
+WMT: Small Large (P=0.8)
+27.0
+26.5
+26.0
+25.5
+SpecDecode [Lossy]
+SpecCascade [Token] 25.0
+0.50 0.55 0.60 0.65 0.70
+Relative latency
+UELB
+WMT: Small Large (P=0.5)
+27.5
+27.0
+26.5
+SpecDecode [Lossy] 26.0
+SpecCascade [Token]
+0.50 0.55 0.60 0.65 0.70
+Relative latency
+UELB
+WMT: Small Large (P=0.1)
+SpecDecode [Lossy]
+SpecCascade [Token]
+14
+13
+12
+11
+0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75
+Relative latency
+2-EGUOR
+CNNDM: Small Large (P=0.8)
+15.5
+15.0
+14.5
+14.0
+13.5
+SpecDecode [Lossy]
+SpecCascade [Token] 13.0
+0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75
+Relative latency
+2-EGUOR
+CNNDM: Small Large (P=0.5)
+15.5
+15.0
+14.5
+14.0
+SpecDecode [Lossy]
+SpecCascade [Token] 13.5
+0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75
+Relative latency
+2-EGUOR
+CNNDM: Small Large (P=0.1)
+SpecDecode [Lossy]
+SpecCascade [Token]
+Figure7: Plotsofqualityvs.latencyforT5modelsunderTop-P samplingwithvaryingvaluesof
+P. EachmethodinterleavesT5-smallwithT5-large. Thex-axistracksthelatencyrelativetothatof
+callingthelargemodelonallinputs. Thehorizontaldottedlinedenotesthequalityofthelargemodel.
+AsP becomessmaller,SpecDecode [Lossy]isabletoproducefeweruniquetrade-offpointsasthe
+scalingbythetrade-offparameterαislesseffectiveinitsacceptancecriterion(§C.3). SpecCascade
+[Token],whichusestheTokenV3deferralrulein(15),doesnotsufferfromthesameissue;herethe
+trade-offparameterdoesnotfeatureasascalingtermintheacceptancecriterion.
+andpickthevalueofthethresholdαonthismetricfromtherange[0,10]. Fortemperaturesampling
+withanon-zerotemperature,weusethefollowingnaturalanaloguetotheaboveD:
+(cid:88)
+D(q,p)=−E [log(p(v))]=− q(v)·log(p(v)).
+v∼q
+v∈V
+In§F.5,wepresentcomparisonsbetweendifferentimplementationsofthismethod.
+Lossyspeculativedecoding. See§F.6fordetails.
+F.2 COMPARISONSUNDERVARYINGTEMPERATURESANDGREEDYDECODING
+InFigures5and6,weprovideadditionalplotsofqualityvs.latencyfordifferentinferencestrategies
+undergreedydecoding(T =0)andtemperaturesampling(T =0.1,0.5,1.0)respectively.
+Asexpected,weseefromthegreedydecodingresultsinFigure5thatallmethodsyieldbetterquality
+metrics compared to their performance under temperature sampling. In this case, the proposed
+SpecCascade [TokenV3] is equivalent to the lossy variant of speculative decoding proposed by
+Leviathanetal.(2023)forgreedydecoding,whichwerefertoasSpecDecode [Lossy, Greedy].
+See§C.4forthediscussionofthisequivalence. Similarly,asnotedin§D.4,withgreedydecoding,
+theOPTdeferralrulecoincideswiththeDiffdeferralrule.
+InthetemperaturesamplingresultsinFigure6,wecomparethelossyspeculativesamplingproposed
+byLeviathanetal.(2023)fortemperaturesampling(SpecDecode [Lossy])withtwoofourproposed
+methods: speculativecascadeswiththeOPTandTokenV3(referredtoasToken)deferralrules. Wecan
+seethatSpecCascade [Lossy]generatesfeweruniquetrade-offpointsastemperatureT getssmaller.
+Asnotedin§C.1,thisisbecauseitsacceptancecriterionislesssusceptibletochangesintrade-off
+parameterαwhenS(p
+t
+)ispeaked. Incontrast,ourproposedSpecCascade [Token]approachyields
+awiderrangeoftrade-offpoints;herethetrade-offparameterisnotusedtoconstructatraded-off
+targetdistribution,anddoesnotfeatureasascalingtermintheacceptancecriterion.
+ThereasontheToken-specificrulefaresbetterthanOPTisbecausethelattercomputesitsdeferral
+decisionsbasedonwhichofq (·)andp (·)ismorepeaked; thiscanbeadisadvantagewhenthe
+t t
+32
+PublishedasaconferencepaperatICLR2025
+Table5: Reductioninlatency(T =1,γ =5)whenmatchingthequalityofthelargemodel,andthe
+bestqualitymetricwithoutexceedingthelatencyofthelargemodel. WeuseT5-smallandT5-large
+asthesmallandlargemodelsrespectively. QualityismeasuredintermsoftheBLEUforWMT
+andROUGE-2forCNNDM.WeapplyTop-P samplingwithvaryingvaluesofP. Theproposed
+SpecCascade[Token]methodusestheTokenV3deferralrulein(15).
+Latency↓whenmatchinglargemodel’squality Bestqualitywithoutexceedinglargemodel’slatency
+P=0.1 P=0.5 P=0.8 P=0.1 P=0.5 P=0.8
+Method WMT CNNDM WMT CNNDM WMT CNNDM WMT CNNDM WMT CNNDM WMT CNNDM
+SpecDecode[Lossy] 1.55× 1.48× 1.64× 1.63× 1.69× 1.75× 27.35 15.72 27.10 15.27 23.98 13.61
+SpecCascade[Token] 1.74× 1.61× 1.73× 1.65× 1.71× 1.79× 27.49 15.79 27.30 15.46 25.64 14.38
+sampledtokenisnotbeclosethedistributionmode,whichislikelytohappenwithhighertemperatures.
+Withlowertemperatures,however,thesampledtokenislikelytobeclosethedistributionmode,and
+asaresult,theadvantagethattheToken-specificrulehasoverOPTdiminishes.
+F.3 COMPARISONSUNDERTOP-P SAMPLING
+We compare speculative cascades with the TokenV3 deferral rule (SpecCascade [Token]) with
+SpecDecode [Lossy]undertop-P sampling.Asdiscussedin§C.3,whenimplementingSpecCascade
+[Token],theTokenV3deferralrulein(15)isappliedtotheoriginaldrafterandverifierdistributions;
+weusethedeferraldecisiontotheninterleavetop-P truncatedversionsofthesedistributions. In
+Table5,wereporttheresultsofourevaluationforvaryingP,whilefixingthetemperatureT = 1
+andγ =5.
+ItisforthesmallestvalueofP thatourproposaloffersthelargestgainsinspeed-upoverSpecDecode
+[Lossy]. Unsurprisingly,thesmallerthevalueofP,thebetterarethequalitymetrics,withboth
+methodsbeingalmostqualityneutralforP =0.1.
+As we elaborate in §C.3, as P becomes smaller, the trade-off parameter α in lossy speculative
+samplingbecomeslesseffective,withthemethodbecomingidenticaltostandardloss-lessspeculative
+decodingwhenP →0. Incontrast,ourproposedSpecCascade [Token]approachdoesnotsuffer
+fromthesameissueasitusesthetrade-offparameterαnotasascalingparameterintheacceptance
+criterion,buttoconstructanewtargetdistributionthatisamenabletoahigheracceptancerateeven
+undertop-P sampling. Thereforeweareabletotuneαtogetawiderrangeofoperatingpointsand
+matchthequalityofthelargermodelatalowerlatency.
+Forexample,inFigure7,lossyspeculativedecodingwithP =0.1isabletoofferonlythreeunique
+trade-off points (despite sweeping through a fine-grained grid on α from 10−6 to 1); in contrast
+SpecCascade [Token]isabletoofferawiderrangeoftrade-offpoints.
+F.4 COMPARISONSUNDERDIFFERENTBLOCKSIZESγ
+InFigure8,wepresentlatency-qualitytrade-offplotsforT5cascadesunderdifferentblocksizesγ.
+Ineachcase,wefindthattheproposedspeculativecascadingtechniquesoutperformlossyspeculative
+decodingacrossdifferentlatencyvalues. Furthermore,highervaluesofγ areseentoyieldawider
+rangeoftrade-offs,withlowerqualityoperatingpointsshiftingtotheleft,andbetterqualityoperating
+pointsshiftingtotheright. Forexample,withXSum,SpecDecode [Lossy]withγ =3matchesthe
+smallmodel’squalityat 0.64relativelatency,andmatchesthelargemodel’squalityat 0.85relative
+latency;withγ = 7,itmatchesthesmallmodel’squalityatanevenlowerlatency,butpractically
+providesnospeed-upwhenmatchingthelargermodel’squality. Thereasonalargerblocksizecan
+hurtspeed-upatthehigherqualityregimeisbecauseitcanresultinfrequentrollbacks,thusdefeating
+thepurposeofusingspeculativeexecution.
+F.5 BIGLITTLEDECODER(BILD)VARIANTS
+Inourexperimentsinthemaintext(§6),wecomparedagainstaversionoftheBigLittleDecoder
+method(Kimetal.,2023)thatappliedAlgorithm4tothetargetdistributionT theauthorsseek
+BiLD
+tomimic(§B).WenowshowthatthisversionperformssimilarlytotheoriginalBiLDalgorithmin
+(Kimetal.,2023).
+33
+PublishedasaconferencepaperatICLR2025
+22
+20
+18
+16
+14
+0.55 0.60 0.65 0.70 0.75 0.80
+Relative latency
+UELB
+WMT: Small Large ( =3)
+SpecDecode [Lossy] 22
+SpecCascade [OPT]
+SpecCascade [Token]
+20
+18
+16
+14
+0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80
+Relative latency
+UELB
+WMT: Small Large ( =5)
+SpecDecode [Lossy] 22
+SpecCascade [OPT]
+SpecCascade [Token]
+20
+18
+16
+14
+0.4 0.5 0.6 0.7 0.8 0.9
+Relative latency
+UELB
+WMT: Small Large ( =7)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+14
+12
+10
+0.65 0.70 0.75 0.80 0.85 0.90
+Relative latency
+2-EGUOR
+XSum: Small Large ( =3)
+16
+14
+12
+SpecDecode [Lossy] 10 SpecCascade [OPT]
+SpecCascade [Token]
+0.6 0.7 0.8 0.9 1.0
+Relative latency
+2-EGUOR
+XSum: Small Large ( =5)
+16
+14
+12
+SpecDecode [Lossy] 10 SpecCascade [OPT]
+SpecCascade [Token]
+8
+0.6 0.7 0.8 0.9 1.0
+Relative latency
+2-EGUOR
+XSum: Small Large ( =7)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+12
+11
+10
+9
+0.50 0.55 0.60 0.65 0.70 0.75 0.80
+Relative latency
+2-EGUOR
+CNNDM: Small Large ( =3)
+12
+11
+10
+SpecDecode [Lossy]
+SpecCascade [OPT] 9
+SpecCascade [Token]
+8
+0.5 0.6 0.7 0.8
+Relative latency
+2-EGUOR
+CNNDM: Small Large ( =5)
+12
+11
+10
+SpecDecode [Lossy]
+SpecCascade [OPT] 9
+SpecCascade [Token]
+0.4 0.5 0.6 0.7 0.8 0.9
+Relative latency
+2-EGUOR
+CNNDM: Small Large ( =7)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [Token]
+Figure8: Plotsofqualityvs.latencyforT5modelswithwithvaryingblocksizesγ. Eachmethod
+interleavesT5-smallwithT5-large. Thex-axistracksthelatencyrelativetothatofcallingthelarge
+modelonallinputs. Thehorizontaldottedlinedenotesthequalityofthelargemodel.
+Akeydifferencetotheoriginalalgorithmin(Kimetal.,2023)istheuseofthefallbackphase,where
+thedrafterisrununtilitsmaximumpredictedprobabilitymax v∈Vq(v)<1−α
+f
+,forathreshold
+α ∈[0,1](oruntilamaximumblocksizeof10isreached),andtheuseofadeterministicrollback
+f
+policywheretheverifierrejectsadrafttokenwheneverD(q,p) > α. Inourimplementation,we
+adoptthespeculativesamplingalgorithmfrom(Leviathanetal.,2023): wedonothavethefallback
+policyandreplacethedeterminisicrollbackpolicywiththerejectionsamplinginAlgorithm4.
+Figure9(top)comparestheoriginalversionofBiLDwiththeversionweusein§6. Weinterleave
+betweenaT5-smallandT5-largemodelonWMT,usinggreedydecoding(T =0)forinference. As
+prescribedbytheauthors(Kimetal.,2023),weusethefollowingdiscrepancymetricforgreedy
+decoding:
+(cid:18) (cid:19)
+D(q,p)=logp argmaxq(v) .
+v∈V
+Wecompareourimplementation(BiLD∗),wherewesettheblocksizeto5(sameasourproposed
+speculativecascadingapproaches),withtheoriginalBiLDfordifferentchoicesofmaximumblock
+sizeγ anddifferentfallbackthresholdsα . Forbothmethods,wevarythethresholdαonD(q,p)to
+f
+varythelatencyandplottheresultingBLEUscore.
+Ahigherfallbackthresholdα resultsinlargerdraftgenerationwindows;thisgivesanadvantage
+f
+in the low latency regime, where most of the draft tokens are accepted. As a result, BiLD [γ =
+10,α=0.9]yieldsthelowestlatencies,butalsoyieldslowerquality. Alowfallbackthresholdresults
+inverysmalldraftgenerationwindows, andconsequently, inhigherlatencies. ThisiswhyBiLD
+[γ =5,α=0.1]istheslowestbutyieldshighqualitymetrics.
+Our implementation BiLD∗ is seen to perform comparable to the best parameter choices for the
+originalBiLDalgorithminFigure9.
+34
+PublishedasaconferencepaperatICLR2025
+27.0
+26.5
+26.0
+25.5
+0.40 0.45 0.50 0.55 0.60 0.65
+Relative latency
+UELB
+WMT: Small Large (T=0)
+BiLD*
+BiLD ( =5, f=0.1)
+BiLD ( =5, f=0.3)
+BiLD ( =5, f=0.5)
+BiLD ( =5, f=0.7)
+BiLD ( =5, f=0.9)
+BiLD ( =10, f=0.1)
+BiLD ( =10, f=0.3)
+BiLD ( =10, f=0.5)
+BiLD ( =10, f=0.7)
+BiLD ( =10, f=0.9)
+17.0
+16.5
+16.0
+15.5
+15.0
+14.5
+0.00 0.05 0.10 0.15 0.20
+Fraction of calls to larger model
+UELB
+WMT: Small Large (T=1)
+14
+13
+12
+11
+10
+SpecDecode [Lossy]
+9
+SpecCascade [Lossy ]
+0.00 0.05 0.10 0.15 0.20
+Fraction of calls to larger model
+2-EGUOR
+XSum: Small Large (T=1)
+SpecDecode [Lossy]
+SpecCascade [Lossy ]
+Figure9: Top: Plotsofqualityvs.latencycomparingBiLD∗ withtheoriginalBiLDalgorithm
+inKimetal.(2023)withvaryingmaximumdraftwindowsizeγ andfallbackconfidencethreshold
+α
+f
+. Bottom: Comparisonoflossyspeculativedecodingwithβ =1[Lossy]andβ tunedusingthe
+procedurein(Tran-Thien,2023)[Lossy(cid:63)].
+22
+21
+20
+19
+18
+17
+16
+15
+14
+0.40 0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85
+Relative latency
+UELB
+WMT: Small Large (T=1)
+16
+SpecDecode [Lossy]
+SpecCascade [OPT] 15
+SpecCascade [TokenV3]
+SpecCascade [TokenV2] 14
+SpecCascade [TokenV1] 13
+12
+11
+10
+9
+0.6 0.7 0.8 0.9 1.0
+Relative latency
+2-EGUOR
+XSum: Small Large (T=1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+12
+11
+10
+9
+8
+0.45 0.50 0.55 0.60 0.65 0.70 0.75 0.80 0.85
+Relative latency
+2-EGUOR
+CNNDM: Small Large (T=1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+Figure 10: Plots of quality vs. latency for T5 models with all three token-specific speculative
+cascade deferral rules in equations 13–15. Each method interleaves a T5 small and a T5 large
+model. Thex-axistracksthelatencyrelativetothatofcallingthelargemodelonallinputs. The
+horizontaldottedlinedenotesthequalityofthelargemodel.
+It is worth noting that while we view T as the target distribution that the algorithm in (Kim
+BiLD
+etal.,2023)seekstomimic,thepresenceofthefallbackphasecouldmeanthatonsomeinputsa
+outputresponseisgeneratedwithouttheverification(orrollback)phasebeinginvoked. Insuchcases,
+theoutputresponsewillcomesolelyfromdrafterifitturnsoutthatitcontainstokensforwhich
+D(q ,p )>α.
+t t
+35
+PublishedasaconferencepaperatICLR2025
+27.5
+25.0
+22.5
+20.0
+17.5
+15.0
+12.5
+10.0
+0.00 0.05 0.10 0.15 0.20 0.25 0.30
+Rejection rate
+UELB
+WMT 5-shot: 2B 27B (T = 1)
+21
+20
+19
+SpecDecode [Lossy]
+SpecCascade [OPT] 18
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1] 17
+0.00 0.05 0.10 0.15 0.20 0.25
+Rejection rate
+L-eguoR
+CNNDM 5-shot: 2B 27B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+0.75
+0.70
+0.65
+0.60
+0.55
+0.50
+0.45
+0.40
+0.00 0.02 0.04 0.06 0.08 0.10 0.12
+Rejection rate
+hctaM
+tcaxE
+GSM8K 8-shot: 2B 27B (T = 1)
+0.54
+0.52
+0.50
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3] 0.48
+SpecCascade [TokenV2]
+SpecCascade [TokenV1] 0.46
+0.00 0.05 0.10 0.15 0.20 0.25
+Rejection rate
+1F
+SQuAD 1-shot: 2B 27B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+0.32
+0.30
+0.28
+0.26
+0.24
+0.00 0.05 0.10 0.15 0.20 0.25
+Rejection rate
+1F
+WebQ 1-shot: 2B 27B (T = 1)
+0.35
+0.30
+0.25
+SpecDecode [Lossy]
+SpecCascade [OPT] 0.20
+SpecCascade [TokenV3]
+SpecCascade [TokenV2] 0.15
+SpecCascade [TokenV1]
+0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40
+Rejection rate
+1F
+NaturalQA 1-shot: 2B 27B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+0.65
+0.60
+0.55
+0.50
+0.45
+0.40
+0.35
+0.30
+0.00 0.02 0.04 0.06 0.08 0.10 0.12
+Rejection rate
+1@ssaP
+MBPP 3-shot: 2B 27B [IT] (T = 1)
+0.55
+0.50
+SpecDecode [Lossy] 0.45
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2] 0.40
+SpecCascade [TokenV1]
+0.000 0.025 0.050 0.075 0.100 0.125 0.150 0.175 0.200
+Rejection rate
+1F
+TriviaQA 1-shot: 2B 27B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+Figure 11: Plots of quality vs. rejection rate for Gemma models with all three token-specific
+speculative cascade deferral rules in equations 13–15. Each method interleaves a Gemma 2B
+drafterwithaGemma27Bverifier. Thehorizontaldottedlinedenotesthequalityofthelargemodel.
+Weincludeallthreetoken-specificspeculativecascadedeferralrulesinequations13–15.
+F.6 LOSSYSPECULATIVEDECODINGVARIANTS
+Inourexperimentsinthemaintext(§6),wecomparedagainstthelossyspeculativedecoding(Tran-
+Thien, 2023; Zhou et al., 2024) described in §2, with the parameter β set to 1. We now present
+resultsforthismethodwithβ tunedaccordingtotheprocedureinTran-Thien(2023),andshowthat
+choosingβ =1faresatleastaswellastuningβ.
+ThegoalinTran-Thien(2023)istochooseαandβ soastomaximizetheacceptancerateforthe
+drafttoken,whileensuringthattheKLdivergencebetweentheresultingtargetdistributionandp
+iswithinanallowablelimitR. TheauthorsprescribespecifyingR,andforeachprefix,tuningα
+and β to solve the resulting constrained optimization problem. To be consistent with the rest of
+our experimental setup, we vary α to vary the draft acceptance rate (note that each choice of α
+correspondstoaparticularKLdivergencetop),andtuneβ ≥1−αtosatisfythefollowingcondition
+36
+PublishedasaconferencepaperatICLR2025
+27.5
+25.0
+22.5
+20.0
+17.5
+15.0
+12.5
+10.0
+0.00 0.05 0.10 0.15 0.20 0.25
+Rejection rate
+UELB
+WMT 5-shot: 2B 9B (T = 1)
+0.75
+0.70
+0.65
+0.60
+0.55
+SpecDecode [Lossy]
+SpecCascade [OPT] 0.50
+SpecCascade [TokenV3]
+SpecCascade [TokenV2] 0.45
+SpecCascade [TokenV1] 0.40
+0.00 0.02 0.04 0.06 0.08 0.10 0.12
+Rejection rate
+hctaM
+tcaxE
+GSM8K 8-shot: 2B 9B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+0.60
+0.58
+0.56
+0.54
+0.52
+0.50
+0.48
+0.46
+0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35
+Rejection rate
+1F
+SQuAD 2.0 1-shot: 2B 9B (T = 1)
+0.30
+0.29
+0.28
+0.27
+0.26 SpecDecode [Lossy]
+SpecCascade [OPT] 0.25
+SpecCascade [TokenV3]
+SpecCascade [TokenV2] 0.24
+SpecCascade [TokenV1]
+0.23
+0.00 0.05 0.10 0.15 0.20 0.25
+Rejection rate
+1F
+WebQuestions 1-shot: 2B 9B (T = 1)
+SpecDecode [Lossy]
+SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+0.28
+0.26
+0.24
+0.22
+0.20
+0.18
+0.16
+0.14
+0.12
+0.00 0.05 0.10 0.15 0.20 0.25 0.30 0.35 0.40
+Rejection rate
+1F
+NaturalQA 1-shot: 2B 9B (T = 1)
+0.525
+0.500
+0.475
+0.450
+SpecDecode [Lossy] 0.425 SpecCascade [OPT]
+SpecCascade [TokenV3] 0.400
+SpecCascade [TokenV2]
+SpecCascade [TokenV1] 0.375
+0.00 0.05 0.10 0.15 0.20
+Rejection rate
+1F
+TriviaQA 1-shot: 2B 9B (T = 1)
+SpecDecode [Lossy] SpecCascade [OPT]
+SpecCascade [TokenV3]
+SpecCascade [TokenV2]
+SpecCascade [TokenV1]
+Figure 12: Plots of quality vs. rejection rate with Gemma 2B → 9B speculative cascades. Each
+methodinterleavesaGemma2BdrafterwithaGemma9Bverifier. Thehorizontaldottedlinedenotes
+thequalityofthelargemodel. Weincludeallthreetoken-specificspeculativecascadedeferral
+rulesinequations13–15.
+outlinedinTran-Thien(2023):
+(cid:26) (cid:27) (cid:26) (cid:27)
+(cid:88) p(v) (cid:88) p(v)
+max 0,q(v)− = max 0, −q(v)
+1−α β
+v∈V v∈V
+Wepickβ usingagrid-searchover1000valuesbetweenαand10.
+Sincethistuningprocedure,inturn,canaddtothemethod’slatency,forafaircomparison,weplot
+qualityasafunctionofthefractionofcallstothelargemodel(rejectionrate),insteadofrelative
+latency. InFigure9(bottom),weplotthesetrade-offcurvesforlossspeculativedecodingwithβ =1
+(Lossy)andforspeculativedecodingwithβ tunedusingtheaboveprocedure(Lossy(cid:63)). Wecompare
+performancesonWMTandXSum,andineachcase,interleaveaT5-smallmodelwithaT5-large
+model.
+Inbothcases,settingβ = 1providestrade-offscomparabletoorbetterthanusingatunedvalue
+ofβ. Thereasonusingatunedvalueofβ faresworsethansettingβ =1mightbebecauseweare
+measuringqualityintermsofBLEUorROUGE-2,whichisdifferentfromtheKLdivergencetop
+objectivethatthetuningprocedureinTran-Thien(2023)seekstooptimize.
+F.7 TOKEN-SPECIFICDEFERRALRULEVARIANTS
+InFigure10,wepresentlatency-qualitytrade-offplotsforcascadesconstructedfromaT5-small
+andaT5-largemodel. Weincludeinthesecomparisons,allthreetoken-specificdeferralrulesin
+37
+PublishedasaconferencepaperatICLR2025
+(13)–(15). InFigure11,wepresenttrade-offplotsforcascadesconstructedfromGemma2Band
+Gemma27Bmodelswithallthreetoken-specificrules,andinFigure12,weincludesimilarplotsfor
+cascadesconstructedfromGemma2BandGemma9Bmodels. Wenotethatthetrendswiththe2B
+→9Baresimilartothoseseenwiththe2B→27Bcascades.
+WiththeT5models,theresultsaremixed,withtheV1andV2variantssometimesurpassingtheV3
+variant(whichisthevariantweincludedinthemainexperimentsresultsin§6). Interestingly,with
+theGemmamodels,theV3variantisseentooutperformtheothersformostrejectionrates,withthe
+exceptionofthe2B→27BcascadeonSQuAD2.0,wheretheV2variantisbetter.
+ThereasonfortheV3variantoutperformingtheV1andV2variantsontheGemmamodelscouldbe
+duetothefactthatitusesthelargermodel’sdistributionp (·)tomeasureconfidenceforboththe
+t
+drafterandverifiertokens(seeLHSandRHSin(13)). Weexpectthistobeparticularlyhelpfulwhen
+thereisalargergapinsizesbetweenqandp,andthelargermodel’sdistributionisbetteralignedwith
+thedata-generatingdistributioncomparedtothesmallermodel. Furthermore,asperthediscussionin
+§5,themultiplicativeformoftherule(15)resultsinatargetdistributionwithanintuitiveform: it
+seekstomimicq (·)onthetop-αrankedtokensbyp (·)andusesare-scaledversionofp (·)forthe
+t t t
+othertokens:
+π (v)=q (v)·1 (cid:0) v ∈T (cid:1) + p (v)· (cid:88) q (v(cid:48)),
+TokenV3 t α t t
+v(cid:48)∈/Tα
+whereT ={v ∈V: p (v) ≥ max p (v(cid:48))·(1−α)}.
+α t v(cid:48) t
+38
+PublishedasaconferencepaperatICLR2025
+G LIMITATIONS
+Oneofthelimitationsofourproposalistheuseofplug-inestimatorstoapproximatetheoptimalrule
+(9). Whiletheseapproximationsareeffectiveinpractice,theyrelyontheindividualmodelsbeing
+calibrated. Analternativetotheuseofplug-inestimatorsistousearoutermodelexplicitlytrained
+tomimictheoptimalruleusingavalidationsampledrawnfromP(Guptaetal.,2024). Another
+limitationisthattheoptimizationobjectivesweseektominimizearelocalobjectivesthatseekto
+makethebestdeferraldecisionatthecurrentpositiont. Indoingso,theyignorethedownstream
+effects of choosing a particular model in the current step. Devising a global deferral objective
+thattakesdownstreamerrorsintoaccountwouldbeaninterestingdirectionforfuturework. More
+broadly,ourpaperseekstoimprovecost-qualitytrade-offsinLMinference. Itisimportantthatsuch
+improvementsdonotunfairlyadvantageonesliceofthedataorasubsetofthepopulation,atthecost
+ofothers. Ensuringthatthetrade-offgainsthatourapproachoffersisequitableacrossdifferentslices
+ofthedataisanotherimportantdirectionforthefuture.
+39

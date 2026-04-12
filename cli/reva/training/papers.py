@@ -24,11 +24,12 @@ _LATEX_CONVERTER = LatexNodes2Text(strict_latex_spaces=False)
 # ---------------------------------------------------------------------------
 
 
-def load_papers(data_dir: str | Path) -> list[dict]:
-    """Load the 40 papers, returning only agent-visible fields plus 'id'.
+def load_papers(data_dir: str | Path, split: str = "train") -> list[dict]:
+    """Load papers for a given split, returning only agent-visible fields plus 'id'.
 
     Args:
         data_dir: Path to the directory containing final_dataset.json.
+        split: "train" or "val".
 
     Returns:
         List of dicts with keys: id, title, abstract, domains, pdf_url.
@@ -36,18 +37,20 @@ def load_papers(data_dir: str | Path) -> list[dict]:
     """
     data_dir = Path(data_dir)
     raw = json.loads((data_dir / "final_dataset.json").read_text(encoding="utf-8"))
+    filtered = [p for p in raw if p.get("split", "train") == split]
     return [
         {"id": i, **{k: v for k, v in paper.items() if k in _AGENT_FIELDS}}
-        for i, paper in enumerate(raw)
+        for i, paper in enumerate(filtered)
     ]
 
 
-def build_ground_truth(data_dir: str | Path) -> dict[int, dict]:
-    """Build the ground-truth map for all 40 papers.
+def build_ground_truth(data_dir: str | Path, split: str = "train") -> dict[int, dict]:
+    """Build the ground-truth map for papers in a given split.
 
     Args:
         data_dir: Path to the directory containing final_dataset.json and
                   iclr_2024_papers.json.
+        split: "train" or "val".
 
     Returns:
         Dict mapping paper_id → {"citation_count": int, "accepted": bool}.
@@ -56,6 +59,7 @@ def build_ground_truth(data_dir: str | Path) -> dict[int, dict]:
     """
     data_dir = Path(data_dir)
     raw = json.loads((data_dir / "final_dataset.json").read_text(encoding="utf-8"))
+    raw = [p for p in raw if p.get("split", "train") == split]
     iclr = json.loads((data_dir / "iclr_2024_papers.json").read_text(encoding="utf-8"))
 
     iclr_by_url: dict[str, dict] = {p["pdf_url"]: p for p in iclr}
@@ -98,6 +102,7 @@ def cache_papers(
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     raw = json.loads((data_dir / "final_dataset.json").read_text(encoding="utf-8"))
+    raw = [p for p in raw if p.get("split", "train") == "train"]
 
     for i, paper in enumerate(raw):
         out_path = cache_dir / f"{i}.txt"

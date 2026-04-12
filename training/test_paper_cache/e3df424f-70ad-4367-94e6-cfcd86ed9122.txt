@@ -1,0 +1,1963 @@
+UnderreviewasaconferencepaperatICLR2025
+000 COMPOSITIONAL VIDEO GENERATION
+001
+002 AS FLOW EQUALIZATION
+003
+004
+005 Anonymousauthors
+006 Paperunderdouble-blindreview
+007
+008
+009 ABSTRACT
+010
+011
+Large-scale Text-to-Video (T2V) diffusion models have recently demonstrated
+012
+unprecedentedcapabilitytotransformnaturallanguagedescriptionsintostunning
+013
+andphotorealisticvideos. Despitethesepromisingresults,asignificantchallenge
+014
+remains: thesemodelsstruggletofullygraspcomplexcompositionalinteractions
+015
+betweenmultipleconceptsandactions. Thisissueariseswhensomewordsdom-
+016 inantly influence the final video, overshadowing other concepts. To tackle this
+017 problem,weintroduceVico,agenericframeworkforcompositionalvideogen-
+018 erationthatexplicitlyensuresallconceptsarerepresentedproperly. Atitscore,
+019 Vico analyzes how input tokens influence the generated video, and adjusts the
+020 modeltopreventanysingleconceptfromdominating. Specifically,Vicoextracts
+021 attentionweightsfromalllayerstobuildaspatial-temporalattentiongraph,and
+thenestimatestheinfluenceasthemax-flowfromthesourcetexttokentothevideo
+022
+targettoken. Althoughthedirectcomputationofattentionflowindiffusionmodels
+023
+istypicallyinfeasible, wedeviseanefficientapproximationbasedonsubgraph
+024
+flowsandemployafastandvectorizedimplementation,whichinturnmakesthe
+025
+flowcomputationmanageableanddifferentiable. Byupdatingthenoisylatentto
+026
+balancetheseflows,Vicocapturescomplexinteractionsandconsequentlyproduces
+027 videosthatcloselyadheretotextualdescriptions. Weapplyourmethodtomultiple
+028 diffusion-basedvideomodelsforcompositionalT2Vandvideoediting. Empirical
+029 resultsdemonstratethatourframeworksignificantlyenhancesthecompositional
+030 richnessandaccuracyofthegeneratedvideos.
+031
+032
+033
+034
+1 INTRODUCTION
+035
+036 Humansrecognizetheworldcompositionally. Thatistosay,weperceiveandunderstandtheworld
+037 by identifying parts of objects and assembling them into a whole. This ability to recognize and
+038 recombineelements—making“infiniteuseoffinitemean”—iscrucialforunderstandingandmodeling
+039 ourenvironment.Similarly,intherealmofgenerativeAI,particularlyinvideogeneration,itiscrucial
+040 toreplicatethiscompositionalapproach.
+041 Despiteadvancementsingenerativemodels,currentdiffusionmodelsfailtocapturethetruecompo-
+042 sitionalnatureofinputs. Typically,somewordsdisproportionatelyinfluencethegenerativeprocess,
+043 leading to visual content that does not reflect the intended composition of elements. While the
+044 compositional text-to-image sythesis (Liu et al., 2022; Chefer et al., 2023; Kumari et al., 2023;
+045 Fengetal.,2023;Huangetal.,2023)hasbeenmorestudied,thechallengeofcompositionalvideo
+046 generationhasreceivedlessattention. Thisoversightislargelyduetothehigh-dimensionalnatureof
+videoandthecomplexinterplaybetweenconceptsandmotion.
+047
+048 Asanillustration,wehighlightsomefailurecasesinFigure1(Left),wherecertainwordsdominate
+049 whileothersareunderrepresented. Commonissuesincludemissingsubjectandspatialconfusion,
+050 wheresomeconceptsdonotappearinthevideo. Evenwithallconceptspresent,semanticleakage
+051 canoccur,causingattributesamplifiedincorrectly,forexample,thepromptofabirdandacatis
+052 misinterpreted as a bird looks like a cat. A challenge specific to T2V is Motion Mixing, where
+theactionintendedforoneobjectmistakenlyinteractswithanother,suchasgeneratingaflying
+053
+waleinsteadofflying balloon.
+1
+UnderreviewasaconferencepaperatICLR2025
+054 VideoCrafterv2 + Vico(Ours)
+055
+056
+057
+058
+A wildlife conservationistobserving the behavior of a leopardin a dense rainforest.
+059
+060
+061
+062
+063 Acamel walkingunderthe sea.
+064
+065
+066
+067
+068 Abirdand a cat
+069
+070
+071
+072
+073
+074
+075
+076
+077
+078
+079
+080
+081
+082
+083
+084
+085
+086
+087
+088
+089
+090
+091
+092
+093
+094
+095
+096
+097
+098
+099
+100
+101
+102
+103
+104
+105
+106
+107
+gnissiM
+laitapS
+citnameS
+noitoM
+tcejbuS
+noisufnoC
+egakaeL
+gnixiM
+A whale flyinga hot air balloon over the ocean.
+Figure1: ExamplesforcompositionalvideogenerationofVicoontopofVideCrafterv2(Chenetal.,
+2024). WeidentifyfourtypesoftypicalfailureincompositionalT2V(Row1)MissingSubject(Row
+2)SpatialConfusion(Row3)SemanticLeakageand(Row4)MotionMixing. Vicoprovidesaunified
+solutiontotheseissuesbyequalizingthecontributionsofalltexttokens.
+Toaddressthesechallenges,wepresentVico,anovelframeworkforcompositionalvideogeneration
+thatensuresallconceptsarerepresentedequally. Vicooperatesontheprinciplethat,eachtextual
+token should have an equal opportunity to influence the final video output. At our core, Vico
+firstassessesandthenrebalancestheinfluenceofthesetokens. Thisisachievedthroughtest-time
+optimization,whereweassessandadjusttheimpactofeachtokenateveryreversetimestepofour
+videodiffusionmodel. Asshownin1,Vicoresolvestheabovequestionsandprovidesbetterresults.
+Onesignificantchallengeisaccuratelyattributingtextinfluence. Whilecross-attention(Tangetal.,
+2023;Mokadyetal.,2022;Fengetal.,2023;Rassinetal.,2024)providesfaithfulattributionintext-
+to-imagediffusionmodels,itisnotwell-suitedforvideomodels. Itisbecausesuchcross-attentionis
+onlyappliedonspatialmodulesalong,treatingeachframeindependently,withoutdirectlyinfluencing
+temporaldynamics.
+Tosurmountthis,wedevelopanewattributionmethodforT2Vmodel,termedSpatial-Temporal
+AttentionFlow(ST-flow). ST-flowconsidersallattentionlayersofthediffusionmodel,andviewsit
+asaspatiotemporalflowgraph.Usingthemaximumflowalgorithm,itcomputestheflowvalues,from
+inputtokens(sources)tovideotokens(target). Thesevaluesserveasourestimatedcontributions.
+Unfortunately,thisnaiveattentionmax-flowcomputationis,infact,bothcomputationallyexpensive
+andnon-differentiable. WethusderiveanefficientanddifferentiableapproximationfortheST-Flow.
+Ratherthancomputingflowvaluesonthefullgraph,weinsteadcomputetheflowonallsubgraphs.
+TheST-Flowisthenestimatedasthemaximumsubgraphflow. Additionally, wehavedevelopa
+special matrix operation to compute this subgraph flow in a fully vectorized manner, making it
+approximately100×fasterthantheexactST-flow.
+Onceweobtaintheseattributionscores,weproceedtooptimizethemodeltobalancesuchcontribu-
+tions. Wedothisasamin-maxoptimization,whereweupdatethelatentcode,inthedirectthat,the
+leastrepresentedtokenshouldincreaseitsinfluence.
+WeimplementVicoonmultiplevideoapplications,includingtext-to-videogenerationandvideo
+editing. These applications highlight the framework’s flexibility and effectiveness in managing
+complexpromptcompositions,demonstratingsignificantimprovementsovertraditionalmethodsin
+boththeaccuracyofgeneratedvideo. Ourcontributionscanbesummarizedbelow:
+2
+UnderreviewasaconferencepaperatICLR2025
+108 • WeintroduceVico,aframeworkforcompositionalvideogeneration. Itoptimizesthemodel
+109 toensureeachinputtokenfairlyinfluencesthefinalvideooutput.
+110
+• WedevelopST-flow,anewattributionmethodthatusesattentionmax-flowtoevaluatethe
+111
+influenceofeachinputtokeninvideodiffusionmodels.
+112
+• We derive a differentiable method to approximate ST-flow by calculating flows within
+113
+subgraphs. Itgreatlyspeedupcomputationswithafullyvectorizedimplementation.
+114
+• Extensive evaluation of Vico in diverse settings has proven its robust capability, with
+115
+substantialimprovementsinvideoqualityandsemanticaccuracy.
+116
+117
+118 2 PRELIMINARIES
+119
+120 DenoisingDiffusionProbabilisticModels. Diffusionmodelreversesaprogressivenoiseprocess
+121 basedonlatentvariables. Givendatax 0 ∼ q(x 0 )sampledfromtherealdistribution,weconsider
+122 perturbingdatawithGaussiannoiseofzeromeanandβ t varianceforT steps/Attheendofday,
+x →N(0,I)convergetoisometricGaussiannoise. ThechoiceofGaussianprovidesaclose-form
+123 T
+solutiontogeneratearbitrarytime-stepx through
+124 t
+√ √
+125 x = α¯ x + 1−α¯ ϵ, where ϵ∼N(0,I) (1)
+t t 0 t
+126
+where α = 1 − β and α¯ =
+(cid:81)t
+α . A variational Markov chain in the reverse process
+127 t t t s=1 s
+is parameterized as a time-conditioned denoising neural network ϵ (x,t) with p (x |x ) =
+128 θ θ t−1 t
+129
+N(x
+t−1
+;√
+1
+1
+−βt
+(x
+t
++β
+t
+ϵ
+θ
+(x,t)),β
+t
+I). Thedenoiseristrainedtominimizeare-weightedevidence
+lowerbound(ELBO)thatfitsthenoise
+130
+(cid:104) √ (cid:105)
+131 L =E ||ϵ+ 1−α¯ ϵ (x,t)||2 (2)
+DDPM t,x0,ϵ t θ 2
+132
+133 Trainingwithdenoisingloss,ϵ θ equivalentlylearnstorecoverthederivativethatmaximizethedata
+134 log-likelihood(Song&Ermon,2019;Hyvärinen&Dayan,2005;Vincent,2011). Withatrained
+ϵ (x,t)≈∇ logp(x ),wegeneratethedatabyreversingtheMarkovchain
+135 θ∗ xt t
+136 1 (cid:112)
+x ← √ (x +β ϵ (x,t))+ β ϵ ; (3)
+137 t−1 1−β t t θ∗ t t
+t
+138
+Thereverseprocesscouldbeunderstoodasgoingalong∇ logp(x )tomaximizethelikelihood.
+139 xt t
+140 Text-to-Video(T2V)DiffusionModels. Givenatextprompty,T2Vdiffusionmodelsprogressively
+141 generateavideofromGaussiannoise. Thisgenerationtypicallyoccurswithinthelatentspaceof
+anautoencoder(Rombachetal.,2022)toreducethecomplexity. ThearchitecturedesignofT2V
+142
+modelsoftenfollowseithera3D-UNet(Hoetal.,2022b;Blattmannetal.,2023b;Hoetal.,2022a;
+143
+Harveyetal.,2022;Wuetal.,2023a)ordiffusiontransformer(Guptaetal.,2023;Peebles&Xie,
+144
+2023;Maetal.,2024). Forcomputationalefficiency,thesearchitecturescommonlyutilizeseparate
+145
+self-attention(Vaswanietal.,2017)forspatialandtemporaltokens. Moreover,cross-attentionsis
+146
+appliedoneachframeseparately,therebyinjectingconditionsintothemodel. Morerelatedworkis
+147 inAppendixC.
+148
+Maximum-FlowProblem.(Harris&Ross,1955;Ford&Fulkerson,1956;Edmonds&Karp,1972)
+149
+ConsideradirectedgraphG(V,E)withasourcenodesandatargetnodet. Aflowisfunctionon
+150
+edgef :E →Rthatsatisfiesbothconservationconstraintandcapacityconstraintateveryvertex
+151
+v ∈V\{s,t}. Thismeansthetotalinflowintoanynodevmustequalsitstotaloutflow,andtheflow
+152 (cid:80)
+onanyedgecannotexceeditscapacity. Theflowvalue|f|= f(s,u)isdefinedasthetotal
+153 es,v∈E (cid:80)
+flowoutofthesources,whichisequaltothetotalinflowintothetargett,|f|= f(u,t).
+154 eu,t∈E
+Themaximumflowproblemistofindaflowf∗thatmaximizesthisvalue.
+155
+156
+157 3 VICO: COMPOSITIONAL VIDEO GENERATION AS FLOW EQUALIZATION
+158
+159 Inthispaper,wesolvetheproblemofcompositionalvideogenerationbyequalizinginfluenceamong
+160 tokens. Wecalculatethisinfluenceusingmax-flowwithintheattentiongraphoftheT2Vmodel
+andensureefficientcomputation. WedefineourproblemandoptimizationschemeinSec3.1. The
+161
+definitionofST-FlowanditsefficientcomputationarediscussedinSections3.2and3.3.
+3
+UnderreviewasaconferencepaperatICLR2025
+162
+DenoisingStep FlowEqualizationStep
+163 Cross-Attn (Spatial Only)
+164 Self-Attn Target
+165 𝐱! Updated 𝐱!!
+166 spatial temporal ST-Flow maxmin𝐴 #
+𝐱! ""
+167
+168
+Threemenholding
+169 handbags are walking. Source
+Attentions as Graph
+170 men hold handbag walk
+171
+172
+Figure2: OverallpipelineofourVico. Beforeeachdenoisingstep,Vicoextractsattentionmapsfrom
+173
+eachlayertobuildaspatiotemporalgraph. Wecalculatetheattributionscoresasmax-flowinthe
+174
+graphandadjustthenoisylatentcodetobalancethisflows.
+175
+176
+177
+178
+3.1 OVERALLPIPELINEANDOPTIMIZATION
+179
+OurgoalistogenerateavideofromagiveninputpromptP. Ratherthanfocusingonalltokensin
+180
+theprompt,wetargetasubsetofK keytokensofinterest,V = v ,...,v ,suchassubjectsand
+181 1 K
+verbs. Weaimtoensurethatthosetokenfairlycontributestothefinalvideo. Thisprocessisdetailed
+182
+inFigure2.
+183
+Objectives. Toachievethis,wedefineanattributionfunctionA = A(v ) ∈ Rforeachtokenv .
+184 i i i
+Intuitively,A representstheimportanceforeachtokenwithinthemodel,quantifyingitsimpacton
+185 i
+thevideo. Weoptimizetheattributionscorestoensurefairness:
+186
+187
+maxL (A ,...,A )=maxmin{A ,...,A }; (4)
+188 xt fair 1 K xt vi 1 K
+189
+190 Here,L fair =min vi {A 1 ,...,A K }servesasthefairnessfunction,focusingontheleastrepresented
+191 token. Byupdatingthenoisylatentx t tomaximizeL fair ,weensureequalcontributionsacrossall
+tokens. ThemeasurementofA couldbegeneral. Specifictoourpaper,weestimateA asflowin
+192 i i
+attentiongraph,whichwillbediscussedinSection3.2.
+193
+194 Optimization. To implement Eq 4, we perform test-time optimization. Before each denoising
+195 step,wefirstfeedx intothemodel,extracttheA ,andupdatex throughgradientascent: xˆ ←
+t i t t
+196 x t +η∇ xt L fair (A 1 ,...,A K ). ηisthestepsize. Then,xˆ t isgoingthroughadenoisingsteptoget
+197 x t−1 accordingtoEq3. Werepeatthesestepsuntilthevideoisgenerated.
+198
+199
+3.2 ATTENTIONFLOWACROSSSPACEANDTIME
+200
+201
+Withaboveformulation,ourfocusistodevelopanefficientandpreciseattributionA . Recognizing
+i
+202 issueswithcross-attention,weinsteadcalculateA astheflowthroughtheentireattentiongraph.
+i
+203
+FlawedCross-AttentioninText-to-VideoModels. Cross-attentionscorehasbeeninstrumental
+204
+inattributing(Tangetal.,2023)andcontrollinglayoutandconceptcompositionintext-to-image
+205
+models(Hertzetal.,2022;Cheferetal.,2023;Rassinetal.,2024). However,applyingittoT2V
+206
+diffusionmodelintroducesnewproblem.
+207
+208 This problem arises because T2V models typically employ cross-attention on spatial tokens
+only(Wangetal.,2023a;Chenetal.,2023;Wangetal.,2023b). Ittreatsthevideoasasequenceof
+209
+independentimages,andtemporalself-attentionmixestokensacrossdifferentframes. Consequently,
+210
+thisseparationhinderscross-attention’sabilitytocapturevideodynamics,makingitchallengingto
+211
+manageactionsacrossframes.
+212
+213 For example, applying the cross-attention-based DAAM attribution (Tang et al., 2023) on
+214 VideoCrafterv2 reveals significant issues in visualization. As shown in Figure 3 (Left), cross-
+attentionleadstoaflickeringpatternintheattentionmaps,failingtoconsistentlyhighlightthetarget
+215
+objectacrossframes.
+4
+UnderreviewasaconferencepaperatICLR2025
+216 VideoCrafterv2 DAAM (Cross-AttentionOnly) ST-Flow (Cross & Self Attention)
+217
+218 kitten
+219
+220
+221 meadow
+222
+A playful kittenchasing a butterfly in a wildflower meadow
+223 Animate-Diff DAAM (Cross-AttentionOnly) ST-Flow (Cross & Self Attention)
+224
+225 dog
+226
+227
+228 running
+229
+230 A joyful dogis runninggracefully, adorned with a regal crownand stylish glasses.
+231
+232
+Figure3: AttributionheatmapcomparisonbetweenDAAMandourST-Flow.
+233
+234
+235
+Recognizingtheselimitations,weproposeanewmeasurementtermedSpatial-TemporalFlow(ST-
+236
+Flow),whichestimatestheinfluencethroughouttheentirespatiotemporalattentiongraphinthevideo
+237
+diffusionmodel. AsseeninFigure3(Right),ST-Flowgetsheatmapwithimprovedconsistency.
+238
+Attention as a Graph Over Space and Time. In our approach, we conceptualize the stacked
+239
+attentionlayersasadirectedgraphG=(V,E),wherenodesrepresenttokensandedgesweighted
+240
+bytheinfluencebetweentokens. A4-layerexampleisillustratedinFigure2(Right).
+241
+242 Itsadjacencymatrixisbuiltusingattentionweightsandskipconnections(Abnar&Zuidema,2020).
+243 Supposewatt isthei-throwj-thcolumnelementofattentionmatrixaveragedacrossheads. For
+i,j
+244 self-attention, the edge weight e between any two tokens, i and j, is e = watt +1 if i = j,
+i,j i,j i,j
+245 indicatingaskip-connection,ande =wattifi̸=j.Inthecaseofcross-attention,edgee =watt
+i,j i,j i,j i,j
+246 connectstexttovideo,ande i,i = 1forconnectionswithinvideotokensduetoskipconnections.
+247 Giventhatconnectionsonlyexistfromonelayertothenext,theresultingmatrixexhibitsblock-wise
+0 E 0 ... E 0
+248 t,1 t,l−1
+0 0 E ... 0 0
+249  2 
+sparsitypattern. ThisisexpressedasW = . . .
+250 0 0 0 ... . . . . 
+251 0 0 0 ... 0 E
+l
+252
+Here,W isablockmatrixcomposedofsmallermatricesE andE . EachelementwithinE and
+253 l t,l l
+E representstheedgeweightbetweentwotokens. Specifically,E denotestheedgeweightswithin
+254 t,l l
+videotokensatl-thlayer,andE indicatestheinfluencefromtexttovideoatl-thcross-attention
+t,l
+255
+layer. Inthisstructure,thetexttokenscorrespondtothefirstrowandfirstcolumnofW,whilethe
+256 videotokensarerepresentedbytheremainingrowsandcolumns. Theremainingvaluesaresetto0,
+257 becausetherearenodirectconnectionsbetweentokensfromdifferentlayers.
+258
+AttributionasFlowonGraph. GivengraphG,wecomputetheattributionA byanalyzingallpaths
+259 i
+fromatexttokenv tovideotokensattheoutputlayer.Assuch,weformulateitasamax-flowproblem
+260 i
+withcapacitymatrixW. Tofacilitatethis,weaddanauxiliarytargetnodev toG,connectingitto
+t
+261 alloutputvideotokenswithinflowedgese =11. Wetreateachtexttokenv asthesource,andv
+v+ i t
+262 t
+asthesink. Themax-flowfromsourcetosinkquantifiestheinfluenceofv ,termedST-Flow.
+i
+263
+264 Definition1(ST-Flow). InattentiongraphGwithcapacitymatrixW,ainputtokenv i assource
+andsinknodev ,theattributionvalueofA =|f|∗iscomputedasthemaximumflowfromv tov .
+265 t i i t
+266 OurST-FlowcanbeconsideredasanextensionofAttentionFlow(Abnar&Zuidema,2020),incor-
+267 poratingallattentionlayersindiffusionmodel. ItisprovedtobeakindofShapleyValue(Ethayarajh
+268 &Jurafsky,2021),whichisanidealcontributionallocationingametheory(Shapleyetal.,1953;
+269
+1Themaximuminflowis1foreachnodeduetosoftmaxnormalizationintheattention.
+5
+UnderreviewasaconferencepaperatICLR2025
+270
+Myerson,1977;Young,1985)andinterpretableAImodel(Lundberg&Lee,2017b;Sundararajan
+271 etal.,2017).
+272
+ExactST-FlowComputationisinfeasible. Whiletheoreticallypossible,calculatingtheST-Flowin
+273
+T2Vdiffusionmodelsfacespracticalissuesthatrenderitinfeasible:
+274
+275
+• Non-Differentiable.Themax-flowalgorithm,byitsnature,isnon-differentiable.Thisisaproblem
+276 whenwedogradient-basedoptimizationinEq4.
+277
+• Efficiency Issue. Solving max-flow for each input token is slow. Even with the Dinic’s algo-
+278
+rithm(Dinic,1970)2,thetimecomplexityisO(K|V|2|E|)forlargeattentiongraphsinvideo.
+279
+280 Despitetheseobstacles,inSec3.3,wederiveamin-maxapproximationtocircumventtheseissues.
+281
+282
+3.3 DIFFERENTIABLEST-FLOWWITHMIN-MAXPATHFLOW
+283
+284 Asdiscussedabove,exactcomputationofST-Flowischallenging. Insteadofdirectlyestimatingthe
+285 ST-Flow,weapproachthisbyfocusingonapproximatingitslowerbound,whichiscomputationally
+286 feasible. Thisismadepossible,sinceanysub-graphhasmax-flowsmallerthanthatoffullgraph.
+287 Theorem1(Sub-GraphFlow)3. Foranysub-graphgofagraphG,g ⊆G,themaximumflowf∗in
+g
+288 gislessthanorequaltothemaximumflowf∗ inG,|f∗|≤|f∗|.
+289 G g G
+290 Based on this theorem, we need not compute the ST-Flow directly. Instead, we sample multiple
+subgraphsgfromG,calculatethemaximumflowforeach,andtakethehighestvalueamongthese:
+291
+292 |f |≥A = max|f |; (5)
+G i g
+293 ∀g⊆G
+294 This approach allows for a more efficient calculation by focusing on a manageable number of
+295 subgraphs,solvingthemax-flowforeach,andidentifyingthemaximumflow.
+296
+Inthiswork,wefocusonthesimplesttypeofsubgraphingraphG: apathfromav totargetv . We
+i t
+297 efficientlyapproximatetheST-Flowbycomputingthemaxpathflowforeachpath. Weproposetwo
+298 min-maxstrategiestoachievethis:
+299
+300 • HardFlowStrategy. Foreachtexttokenv,wesampleallpathsv i tov t . Themax-flowoneach
+301 path is calculated as the minimum edge capacity along the path, |f| = min j e j . And the best
+302
+approximatedA
+i
+=max|f|isthemaximumoftheseminimumsacrossallpaths.
+303 • SoftFlowStrategy. Insteadofgetthehardmin-maxflow,weusesoft-minandsoft-maxoperations
+304 usingthelog-sum-exptrick. Thisapproachprovidesasmootherapproximationofflowvalues,
+whichcanbeespeciallyusefulinourgradients-basedoptimization. Thesoft-min/maxiscomputed
+305
+asbelow,withτ asatemperature
+306
+307 softmax(e ,e ,...;τ)=τlog (cid:16)(cid:88) exp( e j) (cid:17) ; (6)
+308 1 2 τ
+j
+309
+softmin(e ,e ,...;τ)=−softmax(−e ,−e ,...;τ), (7)
+1 2 1 2
+310
+311 VectorizedPathFlowComputation. Whiledepth-firstandbreadth-firstsearchescanidentifyall
+312 pathsforabovemin-maxoptimization,thesemethodsareslowandcannotbeparallelized. Instead,
+313 wedefineaspecialoperationcalledmin-maxmultiplicationonthecapacitymatrixtocalculatethe
+314 maximumflowforeachpathinavectorizedmanner.
+315 Definition2(Min-maxMultiplication). GiventwomatricesA∈Rm×k andB ∈Rk×n,min-max
+316 multiplicationC =A⊙B ∈Rm×nisdefinedwhereeachelementC =max (min(A ,B )).
+i,j r i,r r,j
+317
+Thisoperationcomputestheminimumvalueacrossallrforthei-throwofAandthej-thcolumnof
+318
+B,andmax selectsthemaximumoftheseminimumvaluesforeachC . Wecallitamultiplication
+r i,j
+319
+becauseitresemblesmatrixmultiplicationbutreplaceselement-wisemultiplicationwithaminimum
+320
+operationandsummationwithmaximization.
+321
+322 2Giventhattheattentionshasmoreedgethantokens,Dinicisbestchoiceintheory.However,ourimplemen-
+323 tationshowsthatmax-flowoneachtokentakes∼8s.
+3ProofinAppendixA
+6
+UnderreviewasaconferencepaperatICLR2025
+324 Averygoodpropertyisthat,themin-maxmultiplicationofcapacitymatrixWk =Wk−1⊙W can
+325 beinterpretedasthemaxpathflowforallk-hoppaths.
+326
+Proposition1(MaxPathFlowusingMin-maxMultiplication)4. Formin-maxpowerofcapacity
+327
+Wk =Wk−1⊙W,elementWk equalsthemaxpathflowforallk-hoppathfromv tov .
+328 i,j i j
+329 For attention graph that current layer’s node is only connect to the next layer, all path from text
+330 tokentooutputvideotokenhasexactlythelengthofl. Inthisway,whatwedoisjusttoextractthe
+331
+attentiongraphG,doltimesMin-maxMultiplicationonitsflowmatrix,andweconsiderthevalue
+asaapproximationofST-Flow. AtinecomplexityanalysisispreparedinAppendixG.
+332
+333 Inthisway,wegetallpiecestobuildVico. Wefirstcomputeattributionusingtheapproximated
+334 ST-Flow,thenusingEq4toupdatethelatenttoequalizesuchflow.
+335
+336
+4 EXPERIMENTS
+337
+338
+339 Inourexperimentssection, weevaluate Vicothroughaseriesoftests. Westartbyassessingits
+performanceongeneratingvideosfromcompositionaltextprompts. Next,wedemonstrateST-Flow
+340
+accuratelyattributestokeninfluencethroughvideosegmentationandhumanstudy. Wealsoconduct
+341
+anablationstudytovalidateourkeydesigns. MoreapplicationresultsareprovideinAppendixEand
+342
+AppendixD.
+343
+344
+345 4.1 EXPERIMENTSETUP
+346
+Baselines. We build our method on several open-sourced video diffusion model, including
+347
+VideoCrafterv2 (Chen et al., 2024), AnimateDiff (Guo et al., 2024) and Zeroscopev2 5. Since
+348
+nocurrentcompositionalgenerationmethodarespecificallydesignedforvideo,were-implement
+349
+severalmethodsdesignedfortext-to-imagediffusionmodelsandcomparewiththem. Thesemethods
+350
+include:
+351
+352 • OriginalModel. Wedirectlyasktheoriginalbasemodeltoproducevideobasedonprompts.
+353
+• TokenRe-weight. Weusethecompel6packagetodirectlyup-lifttheweightofspecificconcept
+354
+token,withafixedweightof1.5.
+355
+356 • CompositionalDiffusion(Liuetal.,2022). Thismethoddirectlymakemultiplenoisepredictions
+ondifferenttext,andsumthenoisepredictionasthecompositionaldirectionforlatentupdate. In
+357
+ourpaper,givenaprompt,wefirstsplitintoshortphrases. Forexample“a dog and a cat”
+358
+issplittedinto“a dog”and“a cat”,makeindividualdenoising,andaddedup.
+359
+360 • Attend-and-Excite(Cheferetal.,2023). A&Erefinesthenoisylatentstoexcitecross-attention
+361 unitstoattendtoallsubjecttokensinthetextprompt.
+362
+Besidesthosetraining-freemethods,wealsoincludessomerecentworkthatretrainthediffusion
+363
+modelforcompositionalgeneration. TheseincludesLVD(Lianetal.,2023)andVideoTetris(Tian
+364
+etal.,2024).
+365
+366 EvaluationandMetrics. WeevaluatecompositionalgenerationusingVBench(Huangetal.,2024)
+367 andT2V-CompBench(Sunetal.,2024). Specifically,wefocusonevaluatingcompositionalqualityin
+368 termsofSpatialRelation,MultipleObjectComposition. Forbothmetrics,themodelprocessestext
+containingmultipleconcepts,generatesavideo. Thenacaptionmodelverifiestheaccuracyofthe
+369
+conceptrepresentationswithinthegeneratedvideo.
+370
+371 Additionally,wedesignanewmetric,MotionComposition. Thismetricevaluatesthegeneratedvideo
+372 basedonthepresenceandaccuracyofmultipleobjectsperformingdifferentmotions. Wecollect
+373 70promptsoftheform"obj 1 ismotion 1 andobj 2 ismotion 2 ". UsingGRiT(Wuetal.,2022),
+374
+wegeneratedensecaptionsonvideoforeachobjectandverifyifeach(object, motion)pair
+375
+376 4ProofinAppendixB
+5https://huggingface.co/cerspense/zeroscope_v2_576w
+377
+6https://github.com/damian0815/compel
+7
+UnderreviewasaconferencepaperatICLR2025
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388 Adogand a horse
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+Aspiderman pandais surfingon waves.
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+oediV
+-noitnettA
++
+ociV
++
+oediV
+-noitnettA
++
+ociV
++
+2vretfarC
+eticxE-dnA
+)sruO(
+2vretfarC
+eticxE-dnA
+)sruO(
+A crabDJingat a beachparty during sunset.
+A falconas a messengerin a sprawling medieval city.
+Figure 4: Qualitative comparison of the videos generated by VideoCrafterv2 baseline, At-
+tribute&ExciteandourVicowithcompositionaltextualdescriptions.
+appears in the captions. The score is computed as (cid:80) 1,2 (I(obj i )+I(obj i ,motioni)) . Here, I(x) is an
+4
+indicatorfunctionthatreturns1ifxispresentinthegeneratedcaptions,and0otherwise.
+TheoverallvideoqualityismeasuredusingViCLIP(Wangetal.,2023c)tocomputeascorebased
+ontextandvideoalignment,denotedasOverallConsistency.
+Wealsoreportthe5metricsinT2V-CompBench,includingConsistent-AttributeBidding,Spatial
+Relations,MotionBidding,ActionBiddingandObjectInterations.
+ImplementationDetails. Weusetheimplementationsondiffusersforvideogeneration. All
+videosaregeneratedbyaA6000GPU.WesamplevideosfromZeroscopev2andVideoCrafterv2
+using50-stepDPM-Solver++(Luetal.,2022). AnimateDiffissampledwith50-stepDDIM(Song
+etal.,2020). Weoptimizethelatentateachsamplingsteps,andupdatethelatentwithAdam(Kingma
+&Ba,2014)optimizeratthelearningrateof1e−5. Wetestboththesoftandhard-min/maxversions
+ofVico,settingthetemperatureτ =0.01forthesoftversion. TheNLTKpackageidentifyallnouns
+andverbsforequalization.
+4.2 COMPOSITIONALVIDEOGENERATION
+QuantitativeResults. InTable1,wepresentthescoresachievedbyVicocomparedtoothermethods
+acrossvariousbasemodelsoncompositionaltext-to-videogeneration. Vicoconsistentlysurpasses
+allbaselinesoneverymetric. Notably,ourST-flowbasedmethodsurpassescross-attentionbased
+techniqueslikeAttend&Excite,thankstoitsabilitytoincorporatinginfluencesacrossfullattention
+graph. Additionally,thesoftmin-maxversionofVicogenerallyachievesbetterfidelitythanthehard
+version,asitisbettersuitedforgradientoptimization.
+Surprisingly,Vicodemonstratesitsmostsignificantimprovementsinmulti-subjectgenerationtasks.
+For instance, on VideoCrafterv2, it shows a marked increase, improving scores from 40.66% →
+73.55%. This suggests that our attention mechanism in T2V is more adept at managing object
+arrangement. Incontrast,compositionaldiffusionmodelsoftenfail,astheyassumeconditionstobe
+independent,whichisproblematicforcomplexcompositions.
+8
+UnderreviewasaconferencepaperatICLR2025
+432
+433 Table1: Quantitativeresultsfordifferentmethodsoncompositionaltext-to-videogeneration.
+434 Name SpatialRelation↑ MultipleObject↑ MotionComposition↑ OverallConsistency↑
+435 AnimateDiff(Guoetal.,2024) 24.80% 33.44% 33.90% 27.75%
+436 +CompositionalDiffusion(Liuetal.,2022) 19.43% 7.27% 23.58% 24.07%
++Attend-and-Excite(Cheferetal.,2023) 20.88% 31.25% 34.78% 28.05%
+437 +Token-Reweight 28.11% 36.89% 37.45% 26.77%
+438 +Vico(hard) 24.22% 29.95% 37.23% 28.85%
+439 +Vico(soft) 31.47% 37.20% 37.95% 28.89%
+440 ZeroScopev2 59.52% 52.52% 45.51% 25.83%
+441 +CompositionalDiffusion(Liuetal.,2022) 31.77% 8.23% 33.13% 23.02%
++Token-Reweight 57.48% 50.00% 40.42% 25.74%
+442 +Attend-and-Excite(Cheferetal.,2023) 59.02% 62.27% 45.82% 25.84%
+443
++Vico(hard) 63.60% 63.34% 46.32% 24.89%
+444 +Vico(soft) 62.28% 69.05% 45.31% 26.15%
+445
+VideoCrafterv2(Chenetal.,2023) 35.86% 40.66% 43.82% 28.06%
+446 +CompositionalDiffusion(Liuetal.,2022) 23.61% 10.59% 35.49% 24.49%
++Token-Reweight 46.08% 49.16% 44.33% 28.29%
+447
++Attend-and-Excite(Cheferetal.,2023) 48.11% 66.62% 43.48% 28.33%
+448
++Vico(hard) 49.85% 67.84% 44.46% 28.41%
+449 +Vico(soft) 50.40% 73.55% 44.98% 28.52%
+450
+451
+452
+Table2: ComparisonofModelsonT2VCompBench.
+453
+Model Consist-attr Spatial Motion Action Interaction
+454 LVD(Lianetal.,2023) 0.5595 0.5469 0.2699 0.4960 0.6100
+455 VideoTetris(Tianetal.,2024) 0.7125 0.5148 0.2204 0.5280 0.7600
+456 VideoCrafterv2+Vico(soft) 0.6980 0.5432 0.2412 0.6020 0.7800
+457
+458
+459
+Inaddition,wecompareourmethodcombinedwithVideoCrafterv2againstadvancedvideodiffusion
+460 advancedvideodiffusionmodelslikeLVD(Lianetal.,2023)andVideoTetris(Tianetal.,2024).
+461 Thesemodelsuseboundingboxsupervisionorcurateddatasets. TheresultsinTable2showthatour
+462 methodperformssimilarly. Itevenoutperformsonactionbindingandobjectinteractions,without
+463 relyingonexternaldataoradditionaltraining.
+464
+Qualitative Results. We compare the videos generated by different methods in Figure 4. At-
+465
+tend&Excite receive slightly improvements, but still mixes semantics of different subject. For
+466 example,onthe“a dog and a horse”example(TopLeft),bothAttend&Exciteandthebase-
+467 lineincorrectlycombineadog’sfacewithahorse’sbody. Vicoaddressesthisissuebyensuringeach
+468 tokencontributesequally,effectivelyseparatingtheirrelationships.
+469
+Additionally, cross-attention often leads to temporal inconsistencies in the modified videos. For
+470
+instance,inthe“spider panda”case(BottomLeft),Attend&ExciteinitiallydisplaysaSpider-
+471
+Manlogobutitdisappearsabruptlyinsubsequentframes. Incontrast,Vicocapturesdynamicsacross
+472 bothspatialandtemporalattention,leadingtobetterresults. MoreresultsisinAppendixDandE.
+473
+474
+475 4.3 ATTRIBUTIONONVIDEODIFFUSIONMODEL
+476
+477 Inthissection,weaimtodemonstratethatourST-Flow(hard)providesamoreaccuratemeasureof
+478 tokencontributioncomparedtootherattention-basedindicators.
+479 ObjectiveEvaluation: Zero-shotVideoSegmentation. Wetestedseveralattributionmethodsusing
+480 theVideoCrafterv2modelforzero-shotvideosegmentationontheRef-DAVIS2017(Khorevaetal.,
+481 2019)dataset. Tocreatethesemaps,wefirstperformeda25-stepDDIMinversion(Mokadyetal.,
+482 2023)toextractnoisepatterns,followedbysamplingtogeneratetheattributionmaps. Wespecifically
+483 usedmapsfromfromendoftext([EOT])token(Lietal.,2024)forsegmentation. Weusedthemean
+484 valueofthemapasathresholdforbinaryclassification. Wecomparewithcross-attention(Tangetal.,
+2023)andAttentionRollout(Abnar&Zuidema,2020). Themoreaccuratethesegmentationis,the
+485
+attributionismorereasonableforhuman.
+9
+UnderreviewasaconferencepaperatICLR2025
+486
+AttributionMethod TemporalConsistency↑ Reasonability↑ MinLoss ST-Flow(soft) MultipleObject↑ OverallConsistency↑
+487
+✗ ✗ 57.86% 28.03%
+488 Cross-Attention 2.62±0.12 2.87±0.23 ✓ ✗ 63.62% 28.24%
+489
+AttentionRollout 3.77±0.20 3.36±0.20
+✗ ✓ 69.75% 28.12%
+ST-Flow(Ours) 4.12±0.13 3.76±0.19 ✓ ✓ 73.55% 28.52%
+490
+491
+Table3: Userstudyonattributionmethod.
+Table5: AblationstudyonVico.
+492
+Ref-DAVID2017 493 Method
+J&F↑ J ↑ F↑
+494
+SupervisedTrained
+495 ReferFormer-B 61.1 58.1 64.1
+OnlineRefer-B 62.4 59.1 65.6
+496
+Zero-Shot
+497 Cross-Attentionmean 32.1 29.8 34.7
+AttentionRolloutmean 38.0 33.3 40.0
+498
+ST-Flow(Ours)mean 38.2 33.5 40.3
+499
+500 Table4: PerformanceonRef-DAVID2017.
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+noitnettA-ssorC)sruO(wolF-TS Frame 1 Frame 5 Frame 24
+Frame 1 Frame 5 Frame 24
+Table6: Segmentationresultscomparison.
+Results are presented in Table 4. Our method outperformed the others, providing the highest
+segmentationmetricsinzero-shotsetting. AsvisualizedinFigure6,cross-attentionmapsshowed
+inconsistenthighlightingandflickering. AttentionRolloutalsoconciderthefullattentiongraph,but
+overlysmoothedweights,resultinginlesspreciseobjectfocus.
+Subjective Evaluation: User Study. Besides, segmentation-based validation, we conducted a
+subjectiveuserstudytoevaluatethequalityofattributionmapsgeneratedbyvariousmethods. 43
+participantsratedmapsfromthreedifferentapproachesacross50videoclips. Theevaluationfocused
+on Temporal Consistency, assessing the presence of flickering, and Reasonability, determining
+alignment with human interpretations. Ratings ranged from 1 to 5, with 5 as the highest. As
+summarizedinTable3,OurST-Flowmethodoutperformedothers,achievingthehighestscoresin
+bothTemporalConsistency(4.12)andReasonability(3.76).
+4.4 ABLATIONSTUDY
+Inthissubsection,weablateourtwokeydesigns: thelossfunctionandtheproposedST-Flow.
+Loss Function. We modified the loss function from using the “min” as a fairness indicator (as
+describedinSec3.1)toavarianceloss,definedasL =− (cid:80) (A −A¯)2. Thisaimstominimize
+fair i i thedifferencesbetweeneachA andtheaverageattributionvalueA¯,makingitfair. Theresultsis
+i
+showninTable5,row3and4. Wenoticewhilethevariancelossensuresuniformityacrossalltokens,
+itoverlyrestrictsthem,oftendegradingvideoquality. Conversely,ouroriginalmin-lossfocuseson
+theleastrepresentedtoken,enhancingobjectcompositionaccuracywithoutsignificantlyaffecting
+overallquality.
+ST-Flowv.s.Cross-Attention. AmajorcontributionofourworkisthedevelopmentofST-Flowand
+itsefficientcomputation. Wecompareditagainstamodelusingcross-attention,wherecross-attention
+mapsareextractedandameanscoreiscomputedforeachtokenasA . AsdemotivatedinTable5,
+i
+row2and4,usingST-Flow(soft)largelyoutperformcross-attention. Wealsoprovidetherunning
+speedanalysisinAppendixG,confirmingtheefficiencyofourapproach.
+5 CONCLUSION
+Inthispaper,wepresentVico,aframeworkdesignedforcompositionalvideogeneration. Vicostarts
+byanalyzinghowinputtokensinfluencethegeneratedvideo. Itthenadjuststhemodeltoensure
+that no single concept dominates. To implement Vico practically, we calculate each text token’s
+contributiontothevideotokenusingmaxflow. Thiscomputationismadefeasiblebyapproximating
+thesubgraphflowwithavectorizedimplementation. Wehaveappliedourmethodacrossvarious
+diffusion-basedvideomodels,whichhasenhancedboththevisualfidelityandsemanticaccuracyof
+thegeneratedvideos.
+10
+UnderreviewasaconferencepaperatICLR2025
+540 REFERENCES
+541
+542 SamiraAbnarandWillemH.Zuidema. Quantifyingattentionflowintransformers. InDanJurafsky,
+JoyceChai,NatalieSchluter,andJoelR.Tetreault(eds.),Proceedingsofthe58thAnnualMeeting
+543
+oftheAssociationforComputationalLinguistics,ACL2020,Online,July5-10,2020,pp.4190–
+544
+4197.AssociationforComputationalLinguistics,2020. doi: 10.18653/V1/2020.ACL-MAIN.385.
+545
+URLhttps://doi.org/10.18653/v1/2020.acl-main.385.
+546
+547
+AmirBar,RoeiHerzig,XiaolongWang,AnnaRohrbach,GalChechik,TrevorDarrell,andAmir
+548 Globerson. Compositionalvideosynthesiswithactiongraphs. InMarinaMeilaandTongZhang
+549 (eds.), Proceedings of the 38th International Conference on Machine Learning, volume 139
+550 of Proceedings of Machine Learning Research, pp. 662–673. PMLR, 18–24 Jul 2021. URL
+551 https://proceedings.mlr.press/v139/bar21a.html.
+552
+AndreasBlattmann,TimDockhorn,SumithKulal,DanielMendelevitch,MaciejKilian,Dominik
+553
+Lorenz,YamLevi,ZionEnglish,VikramVoleti,AdamLetts,etal. Stablevideodiffusion: Scaling
+554
+latentvideodiffusionmodelstolargedatasets. arXivpreprintarXiv:2311.15127,2023a.
+555
+556
+AndreasBlattmann,RobinRombach,HuanLing,TimDockhorn,SeungWookKim,SanjaFidler,and
+557
+KarstenKreis. Alignyourlatents: High-resolutionvideosynthesiswithlatentdiffusionmodels.
+558 InProceedingsoftheIEEE/CVFConferenceonComputerVisionandPatternRecognition,pp.
+559 22563–22575,2023b.
+560
+561 HilaChefer,ShirGur,andLiorWolf.Genericattention-modelexplainabilityforinterpretingbi-modal
+562 andencoder-decodertransformers. InProceedingsoftheIEEE/CVFInternationalConferenceon
+ComputerVision,pp.397–406,2021.
+563
+564
+Hila Chefer, Yuval Alaluf, Yael Vinker, Lior Wolf, and Daniel Cohen-Or. Attend-and-excite:
+565
+Attention-based semantic guidance for text-to-image diffusion models. ACM Trans. Graph.,
+566
+42(4), jul 2023. ISSN 0730-0301. doi: 10.1145/3592116. URL https://doi.org/10.
+567 1145/3592116.
+568
+569 Haoxin Chen, Menghan Xia, Yingqing He, Yong Zhang, Xiaodong Cun, Shaoshu Yang, Jinbo
+570 Xing,YaofangLiu,QifengChen,XintaoWang,etal. Videocrafter1: Opendiffusionmodelsfor
+571 high-qualityvideogeneration. arXivpreprintarXiv:2310.19512,2023.
+572
+Haoxin Chen, Yong Zhang, Xiaodong Cun, Menghan Xia, Xintao Wang, Chao Weng, and Ying
+573
+Shan. Videocrafter2: Overcomingdatalimitationsforhigh-qualityvideodiffusionmodels. arXiv
+574
+preprintarXiv:2401.09047,2024.
+575
+576
+Efim A Dinic. Algorithm for solution of a problem of maximum flow in networks with power
+577 estimation. InSovietMath.Doklady,volume11,pp.1277–1280,1970.
+578
+579 YilunDu,ShuangLi,andIgorMordatch. Compositionalvisualgenerationwithenergybasedmodels.
+580 AdvancesinNeuralInformationProcessingSystems,33:6637–6647,2020.
+581
+582 YilunDu,ConorDurkan,RobinStrudel,JoshuaBTenenbaum,SanderDieleman,RobFergus,Jascha
+Sohl-Dickstein,ArnaudDoucet,andWillSussmanGrathwohl. Reduce,reuse,recycle: Composi-
+583
+tionalgenerationwithenergy-baseddiffusionmodelsandmcmc. InInternationalconferenceon
+584
+machinelearning,pp.8489–8510.PMLR,2023.
+585
+586
+JackEdmondsandRichardMKarp. Theoreticalimprovementsinalgorithmicefficiencyfornetwork
+587 flowproblems. JournaloftheACM(JACM),19(2):248–264,1972.
+588
+589 KawinEthayarajhandDanJurafsky. Attentionflowsareshapleyvalueexplanations. InChengqing
+590 Zong,FeiXia,WenjieLi,andRobertoNavigli(eds.),Proceedingsofthe59thAnnualMeeting
+591 oftheAssociationforComputationalLinguisticsandthe11thInternationalJointConferenceon
+592 NaturalLanguageProcessing,ACL/IJCNLP2021,(Volume2:ShortPapers),VirtualEvent,August
+1-6,2021,pp.49–54.AssociationforComputationalLinguistics,2021. doi: 10.18653/V1/2021.
+593
+ACL-SHORT.8. URLhttps://doi.org/10.18653/v1/2021.acl-short.8.
+11
+UnderreviewasaconferencepaperatICLR2025
+594
+Weixi Feng, Xuehai He, Tsu-Jui Fu, Varun Jampani, Arjun Reddy Akula, Pradyumna Narayana,
+595 SugatoBasu,XinEricWang,andWilliamYangWang. Training-freestructureddiffusionguidance
+596 forcompositionaltext-to-imagesynthesis. InTheEleventhInternationalConferenceonLearning
+597 Representations,2023. URLhttps://openreview.net/forum?id=PUIqjT4rzq7.
+598
+LesterRandolphFordandDelbertRFulkerson. Maximalflowthroughanetwork. Canadianjournal
+599
+ofMathematics,8:399–404,1956.
+600
+601 YuweiGuo,CeyuanYang,AnyiRao,ZhengyangLiang,YaohuiWang,YuQiao,ManeeshAgrawala,
+602 DahuaLin,andBoDai. Animatediff: Animateyourpersonalizedtext-to-imagediffusionmodels
+603 withoutspecifictuning. InternationalConferenceonLearningRepresentations,2024.
+604
+AgrimGupta,LijunYu,KihyukSohn,XiuyeGu,MeeraHahn,LiFei-Fei,IrfanEssa,LuJiang,and
+605 JoséLezama. Photorealisticvideogenerationwithdiffusionmodels. CoRR,abs/2312.06662,2023.
+606 doi: 10.48550/ARXIV.2312.06662. URL https://doi.org/10.48550/arXiv.2312.
+607 06662.
+608
+TEHarrisandFSRoss. Fundamentalsofamethodforevaluatingrailnetcapacities. Technicalreport,
+609
+RandCorporation,1955.
+610
+611 WilliamHarvey,SaeidNaderiparizi,VadenMasrani,ChristianDietrichWeilbach,andFrankWood.
+612 Flexiblediffusionmodelingoflongvideos. InAliceH.Oh,AlekhAgarwal,DanielleBelgrave,
+613 and Kyunghyun Cho (eds.), Advances in Neural Information Processing Systems, 2022. URL
+614
+https://openreview.net/forum?id=0RTJcuvHtIu.
+615
+AmirHertz,RonMokady,JayTenenbaum,KfirAberman,YaelPritch,andDanielCohen-Or. Prompt-
+616 to-promptimageeditingwithcrossattentioncontrol. arXivpreprintarXiv:2208.01626,2022.
+617
+Jonathan Ho, William Chan, Chitwan Saharia, Jay Whang, Ruiqi Gao, Alexey A. Gritsenko,
+618
+DiederikP.Kingma,BenPoole,MohammadNorouzi,DavidJ.Fleet,andTimSalimans. Imagen
+619
+video: Highdefinitionvideogenerationwithdiffusionmodels. CoRR,abs/2210.02303,2022a.
+620
+doi: 10.48550/ARXIV.2210.02303. URL https://doi.org/10.48550/arXiv.2210.
+621
+02303.
+622
+623 Jonathan Ho, Tim Salimans, Alexey A. Gritsenko, William Chan, Mohammad Norouzi,
+624 and David J. Fleet. Video diffusion models. In Sanmi Koyejo, S. Mohamed,
+625 A. Agarwal, Danielle Belgrave, K. Cho, and A. Oh (eds.), Advances in Neural In-
+formation Processing Systems 35: Annual Conference on Neural Information Process-
+626
+ing Systems 2022, NeurIPS 2022, New Orleans, LA, USA, November 28 - December 9,
+627
+2022, 2022b. URL http://papers.nips.cc/paper_files/paper/2022/hash/
+628
+39235c56aef13fb05a6adc95eb9d8d66-Abstract-Conference.html.
+629
+630 Kaiyi Huang, Kaiyue Sun, Enze Xie, Zhenguo Li, and Xihui Liu. T2i-compbench: A compre-
+631 hensivebenchmarkforopen-worldcompositionaltext-to-imagegeneration. AdvancesinNeural
+632 InformationProcessingSystems,36:78723–78747,2023.
+633
+ZiqiHuang,YinanHe,JiashuoYu,FanZhang,ChenyangSi,YumingJiang,YuanhanZhang,Tianxing
+634 Wu,QingyangJin,NattapolChanpaisit,YaohuiWang,XinyuanChen,LiminWang,DahuaLin,
+635 YuQiao,andZiweiLiu. VBench: Comprehensivebenchmarksuiteforvideogenerativemodels.
+636 InProceedingsoftheIEEE/CVFConferenceonComputerVisionandPatternRecognition,2024.
+637
+AapoHyvärinenandPeterDayan.Estimationofnon-normalizedstatisticalmodelsbyscorematching.
+638
+JournalofMachineLearningResearch,6(4),2005.
+639
+640 LevonKhachatryan,AndranikMovsisyan,VahramTadevosyan,RobertoHenschel,ZhangyangWang,
+641 ShantNavasardyan,andHumphreyShi. Text2video-zero: Text-to-imagediffusionmodelsare
+642 zero-shotvideogenerators. arXivpreprintarXiv:2303.13439,2023.
+643
+AnnaKhoreva,AnnaRohrbach,andBerntSchiele.Videoobjectsegmentationwithlanguagereferring
+644
+expressions. InComputerVision–ACCV2018: 14thAsianConferenceonComputerVision,Perth,
+645 Australia,December2–6,2018,RevisedSelectedPapers,PartIV14,pp.123–141.Springer,2019.
+646
+DiederikPKingmaandJimmyBa. Adam: Amethodforstochasticoptimization. arXivpreprint
+647
+arXiv:1412.6980,2014.
+12
+UnderreviewasaconferencepaperatICLR2025
+648
+NupurKumari,BingliangZhang,RichardZhang,EliShechtman,andJun-YanZhu. Multi-concept
+649 customizationoftext-to-imagediffusion. 2023.
+650
+651 SenmaoLi,JoostvandeWeijer,taihangHu,FahadKhan,QibinHou,YaxingWang,andjianYang.
+Getwhatyouwant,notwhatyoudon’t: Imagecontentsuppressionfortext-to-imagediffusion
+652
+models. In The Twelfth International Conference on Learning Representations, 2024. URL
+653
+https://openreview.net/forum?id=zpVPhvVKXk.
+654
+655 LongLian,BaifengShi,AdamYala,TrevorDarrell,andBoyiLi. Llm-groundedvideodiffusion
+656 models. InTheTwelfthInternationalConferenceonLearningRepresentations,2023.
+657
+NanLiu,ShuangLi,YilunDu,AntonioTorralba,andJoshuaBTenenbaum. Compositionalvisual
+658
+generationwithcomposablediffusionmodels. InEuropeanConferenceonComputerVision,pp.
+659
+423–439.Springer,2022.
+660
+661 NanLiu,YilunDu,ShuangLi,JoshuaBTenenbaum,andAntonioTorralba. Unsupervisedcomposi-
+662 tionalconceptsdiscoverywithtext-to-imagegenerativemodels. InProceedingsoftheIEEE/CVF
+663 InternationalConferenceonComputerVision,pp.2085–2095,2023.
+664
+ChengLu,YuhaoZhou,FanBao,JianfeiChen,ChongxuanLi,andJunZhu. Dpm-solver++: Fast
+665
+solverforguidedsamplingofdiffusionprobabilisticmodels. arXivpreprintarXiv:2211.01095,
+666
+2022.
+667
+668 Scott M Lundberg and Su-In Lee. A unified approach to interpreting model predictions. In
+669 I.Guyon,U.VonLuxburg,S.Bengio,H.Wallach,R.Fergus,S.Vishwanathan,andR.Garnett
+670 (eds.),AdvancesinNeuralInformationProcessingSystems,volume30.CurranAssociates,Inc.,
+2017a. URL https://proceedings.neurips.cc/paper_files/paper/2017/
+671
+file/8a20a8621978632d76c43dfd28b67767-Paper.pdf.
+672
+673 ScottMLundbergandSu-InLee. Aunifiedapproachtointerpretingmodelpredictions. Advancesin
+674 neuralinformationprocessingsystems,30,2017b.
+675
+XinMa,YaohuiWang,GengyunJia,XinyuanChen,ZiweiLiu,Yuan-FangLi,CunjianChen,and
+676
+YuQiao. Latte: Latentdiffusiontransformerforvideogeneration. CoRR,abs/2401.03048,2024.
+677
+doi: 10.48550/ARXIV.2401.03048. URL https://doi.org/10.48550/arXiv.2401.
+678
+03048.
+679
+680 RonMokady,AmirHertz,KfirAberman,YaelPritch,andDanielCohen-Or. Null-textinversionfor
+681 editingrealimagesusingguideddiffusionmodels. arXivpreprintarXiv:2211.09794,2022.
+682
+RonMokady,AmirHertz,KfirAberman,YaelPritch,andDanielCohen-Or. Null-textinversionfor
+683
+editingrealimagesusingguideddiffusionmodels. InProceedingsoftheIEEE/CVFConference
+684
+onComputerVisionandPatternRecognition,pp.6038–6047,2023.
+685
+686 RogerBMyerson. Graphsandcooperationingames. Mathematicsofoperationsresearch,2(3):
+687 225–229,1977.
+688
+William Peebles and Saining Xie. Scalable diffusion models with transformers. In IEEE/CVF
+689
+InternationalConferenceonComputerVision,ICCV2023,Paris,France,October1-6,2023,pp.
+690
+4172–4182.IEEE,2023. doi: 10.1109/ICCV51070.2023.00387. URLhttps://doi.org/10.
+691
+1109/ICCV51070.2023.00387.
+692
+693 HarishGuruprasadRamaswamyetal. Ablation-cam: Visualexplanationsfordeepconvolutional
+694 network via gradient-free localization. In proceedings of the IEEE/CVF winter conference on
+695
+applicationsofcomputervision,pp.983–991,2020.
+696
+Royi Rassin, Eran Hirsch, Daniel Glickman, Shauli Ravfogel, Yoav Goldberg, and Gal Chechik.
+697
+Linguisticbindingindiffusionmodels: Enhancingattributecorrespondencethroughattentionmap
+698 alignment. AdvancesinNeuralInformationProcessingSystems,36,2024.
+699
+700 Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, and Björn Ommer. High-
+resolutionimagesynthesiswithlatentdiffusionmodels. InProceedingsoftheIEEE/CVFconfer-
+701
+enceoncomputervisionandpatternrecognition,pp.10684–10695,2022.
+13
+UnderreviewasaconferencepaperatICLR2025
+702
+RamprasaathRSelvaraju,MichaelCogswell,AbhishekDas,RamakrishnaVedantam,DeviParikh,
+703 andDhruvBatra. Grad-cam: Visualexplanationsfromdeepnetworksviagradient-basedlocal-
+704 ization. InProceedingsoftheIEEEinternationalconferenceoncomputervision,pp.618–626,
+705 2017.
+706
+LloydSShapleyetal. Avalueforn-persongames. 1953.
+707
+708
+KarenSimonyan, AndreaVedaldi, andAndrewZisserman. Deepinsideconvolutionalnetworks:
+709
+Visualisingimageclassificationmodelsandsaliencymaps. arXivpreprintarXiv:1312.6034,2013.
+710
+711 Jiaming Song, Chenlin Meng, and Stefano Ermon. Denoising diffusion implicit models. arXiv
+712 preprintarXiv:2010.02502,2020.
+713
+YangSongandStefanoErmon. Generativemodelingbyestimatinggradientsofthedatadistribution.
+714
+Advancesinneuralinformationprocessingsystems,32,2019.
+715
+716
+KaiyueSun,KaiyiHuang,XianLiu,YueWu,ZihanXu,ZhenguoLi,andXihuiLiu.T2v-compbench:
+717 A comprehensive benchmark for compositional text-to-video generation, 2024. URL https:
+718 //arxiv.org/abs/2407.14505.
+719
+720 Mukund Sundararajan, Ankur Taly, and Qiqi Yan. Axiomatic attribution for deep networks. In
+721 Internationalconferenceonmachinelearning,pp.3319–3328.PMLR,2017.
+722
+Raphael Tang, Linqing Liu, Akshat Pandey, Zhiying Jiang, Gefei Yang, Karun Kumar, Pontus
+723
+Stenetorp,JimmyLin,andFerhanTure. WhattheDAAM:Interpretingstablediffusionusingcross
+724
+attention. InAnnaRogers,JordanBoyd-Graber,andNaoakiOkazaki(eds.),Proceedingsofthe
+725
+61stAnnualMeetingoftheAssociationforComputationalLinguistics(Volume1: LongPapers),
+726 pp. 5644–5659, Toronto, Canada, July 2023. Association for Computational Linguistics. doi:
+727 10.18653/v1/2023.acl-long.310. URLhttps://aclanthology.org/2023.acl-long.
+728 310.
+729
+730 Ye Tian, Ling Yang, Haotian Yang, Yuan Gao, Yufan Deng, Xintao Wang, Zhaochen Yu, Xin
+Tao,PengfeiWan,DiZHANG,andBinCUI. Videotetris: Towardscompositionaltext-to-video
+731
+generation. InTheThirty-eighthAnnualConferenceonNeuralInformationProcessingSystems,
+732
+2024. URLhttps://openreview.net/forum?id=RPM7STrnVz.
+733
+734
+AshishVaswani,NoamShazeer,NikiParmar,JakobUszkoreit,LlionJones,AidanNGomez,Łukasz
+735 Kaiser,andIlliaPolosukhin. Attentionisallyouneed. Advancesinneuralinformationprocessing
+736 systems,30,2017.
+737
+738 PascalVincent. Aconnectionbetweenscorematchinganddenoisingautoencoders. Neuralcomputa-
+739
+tion,23(7):1661–1674,2011.
+740
+JiuniuWang,HangjieYuan,DayouChen,YingyaZhang,XiangWang,andShiweiZhang. Mod-
+741
+elscopetext-to-videotechnicalreport. arXivpreprintarXiv:2308.06571,2023a.
+742
+743 XiangWang,HangjieYuan,ShiweiZhang,DayouChen,JiuniuWang,YingyaZhang,YujunShen,
+744 Deli Zhao, and Jingren Zhou. Videocomposer: Compositional video synthesis with motion
+745 controllability. AdvancesinNeuralInformationProcessingSystems,36,2024a.
+746
+YaohuiWang,XinyuanChen,XinMa,ShangchenZhou,ZiqiHuang,YiWang,CeyuanYang,Yinan
+747
+He,JiashuoYu,PeiqingYang,etal. Lavie: High-qualityvideogenerationwithcascadedlatent
+748
+diffusionmodels. arXivpreprintarXiv:2309.15103,2023b.
+749
+750 YiWang,YinanHe,YizhuoLi,KunchangLi,JiashuoYu,XinMa,XinhaoLi,GuoChen,Xinyuan
+751 Chen,YaohuiWang,etal.Internvid:Alarge-scalevideo-textdatasetformultimodalunderstanding
+752 andgeneration. arXivpreprintarXiv:2307.06942,2023c.
+753
+754 ZhaoWang,AoxueLi,EnzeXie,LingtingZhu,YongGuo,QiDou,andZhenguoLi. Customvideo:
+Customizingtext-to-videogenerationwithmultiplesubjects. arXivpreprintarXiv:2401.09962,
+755
+2024b.
+14
+UnderreviewasaconferencepaperatICLR2025
+756
+YujieWei,ShiweiZhang,ZhiwuQing,HangjieYuan,ZhihengLiu,YuLiu,YingyaZhang,Jingren
+757 Zhou,andHongmingShan. Dreamvideo: Composingyourdreamvideoswithcustomizedsubject
+758 andmotion. arXivpreprintarXiv:2312.04433,2023.
+759
+JayZhangjieWu,YixiaoGe,XintaoWang,StanWeixianLei,YuchaoGu,YufeiShi,WynneHsu,
+760
+YingShan,XiaohuQie,andMikeZhengShou. Tune-a-video: One-shottuningofimagediffusion
+761
+modelsfortext-to-videogeneration. InProceedingsoftheIEEE/CVFInternationalConferenceon
+762
+ComputerVision,pp.7623–7633,2023a.
+763
+764 Jialian Wu, Jianfeng Wang, Zhengyuan Yang, Zhe Gan, ZichengLiu, Junsong Yuan, and Lijuan
+765 Wang. Grit: A generative region-to-text transformer for object understanding. arXiv preprint
+766 arXiv:2212.00280,2022.
+767
+Qiucheng Wu, Yujian Liu, Handong Zhao, Trung Bui, Zhe Lin, Yang Zhang, and Shiyu Chang.
+768
+Harnessing the spatial-temporal attention of diffusion models for high-fidelity text-to-image
+769 synthesis. InProceedingsoftheIEEE/CVFInternationalConferenceonComputerVision,pp.
+770 7766–7776,2023b.
+771
+772 ZhuoyiYang,JiayanTeng,WendiZheng,MingDing,ShiyuHuang,JiazhengXu,YuanmingYang,
+WenyiHong,XiaohanZhang,GuanyuFeng,etal. Cogvideox: Text-to-videodiffusionmodels
+773
+withanexperttransformer. arXivpreprintarXiv:2408.06072,2024.
+774
+775 HPeytonYoung. Monotonicsolutionsofcooperativegames. InternationalJournalofGameTheory,
+776 14(2):65–72,1985.
+777
+Matthew D Zeiler and Rob Fergus. Visualizing and understanding convolutional networks. In
+778
+ComputerVision–ECCV2014: 13thEuropeanConference,Zurich,Switzerland,September6-12,
+779
+2014,Proceedings,PartI13,pp.818–833.Springer,2014.
+780
+781 ZangweiZheng,XiangyuPeng,TianjiYang,ChenhuiShen,ShengguiLi,HongxinLiu,YukunZhou,
+782 TianyiLi,andYangYou. Open-sora: Democratizingefficientvideoproductionforall,March
+783 2024. URLhttps://github.com/hpcaitech/Open-Sora.
+784
+DaquanZhou,WeiminWang,HanshuYan,WeiweiLv,YizheZhu,andJiashiFeng. Magicvideo:
+785
+Efficientvideogenerationwithlatentdiffusionmodels. arXivpreprintarXiv:2211.11018,2022.
+786
+787
+788
+789
+790
+791
+792
+793
+794
+795
+796
+797
+798
+799
+800
+801
+802
+803
+804
+805
+806
+807
+808
+809
+15
+UnderreviewasaconferencepaperatICLR2025
+810 A PROOF OF THEOREM 1: SUB-GRAPH FLOW
+811
+812 InanetworkG=(V,E)withacapacityfunctionc:E →R+,andasubgraphgofG,themaximum
+813 flowf ingislessthanorequaltothemaximumflowf inG.
+g G
+814
+815
+PROOF
+816
+1. Definition of a Subgraph: A subgraph g of G can be defined as g = (V′,E′) where
+817
+V′ ⊆ V andE′ ⊆ E. Allcapacitiesing areinheritedfromG, i.e., c′(e) = c(e)forall
+818
+e∈E′.
+819
+820 2. FlowConservation:BothGandgmustsatisfytheflowconservationlawatallintermediate
+821 nodes. That is, the sum of the flow entering any node must equal the sum of the flow
+exitingthatnode,exceptforthesource(whereflowisgenerated)andthesink(whereflow
+822
+isabsorbed).
+823
+824 3. ReducedSetofPaths: SinceE′ ⊆E,everypaththroughgisalsoapaththroughG,but
+825 noteverypaththroughGisnecessarilyapaththroughg. Thisreductioninthenumberof
+paths(oredges)ingimpliesthatsomeroutesavailableforflowinGarenotavailableing.
+826
+827 4. Capacity Limitations: For any edge e in E′, the capacity in g (i.e., c′(e)) equals the
+828 capacityinG(i.e.,c(e)). Therefore,noedgeingcansupportmoreflowthanitcaninG.
+829 Additionally,sincesomeedgesmightbemissinging,theoverallcapacityofpathwaysfrom
+830 thesourcetothesinkmightbelessingthaninG.
+831 5. MaximumFlowReduction: Giventhereductioninpathsandcapacities,anyflowthatis
+832 feasibleingisalsofeasibleinG,butnotviceversa. Hence,themaximumflowf thatcan
+g
+833 bepushedfromthesourcetothesinkingmustbelessthanorequaltothemaximumflow
+834 f G thatcanbepushedinG.
+835
+Conclusion: Fromthesepoints,itfollowsdirectlythatthemaximumflowinasubgraphgcannot
+836
+exceedthemaximumflowintheoriginalgraphG. Thisprovesthatf ≤f .
+837 g G
+838
+839 B PROOF OF PROPOSITION 1: MAX PATH FLOW USING MIN-MAX
+840 MULTIPLICATION
+841
+842 DefinitionsandProposition: LetWbeacapacitymatrixofagraphwhereW isthecapacity
+i,j
+843 of the edge from vertex i to vertex j. If there is no edge between i and j, W = 0 or some
+i,j
+844 representationofnon-connectivity. Ak-hoppathbetweentwoverticesiandj isapaththatuses
+845 exactlykedges.
+846
+Proposition: Thek-thmin-maxpowerofW,denotedWk,calculatedasWk =Wk−1⊙W,has
+847 elementsWk thatrepresentthemaximumflowpossibleonanyk-hoppathfromvertexitoj.
+i,j
+848
+849
+Min-maxMultiplication: GivenmatricesAandB,C=A⊙Bisdefinedsuchthat:
+850
+C =max(min(A ,B ))
+i,j i,r r,j
+851 r
+852
+ProofbyInduction:
+853
+854 BaseCase(k =1):
+855
+856 • Claim: W i 1 ,j representsthecapacityoftheedgefromitoj,whichisthemaximumflowon
+857 a1-hoppath.
+858 • Proof: Bydefinition,W1 =W,andW1 =W ,whichdirectlycorrespondstotheedge
+i,j i,j
+859 capacitybetweeniandj. Hence,thebasecaseholds.
+860
+InductiveStep:
+861
+862
+• Assumption: Assumethatfork−1,Wk−1correctlyrepresentsthemaximumflowonany
+863 i,j
+k−1-hoppathfromitoj.
+16
+UnderreviewasaconferencepaperatICLR2025
+864 • ToProve: Wk representsthemaximumflowonanyk-hoppathfromitoj.
+i,j
+865
+866 Proof: Fromthedefinitionofmin-maxmultiplication,
+867
+Wk =max(min(Wk−1,W ))
+868 i,j i,r r,j
+r
+869
+870 • W i k , − r 1isthemaximumflowfromitorusingk−1hops.
+871 • W isthecapacityoftheedgefromrtoj (1-hop).
+r,j
+872
+873 Interpretation: min(Wk−1,W )findsthebottleneckflowforthepathfromitojthroughrusing
+i,r r,j
+874 khops. Theminimumfunctionensuresthepath’sflowisconstrainedbyitsweakestsegment.
+875
+MaximizationStep: max overallpossibleintermediateverticesrselectsthepathwiththehighest
+876 r
+bottleneckvalue,thusensuringtheselectedpathisthemostcapableamongallpossiblek-hoppaths.
+877
+878 Conclusion: TheinductivestepconfirmsthattheflowrepresentedbyW i k ,j isindeedthemaximum
+possibleflowacrossanyk-hoppathfromitoj. Hence,byinduction,thepropositionholdsforallk.
+879
+880
+881 C RELATED WORK
+882
+883 VideoDiffusionModels. Videodiffusionmodelsgeneratevideoframesbygraduallydenoisinga
+884 noisylatentspace(Hoetal.,2022b). Oneofthemainchallengeswiththesemodelsistheirhigh
+885 computationalcomplexity. Typically,thedenoisingprocessisperformedinthelatentspace(Zhou
+886 etal.,2022;Blattmannetal.,2023b;a).Thearchitecturalcommonlyadopteithera3D-UNet(Hoetal.,
+887 2022b;Blattmannetal.,2023b;Hoetal.,2022a;Harveyetal.,2022;Wuetal.,2023a)ordiffusion
+transformer(Guptaetal.,2023;Peebles&Xie,2023;Maetal.,2024). Toenhancecomputational
+888
+efficiency,thesearchitecturesoftenemployseparateself-attentionmechanismsformanagingspatial
+889
+andtemporaltokens. Conventionally, trainingthesemodelsinvolvesfine-tuninganimage-based
+890
+modelforvideodata(Wuetal.,2023a;Khachatryanetal.,2023;Guoetal.,2024). Thisprocess
+891
+includesaddingatemporalmodulewhilestrivingtopreservetheoriginalvisualquality.
+892
+893 Despitetheirabilitytogeneratephotorealisticvideos,thesemodelsfrequentlystrugglewithunder-
+standingthecomplexinteractionsbetweenelementsinascene. Thisshortcomingcanresultinthe
+894
+generationofnonsensicalvideoswhenrespondingtocomplexprompts.
+895
+896 CompositionalGeneration. Currentgenerativemodelsoftenfacechallengesincreatingdatafroma
+897 combinationofconditions,withmostdevelopmentsprimarilyintheimagedomain. Energy-based
+898 models (Du et al., 2020; 2023; Liu et al., 2023), for example, are mathematically inclined to be
+899 compositionally friendly, yet they require the conditions to be independent. In practice, many
+image-basedmethodsutilizecross-attentiontoeffectivelymanagethecompositionofconcepts(Feng
+900
+etal.,2023;Cheferetal.,2023;Wuetal.,2023b;Rassinetal.,2024). However,whenitcomesto
+901
+video,compositionalgenerationintroducesadditionalcomplexities. Somevideo-focusedapproaches
+902
+concentratespecificformofcomposition,includingobject-motioncomposition(Weietal.,2023),
+903
+subject-composition(Wangetal.,2024b),utilizeexplicitgraphstocontrolcontentelements(Bar
+904
+etal.,2021). Othersincorporatemulti-modalconditions(Wangetal.,2024a),additionaltraining
+905 data(Tianetal.,2024), orauxiliarymodules(Lianetal.,2023). Despitetheseefforts, ageneric
+906 solutionforaccuratelygeneratingvideosfromtextdescriptionsinvolvingmultipleconceptsisstill
+907 lacking. Wepresentthefirsttraining-freesolutionforcompositionalvideogenerationusingcomplex
+908 textprompts,anareathatremainslargelyunder-explored.
+909
+AttributionMethods. Attributionmethodsclarifyhowspecificinputfeaturesinfluenceamodel’s
+910
+decisions. gradient-basedmethods(Sundararajanetal.,2017;Simonyanetal.,2013;Selvarajuetal.,
+911 2017)identifyinfluentialimageregionsbyback-propagatinggradientstotheinput. Attention-based
+912 methods(Cheferetal.,2021;Abnar&Zuidema,2020)thatutilizeattentionscorestoemphasize
+913 importantinputs. Ablationmethods(Ramaswamyetal.,2020;Zeiler&Fergus,2014)modifydata
+914 partstoassesstheirimpact. Shapleyvalues(Lundberg&Lee,2017a)distributethecontribution
+915 ofeachfeaturebasedoncooperativegametheory. Inourpaper,weextendexistingtechniquesof
+916 attentionflowtovideodiffusionmodels.Wedevelopanefficientapproximationtosolvethemax-flow
+problem. Thisimprovementhelpsusmoreaccuratelyidentifyandbalancetheimpactofeachtextual
+917
+elementsonsynthesizedvideo.
+17
+UnderreviewasaconferencepaperatICLR2025
+918 D COMPOSITIONAL VIDEO EDITING
+919
+920
+Oursystem,Vico,canbeintegratedintovideoeditingworkflowstoaccommodatetextpromptsthat
+921
+describeacompositionofconcepts.
+922
+923 Setup. Webeginbyperforminga50-stepDDIMinversionontheinputvideo. Followingthis,we
+generateanewvideobasedonthegivenprompt.
+924
+925 Results. An example of this process is illustrated in Figure 9. The original video demonstrates
+926 a strong bias towards a single presented object, making editing with a composition of concepts
+927 challenging. However,byapplyingVico,wesuccessfullyenhancethevideotoaccuratelyrepresent
+928 theintendedcompositionalconcepts.
+929
+930
+E MORE VISUALIZATIONS
+931
+932
+933 HereweprovidemoreexampleforcompositionalT2VinFigure5
+934
+935
+936
+937
+938
+939
+940
+941
+942 A kite surfer practicing on a quiet lake at dawn, the sky just beginning to brighten.
+943
+944
+945
+946
+947
+948
+949
+950 A wildlife photographer capturing close-up shots of a rare bird in a dense jungle.
+951
+952
+953
+954
+955
+956
+957
+958 A zebra conducting traffic in a busy urban intersection.
+959
+960
+961
+962
+963
+964
+965
+966
+967
+968
+969
+970
+971
+2vretfarCoediV
+ociV
+2vretfarCoediV
+ociV
+2vretfarCoediV
+ociV
+Figure5: Videovisualizationforcompositionalvideogeneration
+E.1 MOTIONCOMPOSITION
+Wevisualizeexamplesgeneratedundermotioncompositionscenarios,wherethediffusionmodelis
+giventextdescriptionthatmultipleobjectsexhibitdistinctmovementpatterns. Wecomparedresults
+generated with VideoCrafterv2 to those produced by our method, Vico, using prompts from our
+motioncompositionevaluation.
+The results are shown in Figure 8. Our method demonstrates clear improvements by effectively
+bindingdifferentactionstotheirrespectivesubjects.
+18
+UnderreviewasaconferencepaperatICLR2025
+972
+973
+974
+975
+976
+A small boy, head bowedand determination etched on his face, sprints through the torrential downpour as
+977
+lightning crackles and thunder rumbles in the distance. The relentless rain pounds the ground, creating a
+978
+chaotic dance of water droplets that mirror the dramatic sky's anger. In the far background, the silhouette of
+979
+a cozy home beckons, a faint beacon of safety and warmth amidst the fierce weather. The scene is one of
+980 perseverance and the unyielding spirit of a child braving the elements.
+981
+982
+983
+984
+985
+986 On a brilliant sunny day, the lakeshore is lined with an array of willow trees, their slender branches swaying
+987 gently in the soft breeze. The tranquil surface of the lake reflects the clear blue sky, while several elegant
+swans glide gracefully through the still water, leaving behind delicate ripples that disturb the mirror-like
+988
+quality of the lake. The scene is one of serene beauty, with the willows' greenery providing a picturesque
+989
+frame for the peaceful avian visitors.
+990
+991
+992
+993
+994
+995
+Create a visually stunning video that captures the journey of a lone traveler exploring diverse landscapes.
+996 Begin with a serene sunrise over a mountain range, transition to bustling city streets, and conclude with a
+997 tranquil seaside sunset. Incorporate dynamic camera movements, natural lighting, and rich textures to evoke
+998 a sense of adventure and serenity. Blend realistic visuals with a touch of artistic flair to create an engaging
+999 and emotive visual narrative.
+1000
+1001
+1002 Figure6: Videosgeneratedwithlongprompts.
+1003
+1004
+1005
+E.2 LONGPROMPT
+1006
+WealsodemonstratethecapabilityofVicotohandleextremelylongtextualprompts. Asshownin
+1007
+Figure6,Vicoeffectivelygeneratescomplexinteractionsbetweenvariousconceptsevenwithlengthy
+1008
+inputprompts.
+1009
+1010
+1011 F ADAPTATION OF VICO TO DIFFUSION TRANSFORMER MODELS
+1012
+1013 WhileourmethodisinitallypresentedinUNetarchitecture,wecanbuilditonrecentvideodiffusion
+1014 modelwithtransformer. Forexample,webuiltVicoontopofOpen-Sora(Zhengetal.,2024)and
+1015 CogVideoX(Yangetal.,2024),adaptingittotheirrespectivearchitectures.
+1016
+1017 Open-Sora Adaptation . Open-Sora (Zheng et al., 2024) employs STDiT architecture, which
+1018 separatesspatialandtemporalattention.Thisstraightforwarddesignmadeitrelativelysimpletoadapt
+1019 Vicoforintegration. Byleveragingitsdesign,weseamlesslyincorporatedVico’stokenre-weighting
+1020 mechanismintoOpen-Sora.
+1021
+1022 CogVideoXAdaptation . CogVideoX(Yangetal.,2024),incontrast,employsamorecomplex3D
+1023 MM-DiTarchitecture. Itprocessesalltextandvideotokensjointlythroughaunifiedattentionlayer,
+1024 withoutexplicitcross-attentionmechanisms. Thisdesignposedauniquechallengefortraditional
+cross-attention control methods. However, Vico’s graphical abstraction approach proved highly
+1025
+effectiveinthissetting,asthemodelstillfundamentallyoperatesontoken-to-tokenattention.
+19
+UnderreviewasaconferencepaperatICLR2025
+1026
+ToadaptVicotoCogVideoX,weredefinedthegraphconstructionrulesasfollows:
+1027
+(cid:20) (cid:21)
+1028 W = E tt,l E tv,l ,
+l E E
+1029 vt,l vv,l
+1030
+W 0 ... 0 
+1
+1031
+0 W ... 0
+ 2 
+1 1 0 0 3 3 2 3 W=  . . . . . . ... . . .   .
+0 0 ... W
+1034 L
+1035 Here,W representstheadjacencymatrixatlayerl,whereE ,E ,E ,andE correspond
+l tt,l tv,l vt,l vv,l
+1036 totext-to-text,text-to-video,video-to-text,andvideo-to-videoconnections,respectively. EachE is
+1037 calculatedasdescribedinLine236ofthemaintext. Stackingthesematricesacrossalllayersyields
+1038 thefinalcapacitymatrixW.
+1039
+1040 ResultsonVBench . WeevaluatedVicowiththeseadaptedmodelsonVBench,focusingonthe
+MultipleObjectCompositionscore. DuetothehighmemoryrequirementsofMM-DiT,weusedan
+1041
+80GBA100GPUforinference. Theresults,showninTable7,demonstratethatVicosignificantly
+1042
+enhancesperformanceacrossdifferentarchitectures.
+1043
+1044 WealsovisualizeseveralvideosgeneratedbyCogVideoXusingVicoinFigure7. Evenwithmodern
+1045 video diffusion models like CogVideoX, compositional errors are still apparent. For instance, it
+1046
+blendsaboatandanairplaneintoasingleobject,suchasaseaplane,orgeneratesonlyapizzawhile
+neglectingatie.
+1047
+1048 In contrast, Vico effectively resolves these conflicting objects and represents all concepts more
+1049 accuratelyandfairly.
+1050
+1051 Method MultipleObjectCompositionScore
+1052
+Open-Sora 33.64
+1053
+Open-Sora+Vico 48.21
+1054
+1055 CogVideoX2B 53.70
+CogVideoX2B+Vico 63.21
+1056
+1057
+Table7: PerformancecomparisononVBench.
+1058
+1059
+1060
+G SPEED ANALYSIS
+1061
+1062
+Attribution Speed. In this section, we assess the running speed of our ST-flow. To assess its
+1063
+computationalefficiency,wecompareST-flowwithcross-attentionandAttentionRollout(Abnar&
+1064
+Zuidema,2020)computation,byreportingthetheoreticalcomplexityandempiricalrunningtime. We
+1065
+assumewehave1crossattentionmapofmxnandLself-attentionmapofn×n,anddemonstrated
+1066 thetheoreticalresults. Specifically,wemeasuretheaveragerunningtimerequiredforeachdiffusion
+1067 modelinference,focusingsolelyonthetimetakenforattributioncomputation,excludingtheoverall
+1068 modelinferencetime. WeusetheVideoCrafterv2asthebasemodel.
+1069
+AsdetailedinTable8,thecross-attentioncomputationisfast,asitprocessesonlyasinglelayer. Both
+1070
+AttentionRolloutandourapproximatedST-Flowinvolvematrixmultiplicationsandconsequently
+1071
+shareasimilartimecomplexity. However,ourST-Flowapproximationbenefitsfromtherelatively
+1072 fasterspeedofelement-wisemin-maxoperationscomparedtothefloating-pointmultiplicationsused
+1073 inAttentionRollout,leadingtoslightlyquickerexecutiontimes.
+1074
+Incontrast, theexactST-Flowmethodismuchslower. Thisisbecauseitrequiresindependently
+1075
+estimatingtheflowforeachsink-sourcepair,aprocessthattakesconsiderabletime.
+1076
+1077 DiffusionInferenceSpeed. OurVicoframeworkincludesaiterativeoptimizationprocessalongside
+1078 withthedenoising. Asexpected,itshouldresultsinlongerinferencetime. Weevaluatedthisusinga
+50-stepDPMdenoisingprocessontheVideoCrafterv2model,ataresolutionof512×320for16
+1079
+frames,onasingleA6000GPU.
+20
+UnderreviewasaconferencepaperatICLR2025
+1080
+1081
+1082
+1083
+1084
+1085
+1086
+1087
+1088
+1089
+1090
+1091
+1092 aboatand anairplane.
+1093
+1094
+1095
+1096
+1097
+1098
+1099
+1100
+1101
+1102
+1103
+1104
+1105
+1106
+1107
+1108
+1109
+1110
+1111
+1112
+1113
+1114
+1115
+1116
+1117
+1118
+1119
+1120
+1121
+1122
+1123
+1124
+1125
+1126
+1127
+1128
+1129
+1130
+1131
+1132
+1133
+B2-XoediVgoC
+ociV+
+B2-XoediVgoC
+ociV+
+apizzaand atie.
+B2-XoediVgoC
+ociV+
+atoasterand ateddybear.
+Figure7: CompositionalgenerationresultsonCogVideoX-2B.
+Method Complexity sec/inference
+Cross-Attn. O(1) 0.002s
+AttentionRollout O(Lmn2) 0.042s
+Exact-ST-Flow O(L3mn4) 8s
+ST-Flow(soft) O(Lmn2) 0.037s
+Table8: Speedcomparisonforattributionmethod.
+21
+UnderreviewasaconferencepaperatICLR2025
+1134
+1135
+1136
+1137
+1138
+1139
+1140
+1141 aboatissailingand aflagiswaving.
+1142
+1143
+1144
+1145
+1146
+1147
+1148
+agoatisclimbingand akidisjumping.
+1149
+1150
+1151
+1152
+1153
+1154
+1155
+1156
+1157 acrocodileisswimmingand abirdisflying.
+1158
+1159
+1160
+1161
+1162
+1163
+1164
+1165
+1166
+1167
+1168
+1169
+1170
+1171
+1172
+1173
+1174
+1175
+1176
+1177
+1178
+1179
+1180
+1181
+1182
+1183
+1184
+1185
+1186
+1187
+2vretfarCoediV
+ociV
+2vretfarCoediV
+ociV
+2vretfarCoediV
+ociV
+2vretfarCoediV
+ociV
+achildislaughingand adogiswagging.
+Figure8: Videovisualizationsforpromptswithmotioncomposition.
+2vretfarCoediV
+oediV
+tupnI
+ociV
++
+esrevnIMIDD
+A vintage cardriving on a winding road through a lush forest, with a standing cat.
+Figure9: Videoeditresultswithcompositionalprompts.
+The results, shown in Table 9, reveal that the baseline VideoCrafterv2 completed in 23 seconds.
+AddingtheAttend&Exciteincreasedthedurationto48seconds. Incomparison,ourVicoframework
+22
+UnderreviewasaconferencepaperatICLR2025
+1188
+Method Time
+1189
+VideoCrafterv2 23s
+1190
++Attend&Excite 48s
+1191
++Vico(soft&hard) 45s
+1192
+1193
+Table9: Text-tovideomodelinferencetimecomparison.
+1194
+1195
+1196 finishedinacomparabletimeof50seconds. Despiteitsadditionalcomplexity,Vico’sefficientdesign
+1197 keepstheinferencetimewithinareasonablerange.
+1198
+1199
+H IMPLEMENTATION DETAILS OF VICO
+1200
+1201
+ST-FlowComputation. TocomputetheST-Flow,webeginbyextractingattentionweightsfromall
+1202
+layers. Theseweightsareaveragedacrossallheadsandthenupscaledtotheimagesizeusingbicubic
+1203
+interpolation. Duetotheblock-wisesparsepatternoftheconnections,min-maxmatrixmultiplication
+1204 isappliedtothecapacitymatrixforconnectedlayers. Furthermore,giventhatcross-attentionlayers
+1205 includeskipconnectionsfrompreviouslayers,wedividethenetworkintomultiplegroups. Within
+1206 eachgroup,min-maxmatrixMultiplicationisperformed. Finally,weaggregatethescoresacrossall
+1207 groupstoobtaintheresults. Thepseudocodeforthemin-maxmultiplicationisinAlgorithm1.
+1208
+1209 Algorithm1BatchedMin-MaxMatrixMultiplication
+1210 1: functionBATCHMINMAXMATRIXMULTIPLICATION(A,B)
+1211 2: Input:
+1212 3: Aisatensorofshape[B,m,k]
+1213 4: Bisatensorofshape[B,k,n]
+1214 5: Output:
+6: Tensorofshape[B,m,n]containingthemaximumvalues
+1215
+1216
+7: A ←A.unsqueeze(2) ▷Shapebecomes[B,m,1,k]
+1217 expanded
+8: B ←B.permute(0,2,1).unsqueeze(1) ▷Shapebecomes[B,1,n,k]
+expanded
+1218
+1219 9: min_vals←torch.min(A ,B ) ▷Shapebecomes[B,m,n,k]
+expanded expanded
+1220 10: max_vals←torch.max(min_vals,dim=3).values ▷Shapebecomes[B,m,n]
+1221
+1222 11: returnmax_vals
+1223 12: endfunction
+1224
+1225 Latent Step. During the first half of the sampling process, we update the latent variables. We
+1226 establishalossthresholdof0.2;oncethisthresholdisreached,nofurtherupdatesaremade.
+1227
+1228 I BASELINES
+1229
+1230
+TokenRe-weighting. TokenRe-weightingmethodmanuallyadjuststheweightsofcertaintokensto
+1231 controltheirinfluence.
+1232
+Specifically,aCLIPtextencoderembedstheinputtextintoasequenceoftokenss={v ,...,v }.
+1233 1 K
+TokenRe-weightingmultipliesascalarαwithspecificembeddings,forexample,modifyingthefirst
+1234
+tokentos′ ={αv ,...,v }. Theupdatedsequenceisthenusedasanewconditioninginputforthe
+1235 1 K
+diffusionmodel. Thisisimplementedbythecompelpackage.
+1236
+1237
+1238
+J LIMITATIONS
+1239
+1240 AlthoughVicoeffectivelyallocatesattributionacrossdifferenttokens, itdoesnotexplicitlybind
+attributestosubjects. Moreover,thereisacriticalbalancetomaintainbetweenlatentupdatesand
+1241
+semanticcoherence. Excessiveupdatingcanleadtothegenerationofnonsensicalvideos.
+23
+UnderreviewasaconferencepaperatICLR2025
+1242 K BROADER APPLICATIONS
+1243
+1244 Technically,thecomputationofattentionflowproposedinoursystemisversatileandcanbeefficiently
+1245 appliedtoavarietyofotherapplicationslikeerasecertainconceptindiffusionmodels. Additionally,
+1246 theprincipleoffairlydistributingthecontributionofdifferentinputpartscanbeextendedtoother
+1247 domains,suchaslanguagemodeling.
+1248
+1249
+1250
+1251
+1252
+1253
+1254
+1255
+1256
+1257
+1258
+1259
+1260
+1261
+1262
+1263
+1264
+1265
+1266
+1267
+1268
+1269
+1270
+1271
+1272
+1273
+1274
+1275
+1276
+1277
+1278
+1279
+1280
+1281
+1282
+1283
+1284
+1285
+1286
+1287
+1288
+1289
+1290
+1291
+1292
+1293
+1294
+1295
+24

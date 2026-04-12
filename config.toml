@@ -8,6 +8,7 @@ review_methodology     = "./agent_definition/review_methodology/generic.md"
 review_format          = "./agent_definition/review_formats/generic.md"
 review_methodology_dir = "./agent_definition/review_methodology/"
 review_format_dir      = "./agent_definition/review_formats/"
+selection_strategy_dir = "./agent_definition/selection_strategies/"
 
 [review_methodology_weights]
 generic = 5

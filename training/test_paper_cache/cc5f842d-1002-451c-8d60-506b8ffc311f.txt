@@ -1,0 +1,953 @@
+Training-free Guidance in Text-to-Video Generation
+via Multimodal Planning and Structured Noise Initialization
+JialuLi* ShoubinYu* HanLin* JaeminCho JaehongYoon MohitBansal
+UNCChapelHill
+{jialuli, shoubin, hanlincs, jmincho, jhyoon, mbansal}@cs.unc.edu
+Video-MSG.github.io
+Abstract ically improved the quality of generated videos in diverse
+domains.However,evenrecentT2Vgenerationmodelsstill
+Recentadvancementsintext-to-video(T2V)diffusionmod- often struggle to follow text descriptions accurately, espe-
+els have significantly enhanced the visual quality of the ciallywhenthepromptrequiresaccuratecontrolofspatial
+generated videos. However, even recent T2V models find layouts or object trajectories. As illustrated in Fig. 1 (b),
+it challenging to follow text descriptions accurately, espe- recent work has studied improving text alignment by pro-
+cially when the prompt requires accurate control of spa- viding detailed layout guidance as an additional input to
+tial layouts or object trajectories. A recent line of re- T2V models, such as bounding boxes [21, 24, 26], opti-
+search uses layout guidance for T2V models that require cal flow [23], and object trajectories [53, 62], which are
+fine-tuning or iterative manipulation of the attention map often created from a large language model (LLM). How-
+during inference time. This significantly increases the ever, since the original T2V models do not understand the
+memory requirement, making it difficult to adopt a large layoutguidance, theseapproachesfine-tunetheT2Vmod-
+T2V model as a backbone. To address this, we introduce els with layout annotations [24, 26] or iteratively manipu-
+VIDEO-MSG, a training-free Guidance method for T2V lating the attention map of T2V models during inference
+generation based on Multimodal planning and Structured time [21]. While effective, these techniques substantially
+noise initialization. VIDEO-MSG consists of three steps, increasememoryconsumptionatinferencetimeorrequire
+where in the first two steps, VIDEO-MSG creates VIDEO retrainingfordifferentT2Vbackbones,limitingtheirscal-
+SKETCH, a fine-grained spatio-temporal plan for the final abilitytolargeT2Vmodels.
+video, specifying background, foreground, and object tra- To address this, we introduce VIDEO-MSG,
+jectories,intheformofdraftvideoframes. Inthelaststep, Multimodal Sketch Guidance for video generation, a
+VIDEO-MSG guides a downstream T2V diffusion model training-free guidance method for T2V generation based
+with VIDEO SKETCH through noise inversion and denois- on multimodal planning and structured noise initializa-
+ing. Notably, VIDEO-MSG does not need fine-tuning or tion, as illustrated in Fig. 1 (c). As illustrated in Fig. 2,
+attention manipulation with additional memory during in- VIDEO-MSG consists of three steps: (1) background
+ference time, making it easier to adopt large T2V models. planning (Sec. 3.1), (2) foreground object layout and tra-
+VIDEO-MSG demonstrates its effectiveness in enhancing jectory planning (Sec. 3.2), and (3) video generation with
+textalignmentwithmultipleT2Vbackbones(VideoCrafter2 structured noise inversion (Sec. 3.3). From the first two
+and CogVideoX-5B) on popular T2V generation bench- steps,VIDEO-MSGcreatesVIDEOSKETCH,afine-grained
+marks (T2VCompBench and VBench). We provide com- spatialandtemporalplanwithasetofmultimodalmodels,
+prehensiveablationstudiesaboutnoiseinversionratio,dif- including multimodal LLM (MLLM), object detection,
+ferentbackgroundgenerators,backgroundobjectdetection, and instance segmentation models. Then in the last step,
+andforegroundobjectsegmentation. VIDEO-MSG guides a downstream T2V diffusion model
+with VIDEO SKETCH through structured noise inversion
+and denoising. Notably, VIDEO-MSG does not need
+1.Introduction fine-tuning or additional memory during inference time,
+making it easier to adopt large T2V models, compared to
+Recent advances in text-to-video (T2V) diffusion mod-
+existingmethodsbasedonfine-tuningoriterativeattention
+els [1, 2, 12, 17, 32, 34, 37, 38, 45, 46, 57] have dramat-
+manipulation.
+*equalcontribution VIDEO-MSG demonstrates their effectiveness in en-
+1
+5202
+rpA
+11
+]VC.sc[
+1v14680.4052:viXra
+Text
+Text LLM T2V
+T2V Prompt
+Prompt
+Object Layout & Trajectory
+(a) Single Model for Video Generation (b) Video Generation with Attention-based Layout Guidence
+Text MLLM Noise T2V
+Prompt Inversion
+Object Layout Video
+& Trajectory Sketch
+Background &
+T2I / I2V
+Foreground Plans
+Background & Foreground
+(c) Video Generation Guided by Structrued Noise Initialization (Ours)
+Figure1. Comparisonofdifferenttext-to-videogenerationmethods: (a)singlemodelforvideogeneration,(b)videogenerationwith
+(attention-based)layoutguidance,andour(c)VIDEO-MSG,atraining-freeguidancemethodforT2Vgenerationbasedonmultimodal
+planningandstructurednoiseinitialization. SinceVIDEO-MSGdoesnotneedfine-tuningoradditionalmemoryduringinferencetime,it
+iseasiertoadoptlargeT2Vmodelsthanpreviousvideolayoutguidancemethodsbasedonfine-tuningoriterativeattentionmanipulation.
+hancing text alignment with multiple T2V backbones planningorrequireextensivetraininganddonotfullylever-
+(VideoCrafter2 [4] and CogVideoX-5B [57]) on popular agethepowerofexistingvisualtoolsforfine-grainedvideo
+T2V generation benchmarks (T2VCompBench [43] and generation. In contrast, our work leverages the power of
+VBench [11]). For example, VIDEO-MSG improves mo- both multimodal LLMs and image/video diffusion models
+tionbindingwitharelativegainof52.46%,numeracywith togeneratea VIDEO SKETCH forfinalfine-grainedmotion
+arelativegainof40.11%,andspatialrelationshipwitharel- control,andisfullytraining-free.
+ativegainof11.15%withCogVideoX-5BasaT2Vgenera-
+2.2.MotionDirectionControlinVideoGeneration
+tionbackbone. Weprovidecomprehensivequantitativeand
+qualitativeablationstudiesaboutnoiseinversionratio,dif- Controllabilityinvideogenerationisgainingincreasingat-
+ferentbackgroundgenerators,backgroundobjectdetection, tention in the field of generative AI, as it enables models
+andforegroundobjectsegmentation. Wehopeourmethod togeneratevideosalignedwithuserintent. Onelineofre-
+can inspire future work on effectively and efficiently inte- searchfocusesontrainingmodelswiththecapabilityoftra-
+gratingLLMs’planningabilityintovideogeneration. jectory control, camera control, or motion control by gen-
+eratingintermediaterepresentations. Fortrajectorycontrol,
+2.RelatedWork recent works such as DragNUMA [58], IVA-0 [59], Dra-
+gAnything[53],andTrackGo[63]encodeobjectmovement
+2.1.MLLMPlanningforVideoGeneration
+trajectories into dense features, which are then fused into
+There are recent research works [8, 22, 24, 51, 64] that thediffusionmodeltoenableobjectmovementcontrol. On
+leverage the reasoning capabilities and world knowledge the other hand, CameraCtrl [7], MotionCtrl [52], and Im-
+of LLMs or multimodal LLMs for the task of video gen- ageConductor[20]encodecameraextrinsicsasfeaturesto
+eration. For example, one line of work [22, 24, 51] ap- controlcameramotioninthegeneratedvideos. Acommon
+plies GPT-4 / GPT-4o to expand a single text prompt into drawbackofbothofthesecategoriesistheirrelianceonac-
+a ‘video plan’ in the format of bounding boxes or detailed curate object trajectory or camera movement information,
+prompt description [55], which is then given as input to which are difficult for users to manipulate directly. Addi-
+downstreamvideodiffusionmodelforlayout-guidedvideo tionally,videodatasetswithaccuratetrajectoryannotations
+generation. Theotherlineofwork[16,28,29,48,50,54] arelimited,whichconstrainstheperformanceofthesemod-
+performstoken-levelplanningutilizingmultimodalLLMs. els. The third category, including VideoJAM [3] and Mo-
+Forexample,[16,50]tokenizevideosandtextintothesame tionI2V [40], produces motion and video representations
+spaceandgeneratevideotokensusingthesamestrategyas jointly,orsequentiallybyfirstgeneratingintermediaterep-
+text(e.g.,next-tokenprediction). However,bothdirections resentations, which then serve as guidance for generating
+either rely on high-quality prompts and the bounding box video outputs. However, such methods require extensive
+2
+(cid:54)(cid:87)(cid:72)(cid:83)(cid:3)(cid:20)(cid:29)(cid:3)(cid:37)(cid:68)(cid:70)(cid:78)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:3)(cid:51)(cid:79)(cid:68)(cid:81)(cid:81)(cid:76)(cid:81)(cid:74) (cid:54)(cid:87)(cid:72)(cid:83)(cid:3)(cid:21)(cid:29)(cid:3)(cid:41)(cid:82)(cid:85)(cid:72)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:3)(cid:50)(cid:69)(cid:77)(cid:72)(cid:70)(cid:87)(cid:3)(cid:47)(cid:68)(cid:92)(cid:82)(cid:88)(cid:87)(cid:3)(cid:68)(cid:81)(cid:71)(cid:3)(cid:55)(cid:85)(cid:68)(cid:77)(cid:72)(cid:70)(cid:87)(cid:82)(cid:85)(cid:92)(cid:3)(cid:51)(cid:79)(cid:68)(cid:81)(cid:81)(cid:76)(cid:81)(cid:74)(cid:3)
+(cid:48)(cid:47)(cid:47)(cid:48)(cid:3)
+(cid:180)(cid:36)(cid:3)(cid:74)(cid:82)(cid:79)(cid:71)(cid:72)(cid:81)(cid:3) (cid:51)(cid:79)(cid:68)(cid:81)(cid:81)(cid:76)(cid:81)(cid:74) (cid:55)(cid:72)(cid:91)(cid:87)(cid:21)(cid:44)(cid:80)(cid:68)(cid:74)(cid:72) (cid:37)(cid:68)(cid:70)(cid:78)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:3)
+(cid:85)(cid:72)(cid:87)(cid:85)(cid:76)(cid:72)(cid:89)(cid:72)(cid:85)(cid:3) (cid:55) (cid:79)(cid:88) (cid:75) (cid:86) (cid:72) (cid:75) (cid:3) (cid:3) (cid:72) (cid:74) (cid:89) (cid:68) (cid:72) (cid:85)(cid:71) (cid:81)(cid:87) (cid:72) (cid:3) (cid:81) (cid:76)(cid:86) (cid:3)(cid:73) (cid:3)(cid:86) (cid:76)(cid:79) (cid:72) (cid:79)(cid:72) (cid:87) (cid:71) (cid:3)(cid:76) (cid:3) (cid:81)(cid:3)(cid:68)(cid:3) (cid:44)(cid:80)(cid:68)(cid:74)(cid:72) (cid:50)(cid:69)(cid:77)(cid:72)(cid:70)(cid:87)(cid:3) (cid:48)(cid:47)(cid:47)(cid:48)(cid:3) (cid:50)(cid:69)(cid:77)(cid:72)(cid:70)(cid:87)(cid:3)(cid:55)(cid:85)(cid:68)(cid:77)(cid:72)(cid:70)(cid:87)(cid:82)(cid:85)(cid:92)
+(cid:86)(cid:70)(cid:68)(cid:80)(cid:83)(cid:72)(cid:85)(cid:76)(cid:81)(cid:74)(cid:3)
+(cid:90)(cid:76)(cid:87)(cid:75)(cid:3)(cid:89)(cid:76)(cid:69)(cid:85)(cid:68)(cid:81)(cid:87)(cid:3)(cid:73)(cid:79)(cid:82)(cid:90)(cid:72)(cid:85)(cid:3) (cid:39)(cid:72)(cid:87)(cid:72)(cid:70)(cid:87)(cid:76)(cid:82)(cid:81) (cid:51)(cid:79)(cid:68)(cid:81)(cid:81)(cid:76)(cid:81)(cid:74)
+(cid:85)(cid:76)(cid:74)(cid:75)(cid:87)(cid:90)(cid:68)(cid:85)(cid:71)(cid:86)(cid:3) (cid:69)(cid:72)(cid:71)(cid:86)(cid:3)(cid:68)(cid:81)(cid:71)(cid:3)(cid:69)(cid:88)(cid:86)(cid:75)(cid:72)(cid:86)(cid:3)(cid:171)(cid:171)
+(cid:68)(cid:70)(cid:85)(cid:82)(cid:86)(cid:86)(cid:3)(cid:68)(cid:3)
+(cid:74)(cid:68)(cid:85)(cid:71)(cid:72)(cid:81)(cid:17)(cid:181) (cid:37)(cid:68)(cid:70)(cid:78)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:3)(cid:51)(cid:79)(cid:68)(cid:81) (cid:37)(cid:68)(cid:70)(cid:78)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:3)(cid:44)(cid:80)(cid:68)(cid:74)(cid:72)
+(cid:54)(cid:87)(cid:72)(cid:83)(cid:3)(cid:22)(cid:29)(cid:3)(cid:57)(cid:76)(cid:71)(cid:72)(cid:82)(cid:3)(cid:42)(cid:72)(cid:81)(cid:72)(cid:85)(cid:68)(cid:87)(cid:76)(cid:82)(cid:81)(cid:3)(cid:90)(cid:76)(cid:87)(cid:75)(cid:3)(cid:54)(cid:87)(cid:85)(cid:88)(cid:70)(cid:87)(cid:88)(cid:85)(cid:72)(cid:71)(cid:3)(cid:49)(cid:82)(cid:76)(cid:86)(cid:72)(cid:3)(cid:44)(cid:81)(cid:89)(cid:72)(cid:85)(cid:86)(cid:76)(cid:82)(cid:81) (cid:50)(cid:83)(cid:72)(cid:81)(cid:16)(cid:57)(cid:82)(cid:70)(cid:68)(cid:69)(cid:88)(cid:79)(cid:68)(cid:85)(cid:92)(cid:3)(cid:39)(cid:72)(cid:87)(cid:72)(cid:70)(cid:87)(cid:76)(cid:82)(cid:81)
+(cid:55)(cid:72)(cid:91)(cid:87)(cid:21)(cid:44)(cid:80)(cid:68)(cid:74)(cid:72) (cid:41)(cid:82)(cid:85)(cid:72)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:3)(cid:44)(cid:80)(cid:68)(cid:74)(cid:72)
+(cid:751)(cid:3)(cid:49)(cid:82)(cid:76)(cid:86)(cid:72)(cid:3)
+(cid:55)(cid:85)(cid:68)(cid:77)(cid:72)(cid:70)(cid:87)(cid:82)(cid:85)(cid:92) (cid:44)(cid:81)(cid:89)(cid:72)(cid:85)(cid:86)(cid:76)(cid:82)(cid:81) (cid:180) (cid:74) (cid:36) (cid:82)(cid:79) (cid:3) (cid:71) (cid:83) (cid:72) (cid:75) (cid:81) (cid:82) (cid:3) (cid:87) (cid:85) (cid:82) (cid:72) (cid:3) (cid:87) (cid:82) (cid:85) (cid:73) (cid:76) (cid:3) (cid:72) (cid:3) (cid:89)(cid:72)(cid:85)(cid:181)
+(cid:57)(cid:76)(cid:71)(cid:72)(cid:82)(cid:3)
+(cid:54)(cid:78)(cid:72)(cid:87)(cid:70)(cid:75) (cid:44)(cid:80)(cid:68)(cid:74)(cid:72)(cid:21)(cid:57)(cid:76)(cid:71)(cid:72)(cid:82) (cid:37)(cid:68)(cid:70)(cid:78)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:3)(cid:57)(cid:76)(cid:71)(cid:72)(cid:82)
+(cid:41)(cid:82)(cid:85)(cid:72)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)
+(cid:786)(cid:3)(cid:51)(cid:79)(cid:68)(cid:81)(cid:3) (cid:180)(cid:36)(cid:3)(cid:74)(cid:82)(cid:79)(cid:71)(cid:72)(cid:81)(cid:3)(cid:85)(cid:72)(cid:87)(cid:85)(cid:76)(cid:72)(cid:89)(cid:72)(cid:85)(cid:3)
+(cid:38)(cid:82)(cid:80)(cid:83)(cid:82)(cid:86)(cid:76)(cid:87)(cid:76)(cid:82)(cid:81)(cid:3) (cid:86) (cid:90) (cid:70) (cid:68) (cid:68) (cid:85) (cid:80) (cid:71)(cid:86) (cid:83) (cid:3) (cid:72) (cid:68) (cid:85) (cid:70) (cid:76) (cid:85) (cid:81) (cid:82) (cid:74) (cid:86) (cid:3)(cid:85) (cid:86) (cid:76) (cid:3) (cid:74) (cid:68) (cid:75) (cid:3)(cid:74) (cid:87) (cid:68) (cid:16) (cid:85)(cid:71)(cid:72)(cid:81)(cid:17)(cid:181) (cid:55)(cid:72)(cid:91)(cid:87)(cid:21)(cid:57)(cid:76)(cid:71)(cid:72)(cid:82)
+(cid:37)(cid:68)(cid:70)(cid:78)(cid:74)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)
+Figure2. ThreestagesofVIDEO-MSG.Inthefirststage,theMLLMplansspecificglobalandlocalcontextsthatfittheprovidedtext-to-
+videoprompt. Thetext-to-image(T2I)modelusestheMLLMplannedcontexttorenderthenecessarycomponentsofthevideo. Inthe
+thirdstage,wegeneratevideowithVIDEOSKETCHvianoiseinversion.
+trainingduetoextragenerationobjectives. Incontrast,our ation based on bounding boxes, where the T2I model may
+methodusesanimage-to-videomodel,allowingustotrans- failtogeneratetheforegroundobjectatthespecifiedboxlo-
+form existing, real-world images into controllable videos cationintheimage.Inaddition,weexploretwoapproaches
+underLLMplanning. forbackgroundgeneration:
+(1) Using a T2I model to generate an initial background,
+3.Method followed by an I2V model to animate it. In this way,
+wecanadoptastrongT2Vmodeltopotentiallyachieve
+WeintroduceVIDEO-MSG,MultimodalSketchGuidance
+improvedvideoaestheticquality.
+for video generation, a training-free guidance method for
+(2) DirectlyusingaT2Vmodeltogeneratethebackground
+T2V generation based on multimodal planning and struc-
+withanimation,whichavoidsthepotentialdistribution
+tured noise initialization. VIDEO-MSG consists of three
+gapbetweenthetwomodelsin(1).
+stages(illustratedinFig.2):
+In both cases, we adopt a video generation model. We
+• Background planning (Sec. 3.1), where we adopt T2I
+aimtointroducenaturalbackgroundanimationratherthan
+andI2Vmodelstogeneratebackgroundimagepriorswith
+keeping it static while only animating foreground objects.
+naturalanimation.
+This ensures that elements such as flowing water, moving
+• Foreground Object Layout and Trajectory Planning
+clouds,orswayingtreesarenaturallyincorporated,making
+(Sec. 3.2), where we apply MLLM and object detectors
+the generated videos more realistic and visually coherent.
+toplanandplaceforegroundobjectsintothebackground
+Moreover,bycomparingapproaches(1)with(2),wenotice
+harmoniously.
+thattheadvantageofadoptingastrongT2Imodelin(1)out-
+• VideoGenerationwithStructuredNoiseInitialization
+weighsthedomaingapbetweentheT2IandI2Vmodelsin
+(Sec.3.3),wherethesynthesizedimagesderivedfromthe
+(2)asdiscussedinSec.4.3. Therefore,weapplyapproach
+above stages are used as VIDEO SKETCH for final video
+(1)asourdefaultexperimentsetting.
+generationviainversiontechniques.
+3.1.BackgroundPlanning 3.2. Foreground Object Layout and Trajectory
+Planning
+Givenapromptforvideogeneration,wefirstaskanMLLM
+(GPT-4o [33]) to generate a detailed background descrip- Thisstageaimstoplacethepropertyoftheforegroundob-
+tion(seeStage1inFig.2). Here,weexplicitlyinstructthe ject in the background in a spatially coherent manner. We
+MLLMtogenerateonlythebackgroundandavoidinclud- firstimplementthisstagebyprovidingthebackgroundim-
+ing any moving or key objects mentioned in the original ages generated in stage 1, along with a prompt describing
+prompt,therebyenforcingproperdecoupling. Wefindthat movementdynamicstoGPT-4o[33],thenaskittogenerate
+thisstrategyhelpsaddressissuesinconditionalT2Igener- a sequence of bounding boxes to represent the foreground
+3
+object’smovement. Forinstance,giventhetextprompt: “A can be effectively utilized here to create structured noise
+catsinkingtotheleftinthelivingroom”,GPT-4ocancor- to fuse the information from VIDEO SKETCH. While the
+rectlyinferthecat’smovementdirection(i.e.,movingleft). normaldenoisingprocessstartsfromtheterminaltimestep
+However,whenprovidedwithabackgroundimageofaliv- t “ T (a random noise) to the initial timestep t “ 0 (a
+ingroom,GPT-4ooftenfailstopositionthecat’sbounding cleanvideo),wecreateper-frameinitialnoisesfromVIDEO
+boxappropriatelyonthefloor(e.g.,withtheboundingbox SKETCH via noise inversion [31] and start denoising from
+floating in mid-air or overlapping with unrelated objects), a timestep tinv. Specifically, we first encode the sequence
+asillustratedinFigure4. ThissuggeststhatwhileGPT-4o of VIDEO SKETCH frames into the latent space z using a
+demonstratesstrongmotionreasoningcapabilities, itlacks 3D VAE [13, 57]. Next, we obtain the initial noise z
+? tinv
+direct grounding capability for visual elements and strug- via the forward diffusion process [9]: z “ α z `
+? tinvś t 0
+glestoalignforegroundobjectswiththebackgroundscene 1´α ϵ, ϵ „ Np0,Iq, where α “ t p1 ´ β q
+tinv t s“1 s
+inaspatiallyconsistentmanner. isthecumulativenoiseschedule,andϵrepresentsGaussian
+To overcome this limitation, we first detect all ob- noise. Weparameterizetinv “αˆT,whereαPp0.0,1.0q.
+jects in the background image with Recognize-Anything InspiredbyVideoDirectorGPT[24],whichusesanLLMto
+(RAM) [61] then extract their bounding boxes with estimate a confidence score along with bounding box lay-
+Grounding-DINO[25]. Theseboundingboxesarefedinto outsaslayoutguidancestrength,weemployanLLMtoin-
+GPT-4o to provide explicit spatial context, which helps feranappropriatenoiseinversionratioαvaluegivenatext
+it accurately position and animate foreground objects, en- description. (see Sec. 4.3 for detailed experiments). We
+hancing spatial coherence in generated videos and reduc- explainmoredetailsaboutthenoiseinversioninAppendix.
+ing placement errors. Qualitative examples of the effec-
+tiveness of object detection with Grounding-DINO and 4.Experiments
+RAM are presented in Figure 4. With the above inputs
+4.1.ExperimentSetups
+(i.e.,videotextprompt,backgroundimage,andthebound-
+ing boxes of objects in the background), GPT-4o gener- Datasets. We evaluate VIDEO-MSG on popular text-to-
+ates a sequence of bounding boxes for the foreground ob- video generation benchmarks, T2V-CompBench [43] and
+jects in the format [object name, bounding box VBench [11]. T2V-CompBench and VBench measure di-
+coordinates] (see stage 2 in Fig. 2). Additionally, it verse aspects of text-to-video generation tasks with seven
+providesatextualdescriptionforeachframeandareason- (e.g., consistent attribute binding, motion binding, spatial
+ingprocessexplainingtheplannedobjectmotionsafterthe relationships) and sixteen categories (e.g., overall consis-
+sequence of frames. This reasoning step enhances the co- tency, color, temporal flickering, motion smoothness), re-
+herenceandaccuracyofmotionplanning. spectively.Inthiswork,weprimarilyuseT2V-CompBench
+Once the sequence of bounding boxes is obtained, we to evaluate video diffusion models’ capability in composi-
+utilize a T2I model to generate the appearance of the tionaltext-to-videogeneration,anduseVBenchtomeasure
+foreground object using the prompt: “An image of themotionsmoothnessofthegeneratedvideo.
+{object name}.” However,directlymergingthegen-
+erated object image with the background presents a chal-
+Implementation details. We implement VIDEO-MSG
+lenge—the background in the generated object image can
+on two recent text-to-video generation diffusion models:
+significantly affect the overall visual coherence, as illus-
+VideoCrafter2 [4] and CogVideoX-5B [57]. To gener-
+trated in Fig. 5. To address this, we apply SAM [14] to
+ate the VIDEO SKETCH, we employ FLUX.1-dev [19] and
+extracttheobjectfromthegeneratedimage, removingany
+SDXL [36]as the backgroundgenerator, and CogVideoX-
+unintended background. Based on the planned bounding
+5Bastheimage-to-videogenerator. WeutilizeRecognize-
+boxes, the extracted object is then resized and placed onto
+Anything [61] and Gounded-Segment-Anything [14] for
+the background image at the corresponding location. This
+foreground object segmentation. We utilize GPT4o as the
+process ensures a more seamless integration of the fore-
+multi-modal LLM for background description generation,
+ground object into the background, improving the visual
+foreground object layout and trajectory planning, and de-
+consistencyofthegeneratedvideo.
+terminingthenoiseinversionratioαdynamicallybasedon
+theprompt. Fornoiseinversionratioα (Sec.3.3), wefind
+3.3. Video Generation with Structured Noise Ini-
+therange[0.7,0.9]workswellforCogVideoX-5B,andthe
+tialization
+range[0.5,0.8]workswellforVideoCrafter2(seeSec.4.3
+Inthisstage,wegenerateafinalvideobyguidingtheT2V forablationstudy).AllexperimentsareconductedonA100
+diffusion model with the VIDEO SKETCH created from the and A6000 GPUs, with batch size 1 and an approximate
+previous stage (Sec. 3.2). Inversion methods [41], which memory usage of 16 GB. We provide additional details,
+are often used in image and video editing tasks [31, 39], suchaspromptsusedforGPT-4o,intheAppendix.
+4
+Model Consist-attr Dynamic-attr Spatial Motion Action Interaction Numeracy
+(Closed-sourcemodels)
+Pika[44] 0.6513 0.1744 0.5043 0.2221 0.5380 0.6625 0.2613
+Gen-3[38] 0.7045 0.2078 0.5533 0.3111 0.6280 0.7900 0.2169
+Dreamina[5] 0.8220 0.2114 0.6083 0.2391 0.6660 0.8175 0.4006
+PixVerse[35] 0.7370 0.1738 0.5874 0.2178 0.6960 0.8275 0.3281
+Kling[15] 0.8045 0.2256 0.6150 0.2448 0.6460 0.8475 0.3044
+(Open-sourcemodels)
+ModelScope[49] 0.5483 0.1654 0.4220 0.2552 0.4880 0.7075 0.2066
+ZeroScope[42] 0.4495 0.1086 0.4073 0.2319 0.4620 0.5550 0.2378
+AnimateDiff[6] 0.4883 0.1764 0.3883 0.2236 0.4140 0.6550 0.0884
+Latte[30] 0.5325 0.1598 0.4476 0.2187 0.5200 0.6625 0.2187
+Show-1[60] 0.6388 0.1828 0.4649 0.2316 0.4940 0.7700 0.1644
+Open-Sora1.2[10] 0.6600 0.1714 0.5406 0.2388 0.5717 0.7400 0.2556
+Open-Sora-Planv1.1.0[18] 0.7413 0.1770 0.5587 0.2187 0.6780 0.7275 0.2928
+VideoTetris[47] 0.7125 0.2066 0.5148 0.2204 0.5280 0.7600 0.2609
+Vico[56] 0.7025 0.2376 0.4952 0.2225 0.5480 0.7775 0.2116
+VideoCrafter2[4] 0.6750 0.1850 0.4891 0.2233 0.5800 0.7600 0.2041
+VideoCrafter2+LVD[21] 0.6663 0.2308 0.5106 0.2178 0.5640 0.8125 0.2869
+(-0.0087) (+0.0458) (+0.0215) (-0.0055) (-0.0160) (+0.0525) (+0.0828)
+VideoCrafter2+VIDEO-MSG(Ours) 0.7536 0.2110 0.5866 0.3732 0.5737 0.8220 0.3138
+(+0.0786) (+0.0260) (+0.0975) (+0.1499) (-0.0063) (+0.0620) (+0.1097)
+CogVideoX-5B[57] 0.7220 0.2334 0.5461 0.2943 0.5960 0.7950 0.2603
+CogVideoX-5B+VIDEO-MSG(Ours) 0.7109 0.2102 0.6070 0.4487 0.5960 0.7800 0.3647
+(-0.0111) (-0.0232) (+0.0609) (+0.1544) (+0.0000) (-0.0150) (+0.1044)
+Table1.T2V-CompBenchevaluationresults.Wehighlightthebest/second-bestscoresforopen-sourcedmodelswithbold/underline.
+4.2.QuantitativeEvaluation withinasetofobjectboundingboxesgeneratedbyanLLM.
+OntheVideoCrafter2backbone,wefindthatVIDEO-MSG
+Improved control on spatial layout and object trajec-
+outperforms LVD in all categories except for dynamic at-
+tory. Table 1 shows that VIDEO-MSG significantly im-
+tribute binding, with the largest improvement observed in
+proves both T2V backbone models (VideoCrafter2 and
+motionbinding(‘Motion’), where VIDEO-MSG surpasses
+CogVideoX-5B)inmanyskills,especiallyinmotionbind-
+LVDby0.1554. Thisdemonstratestheeffectivenessofour
+ing(‘Motion’),withanincreaseof0.1499onVideoCrafter2
+approach. Note that VIDEO-MSG is also more memory-
+and0.1544onCogVideoX-5B.VIDEO-MSGalsoprovides
+efficientthanLVD,asthelayoutguidanceinLVDrequires
+largeimprovementsinspatialrelationships(‘Spatial’),and
+backpropagationthroughtheT2Vdiffusionbackbone,mak-
+numeracy (‘Numeracy’) in both backbone models. These
+ing it hard to adapt to large diffusion models; we could
+results show that the planning and structured noise initial-
+implementVIDEO-MSGwithCogVideoX-5Bbackboneto
+ization of VIDEO-MSG effectively improve the control of
+run on an A6000 GPU (48GB), but we could not fit LVD
+spatial layouts and object trajectories in video generation.
+evenonanA100(80GB).
+Itisalsonoteworthythat VIDEO-MSG,implementedwith
+open-source T2V backbone models, archives higher mo-
+tionbindingscoresthanclosed-sourcemodelssuchasGen- 4.3.AblationStudies
+3 [38]. The VIDEO-MSG did not improve the scores in
+Noise inversion ratio α. As described in Sec. 3.3, we
+dynamic attribute binding (‘Dynamic-attr’) and object ac-
+guide the T2V generation backbone by denoising from an
+tionandinteraction(‘Action’and‘Interaction’)categories.
+intermediate timestep tinv “ αˆT to the initial timestep
+This is likely because dynamic changes in object or envi-
+t “ 0. Here, we experiment with different noise inver-
+ronmentstatesandinteractionsandactionsbetweenobjects
+sionratiosα(i.e.,varyingthenoiseinjectedintotheVIDEO
+aredifficulttoguidesolelywithboundingboxes.
+SKETCH). Table 2 shows that lower α achieves better per-
+formance in motion binding (e.g., moving left/right), nu-
+Comparisontoplanning-basedbaseline. Wealsocom- meracy, and spatial relationships but hurts the smoothness
+pare VIDEO-MSG with LVD [21], a recent T2V layout ofmotions.Thisalignswiththeintuitionthatincreasingthe
+guidance method, where it adds a gradient-based energy number of refinement steps based on VIDEO SKETCH en-
+function optimization step before each denoising step of hances the final motion quality. We observe that automat-
+the T2V diffusion backbone. The energy function adjusts ically inferring proper α given text description with LLM
+the cross-attention map of diffusion models to concentrate achievesagoodtrade-offandusethisapproachbydefault.
+5
+(cid:36)(cid:81)(cid:3)(cid:72)(cid:74)(cid:74)(cid:3)(cid:85)(cid:82)(cid:79)(cid:79)(cid:76)(cid:81)(cid:74)(cid:3)(cid:73)(cid:85)(cid:82)(cid:80)(cid:3)(cid:87)(cid:75)(cid:72)(cid:3)(cid:85)(cid:76)(cid:74)(cid:75)(cid:87)(cid:3)(cid:87)(cid:82)(cid:3)(cid:79)(cid:72)(cid:73)(cid:87)(cid:3)(cid:82)(cid:81)(cid:3)(cid:87)(cid:75)(cid:72)(cid:3)(cid:87)(cid:68)(cid:69)(cid:79)(cid:72)(cid:17)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:37)(cid:24)(cid:16)(cid:59)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)(cid:74)(cid:82)(cid:38)
+(cid:12)(cid:28)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:12)(cid:27)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:12)(cid:26)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:55)(cid:75)(cid:85)(cid:72)(cid:72)(cid:3)(cid:69)(cid:72)(cid:68)(cid:85)(cid:86)(cid:3)(cid:73)(cid:76)(cid:86)(cid:75)(cid:3)(cid:76)(cid:81)(cid:3)(cid:68)(cid:3)(cid:85)(cid:76)(cid:89)(cid:72)(cid:85)(cid:3)(cid:86)(cid:88)(cid:85)(cid:85)(cid:82)(cid:88)(cid:81)(cid:71)(cid:72)(cid:71)(cid:3)(cid:69)(cid:92)(cid:3)(cid:80)(cid:82)(cid:88)(cid:81)(cid:87)(cid:68)(cid:76)(cid:81)(cid:86)(cid:17) (cid:36)(cid:3)(cid:74)(cid:82)(cid:85)(cid:76)(cid:79)(cid:79)(cid:68)(cid:3)(cid:86)(cid:76)(cid:87)(cid:87)(cid:76)(cid:81)(cid:74)(cid:3)(cid:82)(cid:81)(cid:3)(cid:87)(cid:75)(cid:72)(cid:3)(cid:79)(cid:72)(cid:73)(cid:87)(cid:3)(cid:86)(cid:76)(cid:71)(cid:72)(cid:3)(cid:82)(cid:73)(cid:3)(cid:68)(cid:3)(cid:89)(cid:72)(cid:81)(cid:71)(cid:76)(cid:81)(cid:74)(cid:3)(cid:80)(cid:68)(cid:70)(cid:75)(cid:76)(cid:81)(cid:72)(cid:3)(cid:76)(cid:81)(cid:3)(cid:68)(cid:3)(cid:73)(cid:82)(cid:85)(cid:72)(cid:86)(cid:87)(cid:17)
+(cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:20) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:21)(cid:23) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:23)(cid:27) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:20) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:21)(cid:23) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:23)(cid:27) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:20) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:21)(cid:23) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:23)(cid:27)
+(cid:75)(cid:70)(cid:87)(cid:72)(cid:78)(cid:54)(cid:3)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:48)(cid:82)(cid:87)(cid:76)(cid:82)(cid:81)(cid:3)(cid:39)(cid:76)(cid:85)(cid:72)(cid:70)(cid:87)(cid:76)(cid:82)(cid:81) (cid:49)(cid:88)(cid:80)(cid:72)(cid:85)(cid:68)(cid:70)(cid:92) (cid:48)(cid:76)(cid:86)(cid:86)(cid:76)(cid:81)(cid:74)(cid:3)(cid:50)(cid:69)(cid:77)(cid:72)(cid:70)(cid:87)
+(cid:3)(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:72)(cid:85)(cid:82)(cid:41)
+(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:78)(cid:70)(cid:68)(cid:37)
+(cid:91)(cid:82)(cid:37)(cid:3)(cid:74)(cid:81)(cid:76)(cid:71)(cid:81)(cid:88)(cid:82)(cid:37)
+(cid:54)(cid:76)(cid:91)(cid:3)(cid:83)(cid:72)(cid:81)(cid:74)(cid:88)(cid:76)(cid:81)(cid:86)(cid:3)(cid:90)(cid:68)(cid:71)(cid:71)(cid:79)(cid:72)(cid:3)(cid:87)(cid:82)(cid:74)(cid:72)(cid:87)(cid:75)(cid:72)(cid:85)(cid:3)(cid:68)(cid:70)(cid:85)(cid:82)(cid:86)(cid:86)(cid:3)(cid:68)(cid:81)(cid:3)(cid:76)(cid:70)(cid:92)(cid:3)(cid:79)(cid:68)(cid:81)(cid:71)(cid:86)(cid:70)(cid:68)(cid:83)(cid:72)(cid:17)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:37)(cid:24)(cid:16)(cid:59)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)(cid:74)(cid:82)(cid:38)
+(cid:12)(cid:28)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:12)(cid:27)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:12)(cid:26)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:36)(cid:3)(cid:70)(cid:75)(cid:76)(cid:79)(cid:71)(cid:3)(cid:69)(cid:88)(cid:76)(cid:79)(cid:71)(cid:76)(cid:81)(cid:74)(cid:3)(cid:68)(cid:3)(cid:86)(cid:68)(cid:81)(cid:71)(cid:70)(cid:68)(cid:86)(cid:87)(cid:79)(cid:72)(cid:3)(cid:82)(cid:81)(cid:3)(cid:87)(cid:75)(cid:72)(cid:3)(cid:85)(cid:76)(cid:74)(cid:75)(cid:87)(cid:3)(cid:82)(cid:73)(cid:3)(cid:68)(cid:3)(cid:69)(cid:72)(cid:68)(cid:70)(cid:75)(cid:3)(cid:88)(cid:80)(cid:69)(cid:85)(cid:72)(cid:79)(cid:79)(cid:68)(cid:17)
+(cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:20) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:21)(cid:23) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:23)(cid:27)
+(cid:75)(cid:70)(cid:87)(cid:72)(cid:78)(cid:54)(cid:3)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:36)(cid:3)(cid:75)(cid:72)(cid:79)(cid:76)(cid:70)(cid:82)(cid:83)(cid:87)(cid:72)(cid:85)(cid:3)(cid:74)(cid:85)(cid:68)(cid:70)(cid:72)(cid:73)(cid:88)(cid:79)(cid:79)(cid:92)(cid:3)(cid:71)(cid:72)(cid:86)(cid:70)(cid:72)(cid:81)(cid:71)(cid:76)(cid:81)(cid:74)(cid:3)(cid:87)(cid:82)(cid:3)(cid:79)(cid:68)(cid:81)(cid:71)(cid:17)
+(cid:49)(cid:88)(cid:80)(cid:72)(cid:85)(cid:68)(cid:70)(cid:92) (cid:54)(cid:83)(cid:68)(cid:87)(cid:76)(cid:68)(cid:79)(cid:3)(cid:53)(cid:72)(cid:79)(cid:68)(cid:87)(cid:76)(cid:82)(cid:81)(cid:86)(cid:75)(cid:76)(cid:83) (cid:48)(cid:82)(cid:87)(cid:76)(cid:82)(cid:81)(cid:3)(cid:39)(cid:76)(cid:85)(cid:72)(cid:70)(cid:87)(cid:76)(cid:82)(cid:81)
+(cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:20) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:21)(cid:23) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:23)(cid:27) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:20) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:21)(cid:23) (cid:41)(cid:85)(cid:68)(cid:80)(cid:72)(cid:3)(cid:23)(cid:27)
+(cid:3)(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:72)(cid:85)(cid:82)(cid:41)
+(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:78)(cid:70)(cid:68)(cid:37)
+(cid:91)(cid:82)(cid:37)(cid:3)(cid:74)(cid:81)(cid:76)(cid:71)(cid:81)(cid:88)(cid:82)(cid:37)
+Figure3. VideosgeneratedwithCogVideoX-5BandVIDEO-MSGwithCogVideoX-5Bbackbone. ThevideosgeneratedwithVIDEO-
+MSGaremoreaccurateregardingobjectmotions,numeracy,andspatialrelationships.
+6
+T2V-CompBench VBench
+No. Noiseinversionratioα
+MotionBinding Numeracy Spatial MotionSmoothness
+1. DirectT2V(noinversion) 0.2233 0.2041 0.4891 97.73
+2. 0.8 0.2793 0.2081 0.5502 98.69
+3. 0.7 0.3197 0.2653 0.5678 98.62
+4. 0.6 0.3352 0.3059 0.6057 98.63
+5. 0.5 0.3980 0.3138 0.6447 98.58
+6. LLM-controlled 0.3732 0.3138 0.5866 99.01
+Table2.Comparisonofdifferentnoiseinversionratioα,wherewecomparestaticvaluesandLLM-baseddynamicvalues.BackboneT2V:
+VideoCrafter2.Backgroundgenerator:Flux+CogVideoX-5B.
+No. BackgroundGenerator Motion Numeracy backbone). WeobservethatCogVideoX-5Bstruggleswith
+motion direction (e.g., an egg moves to the right instead
+1. DirectT2V(nobackground) 0.2897 0.2750
+of to the left, a helicopter ascends instead of descending
+2. SDXL(T2I)+CogVideoX-5B(I2V) 0.4487 0.3559
+3. FLUX(T2I)+CogVideoX-5B(I2V) 0.4549 0.3647 to the land), numeracy (e.g., generated four bears instead
+of three bears, four penguins instead of six penguins), and
+4. CogVideoX-5B(T2V) 0.4565 0.3028
+spatialrelationships(e.g.,avendingmachineshouldbelo-
+Table3.Ablationstudiesondifferentbackgroundgenerators. cated to the right of a gorilla, but it is missing; the um-
+brellashouldbelocatedontheleftofthechildren). Incon-
+trast, VIDEO-MSG successfullyguidestheT2Vbackbone
+Different background generator. In Table 3, we com- togeneratevideoswithcorrectsemanticsinallcases. Note
+pare different background generation methods (Sec. 3.1): that the T2V model can understand the coarse guidance in
+(1) generating a background with a text-to-image (T2I) VIDEOSKETCHandplaceobjectsthatharmonizewellwith
+model, followed by an image-to-video (I2V) model for the background through noise inversion. For example, in
+animation, and (2) directly using a text-to-video (T2V) the middle example (‘three bears in a river surrounded by
+modeltogenerateananimatedbackground. Whilebothap- mountains’),evenwhentheVIDEO SKETCHincludesthree
+proachesimprovemotionbindingandnumeracycompared bearsonlywithotherheadsfacingforward,theT2Vmodel
+to using a single T2V model for video generation, the T2I couldplacethethreebearsintherivernaturally.
++I2Vpipelinescoreshigherinnumeracy,andtheT2Vap-
+proach scores higher in motion binding. We attribute this
+Effectofdifferentnoiseinversionratiosα. Fig.3shows
+to the video generation model’s ability to better refine ob-
+the video generation results from VIDEO SKETCH (with
+ject motion when the background follows a static camera,
+CogVideoX-5B backbone), with different noise inversion
+makingforegroundchangesmoresalientforthevideodif-
+ratios α. Interestingly, the model can automatically refine
+fusionmodel.TheI2Vpipelinebetteradherestothe“Static
+objectstobetteralignwiththepromptandsurroundingen-
+Camera”prompt,producingnaturalbackgroundanimations
+vironmentbasedondifferentα. Wefindthatlowerα(i.e.,
+(e.g., wind, light changes). In contrast, T2V models of-
+less noise) generally provides stronger layout control. For
+tendisregardthe“StaticCamera”requirement,introducing
+example,inthelefttopexample,theegginthevideoswith
+excessive camera motion and scene changes in the video.
+α“0.7andα“0.8closelyfollowthetrajectoryinVIDEO
+These inconsistencies make it harder for the video diffu-
+SKETCH, while in the video α “ 0.9, the egg movement
+sion model to refine foreground objects, leading to perfor-
+is small and does not follow the trajectory. However, a
+mance degradation (e.g., 0.3028 with CogVideoX-5B vs.
+lower α can lead to less natural generations; e.g., in the
+0.3647 with FLUX on numeracy). Additionally, we find
+bottom-middle example, the boy motion appears less nat-
+thatastrongerT2Imodel(e.g.,FLUX[19])yieldsbetterre-
+uralat α “ 0.7 comparedto α “ 0.9. This highlightsthe
+sultsthanaweakerone(e.g.,SDXL[36]),highlightingthe
+importanceofselectinganappropriateαtobalancemotion
+potentialofleveraginghigh-qualityT2Imodelsforlayout-
+smoothnesswithfaithfuladherencetoVIDEOSKETCH.
+controlledtext-to-videogeneration.
+4.4.QualitativeAnalysis
+Background object detection helps foreground object
+VIDEO SKETCH improves control of spatial layout and placement. We find that a deep understanding of the
+objecttrajectory. Fig.3comparesvideosgeneratedfrom background images through object detection is crucial in
+CogVideoX-5B, and VIDEO-MSG (with CogVideoX-5B foreground planning (Sec. 3.2). As shown in Fig. 4, with-
+7
+(cid:37)(cid:24)(cid:16)(cid:59)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)(cid:74)(cid:82)(cid:38)
+(cid:36)(cid:3)(cid:74)(cid:82)(cid:79)(cid:71)(cid:72)(cid:81)(cid:3)(cid:85)(cid:72)(cid:87)(cid:85)(cid:76)(cid:72)(cid:89)(cid:72)(cid:85)(cid:3)(cid:86)(cid:70)(cid:68)(cid:80)(cid:83)(cid:72)(cid:85)(cid:76)(cid:81)(cid:74)(cid:3)(cid:79)(cid:72)(cid:73)(cid:87)(cid:90)(cid:68)(cid:85)(cid:71)(cid:86)(cid:3)(cid:68)(cid:70)(cid:85)(cid:82)(cid:86)(cid:86)(cid:3)(cid:68)(cid:3)(cid:74)(cid:68)(cid:85)(cid:71)(cid:72)(cid:81)(cid:17)
+(cid:3)(cid:82)(cid:18)(cid:90)(cid:3)(cid:75)(cid:70)(cid:87)(cid:72)(cid:78)(cid:54)(cid:3)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:3)(cid:18)(cid:90)(cid:3)(cid:75)(cid:70)(cid:87)(cid:72)(cid:78)(cid:54)(cid:3)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:3)(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:78)(cid:70)(cid:68)(cid:37)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:3)(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:78)(cid:70)(cid:68)(cid:37)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:81)(cid:82)(cid:76)(cid:87)(cid:70)(cid:72)(cid:87)(cid:72)(cid:39)(cid:3)(cid:87)(cid:70)(cid:72)(cid:77)(cid:69)(cid:50)
+(cid:12)(cid:27)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:81)(cid:82)(cid:76)(cid:87)(cid:70)(cid:72)(cid:87)(cid:72)(cid:39)(cid:3)(cid:87)(cid:70)(cid:72)(cid:77)(cid:69)(cid:50)
+(cid:12)(cid:27)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+Figure4. Examplevideoshowingtheimportanceofbackground
+objectdetectioninforegroundobjectplacement.
+out access to background bounding box information, the
+MLLMfailstoplacethegoldenretrieveronthegrasswhen
+relying solely on the background image input. In con-
+trast, when provided with bounding box information from
+thebackground(e.g.,{"label": "path", "box":
+[0.44, 0.57, 0.99, 0.99]}), the MLLM suc-
+cessfully positions the golden retriever at the correct lo-
+cation on the grass. Moreover, we find that this planning
+step directly impacts the final video quality. Condition-
+ing the generation on inaccurate bounding box plans can
+conflict with the video diffusion model’s prior knowledge.
+For instance, in the first frame, the model may generate
+twogoldenretrievers—oneonthegroundbasedonitsprior
+knowledge and another floating in the air according to the
+VIDEO SKETCH—resulting in unrealistic outputs, such as
+a golden retriever running mid-air across the garden. In
+contrast,ourapproach,whichconditionsplanningonback-
+groundboundingboxes,enablesthegenerationofmorenat-
+uralandcommonsense-alignedvideos.
+Segmentation of foreground objects improves harmo-
+nization. As demonstrated in Fig. 5, without object seg-
+mentation,theforegroundobject(aballoon)doesnotalign
+wellwiththebackground,andthequantityisnotwellcon-
+trolled (multiple balloons). This occurs because the video
+diffusionmodeldoesnotinherentlydistinguishbetweenthe
+appearanceofthebackgroundandthatoftheballoon,caus-
+ingthemtoblendtogether. Incontrast, whenwefirstseg-
+(cid:37)(cid:24)(cid:16)(cid:59)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)(cid:74)(cid:82)(cid:38)
+(cid:36)(cid:3)(cid:69)(cid:68)(cid:79)(cid:79)(cid:82)(cid:82)(cid:81)(cid:3)(cid:71)(cid:85)(cid:76)(cid:73)(cid:87)(cid:86)(cid:3)(cid:85)(cid:76)(cid:74)(cid:75)(cid:87)(cid:3)(cid:87)(cid:82)(cid:3)(cid:79)(cid:72)(cid:73)(cid:87)(cid:3)(cid:68)(cid:69)(cid:82)(cid:89)(cid:72)(cid:3)(cid:68)(cid:3)(cid:86)(cid:87)(cid:68)(cid:87)(cid:88)(cid:72)(cid:3)(cid:76)(cid:81)(cid:3)(cid:68)(cid:3)(cid:70)(cid:76)(cid:87)(cid:92)(cid:3)(cid:86)(cid:84)(cid:88)(cid:68)(cid:85)(cid:72)(cid:17)
+(cid:3)(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:72)(cid:85)(cid:82)(cid:41)
+(cid:3)(cid:71)(cid:81)(cid:88)(cid:82)(cid:85)(cid:74)(cid:72)(cid:85)(cid:82)(cid:41)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:42)(cid:54)(cid:48)(cid:16)(cid:82)(cid:72)(cid:71)(cid:76)(cid:57)
+(cid:3)(cid:87)(cid:70)(cid:72)(cid:77)(cid:69)(cid:50)(cid:3)(cid:82)(cid:18)(cid:90)
+(cid:3)(cid:87)(cid:70)(cid:72)(cid:77)(cid:69)(cid:50)(cid:3)(cid:18)(cid:90)
+(cid:12)(cid:26)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:12)(cid:26)(cid:17)(cid:19)(cid:32)(cid:302)(cid:11)
+(cid:81)(cid:82)(cid:76)(cid:87)(cid:68)(cid:87)(cid:81)(cid:72)(cid:80)(cid:74)(cid:72)(cid:54)
+(cid:81)(cid:82)(cid:76)(cid:87)(cid:68)(cid:87)(cid:81)(cid:72)(cid:80)(cid:74)(cid:72)(cid:54)
+Figure5. Examplevideoshowingtheimportanceofforeground
+objectsegmentation.
+menttheballoonfromthegeneratedforegroundobjectim-
+ageandthenplaceitontothebackgroundtocreate VIDEO
+SKETCH, the balloon in the generated video harmonizes
+wellwiththebackground.
+5.Conclusion
+In this work, we introduce VIDEO-MSG, a training-free
+guidance method designed to enhance text-to-video (T2V)
+generation through multimodal planning and structured
+noise initialization. VIDEO-MSG consists of three steps,
+wherein the first two steps, VIDEO-MSG creates VIDEO
+SKETCH, a detailed spatial and temporal plan utilizing a
+setofmultimodalmodels,includingmultimodalLLM,ob-
+ject detection, and instance segmentation models. In the
+final step, VIDEO-MSG guides a downstream T2V diffu-
+sion model with VIDEO SKETCH through noise inversion
+and denoising. Notably, VIDEO-MSG does not require
+fine-tuningoradditionalmemoryduringinference,making
+it easier to adopt large T2V models than existing methods
+that rely on fine-tuning or iterative attention manipulation.
+VIDEO-MSG demonstrates its effectiveness in enhancing
+text alignment with multiple T2V backbones on popular
+T2Vgenerationbenchmarks. Wealsoprovidecomprehen-
+sive ablation studies and qualitative examples that support
+the design choices of VIDEO-MSG. We hope our method
+can inspire future work on effectively and efficiently inte-
+gratingLLMs’planningcapabilitiesintovideogeneration.
+8
+Acknowledgments Nattapol Chanpaisit, Yaohui Wang, Xinyuan Chen, Limin
+Wang,DahuaLin,YuQiao,andZiweiLiu. VBench: Com-
+This work was supported by ARO W911NF2110220,
+prehensivebenchmarksuiteforvideogenerativemodels. In
+DARPA MCS N66001-19-2-4031, DARPA KAIROS ProceedingsoftheIEEE/CVFConferenceonComputerVi-
+Grant FA8750-19-2-1004, DARPA ECOLE Program No. sionandPatternRecognition,2024. 2,4
+HR00112390060, NSF-AI Engage Institute DRL211263, [12] HedraInc. Hedra. https://www.hedra.com/,2025.
+ONRN00014-23-1-2356,MicrosoftAccelerateFoundation 1
+ModelsResearch(AFMR)grantprogram,andaBloomberg [13] DiederikPKingmaandMaxWelling. Auto-encodingvaria-
+DataSciencePhDFellowship. Theviews,opinions,and/or tionalbayes. InICLR,2014. 4
+findingscontainedinthisarticlearethoseoftheauthorsand [14] AlexanderKirillov,EricMintun,NikhilaRavi,HanziMao,
+ChloeRolland,LauraGustafson,TeteXiao,SpencerWhite-
+notofthefundingagency.
+head,AlexanderCBerg,Wan-YenLo,etal. Segmentany-
+thing.InProceedingsoftheIEEE/CVFinternationalconfer-
+References
+enceoncomputervision,pages4015–4026,2023. 4
+[1] Niket Agarwal, Arslan Ali, Maciej Bala, Yogesh Balaji, [15] KlingAI. Kling. https://klingai.com/,2024. 5
+ErikBarker,TiffanyCai,PrithvijitChattopadhyay,Yongxin [16] Dan Kondratyuk, Lijun Yu, Xiuye Gu, Jose Lezama,
+Chen, Yin Cui, Yifan Ding, et al. Cosmos world foun- Jonathan Huang, Grant Schindler, Rachel Hornung, Vigh-
+dation model platform for physical ai. arXiv preprint nesh Birodkar, Jimmy Yan, Ming-Chang Chiu, Krishna
+arXiv:2501.03575,2025. 1 Somandepalli, Hassan Akbari, Yair Alon, Yong Cheng,
+Joshua V. Dillon, Agrim Gupta, Meera Hahn, Anja Hauth,
+[2] Jake Bruce, Michael D Dennis, Ashley Edwards, Jack
+David Hendon, Alonso Martinez, David Minnen, Mikhail
+Parker-Holder, Yuge Shi, Edward Hughes, Matthew Lai,
+Sirotenko,KihyukSohn,XuanYang,HartwigAdam,Ming-
+AditiMavalankar,RichieSteigerwald,ChrisApps,etal.Ge-
+Hsuan Yang, Irfan Essa, Huisheng Wang, David A Ross,
+nie:Generativeinteractiveenvironments.InForty-firstInter-
+BryanSeybold,andLuJiang. Videopoet: Alargelanguage
+nationalConferenceonMachineLearning,2024. 1
+modelforzero-shotvideogeneration. InForty-firstInterna-
+[3] HilaChefer,UrielSinger,AmitZohar,YuvalKirstain,Adam
+tionalConferenceonMachineLearning,2024. 2
+Polyak, Yaniv Taigman, Lior Wolf, and Shelly Sheynin.
+[17] WeijieKong,QiTian,ZijianZhang,RoxMin,ZuozhuoDai,
+Videojam: Joint appearance-motion representations for en-
+JinZhou,JiangfengXiong,XinLi,BoWu,JianweiZhang,
+hanced motiongeneration invideo models. arXiv preprint
+etal.Hunyuanvideo:Asystematicframeworkforlargevideo
+arXiv:2502.02492,2025. 2
+generativemodels. arXivpreprintarXiv:2412.03603,2024.
+[4] Haoxin Chen, Yong Zhang, Xiaodong Cun, Menghan Xia,
+1
+Xintao Wang, Chao Weng, and Ying Shan. Videocrafter2:
+[18] PKU-YuanLabandTuzhanAIetc.Open-sora-plan,2024.5
+Overcoming data limitations for high-quality video diffu-
+[19] Black Forest Labs. Flux. https://github.com/
+sionmodels. InProceedingsoftheIEEE/CVFConference
+black-forest-labs/flux,2024. 4,7
+on Computer Vision and Pattern Recognition, pages 7310–
+[20] YaoweiLi,XintaoWang,ZhaoyangZhang,ZhouxiaWang,
+7320,2024. 2,4,5
+Ziyang Yuan, Liangbin Xie, Yuexian Zou, and Ying Shan.
+[5] Dreamina AI. Dreamina. https://dreamina.
+Imageconductor:Precisioncontrolforinteractivevideosyn-
+capcut.com/ai-tool/platform,2024. 5
+thesis. CoRR,2024. 2
+[6] Yuwei Guo, Ceyuan Yang, Anyi Rao, Zhengyang Liang,
+[21] Long Lian, Baifeng Shi, Adam Yala, Trevor Darrell, and
+Yaohui Wang, Yu Qiao, Maneesh Agrawala, Dahua Lin,
+Boyi Li. Llm-grounded video diffusion models. arXiv
+andBoDai. Animatediff: Animateyourpersonalizedtext-
+preprintarXiv:2309.17444,2023. 1,5
+to-image diffusion models without specific tuning. arXiv
+[22] Long Lian, Baifeng Shi, Adam Yala, Trevor Darrell, and
+preprintarXiv:2307.04725,2023. 5
+Boyi Li. Llm-grounded video diffusion models. In The
+[7] Hao He, Yinghao Xu, Yuwei Guo, Gordon Wetzstein, Bo
+Twelfth International Conference on Learning Representa-
+Dai,HongshengLi,andCeyuanYang.Cameractrl:Enabling
+tions,2024. 2
+cameracontrolfortext-to-videogeneration. CoRR,2024. 2
+[23] Xinyao Liao, Xianfang Zeng, Liao Wang, Gang Yu, Gu-
+[8] YingqingHe, MenghanXia, HaoxinChen, XiaodongCun, osheng Lin, and Chi Zhang. Motionagent: Fine-grained
+Yuan Gong, Jinbo Xing, Yong Zhang, Xintao Wang, Chao controllablevideogenerationviamotionfieldagent. arXiv
+Weng, Ying Shan, et al. Animate-a-story: Storytelling preprintarXiv:2502.03207,2025. 1
+with retrieval-augmented video generation. arXiv preprint
+[24] Han Lin, Abhay Zala, Jaemin Cho, and Mohit Bansal.
+arXiv:2307.06940,2023. 2
+Videodirectorgpt: Consistent multi-scene video generation
+[9] JonathanHo,AjayJain,andPieterAbbeel. DenoisingDif- viallm-guidedplanning. InFirstConferenceonLanguage
+fusionProbabilisticModels. InNeurIPS,pages1–25,2020. Modeling,2024. 1,2,4
+4 [25] Shilong Liu, Zhaoyang Zeng, Tianhe Ren, Feng Li, Hao
+[10] hpcaitech. Open-sora: Democratizing efficient video pro- Zhang,JieYang,ChunyuanLi,JianweiYang,HangSu,Jun
+ductionforall,2024. 5 Zhu, etal. Groundingdino: Marryingdinowithgrounded
+[11] ZiqiHuang,YinanHe,JiashuoYu,FanZhang,ChenyangSi, pre-training for open-set object detection. arXiv preprint
+YumingJiang,YuanhanZhang,TianxingWu,QingyangJin, arXiv:2303.05499,2023. 4
+9
+[26] FuchenLong,ZhaofanQiu,TingYao,andTaoMei. Video- Duncan Findlay, Edede Oiwoh, Edmund Wong, Ehsan As-
+drafter: Content-consistent multi-scene video generation dar, Elizabeth Proehl, Elizabeth Yang, Eric Antonow, Eric
+withllm. CoRR,2024. 1 Kramer, Eric Peterson, Eric Sigler, Eric Wallace, Eugene
+[27] Cheng Lu, Yuhao Zhou, Fan Bao, Jianfei Chen, Chongx- Brevdo, Evan Mays, Farzad Khorasani, Felipe Petroski
+uanLi,andJunZhu. Dpm-solver++: Fastsolverforguided Such, Filippo Raso, Francis Zhang, Fred von Lohmann,
+sampling of diffusion probabilistic models. arXiv preprint Freddie Sulit, Gabriel Goh, Gene Oden, Geoff Salmon,
+arXiv:2211.01095,2022. 13 Giulio Starace, Greg Brockman, Hadi Salman, Haiming
+[28] JiasenLu,ChristopherClark,RowanZellers,RoozbehMot- Bao, Haitang Hu, Hannah Wong, Haoyu Wang, Heather
+taghi, and Aniruddha Kembhavi. Unified-io: A unified Schmidt,HeatherWhitney,HeewooJun,HendrikKirchner,
+modelforvision, language, andmulti-modaltasks. InThe Henrique Ponde de Oliveira Pinto, Hongyu Ren, Huiwen
+EleventhInternationalConferenceonLearningRepresenta- Chang, Hyung Won Chung, Ian Kivlichan, Ian O’Connell,
+tions,2023. 2 Ian O’Connell, Ian Osband, Ian Silber, Ian Sohl, Ibrahim
+[29] Jiasen Lu, Christopher Clark, Sangho Lee, Zichen Zhang, Okuyucu, Ikai Lan, Ilya Kostrikov, Ilya Sutskever, Ing-
+SavyaKhosla,RyanMarten,DerekHoiem,andAniruddha mar Kanitscheider, Ishaan Gulrajani, Jacob Coxon, Jacob
+Kembhavi. Unified-io2: Scalingautoregressivemultimodal Menick,JakubPachocki,JamesAung,JamesBetker,James
+modelswithvision,language,audio,andaction. InCVPR, Crooks, JamesLennon, JamieKiros, JanLeike, JanePark,
+2024. 2 JasonKwon, JasonPhang, JasonTeplitz, JasonWei, Jason
+[30] Xin Ma, Yaohui Wang, Gengyun Jia, Xinyuan Chen, Zi- Wolfe,JayChen,JeffHarris,JeniaVaravva,JessicaGanLee,
+weiLiu,Yuan-FangLi,CunjianChen,andYuQiao. Latte: JessicaShieh,JiLin,JiahuiYu,JiayiWeng,JieTang,Jieqi
+Latent diffusion transformer for video generation. arXiv Yu, Joanne Jang, Joaquin Quinonero Candela, Joe Beutler,
+preprintarXiv:2401.03048,2024. 5 Joe Landers, Joel Parish, Johannes Heidecke, John Schul-
+man,JonathanLachman,JonathanMcKay,JonathanUesato,
+[31] Chenlin Meng, Yutong He, Yang Song, Jiaming Song, Jia-
+Jonathan Ward, Jong Wook Kim, Joost Huizinga, Jordan
+junWu,Jun-YanZhu,andStefanoErmon. Sdedit: Guided
+Sitkin,JosKraaijeveld,JoshGross,JoshKaplan,JoshSny-
+imagesynthesisandeditingwithstochasticdifferentialequa-
+tions. InInternationalConferenceonLearningRepresenta- der, Joshua Achiam, Joy Jiao, Joyce Lee, Juntang Zhuang,
+tions,2022. 4 Justyn Harriman, Kai Fricke, Kai Hayashi, Karan Singhal,
+Katy Shi, Kavin Karthik, Kayla Wood, Kendra Rimbach,
+[32] OpenAI.Sora.https://openai.com/sora/,2024.1
+KennyHsu,KennyNguyen,KerenGu-Lemberg,KevinBut-
+[33] OpenAI, :, Aaron Hurst, Adam Lerer, Adam P. Goucher,
+ton, Kevin Liu, Kiel Howe, Krithika Muthukumar, Kyle
+AdamPerelman, AdityaRamesh, AidanClark, AJOstrow,
+Luther,LamaAhmad,LarryKai,LaurenItow,LaurenWork-
+Akila Welihinda, Alan Hayes, Alec Radford, Aleksander
+man, Leher Pathak, Leo Chen, Li Jing, Lia Guy, Liam Fe-
+Ma˛dry,AlexBaker-Whitcomb,AlexBeutel,AlexBorzunov,
+dus, Liang Zhou, Lien Mamitsuka, Lilian Weng, Lindsay
+AlexCarney,AlexChow,AlexKirillov,AlexNichol,Alex
+McCallum, Lindsey Held, Long Ouyang, Louis Feuvrier,
+Paino, Alex Renzin, Alex Tachard Passos, Alexander Kir-
+Lu Zhang, Lukas Kondraciuk, Lukasz Kaiser, Luke He-
+illov, Alexi Christakis, Alexis Conneau, Ali Kamali, Al-
+witt,LukeMetz,LyricDoshi,MadaAflak,MaddieSimens,
+lan Jabri, Allison Moyer, Allison Tam, Amadou Crookes,
+Madelaine Boyd, Madeleine Thompson, Marat Dukhan,
+Amin Tootoochian, Amin Tootoonchian, Ananya Kumar,
+MarkChen,MarkGray,MarkHudnall,MarvinZhang,Mar-
+AndreaVallone,AndrejKarpathy,AndrewBraunstein,An-
+wan Aljubeh, Mateusz Litwin, Matthew Zeng, Max John-
+drewCann,AndrewCodispoti,AndrewGalu,AndrewKon-
+son, Maya Shetty, Mayank Gupta, Meghan Shah, Mehmet
+drich,AndrewTulloch,AndreyMishchenko,AngelaBaek,
+Yatbaz,MengJiaYang,MengchaoZhong,MiaGlaese,Mi-
+Angela Jiang, Antoine Pelisse, Antonia Woodford, Anuj
+annaChen,MichaelJanner,MichaelLampe,MichaelPetrov,
+Gosalia, Arka Dhar, Ashley Pantuliano, Avi Nayak, Avi-
+Michael Wu, Michele Wang, Michelle Fradin, Michelle
+tal Oliver, Barret Zoph, Behrooz Ghorbani, Ben Leim-
+Pokrass, Miguel Castro, Miguel Oom Temudo de Cas-
+berger,BenRossen,BenSokolowsky,BenWang,Benjamin
+tro, Mikhail Pavlov, Miles Brundage, Miles Wang, Mi-
+Zweig, Beth Hoover, Blake Samic, Bob McGrew, Bobby
+nal Khan, Mira Murati, Mo Bavarian, Molly Lin, Murat
+Spero, BogoGiertler, BowenCheng, BradLightcap, Bran-
+Yesildal, Nacho Soto, Natalia Gimelshein, Natalie Cone,
+don Walkin, Brendan Quinn, Brian Guarraci, Brian Hsu,
+Natalie Staudacher, Natalie Summers, Natan LaFontaine,
+Bright Kellogg, Brydon Eastman, Camillo Lugaresi, Car-
+Neil Chowdhury, Nick Ryder, Nick Stathas, Nick Turley,
+roll Wainwright, Cary Bassin, Cary Hudson, Casey Chu,
+Nik Tezak, Niko Felix, Nithanth Kudige, Nitish Keskar,
+Chad Nelson, Chak Li, Chan Jun Shern, Channing Con-
+NoahDeutsch, NoelBundick, NoraPuckett, OfirNachum,
+ger, Charlotte Barette, Chelsea Voss, Chen Ding, Cheng
+Ola Okelola, Oleg Boiko, Oleg Murk, Oliver Jaffe, Olivia
+Lu, Chong Zhang, Chris Beaumont, Chris Hallacy, Chris
+Watkins,OlivierGodement,OwenCampbell-Moore,Patrick
+Koch, Christian Gibson, Christina Kim, Christine Choi,
+Chao,PaulMcMillan,PavelBelov,PengSu,PeterBak,Pe-
+Christine McLeavey, Christopher Hesse, Claudia Fischer,
+terBakkum,PeterDeng,PeterDolan,PeterHoeschele,Peter
+ClemensWinter,ColeyCzarnecki,ColinJarvis,ColinWei,
+Welinder,PhilTillet,PhilipPronin,PhilippeTillet,Prafulla
+Constantin Koumouzelis, Dane Sherburn, Daniel Kappler,
+Dhariwal, Qiming Yuan, Rachel Dias, Rachel Lim, Rahul
+DanielLevin,DanielLevy,DavidCarr,DavidFarhi,David
+Arora,RajanTroll,RandallLin,RaphaGontijoLopes,Raul
+Mely, DavidRobinson, DavidSasaki, DennyJin, DevVal-
+Puri, Reah Miyara, Reimar Leike, Renaud Gaubert, Reza
+ladares, Dimitris Tsipras, Doug Li, Duc Phong Nguyen,
+10
+Zamani, Ricky Wang, Rob Donnelly, Rob Honsby, Rocky feld, Elliot Blanchard, Felix Juefei-Xu, Fraylie Nord, Jeff
+Smith, Rohan Sahai, Rohit Ramchandani, Romain Huet, Liang, John Hoffman, Jonas Kohler, Kaolin Fire, Karthik
+Rory Carmichael, Rowan Zellers, Roy Chen, Ruby Chen, Sivakumar,LawrenceChen,LichengYu,LuyaGao,Markos
+RuslanNigmatullin,RyanCheu,SaachiJain,SamAltman, Georgopoulos,RashelMoritz,SaraK.Sampson,ShikaiLi,
+Sam Schoenholz, Sam Toizer, Samuel Miserendino, Sand- SimoneParmeggiani,SteveFine,TaraFowler,VladanPetro-
+hini Agarwal, Sara Culver, Scott Ethersmith, Scott Gray, vic, andYumingDu. Moviegen: Acastofmediafounda-
+Sean Grove, Sean Metzger, Shamez Hermani, Shantanu tionmodels. https://ai.meta.com/blog/movie-
+Jain, Shengjia Zhao, Sherwin Wu, Shino Jomoto, Shirong gen-media-foundation-models-generative-
+Wu, Shuaiqi, Xia, Sonia Phene, Spencer Papay, Srinivas ai-video/,2025. 1
+Narayanan, Steve Coffey, Steve Lee, Stewart Hall, Suchir [38] Runway. Gen-3. https://runwayml.com/blog/
+Balaji, Tal Broda, Tal Stramer, Tao Xu, Tarun Gogineni, introducing-gen-3-alpha/,2024. 1,5
+TayaChristianson,TedSanders,TejalPatwardhan,Thomas
+[39] ShellySheynin,AdamPolyak,UrielSinger,YuvalKirstain,
+Cunninghman, Thomas Degry, Thomas Dimson, Thomas
+AmitZohar,OronAshual,DeviParikh,andYanivTaigman.
+Raoux, Thomas Shadwell, Tianhao Zheng, Todd Under-
+Emuedit:Preciseimageeditingviarecognitionandgenera-
+wood, Todor Markov, Toki Sherbakov, Tom Rubin, Tom
+tiontasks. InCVPR,2023. 4
+Stasi,TomerKaftan,TristanHeywood,TroyPeterson,Tyce
+[40] XiaoyuShi,ZhaoyangHuang,Fu-YunWang,WeikangBian,
+Walters, Tyna Eloundou, Valerie Qi, Veit Moeller, Vinnie
+Dasong Li, Yi Zhang, Manyuan Zhang, Ka Chun Cheung,
+Monaco,VishalKuo,VladFomenko,WayneChang,Weiyi
+SimonSee,HongweiQin,etal. Motion-i2v:Consistentand
+Zheng, Wenda Zhou, Wesam Manassra, Will Sheu, Woj-
+controllableimage-to-videogenerationwithexplicitmotion
+ciech Zaremba, Yash Patil, Yilei Qian, Yongjik Kim, You-
+modeling. InSIGGRAPH(ConferencePaperTrack),2024.
+long Cheng, Yu Zhang, Yuchen He, Yuchen Zhang, Yujia
+2
+Jin, Yunxing Dai, and Yury Malkov. Gpt-4o system card,
+[41] Jiaming Song, Chenlin Meng, and Stefano Ermon.
+2024. 3
+Denoising diffusion implicit models. arXiv preprint
+[34] Jack Parker-Holder, Philip Ball, Jake Bruce, Vibhavari
+arXiv:2010.02502,2020. 4
+Dasagi, KristianHolsheimer, ChristosKaplanis, Alexandre
+Moufarek, Guy Scully, Jeremy Shar, Jimmy Shi, Stephen [42] Spencer Sterling. Zeroscope v2 576w. https://
+huggingface.co/cerspense/zeroscope_v2_
+Spencer, Jessica Yung, Michael Dennis, Sultan Kenjeyev,
+ShangbangLong,VladMnih,HarrisChan,MaximeGazeau, 576w,2024. 5
+Bonnie Li, Fabio Pardo, Luyu Wang, Lei Zhang, Fred- [43] Kaiyue Sun, Kaiyi Huang, Xian Liu, Yue Wu, Zihan Xu,
+eric Besse, Tim Harley, Anna Mitenkova, Jane Wang, Jeff ZhenguoLi,andXihuiLiu.T2v-compbench:Acomprehen-
+Clune,DemisHassabis,RaiaHadsell,AdrianBolton,Satin- sivebenchmarkforcompositionaltext-to-videogeneration.
+der Singh, and Tim Rocktäschel. Genie 2: A large-scale CoRR,abs/2407.14505,2024. 2,4
+foundationworldmodel,2024. 1 [44] PikaTeam. Pikaart. https://pika.art/,2024. 5
+[35] PixVerse. Pixverse. https://app.pixverse.ai, [45] WorldLab Team. Worldlab. https://www.
+2024. 5 worldlabs.ai/blog,2024. 1
+[36] Dustin Podell, Zion English, Kyle Lacey, Andreas [46] WanTeam. Wan:Openandadvancedlarge-scalevideogen-
+Blattmann, Tim Dockhorn, Jonas Müller, Joe Penna, and erativemodels,2025. 1
+Robin Rombach. Sdxl: Improving latent diffusion models
+[47] YeTian,LingYang,HaotianYang,YuanGao,YufanDeng,
+for high-resolution image synthesis. In The Twelfth Inter-
+JingminChen,XintaoWang,ZhaochenYu,XinTao,Pengfei
+nationalConferenceonLearningRepresentations,2024. 4,
+Wan,DiZhang,andBinCui. Videotetris: Towardscompo-
+7
+sitionaltext-to-videogeneration,2024. 5
+[37] AdamPolyak,AmitZohar,AndrewBrown,AndrosTjandra,
+[48] ShengbangTong,DavidFan,JiachenZhu,YunyangXiong,
+AnimeshSinha,AnnLee,ApoorvVyas,BowenShi,Chih-
+XinleiChen,KoustuvSinha,MichaelRabbat,YannLeCun,
+YaoMa,Ching-YaoChuang,DavidYan,DhruvChoudhary,
+Saining Xie, and Zhuang Liu. Metamorph: Multimodal
+DingkangWang, GeetSethi, GuanPang, HaoyuMa, Ishan
+understandingandgenerationviainstructiontuning. arXiv
+Misra, Ji Hou, Jialiang Wang, Kiran Jagadeesh, Kunpeng
+preprintarXiv:2412.14164,2024. 2
+Li, Luxin Zhang, Mannat Singh, Mary Williamson, Matt
+[49] Jiuniu Wang, Hangjie Yuan, Dayou Chen, Yingya Zhang,
+Le,MatthewYu,MiteshKumarSingh,PeizhaoZhang,Pe-
+XiangWang,andShiweiZhang. Modelscopetext-to-video
+terVajda, QuentinDuval, RohitGirdhar, RoshanSumbaly,
+technicalreport. arXivpreprintarXiv:2308.06571,2023. 5
+SaiSakethRambhatla, SamTsai, SamanehAzadi, Samyak
+Datta, Sanyuan Chen, Sean Bell, Sharadh Ramaswamy, [50] Xinlong Wang, Xiaosong Zhang, Zhengxiong Luo, Quan
+Shelly Sheynin, Siddharth Bhattacharya, Simran Motwani, Sun,YufengCui,JinshengWang,FanZhang,YuezeWang,
+TaoXu,TianheLi,TingboHou,Wei-NingHsu,XiYin,Xi- ZhenLi,QiyingYu,etal. Emu3: Next-tokenpredictionis
+aoliang Dai, Yaniv Taigman, Yaqiao Luo, Yen-Cheng Liu, allyouneed. CoRR,2024. 2
+Yi-ChiaoWu,YueZhao,YuvalKirstain,ZechengHe,Zijian [51] Zun Wang, Jialu Li, Han Lin, Jaehong Yoon, and Mohit
+He,AlbertPumarola,AliThabet,ArtsiomSanakoyeu,Arun Bansal. Dreamrunner: Fine-grainedstorytellingvideogen-
+Mallya, Baishan Guo, Boris Araya, Breena Kerr, Carleigh eration with retrieval-augmented motion adaptation. arXiv
+Wood,CeLiu,CenPeng,DimitryVengertsev,EdgarSchon- preprintarXiv:2411.16657,2024. 2
+11
+[52] Zhouxia Wang, Ziyang Yuan, Xintao Wang, Yaowei Li, attention for long-range image and video generation. In
+Tianshui Chen, Menghan Xia, Ping Luo, and Ying Shan. TheThirty-eighthAnnualConferenceonNeuralInformation
+Motionctrl: A unified and flexible motion controller for ProcessingSystems,2024. 2
+videogeneration. InSIGGRAPH(ConferencePaperTrack),
+2024. 2
+[53] Weijia Wu, Zhuang Li, Yuchao Gu, Rui Zhao, Yefei He,
+David Junhao Zhang, Mike Zheng Shou, Yan Li, Tingting
+Gao,andDiZhang. Draganything: Motioncontrolforany-
+thing using entity representation. In European Conference
+onComputerVision,pages331–348.Springer,2024. 1,2
+[54] YechengWu,ZhuoyangZhang,JunyuChen,HaotianTang,
+DachengLi,YunhaoFang,LigengZhu,EnzeXie,Hongxu
+Yin, Li Yi, et al. Vila-u: a unified foundation model inte-
+gratingvisualunderstandingandgeneration. arXivpreprint
+arXiv:2409.04429,2024. 2
+[55] Ling Yang, Zhaochen Yu, Chenlin Meng, Minkai Xu, Ste-
+fano Ermon, and CUI Bin. Mastering text-to-image dif-
+fusion: Recaptioning, planning, andgeneratingwithmulti-
+modalllms. InForty-firstInternationalConferenceonMa-
+chineLearning,2024. 2
+[56] XingyiYangandXinchaoWang. Compositionalvideogen-
+erationasflowequalization,2024. 5
+[57] ZhuoyiYang,JiayanTeng,WendiZheng,MingDing,Shiyu
+Huang, Jiazheng Xu, Yuanming Yang, Wenyi Hong, Xiao-
+hanZhang, GuanyuFeng, etal. Cogvideox: Text-to-video
+diffusionmodelswithanexperttransformer. arXivpreprint
+arXiv:2408.06072,2024. 1,2,4,5
+[58] ShengmingYin,ChenfeiWu,JianLiang,JieShi,Houqiang
+Li, Gong Ming, and Nan Duan. Dragnuwa: Fine-grained
+control in video generation by integrating text, image, and
+trajectory. arXivpreprintarXiv:2308.08089,2023. 2
+[59] ShoubinYu,JacobZhiyuanFang,JianZheng,GunnarSig-
+urdsson,VicenteOrdonez,RobinsonPiramuthu,andMohit
+Bansal.Zero-shotcontrollableimage-to-videoanimationvia
+motion decomposition. In Proceedings of the 32nd ACM
+InternationalConferenceonMultimedia,pages3332–3341,
+2024. 2
+[60] David Junhao Zhang, Jay Zhangjie Wu, Jia-Wei Liu,
+Rui Zhao, Lingmin Ran, Yuchao Gu, Difei Gao, and
+MikeZhengShou. Show-1: Marryingpixelandlatentdif-
+fusion models for text-to-video generation. arXiv preprint
+arXiv:2309.15818,2023. 5
+[61] Youcai Zhang, Xinyu Huang, Jinyu Ma, Zhaoyang Li,
+Zhaochuan Luo, Yanchun Xie, Yuzhuo Qin, Tong Luo,
+YaqianLi,ShilongLiu,etal. Recognizeanything:Astrong
+imagetaggingmodel.InProceedingsoftheIEEE/CVFCon-
+ferenceonComputerVisionandPatternRecognition,pages
+1724–1732,2024. 4
+[62] ZhenghaoZhang,JunchaoLiao,MenghaoLi,ZuozhuoDai,
+BingxueQiu,SiyuZhu,LongQin,andWeizhiWang. Tora:
+Trajectory-oriented diffusion transformer for video genera-
+tion. arXivpreprintarXiv:2407.21705,2024. 1
+[63] Haitao Zhou, Chuang Wang, Rui Nie, Jinxiao Lin, Dong-
+dong Yu, Qian Yu, and Changhu Wang. Trackgo: A flex-
+ibleandefficientmethodforcontrollablevideogeneration.
+CoRR,2024. 2
+[64] Yupeng Zhou, Daquan Zhou, Ming-Ming Cheng, Jiashi
+Feng, and Qibin Hou. Storydiffusion: Consistent self-
+12
+Appendix separatethegenerationofforegroundandbackground,en-
+suring that key foreground objects are not mistakenly in-
+Inthisappendix,wepresentthefollowing:
+cluded in the background. In Fig. 7, we first prompt the
+• Noise inversion details using DPM-Solver++ [27] in MLLMtogenerateboundingboxesforforegroundobjects,
+Sec.A. followedbyreasoningfortheirplacement.Additionally,we
+• MLLM prompts we use to collect background descrip- emphasizethattheplacementofforegroundobjectsshould
+tion,foregroundobjectlayoutandtrajectory,andαused be informed by background bounding box annotations to
+todeterminehowmuchnoisetoinjectduringinversionin improve spatial coherence. Finally, Fig. 8 illustrates the
+Sec.B. prompttemplateusedtodeterminetheappropriatelevelof
+noiseinjectionduringinversion. Weexplicitlyincorporate
+A.NoiseInversionDetails prior knowledge into the template, instructing the MLLM
+to apply less noise for tasks requiring precise trajectory or
+Here,wedescribeindetailhowweadopttheinversiontech-
+layoutcontrolandmorenoisefortasksinvolvingdynamic
+niqueforfinalvideogenerationwiththemotionpriorspre-
+changesorobjectactionsthatcannotbeeffectivelymodeled
+paredinStage3. Specifically,wefirstencodethesequence
+withboundingboxplans.
+of images with the planned layout, collected in the pre-
+vious stage (Sec. 3.2), into the latent space z using a 3D
+Variational Autoencoder (3D VAE). Then, we perform the
+forward diffusion process where Gaussian noise is gradu-
+allyaddedtothelatent. FollowingtheDPM-Solver++[27]
+schedulerinCogVideoX,thenoisedlatentatdiffusionstep
+tis:
+? ?
+z “ α z ` 1´α ϵ, ϵ„Np0,Iq. (1)
+t t 0 t
+ś
+Here,α “ t p1´β qisthecumulativenoisesched-
+t s“1 s
+ule,andϵrepresentsGaussiannoise.
+Then, givenanoisylatentz , weattempttorecoverthe
+t
+clean latent as a general reverse denoising starting from
+step t. The model then denoises to z using the DPM-
+t´1
+Solver++method,whichprovidesahigh-orderapproxima-
+tion of the reverse diffusion process. Specifically, the up-
+dateequationforz inasecond-ordersolveris:
+t´1
+z “z `λ Fˆ pz ,tq`λ Fˆ pz `λ Fˆ pz ,tq,t q, (2)
+t´1 t 1 t 2 t 3 t m
+whereFˆ pz,tq“´1β z´g2ptqϵ pz,tqistheestimated
+2 t θ
+drift term, λ ,λ ,λ are step-size coefficients computed
+1 2 3
+adaptively, and t is an intermediate timestep between t
+m
+andt´1.
+We observe that selecting t within a specific range en-
+ables video diffusion models to inject smooth object mo-
+tions naturally. This process effectively transforms a se-
+quenceofstaticimagesintoacoherentvideowithrealistic
+motiondynamics.
+B.PromptforMLLMPlanning
+In this section, we present the prompt templates used to
+collectbackgrounddescriptions, foregroundobjectlayouts
+and trajectories, and the parameter α, which determines
+the amount of noise injected during inversion. As shown
+in Fig. 6, we explicitly instruct the multi-modal LLM to
+13
+(cid:26)(cid:42)(cid:48)(cid:1)(cid:41)(cid:32)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:43)(cid:45)(cid:42)(cid:49)(cid:36)(cid:31)(cid:32)(cid:1)(cid:28)(cid:1)(cid:31)(cid:32)(cid:47)(cid:28)(cid:36)(cid:39)(cid:32)(cid:31)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:33)(cid:42)(cid:45)(cid:1)(cid:28)(cid:1)(cid:34)(cid:36)(cid:49)(cid:32)(cid:41)(cid:1)(cid:32)(cid:49)(cid:32)(cid:41)(cid:47)(cid:1057)(cid:1)(cid:21)(cid:35)(cid:32)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:46)(cid:35)(cid:42)(cid:48)(cid:39)(cid:31)(cid:1)(cid:29)(cid:32)(cid:1)(cid:28)(cid:29)(cid:42)(cid:48)(cid:47)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:32)(cid:41)(cid:49)(cid:36)(cid:45)(cid:42)(cid:41)(cid:40)(cid:32)(cid:41)(cid:47)(cid:1058)(cid:1)(cid:39)(cid:36)(cid:34)(cid:35)(cid:47)(cid:36)(cid:41)(cid:34)(cid:1058)(cid:1)(cid:28)(cid:41)(cid:31)(cid:1)(cid:46)(cid:32)(cid:47)(cid:47)(cid:36)(cid:41)(cid:34)(cid:1058)(cid:1)
+(cid:50)(cid:36)(cid:47)(cid:35)(cid:42)(cid:48)(cid:47)(cid:1)(cid:36)(cid:41)(cid:30)(cid:39)(cid:48)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:28)(cid:41)(cid:52)(cid:1)(cid:40)(cid:42)(cid:49)(cid:36)(cid:41)(cid:34)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:42)(cid:45)(cid:1)(cid:32)(cid:41)(cid:47)(cid:36)(cid:47)(cid:36)(cid:32)(cid:46)(cid:1057)(cid:1)(cid:21)(cid:35)(cid:32)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:46)(cid:35)(cid:42)(cid:48)(cid:39)(cid:31)(cid:1)(cid:41)(cid:42)(cid:47)(cid:1)(cid:36)(cid:41)(cid:30)(cid:39)(cid:48)(cid:31)(cid:32)(cid:1)(cid:28)(cid:41)(cid:52)(cid:1)(cid:38)(cid:32)(cid:52)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:47)(cid:35)(cid:28)(cid:47)(cid:1)(cid:28)(cid:45)(cid:32)(cid:1)(cid:40)(cid:32)(cid:41)(cid:47)(cid:36)(cid:42)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:1090)(cid:32)(cid:1057)(cid:34)(cid:1057)(cid:1058)(cid:1)
+(cid:31)(cid:42)(cid:41)(cid:1066)(cid:47)(cid:1)(cid:36)(cid:41)(cid:30)(cid:39)(cid:48)(cid:31)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:2)(cid:1096)(cid:42)(cid:29)(cid:37)(cid:3)(cid:1)(cid:36)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:36)(cid:46)(cid:1)(cid:39)(cid:36)(cid:38)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:2)(cid:1)(cid:36)(cid:46)(cid:1)(cid:39)(cid:32)(cid:550)(cid:1)(cid:47)(cid:42)(cid:1)(cid:42)(cid:29)(cid:37)(cid:3)(cid:1058)(cid:1)(cid:28)(cid:1)(cid:50)(cid:35)(cid:36)(cid:47)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:2)(cid:1)(cid:29)(cid:32)(cid:46)(cid:36)(cid:31)(cid:32)(cid:1)(cid:28)(cid:1)(cid:34)(cid:45)(cid:32)(cid:32)(cid:41)(cid:1)(cid:42)(cid:29)(cid:37)(cid:3)(cid:1091)(cid:1057)(cid:1)(cid:21)(cid:35)(cid:32)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:46)(cid:35)(cid:42)(cid:48)(cid:39)(cid:31)(cid:1)(cid:41)(cid:42)(cid:47)(cid:1)(cid:32)(cid:51)(cid:30)(cid:32)(cid:32)(cid:31)(cid:1)(cid:1042)(cid:1037)(cid:1)(cid:50)(cid:42)(cid:45)(cid:31)(cid:46)(cid:1057)(cid:1)
+(cid:6)(cid:51)(cid:28)(cid:40)(cid:43)(cid:39)(cid:32)(cid:1059)(cid:1)(cid:1094)(cid:10)(cid:41)(cid:1078)(cid:4)(cid:42)(cid:41)(cid:47)(cid:32)(cid:51)(cid:47)(cid:1)(cid:13)(cid:32)(cid:28)(cid:45)(cid:41)(cid:36)(cid:41)(cid:34)(cid:1)(cid:6)(cid:51)(cid:28)(cid:40)(cid:43)(cid:39)(cid:32)(cid:1095)
+(cid:22)(cid:46)(cid:32)(cid:45)(cid:1059)(cid:1)(cid:17)(cid:45)(cid:42)(cid:49)(cid:36)(cid:31)(cid:32)(cid:1)(cid:28)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:33)(cid:42)(cid:45)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:32)(cid:49)(cid:32)(cid:41)(cid:47)(cid:1059)(cid:1)(cid:1094)(cid:17)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1095)
+Figure6.Prompttemplateusedtoquerybackgrounddescription.
+(cid:2)(cid:46)(cid:46)(cid:48)(cid:40)(cid:36)(cid:41)(cid:34)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:33)(cid:45)(cid:28)(cid:40)(cid:32)(cid:1)(cid:46)(cid:36)(cid:53)(cid:32)(cid:1)(cid:36)(cid:46)(cid:1)(cid:41)(cid:42)(cid:45)(cid:40)(cid:28)(cid:39)(cid:36)(cid:53)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:45)(cid:28)(cid:41)(cid:34)(cid:32)(cid:1)(cid:1037)(cid:1078)(cid:1038)(cid:1058)(cid:1)(cid:52)(cid:42)(cid:48)(cid:1)(cid:41)(cid:32)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:34)(cid:36)(cid:49)(cid:32)(cid:1)(cid:28)(cid:1)(cid:43)(cid:42)(cid:46)(cid:46)(cid:36)(cid:29)(cid:39)(cid:32)(cid:1)(cid:1039)(cid:1042)(cid:1078)(cid:33)(cid:45)(cid:28)(cid:40)(cid:32)(cid:1)(cid:39)(cid:28)(cid:52)(cid:42)(cid:48)(cid:47)(cid:1)(cid:50)(cid:36)(cid:47)(cid:35)(cid:1)(cid:29)(cid:42)(cid:48)(cid:41)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:29)(cid:42)(cid:51)(cid:32)(cid:46)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:32)(cid:41)(cid:47)(cid:36)(cid:47)(cid:36)(cid:32)(cid:46)(cid:1)(cid:42)(cid:33)(cid:1)(cid:28)(cid:1)(cid:34)(cid:36)(cid:49)(cid:32)(cid:41)(cid:1)(cid:32)(cid:49)(cid:32)(cid:41)(cid:47)(cid:1057)
+(cid:21)(cid:35)(cid:32)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:1)(cid:36)(cid:46)(cid:1)(cid:43)(cid:45)(cid:42)(cid:49)(cid:36)(cid:31)(cid:32)(cid:31)(cid:1057)(cid:1)(cid:3)(cid:32)(cid:46)(cid:36)(cid:31)(cid:32)(cid:46)(cid:1058)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:1)(cid:28)(cid:45)(cid:32)(cid:1)(cid:28)(cid:39)(cid:46)(cid:42)(cid:1)(cid:28)(cid:41)(cid:41)(cid:42)(cid:47)(cid:28)(cid:47)(cid:32)(cid:31)(cid:1)(cid:50)(cid:36)(cid:47)(cid:35)(cid:1)(cid:29)(cid:42)(cid:48)(cid:41)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:29)(cid:42)(cid:51)(cid:1058)(cid:1)(cid:28)(cid:41)(cid:31)(cid:1)(cid:47)(cid:35)(cid:32)(cid:46)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:28)(cid:45)(cid:32)(cid:1)(cid:46)(cid:47)(cid:28)(cid:47)(cid:36)(cid:30)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)
+(cid:28)(cid:30)(cid:45)(cid:42)(cid:46)(cid:46)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:1039)(cid:1042)(cid:1)(cid:33)(cid:45)(cid:28)(cid:40)(cid:32)(cid:46)(cid:1057)(cid:1)(cid:26)(cid:42)(cid:48)(cid:1)(cid:41)(cid:32)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:40)(cid:42)(cid:49)(cid:36)(cid:41)(cid:34)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1)(cid:28)(cid:47)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:30)(cid:42)(cid:45)(cid:45)(cid:32)(cid:30)(cid:47)(cid:1)(cid:39)(cid:42)(cid:30)(cid:28)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:29)(cid:28)(cid:46)(cid:32)(cid:31)(cid:1)(cid:42)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:36)(cid:41)(cid:43)(cid:48)(cid:47)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:1)(cid:28)(cid:41)(cid:31)(cid:1)(cid:29)(cid:42)(cid:48)(cid:41)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:29)(cid:42)(cid:51)(cid:1)(cid:28)(cid:41)(cid:41)(cid:42)(cid:47)(cid:28)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1057)(cid:1)
+(cid:26)(cid:42)(cid:48)(cid:1)(cid:31)(cid:42)(cid:41)(cid:1066)(cid:47)(cid:1)(cid:41)(cid:32)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:36)(cid:41)(cid:30)(cid:39)(cid:48)(cid:31)(cid:32)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:29)(cid:42)(cid:51)(cid:1)(cid:43)(cid:39)(cid:28)(cid:41)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:47)(cid:35)(cid:28)(cid:47)(cid:1)(cid:28)(cid:39)(cid:45)(cid:32)(cid:28)(cid:31)(cid:52)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1057)
+(cid:26)(cid:42)(cid:48)(cid:1)(cid:41)(cid:32)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:1)(cid:43)(cid:39)(cid:28)(cid:41)(cid:1)(cid:33)(cid:42)(cid:45)(cid:1)(cid:28)(cid:39)(cid:39)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:38)(cid:32)(cid:52)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:1090)(cid:32)(cid:1057)(cid:34)(cid:1057)(cid:1058)(cid:1)(cid:8)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:1)(cid:29)(cid:42)(cid:47)(cid:35)(cid:1)(cid:42)(cid:29)(cid:37)(cid:2)(cid:1)(cid:28)(cid:41)(cid:31)(cid:1)(cid:42)(cid:29)(cid:37)(cid:3)(cid:1)(cid:33)(cid:42)(cid:45)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:42)(cid:29)(cid:37)(cid:2)(cid:1)(cid:36)(cid:46)(cid:1)(cid:39)(cid:32)(cid:550)(cid:1)(cid:47)(cid:42)(cid:1)(cid:42)(cid:29)(cid:37)(cid:3)(cid:1091)(cid:1057)(cid:1)(cid:21)(cid:35)(cid:32)(cid:45)(cid:32)(cid:1)(cid:46)(cid:35)(cid:42)(cid:48)(cid:39)(cid:31)(cid:1)(cid:29)(cid:32)(cid:1)(cid:32)(cid:41)(cid:42)(cid:48)(cid:34)(cid:35)(cid:1)
+(cid:31)(cid:36)(cid:46)(cid:47)(cid:28)(cid:41)(cid:30)(cid:32)(cid:1)(cid:29)(cid:32)(cid:47)(cid:50)(cid:32)(cid:32)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:47)(cid:50)(cid:42)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:46)(cid:42)(cid:1)(cid:47)(cid:35)(cid:28)(cid:47)(cid:1)(cid:32)(cid:28)(cid:30)(cid:35)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1)(cid:30)(cid:28)(cid:41)(cid:1)(cid:29)(cid:32)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:31)(cid:1)(cid:30)(cid:39)(cid:32)(cid:28)(cid:45)(cid:39)(cid:52)(cid:1057)
+(cid:21)(cid:35)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1)(cid:41)(cid:28)(cid:40)(cid:32)(cid:1)(cid:46)(cid:35)(cid:42)(cid:48)(cid:39)(cid:31)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:28)(cid:36)(cid:41)(cid:1)(cid:36)(cid:47)(cid:46)(cid:1)(cid:28)(cid:47)(cid:47)(cid:45)(cid:36)(cid:29)(cid:48)(cid:47)(cid:32)(cid:46)(cid:1)(cid:1090)(cid:32)(cid:1057)(cid:34)(cid:1057)(cid:1058)(cid:1)(cid:30)(cid:42)(cid:39)(cid:42)(cid:45)(cid:1058)(cid:1)(cid:46)(cid:35)(cid:28)(cid:43)(cid:32)(cid:1091)(cid:1057)
+(cid:15)(cid:48)(cid:40)(cid:29)(cid:32)(cid:45)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:36)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:45)(cid:32)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:40)(cid:48)(cid:39)(cid:47)(cid:36)(cid:43)(cid:39)(cid:32)(cid:1)(cid:46)(cid:28)(cid:40)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:1090)(cid:32)(cid:1057)(cid:34)(cid:1057)(cid:1058)(cid:1)(cid:1039)(cid:1)(cid:29)(cid:36)(cid:45)(cid:31)(cid:46)(cid:1091)(cid:1057)
+(cid:6)(cid:28)(cid:30)(cid:35)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:1)(cid:36)(cid:46)(cid:1)(cid:42)(cid:41)(cid:32)(cid:1)(cid:45)(cid:32)(cid:30)(cid:47)(cid:28)(cid:41)(cid:34)(cid:39)(cid:32)(cid:1)(cid:42)(cid:45)(cid:1)(cid:46)(cid:44)(cid:48)(cid:28)(cid:45)(cid:32)(cid:1)(cid:29)(cid:42)(cid:51)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:39)(cid:28)(cid:52)(cid:42)(cid:48)(cid:47)(cid:1)(cid:28)(cid:41)(cid:31)(cid:1)(cid:46)(cid:36)(cid:53)(cid:32)(cid:1)(cid:42)(cid:33)(cid:1)(cid:29)(cid:42)(cid:51)(cid:32)(cid:46)(cid:1)(cid:46)(cid:35)(cid:42)(cid:48)(cid:39)(cid:31)(cid:1)(cid:29)(cid:32)(cid:1)(cid:28)(cid:46)(cid:1)(cid:39)(cid:28)(cid:45)(cid:34)(cid:32)(cid:1)(cid:28)(cid:46)(cid:1)(cid:43)(cid:42)(cid:46)(cid:46)(cid:36)(cid:29)(cid:39)(cid:32)(cid:1057)(cid:1)(cid:26)(cid:42)(cid:48)(cid:1)(cid:41)(cid:32)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:1)(cid:39)(cid:28)(cid:52)(cid:42)(cid:48)(cid:47)(cid:46)(cid:1)(cid:33)(cid:45)(cid:42)(cid:40)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)
+(cid:30)(cid:39)(cid:42)(cid:46)(cid:32)(cid:1)(cid:48)(cid:43)(cid:1)(cid:30)(cid:28)(cid:40)(cid:32)(cid:45)(cid:28)(cid:1)(cid:49)(cid:36)(cid:32)(cid:50)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:32)(cid:49)(cid:32)(cid:41)(cid:47)(cid:1057)
+(cid:21)(cid:35)(cid:32)(cid:1)(cid:39)(cid:28)(cid:52)(cid:42)(cid:48)(cid:47)(cid:1)(cid:31)(cid:36)(cid:547)(cid:32)(cid:45)(cid:32)(cid:41)(cid:30)(cid:32)(cid:1)(cid:29)(cid:32)(cid:47)(cid:50)(cid:32)(cid:32)(cid:41)(cid:1)(cid:47)(cid:50)(cid:42)(cid:1)(cid:28)(cid:31)(cid:37)(cid:28)(cid:30)(cid:32)(cid:41)(cid:47)(cid:1)(cid:33)(cid:45)(cid:28)(cid:40)(cid:32)(cid:46)(cid:1)(cid:40)(cid:48)(cid:46)(cid:47)(cid:1)(cid:29)(cid:32)(cid:1)(cid:46)(cid:40)(cid:28)(cid:39)(cid:39)(cid:1058)(cid:1)(cid:30)(cid:42)(cid:41)(cid:46)(cid:36)(cid:31)(cid:32)(cid:45)(cid:36)(cid:41)(cid:34)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:46)(cid:40)(cid:28)(cid:39)(cid:39)(cid:1)(cid:36)(cid:41)(cid:47)(cid:32)(cid:45)(cid:49)(cid:28)(cid:39)(cid:1057)
+(cid:26)(cid:42)(cid:48)(cid:1)(cid:41)(cid:32)(cid:32)(cid:31)(cid:1)(cid:47)(cid:42)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:1)(cid:28)(cid:1)(cid:30)(cid:28)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:47)(cid:35)(cid:28)(cid:47)(cid:1)(cid:29)(cid:32)(cid:46)(cid:47)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:29)(cid:32)(cid:46)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:1)(cid:33)(cid:42)(cid:45)(cid:1)(cid:32)(cid:28)(cid:30)(cid:35)(cid:1)(cid:33)(cid:45)(cid:28)(cid:40)(cid:32)(cid:1057)(cid:1)(cid:2)(cid:550)(cid:32)(cid:45)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:36)(cid:41)(cid:34)(cid:1)(cid:28)(cid:39)(cid:39)(cid:1)(cid:33)(cid:45)(cid:28)(cid:40)(cid:32)(cid:46)(cid:1058)(cid:1)(cid:28)(cid:31)(cid:31)(cid:1)(cid:45)(cid:32)(cid:28)(cid:46)(cid:42)(cid:41)(cid:36)(cid:41)(cid:34)(cid:1)(cid:47)(cid:42)(cid:1)(cid:52)(cid:42)(cid:48)(cid:45)(cid:1)(cid:31)(cid:32)(cid:46)(cid:36)(cid:34)(cid:41)(cid:1057)
+(cid:17)(cid:39)(cid:32)(cid:28)(cid:46)(cid:32)(cid:1)(cid:46)(cid:47)(cid:45)(cid:36)(cid:30)(cid:47)(cid:39)(cid:52)(cid:1)(cid:33)(cid:42)(cid:39)(cid:39)(cid:42)(cid:50)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:48)(cid:46)(cid:32)(cid:45)(cid:1)(cid:33)(cid:42)(cid:45)(cid:40)(cid:28)(cid:47)(cid:1)(cid:35)(cid:32)(cid:45)(cid:32)(cid:1)(cid:47)(cid:42)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:39)(cid:28)(cid:41)(cid:1057)(cid:1)(cid:5)(cid:42)(cid:1)(cid:41)(cid:42)(cid:47)(cid:1)(cid:36)(cid:41)(cid:30)(cid:39)(cid:48)(cid:31)(cid:32)(cid:1)(cid:28)(cid:41)(cid:52)(cid:1)(cid:30)(cid:42)(cid:31)(cid:32)(cid:1)(cid:42)(cid:45)(cid:1)(cid:30)(cid:28)(cid:39)(cid:30)(cid:48)(cid:39)(cid:28)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:29)(cid:32)(cid:33)(cid:42)(cid:45)(cid:32)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:36)(cid:41)(cid:34)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:39)(cid:28)(cid:41)(cid:1057)(cid:1)(cid:2)(cid:31)(cid:31)(cid:1)(cid:28)(cid:39)(cid:39)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:45)(cid:32)(cid:28)(cid:46)(cid:42)(cid:41)(cid:36)(cid:41)(cid:34)(cid:1)
+(cid:43)(cid:45)(cid:42)(cid:30)(cid:32)(cid:46)(cid:46)(cid:1)(cid:28)(cid:550)(cid:32)(cid:45)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:36)(cid:41)(cid:34)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:39)(cid:28)(cid:41)(cid:1057)
+(cid:22)(cid:46)(cid:32)(cid:1)(cid:33)(cid:42)(cid:45)(cid:40)(cid:28)(cid:47)(cid:1059)
+(cid:7)(cid:45)(cid:28)(cid:40)(cid:32)(cid:1087)(cid:1038)(cid:1059)(cid:1)(cid:1092)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1038)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1039)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:1057)(cid:1057)(cid:1057)(cid:1058)(cid:1)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1087)(cid:41)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:30)(cid:28)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1059)(cid:1057)(cid:1057)(cid:1057)
+(cid:7)(cid:45)(cid:28)(cid:40)(cid:32)(cid:1087)(cid:1039)(cid:1059)(cid:1)(cid:1092)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1038)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1039)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:1057)(cid:1057)(cid:1057)(cid:1058)(cid:1)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1087)(cid:41)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:30)(cid:28)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1059)(cid:1057)(cid:1057)(cid:1057)
+(cid:1057)(cid:1057)(cid:1057)
+(cid:7)(cid:45)(cid:28)(cid:40)(cid:32)(cid:1087)(cid:1039)(cid:1042)(cid:1059)(cid:1)(cid:1092)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1038)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1039)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:1057)(cid:1057)(cid:1057)(cid:1058)(cid:1)(cid:1092)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:1087)(cid:41)(cid:1058)(cid:1)(cid:1092)(cid:39)(cid:32)(cid:550)(cid:1058)(cid:1)(cid:47)(cid:42)(cid:43)(cid:1058)(cid:1)(cid:45)(cid:36)(cid:34)(cid:35)(cid:47)(cid:1058)(cid:1)(cid:29)(cid:42)(cid:47)(cid:47)(cid:42)(cid:40)(cid:1093)(cid:1093)(cid:1093)(cid:1058)(cid:1)(cid:30)(cid:28)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1059)(cid:1057)(cid:1057)(cid:1057)
+(cid:19)(cid:32)(cid:28)(cid:46)(cid:42)(cid:41)(cid:36)(cid:41)(cid:34)(cid:1059)(cid:1057)(cid:1057)(cid:1057)(cid:1066)
+(cid:9)(cid:32)(cid:45)(cid:32)(cid:1066)(cid:46)(cid:1)(cid:42)(cid:41)(cid:32)(cid:1)(cid:32)(cid:51)(cid:28)(cid:40)(cid:43)(cid:39)(cid:32)(cid:1059)
+(cid:1094)(cid:10)(cid:41)(cid:1078)(cid:4)(cid:42)(cid:41)(cid:47)(cid:32)(cid:51)(cid:47)(cid:1)(cid:13)(cid:32)(cid:28)(cid:45)(cid:41)(cid:36)(cid:41)(cid:34)(cid:1)(cid:6)(cid:51)(cid:28)(cid:40)(cid:43)(cid:39)(cid:32)(cid:1095)
+(cid:22)(cid:46)(cid:32)(cid:45)(cid:1)(cid:10)(cid:41)(cid:43)(cid:48)(cid:47)(cid:1059)
+(cid:22)(cid:46)(cid:32)(cid:45)(cid:1059)(cid:1)(cid:17)(cid:45)(cid:42)(cid:49)(cid:36)(cid:31)(cid:32)(cid:1)(cid:29)(cid:42)(cid:48)(cid:41)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:29)(cid:42)(cid:51)(cid:1)(cid:30)(cid:42)(cid:42)(cid:45)(cid:31)(cid:36)(cid:41)(cid:28)(cid:47)(cid:32)(cid:46)(cid:1)(cid:33)(cid:42)(cid:45)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1059)(cid:1)(cid:1094)(cid:17)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1095)
+(cid:3)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:29)(cid:42)(cid:51)(cid:1)(cid:28)(cid:41)(cid:41)(cid:42)(cid:47)(cid:28)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1059)(cid:1)(cid:1094)(cid:3)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:3)(cid:42)(cid:48)(cid:41)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:3)(cid:42)(cid:51)(cid:1)(cid:2)(cid:41)(cid:41)(cid:42)(cid:47)(cid:28)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1095)
+(cid:3)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:1059)(cid:1)(cid:1094)(cid:10)(cid:40)(cid:28)(cid:34)(cid:32)(cid:1095)
+Figure7.Prompttemplateusedtoqueryforegroundobjectlayoutandtrajectoryplan.
+14
+(cid:26)(cid:42)(cid:48)(cid:1)(cid:28)(cid:45)(cid:32)(cid:1)(cid:28)(cid:41)(cid:1)(cid:28)(cid:46)(cid:46)(cid:36)(cid:46)(cid:47)(cid:28)(cid:41)(cid:47)(cid:1)(cid:47)(cid:28)(cid:46)(cid:38)(cid:32)(cid:31)(cid:1)(cid:50)(cid:36)(cid:47)(cid:35)(cid:1)(cid:34)(cid:48)(cid:36)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:49)(cid:36)(cid:31)(cid:32)(cid:42)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1057)(cid:1)(cid:21)(cid:35)(cid:32)(cid:1)(cid:49)(cid:36)(cid:31)(cid:32)(cid:42)(cid:1)(cid:36)(cid:46)(cid:1)(cid:30)(cid:45)(cid:32)(cid:28)(cid:47)(cid:32)(cid:31)(cid:1)(cid:29)(cid:28)(cid:46)(cid:32)(cid:31)(cid:1)(cid:42)(cid:41)(cid:1)(cid:30)(cid:42)(cid:41)(cid:31)(cid:36)(cid:47)(cid:36)(cid:42)(cid:41)(cid:46)(cid:1)(cid:46)(cid:32)(cid:47)(cid:1)(cid:29)(cid:52)(cid:1)(cid:28)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:46)(cid:32)(cid:44)(cid:48)(cid:32)(cid:41)(cid:30)(cid:32)(cid:1)(cid:42)(cid:33)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1057)(cid:1)(cid:26)(cid:42)(cid:48)(cid:45)(cid:1)(cid:45)(cid:42)(cid:39)(cid:32)(cid:1)(cid:36)(cid:46)(cid:1)(cid:47)(cid:42)(cid:1)
+(cid:31)(cid:32)(cid:47)(cid:32)(cid:45)(cid:40)(cid:36)(cid:41)(cid:32)(cid:1)(cid:35)(cid:42)(cid:50)(cid:1)(cid:40)(cid:48)(cid:30)(cid:35)(cid:1)(cid:36)(cid:41)(cid:33)(cid:39)(cid:48)(cid:32)(cid:41)(cid:30)(cid:32)(cid:1)(cid:47)(cid:35)(cid:32)(cid:46)(cid:32)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1)(cid:46)(cid:35)(cid:42)(cid:48)(cid:39)(cid:31)(cid:1)(cid:35)(cid:28)(cid:49)(cid:32)(cid:1)(cid:42)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:33)(cid:36)(cid:41)(cid:28)(cid:39)(cid:1)(cid:49)(cid:36)(cid:31)(cid:32)(cid:42)(cid:1058)(cid:1)(cid:29)(cid:28)(cid:39)(cid:28)(cid:41)(cid:30)(cid:32)(cid:31)(cid:1)(cid:28)(cid:34)(cid:28)(cid:36)(cid:41)(cid:46)(cid:47)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:49)(cid:36)(cid:31)(cid:32)(cid:42)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:46)(cid:52)(cid:46)(cid:47)(cid:32)(cid:40)(cid:1069)(cid:46)(cid:1)(cid:42)(cid:50)(cid:41)(cid:1)(cid:30)(cid:28)(cid:43)(cid:28)(cid:29)(cid:36)(cid:39)(cid:36)(cid:47)(cid:36)(cid:32)(cid:46)(cid:1057)
+(cid:5)(cid:32)(cid:30)(cid:36)(cid:46)(cid:36)(cid:42)(cid:41)(cid:1)(cid:19)(cid:48)(cid:39)(cid:32)(cid:46)(cid:1059)
+(cid:1038)(cid:1057)(cid:1)(cid:9)(cid:36)(cid:34)(cid:35)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:29)(cid:52)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1059)
+(cid:1090)(cid:1038)(cid:1091)(cid:1)(cid:24)(cid:35)(cid:32)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:36)(cid:41)(cid:30)(cid:39)(cid:48)(cid:31)(cid:36)(cid:41)(cid:34)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:43)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:40)(cid:42)(cid:49)(cid:32)(cid:40)(cid:32)(cid:41)(cid:47)(cid:1)(cid:31)(cid:36)(cid:45)(cid:32)(cid:30)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1057)
+(cid:1090)(cid:1039)(cid:1091)(cid:1)(cid:24)(cid:35)(cid:32)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:32)(cid:40)(cid:43)(cid:35)(cid:28)(cid:46)(cid:36)(cid:53)(cid:32)(cid:46)(cid:1)(cid:34)(cid:32)(cid:41)(cid:32)(cid:45)(cid:28)(cid:47)(cid:36)(cid:41)(cid:34)(cid:1)(cid:40)(cid:48)(cid:39)(cid:47)(cid:36)(cid:43)(cid:39)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:36)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:49)(cid:36)(cid:31)(cid:32)(cid:42)(cid:1057)
+(cid:1039)(cid:1057)(cid:1)(cid:13)(cid:42)(cid:50)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:29)(cid:52)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1059)
+(cid:1090)(cid:1038)(cid:1091)(cid:1)(cid:24)(cid:35)(cid:32)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:31)(cid:32)(cid:46)(cid:30)(cid:45)(cid:36)(cid:29)(cid:32)(cid:46)(cid:1)(cid:46)(cid:43)(cid:32)(cid:30)(cid:36)(cid:33)(cid:36)(cid:30)(cid:1)(cid:28)(cid:30)(cid:47)(cid:36)(cid:42)(cid:41)(cid:46)(cid:1)(cid:42)(cid:33)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:1090)(cid:32)(cid:1057)(cid:34)(cid:1057)(cid:1058)(cid:1)(cid:46)(cid:36)(cid:41)(cid:34)(cid:36)(cid:41)(cid:34)(cid:1091)(cid:1058)(cid:1)(cid:42)(cid:45)(cid:1)(cid:36)(cid:41)(cid:47)(cid:32)(cid:45)(cid:28)(cid:30)(cid:47)(cid:36)(cid:42)(cid:41)(cid:1)(cid:29)(cid:32)(cid:47)(cid:50)(cid:32)(cid:32)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1058)(cid:1)(cid:42)(cid:45)(cid:1)(cid:33)(cid:42)(cid:30)(cid:48)(cid:46)(cid:32)(cid:46)(cid:1)(cid:42)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:46)(cid:47)(cid:28)(cid:47)(cid:32)(cid:1)(cid:30)(cid:35)(cid:28)(cid:41)(cid:34)(cid:32)(cid:46)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)
+(cid:29)(cid:28)(cid:30)(cid:38)(cid:34)(cid:45)(cid:42)(cid:48)(cid:41)(cid:31)(cid:1057)
+(cid:1090)(cid:1039)(cid:1091)(cid:1)(cid:24)(cid:35)(cid:32)(cid:41)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1)(cid:46)(cid:43)(cid:32)(cid:30)(cid:36)(cid:33)(cid:36)(cid:32)(cid:46)(cid:1)(cid:28)(cid:47)(cid:47)(cid:45)(cid:36)(cid:29)(cid:48)(cid:47)(cid:32)(cid:46)(cid:1)(cid:42)(cid:33)(cid:1)(cid:42)(cid:29)(cid:37)(cid:32)(cid:30)(cid:47)(cid:46)(cid:1)(cid:1090)(cid:32)(cid:1057)(cid:34)(cid:1057)(cid:1058)(cid:1)(cid:30)(cid:42)(cid:39)(cid:42)(cid:45)(cid:1058)(cid:1)(cid:46)(cid:35)(cid:28)(cid:43)(cid:32)(cid:1091)(cid:1057)
+(cid:4)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:13)(cid:32)(cid:49)(cid:32)(cid:39)(cid:46)(cid:1059)(cid:1)(cid:26)(cid:42)(cid:48)(cid:1)(cid:50)(cid:36)(cid:39)(cid:39)(cid:1)(cid:46)(cid:32)(cid:39)(cid:32)(cid:30)(cid:47)(cid:1)(cid:42)(cid:41)(cid:32)(cid:1)(cid:42)(cid:33)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:33)(cid:42)(cid:39)(cid:39)(cid:42)(cid:50)(cid:36)(cid:41)(cid:34)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:39)(cid:32)(cid:49)(cid:32)(cid:39)(cid:46)(cid:1)(cid:33)(cid:42)(cid:45)(cid:1)(cid:47)(cid:35)(cid:32)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1059)
+(cid:1043)(cid:1046)(cid:1046)(cid:1059)(cid:1)(cid:14)(cid:28)(cid:51)(cid:36)(cid:40)(cid:48)(cid:40)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:29)(cid:52)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1057)
+(cid:1044)(cid:1046)(cid:1046)(cid:1059)(cid:1)(cid:9)(cid:36)(cid:34)(cid:35)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:29)(cid:52)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1057)
+(cid:1045)(cid:1046)(cid:1046)(cid:1059)(cid:1)(cid:14)(cid:42)(cid:31)(cid:32)(cid:45)(cid:28)(cid:47)(cid:32)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:29)(cid:52)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1057)
+(cid:1046)(cid:1046)(cid:1046)(cid:1059)(cid:1)(cid:14)(cid:36)(cid:41)(cid:36)(cid:40)(cid:28)(cid:39)(cid:1)(cid:30)(cid:42)(cid:41)(cid:47)(cid:45)(cid:42)(cid:39)(cid:1)(cid:29)(cid:52)(cid:1)(cid:43)(cid:45)(cid:32)(cid:1078)(cid:43)(cid:39)(cid:28)(cid:41)(cid:41)(cid:32)(cid:31)(cid:1)(cid:36)(cid:40)(cid:28)(cid:34)(cid:32)(cid:46)(cid:1057)
+(cid:9)(cid:32)(cid:45)(cid:32)(cid:1066)(cid:45)(cid:32)(cid:1)(cid:46)(cid:42)(cid:40)(cid:32)(cid:1)(cid:32)(cid:51)(cid:28)(cid:40)(cid:43)(cid:39)(cid:32)(cid:46)(cid:1059)
+(cid:1094)(cid:10)(cid:41)(cid:1078)(cid:4)(cid:42)(cid:41)(cid:47)(cid:32)(cid:51)(cid:47)(cid:1)(cid:13)(cid:32)(cid:28)(cid:45)(cid:41)(cid:36)(cid:41)(cid:34)(cid:1)(cid:6)(cid:51)(cid:28)(cid:40)(cid:43)(cid:39)(cid:32)(cid:1095)
+(cid:22)(cid:46)(cid:32)(cid:45)(cid:1)(cid:10)(cid:41)(cid:43)(cid:48)(cid:47)(cid:1059)(cid:1)(cid:1094)(cid:17)(cid:45)(cid:42)(cid:40)(cid:43)(cid:47)(cid:1095)
+Figure8.Prompttemplateusedtodeterminehowmuchnoisetoinjectduringinversion.
+15

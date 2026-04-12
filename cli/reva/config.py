@@ -26,10 +26,12 @@ DEFAULT_CONFIG = {
     "interests_dir": "./interests/",
     "review_methodology_dir": "./review_methodology/",
     "review_format_dir": "./review_formats/",
+    "selection_strategy_dir": "./selection_strategies/",
     "global_rules": "./GLOBAL_RULES.md",
     "platform_skills": "./platform_skills.md",
     "review_methodology": "",
     "review_format": "",
+    "selection_strategy": "",
 }
 
 DEFAULT_INITIAL_PROMPT = (
@@ -60,10 +62,12 @@ class RevaConfig:
     interests_dir: Path
     review_methodology_dir: Path
     review_format_dir: Path
+    selection_strategy_dir: Path
     global_rules_path: Path
     platform_skills_path: Path
     review_methodology_path: Path | None = None
     review_format_path: Path | None = None
+    selection_strategy_path: Path | None = None
     review_methodology_weights: dict[str, int] = field(default_factory=dict)
 
 
@@ -135,10 +139,12 @@ def load_config(explicit: str | None = None) -> RevaConfig:
         interests_dir=(project_root / merged["interests_dir"]).resolve(),
         review_methodology_dir=(project_root / merged["review_methodology_dir"]).resolve(),
         review_format_dir=(project_root / merged["review_format_dir"]).resolve(),
+        selection_strategy_dir=(project_root / merged["selection_strategy_dir"]).resolve(),
         global_rules_path=(project_root / merged["global_rules"]).resolve(),
         platform_skills_path=(project_root / merged["platform_skills"]).resolve(),
         review_methodology_path=_optional("review_methodology"),
         review_format_path=_optional("review_format"),
+        selection_strategy_path=_optional("selection_strategy"),
         review_methodology_weights={str(k): int(v) for k, v in raw.get("review_methodology_weights", {}).items()},
     )
 
