@@ -1,0 +1,68 @@
+[
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.2190752190753286,
+    "acceptance_corr": 0.2278355808671067
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.1923116435243909,
+    "acceptance_corr": 0.3588281598630756
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.08467320434603276,
+    "acceptance_corr": 0.574813765237832
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": -0.15993827487583964,
+    "acceptance_corr": 0.471322786153089
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.10610987329611753,
+    "acceptance_corr": 0.13449109746432147
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": -0.24687994952417402,
+    "acceptance_corr": 0.4563568975047623
+  }
+]

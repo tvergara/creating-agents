@@ -80,13 +80,9 @@ def train_run(population, n_survivors, max_generations, backend, model, run_id, 
         else:
             from reva.training.orchestrator import load_survivors
             raw_survivors = load_survivors(seed_run_dir)
-        # Resolve default selection strategy path for old configs missing that axis
-        from reva.config import load_config as _lc
-        _cfg = _lc(config_path)
-        default_ss = str(_cfg.selection_strategy_dir / "default.md")
         from reva.training.mutator import AgentConfig
         seed_configs = [
-            AgentConfig.from_dict(c.as_dict() if hasattr(c, 'as_dict') else c, default_selection_strategy=default_ss).as_dict()
+            AgentConfig.from_dict(c.as_dict() if hasattr(c, 'as_dict') else c).as_dict()
             for c in raw_survivors
         ]
         click.echo(f"Seeding gen 0 with {len(seed_configs)} agent(s) from {seed_from_run}")
@@ -221,7 +217,6 @@ def train_export(run_id, runs_dir, output_dir, backend, gen_idx, config_path):
             interest_path=Path(cfg.interests),
             review_methodology_path=Path(cfg.methodology),
             review_format_path=Path(cfg.review_format),
-            selection_strategy_path=Path(cfg.selection_strategy),
         )
 
         (agent_dir / "prompt.md").write_text(prompt, encoding="utf-8")
@@ -276,7 +271,7 @@ def _print_survivors(run_dir: Path) -> None:
 def _short_config(cfg: dict) -> str:
     return " | ".join(
         Path(cfg.get(k, "?")).stem
-        for k in ("role", "persona", "interests", "methodology", "review_format", "selection_strategy")
+        for k in ("role", "persona", "interests", "methodology", "review_format")
     )
 
 
@@ -518,6 +513,7 @@ def train_history(run_id, runs_dir, output):
 @click.option("--run-id", default=None, help="Run ID (defaults to most recent).")
 @click.option("--runs-dir", default="training/runs", show_default=True)
 @click.option("--gen", "gen_idx", default=None, type=int, help="Use survivors from a specific generation (default: final_survivors.json).")
+@click.option("--survivor-idx", type=int, default=None, help="Validate only one survivor by index from the selected survivor set.")
 @click.option("--backend", default="claude-code", type=click.Choice(["claude-code", "gemini-cli"]), show_default=True)
 @click.option("--model", default=None, help="Model override (default: backend's default model).")
 @click.option("--data-dir", default="data", show_default=True)
@@ -526,7 +522,7 @@ def train_history(run_id, runs_dir, output):
 @click.option("--parallel", type=int, default=1, show_default=True)
 @click.option("--output", default=None, help="Path to save validation results JSON.")
 @click.option("--config", "config_path", default=None)
-def train_validate(run_id, runs_dir, gen_idx, backend, model, data_dir, cache_dir,
+def train_validate(run_id, runs_dir, gen_idx, survivor_idx, backend, model, data_dir, cache_dir,
                    papers_per_agent, parallel, output, config_path):
     """Evaluate trained survivors on the val split and report correlation scores."""
     from reva.training.evaluator import evaluate
@@ -551,7 +547,17 @@ def train_validate(run_id, runs_dir, gen_idx, backend, model, data_dir, cache_di
                 "No final_survivors.json found. Use --gen to specify a generation."
             )
 
-    click.echo(f"Validating {len(survivors)} survivor(s) from {run_dir.name} ({source_label}) on val split...")
+    if survivor_idx is not None:
+        if survivor_idx < 0 or survivor_idx >= len(survivors):
+            raise click.ClickException(
+                f"survivor-idx {survivor_idx} is out of range for {len(survivors)} survivor(s)"
+            )
+        survivors = [survivors[survivor_idx]]
+        click.echo(
+            f"Validating survivor {survivor_idx} from {run_dir.name} ({source_label}) on val split..."
+        )
+    else:
+        click.echo(f"Validating {len(survivors)} survivor(s) from {run_dir.name} ({source_label}) on val split...")
 
     # Load val data
     data_path = Path(data_dir)
@@ -568,12 +574,13 @@ def train_validate(run_id, runs_dir, gen_idx, backend, model, data_dir, cache_di
 
     results = []
     for i, cfg in enumerate(survivors):
-        click.echo(f"\nScoring survivor {i} ({_short_config(cfg.as_dict())})...")
+        result_idx = survivor_idx if survivor_idx is not None else i
+        click.echo(f"\nScoring survivor {result_idx} ({_short_config(cfg.as_dict())})...")
         system_prompt = _compile_prompt(cfg)
         scores = run_agent(system_prompt, val_papers, model=model, backend=backend)
         eval_result = evaluate(scores, ground_truth)
         results.append({
-            "survivor_idx": i,
+            "survivor_idx": result_idx,
             "config": cfg.as_dict(),
             "citation_corr": eval_result.citation_corr,
             "acceptance_corr": eval_result.acceptance_corr,

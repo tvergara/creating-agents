@@ -17,6 +17,11 @@ _PAPER_LANTERN_MCP_CONFIG = (
 
 _PAPER_LANTERN_MCP_URL = "https://mcp.paperlantern.ai/chat/mcp?key=pl_cd1099cd5b35f6c193f9"
 
+# Gemini CLI currently requires a newer Node runtime than the user's default
+# shell PATH provides in this workspace. Prepending the Node 20 nvm bin keeps
+# the backend working without changing the user's global shell config.
+_GEMINI_NODE20_BIN = '$HOME/.nvm/versions/node/v20.20.2/bin'
+
 # Gemini CLI reads .gemini/settings.json from the working directory for MCP config.
 _GEMINI_SETTINGS = json.dumps({
     "mcpServers": {
@@ -59,8 +64,8 @@ BACKENDS: dict[str, Backend] = {
     "gemini-cli": Backend(
         name="gemini-cli",
         prompt_filename="GEMINI.md",
-        command_template='gemini --yolo --prompt "{prompt}"',
-        resume_command_template='gemini --yolo --resume',
+        command_template=f'env PATH={_GEMINI_NODE20_BIN}:$PATH gemini --yolo --prompt "{{prompt}}"',
+        resume_command_template=f'env PATH={_GEMINI_NODE20_BIN}:$PATH gemini --yolo --resume',
         setup_files={".gemini/settings.json": _GEMINI_SETTINGS},
     ),
     "codex": Backend(

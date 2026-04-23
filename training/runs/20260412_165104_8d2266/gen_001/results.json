@@ -1,0 +1,911 @@
+[
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "A practical investigation into pre-training for speech separation that offers useful, though not groundbreaking, insights on data contamination."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "Addresses the timely challenge of scaling higher-order graph neural networks with a novel and provably more expressive architecture."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "Proposes a novel and compelling neural architecture that smartly combines iterative and parallel reasoning for complex visual tasks."
+      },
+      {
+        "paper_id": 32,
+        "score": 9.0,
+        "reasoning": "A very clever and timely application of diffusion models to steganography that is both training-free and highly effective."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.0,
+        "reasoning": "An interesting approach connecting local explainability to global robustness, though its focus on tabular data feels less impactful than current large-scale model research."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.5,
+        "reasoning": "Presents a surprisingly simple, effective, and widely applicable method for mitigating a significant security threat in modern machine learning."
+      },
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "A simple and practical optimization heuristic that provides a solid incremental improvement to deep learning training."
+      },
+      {
+        "paper_id": 5,
+        "score": 8.0,
+        "reasoning": "Provides a fascinating and theoretically grounded link between modern deep learning dynamics and classical linear programming."
+      },
+      {
+        "paper_id": 9,
+        "score": 9.0,
+        "reasoning": "A timely and innovative work that bridges the dominant Transformer architecture with energy-efficient spiking neural networks in a training-free manner."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "A cutting-edge prompting framework that elegantly automates the exploration and self-correction process for complex reasoning with large language models."
+      }
+    ],
+    "citation_corr": 0.515527950310559,
+    "acceptance_corr": 0.40270870822933247
+  },
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 7.5,
+        "reasoning": "The paper's focus on improving model robustness with contaminated speech data is a promising direction for creating more equitable and effective real-world audio systems."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "This foundational work on simplicial neural networks presents a promising new architecture with low immediate ethical concerns, focusing on advancing the theoretical underpinnings of graph learning."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "The paper introduces a novel reasoning mechanism that demonstrates strong generalization and, importantly, offers visual interpretability, which is a valuable step towards more transparent and trustworthy AI systems."
+      },
+      {
+        "paper_id": 32,
+        "score": 4.0,
+        "reasoning": "The paper presents a technically impressive method for steganography but fails to address or mitigate the significant and foreseeable dual-use risks associated with such a powerful technology."
+      },
+      {
+        "paper_id": 17,
+        "score": 9.0,
+        "reasoning": "This work makes a valuable contribution to trustworthy AI by creatively linking local explainability with global robustness, offering a promising, attack-agnostic defense for machine learning models."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.5,
+        "reasoning": "By demonstrating that a common technique like fine-tuning can effectively mitigate backdoor attacks, this paper offers a practical and highly impactful contribution to model security and safety."
+      },
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "This is a useful optimization technique that could improve training efficiency and stability, representing a positive technical contribution with minimal ethical concerns."
+      },
+      {
+        "paper_id": 5,
+        "score": 8.0,
+        "reasoning": "The paper forges an interesting theoretical link between neural networks and linear programming, representing a solid scientific contribution with low foreseeable ethical risks."
+      },
+      {
+        "paper_id": 9,
+        "score": 9.0,
+        "reasoning": "This research offers a promising, training-free pathway to more energy-efficient AI by converting transformers to SNNs, directly addressing the important issue of the environmental impact of large models."
+      },
+      {
+        "paper_id": 33,
+        "score": 8.0,
+        "reasoning": "This paper introduces an innovative prompting framework that could significantly enhance LLM reasoning, with the self-evaluation component being a positive step towards more reliable autonomous systems."
+      }
+    ],
+    "citation_corr": 0.3738335897094201,
+    "acceptance_corr": 0.21566852832236078
+  },
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 8.0,
+        "reasoning": "The abstract clearly articulates the research hypothesis, methodology, and key findings, making the paper's contribution easy to understand."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.5,
+        "reasoning": "The paper clearly frames the trade-off between expressivity and computational cost in higher-order models and presents a well-defined solution with a strong theoretical claim."
+      },
+      {
+        "paper_id": 14,
+        "score": 9.0,
+        "reasoning": "The abstract uses intuitive examples to provide a crystal-clear motivation for combining iterative and parallel computation, making the paper's contribution immediately understandable."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "The paper effectively communicates its core idea of leveraging the superior generative quality of diffusion models for steganography, clearly stating its training-free nature and impressive quantitative results."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.5,
+        "reasoning": "While the core idea of linking explainability to robustness is intriguing, the abstract is dense with acronyms and technical jargon, making it less accessible on a first read."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "The paper's central thesis is communicated with exceptional clarity, proposing a simple and widely accessible technique as a solution to a complex security problem."
+      },
+      {
+        "paper_id": 18,
+        "score": 8.0,
+        "reasoning": "The paper proposes a simple and intuitive heuristic for an important hyperparameter, explaining the core idea and its motivation with excellent clarity."
+      },
+      {
+        "paper_id": 5,
+        "score": 5.5,
+        "reasoning": "The abstract is highly specialized and relies heavily on technical jargon, making it inaccessible to a broader machine learning audience without significant prior knowledge."
+      },
+      {
+        "paper_id": 9,
+        "score": 8.5,
+        "reasoning": "The abstract clearly outlines the specific technical challenges of converting Transformers to SNNs and presents its novel components as direct solutions to these problems."
+      },
+      {
+        "paper_id": 33,
+        "score": 7.5,
+        "reasoning": "The abstract clearly presents a novel iterative prompting framework where the model revises its own instructions based on trial-and-error, an intuitive and powerful concept."
+      }
+    ],
+    "citation_corr": 0.5125100100588894,
+    "acceptance_corr": 0.16350382386265758
+  },
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 4.0,
+        "reasoning": "The core finding that pre-training on noisy data improves performance on noisy downstream tasks is entirely expected and lacks significant insight."
+      },
+      {
+        "paper_id": 10,
+        "score": 5.0,
+        "reasoning": "The work addresses a highly specialized problem in topological deep learning with unclear broader impact or applicability beyond this niche."
+      },
+      {
+        "paper_id": 14,
+        "score": 6.5,
+        "reasoning": "The paper proposes a novel reasoning module with strong empirical claims on several benchmarks, but the long-term significance depends on whether this specialized architecture generalizes beyond these visual reasoning tasks."
+      },
+      {
+        "paper_id": 32,
+        "score": 7.0,
+        "reasoning": "This is a clever and practical application of diffusion models for steganography that achieves strong results without requiring model training."
+      },
+      {
+        "paper_id": 17,
+        "score": 3.5,
+        "reasoning": "The proposed method is overly complex and it is unclear why using counterfactual explanations for data augmentation is superior to more direct robustness techniques."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "The paper makes a surprisingly strong and impactful claim that challenges the premise of a large body of work on backdoor defenses, suggesting a trivially simple solution."
+      },
+      {
+        "paper_id": 18,
+        "score": 5.5,
+        "reasoning": "This paper proposes a simple heuristic for setting layer-wise learning rates, but its significance is limited as it's an incremental addition to a crowded field of optimization techniques."
+      },
+      {
+        "paper_id": 5,
+        "score": 6.0,
+        "reasoning": "The paper establishes a theoretical link between a specific neural network training dynamic and solving linear programs, but the practical implications for either field are not made apparent."
+      },
+      {
+        "paper_id": 9,
+        "score": 7.0,
+        "reasoning": "As the first claimed training-free method for converting a pretrained transformer to an SNN, this work could be significant for deploying large models on energy-efficient hardware."
+      },
+      {
+        "paper_id": 33,
+        "score": 8.0,
+        "reasoning": "This work presents a compelling framework for automated, iterative self-improvement in LLM reasoning that cleverly combines and extends existing ideas like Tree of Thoughts and self-correction."
+      }
+    ],
+    "citation_corr": 0.5661779678592224,
+    "acceptance_corr": 0.20767984668711995
+  },
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "This paper presents a clear hypothesis and shows promising results in improving embeddings for speech separation by using contaminated training data."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.5,
+        "reasoning": "The proposed architecture offers a compelling approach to manage computational costs in higher-order graph learning while provably increasing expressive power."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The novel IPRM mechanism presents a promising direction for combining iterative and parallel computation, achieving impressive generalization and efficiency in visual reasoning."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "This work introduces a practical and training-free method for steganography that cleverly leverages the power of modern diffusion models with impressive results."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.0,
+        "reasoning": "The paper proposes an innovative, attack-agnostic approach to improve model robustness by creatively leveraging counterfactual explanations."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "This paper offers a surprisingly simple yet powerful solution to the critical problem of backdoor attacks, making mitigation highly accessible and practical."
+      },
+      {
+        "paper_id": 18,
+        "score": 8.0,
+        "reasoning": "The proposed layer-wise learning rate initialization is an intuitive and simple method that shows promising improvements in training stability and accuracy."
+      },
+      {
+        "paper_id": 5,
+        "score": 6.5,
+        "reasoning": "This paper provides a significant theoretical contribution by rigorously connecting the training dynamics of diagonal linear networks to solving linear programming problems."
+      },
+      {
+        "paper_id": 9,
+        "score": 8.5,
+        "reasoning": "This work marks a significant milestone as the first training-free method to convert transformers to SNNs, opening a promising path for energy-efficient inference."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.0,
+        "reasoning": "BoT introduces a powerful and automated framework for complex reasoning that intelligently builds upon recent prompting advances with iterative self-correction."
+      }
+    ],
+    "citation_corr": 0.38509316770186336,
+    "acceptance_corr": 0.34151450937027694
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 8.5,
+        "reasoning": "The abstract clearly presents a well-defined hypothesis, methodology, and quantified results, making the paper's contribution easy to understand."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.5,
+        "reasoning": "The paper effectively communicates the limitations of existing methods and clearly presents its proposed architecture as a solution with both theoretical and empirical support."
+      },
+      {
+        "paper_id": 14,
+        "score": 9.0,
+        "reasoning": "The abstract provides a crystal-clear motivation by contrasting two reasoning paradigms and presents a novel model that combines them, supported by strong and specific state-of-the-art claims."
+      },
+      {
+        "paper_id": 32,
+        "score": 9.0,
+        "reasoning": "This abstract clearly articulates the limitations of prior work and presents a novel, training-free method with well-quantified and impressive results in capacity and image quality."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.0,
+        "reasoning": "While the paper's goal is clear, the abstract's description of the proposed mechanisms is somewhat convoluted and relies on jargon, making it less accessible."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.5,
+        "reasoning": "The paper makes a surprisingly simple yet powerful claim that is communicated with exceptional clarity, directly addressing the complexity and cost of existing methods."
+      },
+      {
+        "paper_id": 18,
+        "score": 9.0,
+        "reasoning": "The paper proposes a simple, intuitive, and clearly described method to address a standard practice in training neural networks, with straightforward claims of improvement."
+      },
+      {
+        "paper_id": 5,
+        "score": 7.0,
+        "reasoning": "While technically precise, the abstract's heavy reliance on specialized concepts from both optimization and deep learning theory limits its accessibility to a broader audience."
+      },
+      {
+        "paper_id": 9,
+        "score": 9.0,
+        "reasoning": "The abstract clearly identifies a key technical barrier for an important emerging area and presents a well-defined solution, culminating in a significant 'first-of-its-kind' achievement."
+      },
+      {
+        "paper_id": 33,
+        "score": 7.5,
+        "reasoning": "The paper introduces an interesting iterative prompting framework, but the abstract's explanation of the mechanism is somewhat verbose, slightly obscuring the core contribution."
+      }
+    ],
+    "citation_corr": 0.6160251396287935,
+    "acceptance_corr": -0.12156613477096617
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 3.0,
+        "reasoning": "The paper's core technical contribution, 'deep modularization,' is not defined or explained, making the method fundamentally unclear."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.0,
+        "reasoning": "The paper clearly articulates the problem, the proposed method, and its theoretical and empirical advantages without obvious obfuscation."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The abstract clearly presents a novel architecture motivated by a plausible cognitive intuition and supports it with specific, strong, and falsifiable claims on multiple benchmarks."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "The paper presents a clear method for a well-defined problem and provides specific, verifiable metrics to support its claims of high performance."
+      },
+      {
+        "paper_id": 17,
+        "score": 4.0,
+        "reasoning": "The paper obfuscates a simple idea with excessive jargon and fails to clearly isolate its novel contribution from well-established prior work."
+      },
+      {
+        "paper_id": 4,
+        "score": 5.0,
+        "reasoning": "The paper makes an exceptionally strong claim for a simple, known baseline method without providing sufficient context or evidence in the abstract to justify its significance."
+      },
+      {
+        "paper_id": 18,
+        "score": 8.0,
+        "reasoning": "The paper proposes a simple, intuitive, and novel heuristic for learning rate initialization that is clearly explained and validated on a standard large-scale benchmark."
+      },
+      {
+        "paper_id": 5,
+        "score": 7.0,
+        "reasoning": "For a theoretical contribution, the abstract is direct and precise in stating its core finding, which connects a specific neural network training dynamic to a known class of optimization problems."
+      },
+      {
+        "paper_id": 9,
+        "score": 8.5,
+        "reasoning": "The paper tackles a clear and important problem, proposes a solution with well-defined components, and makes a strong, specific claim of novelty."
+      },
+      {
+        "paper_id": 33,
+        "score": 4.5,
+        "reasoning": "The abstract describes another complex prompting strategy in a very crowded field but fails to clearly differentiate its core mechanism from existing exploration and self-correction techniques."
+      }
+    ],
+    "citation_corr": 0.5387022721561744,
+    "acceptance_corr": 0.10701720580709576
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "The paper presents a solid investigation into using contaminated speech for pre-training in speech separation, though the proposed unsupervised technique itself appears incremental."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "This work introduces a novel and provably more expressive architecture for learning on simplicial complexes that effectively balances computational cost and performance."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "The proposed iterative and parallel reasoning mechanism is a novel contribution that achieves state-of-the-art results on several challenging visual reasoning benchmarks."
+      },
+      {
+        "paper_id": 32,
+        "score": 9.0,
+        "reasoning": "Diffusion-Stego is a novel and highly effective training-free steganography method that leverages modern diffusion models to achieve impressive capacity and image quality."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.0,
+        "reasoning": "This paper proposes a creative, attack-agnostic robustness method by connecting local explainability via counterfactuals to global model defense."
+      },
+      {
+        "paper_id": 4,
+        "score": 7.5,
+        "reasoning": "This paper convincingly demonstrates that a simple and widely-used technique can be surprisingly effective against backdoor attacks, challenging the need for more complex defenses."
+      },
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "The proposed method for initializing layer-wise learning rates is a simple, intuitive, and effective heuristic that improves training stability and performance."
+      },
+      {
+        "paper_id": 5,
+        "score": 6.0,
+        "reasoning": "The paper establishes an interesting theoretical link between training diagonal linear networks and solving regularized linear programming problems."
+      },
+      {
+        "paper_id": 9,
+        "score": 8.0,
+        "reasoning": "This paper presents the first direct training-free conversion of a pretrained Transformer to an SNN, a significant contribution for neuromorphic computing."
+      },
+      {
+        "paper_id": 33,
+        "score": 8.5,
+        "reasoning": "Boosting of Thoughts is a novel and effective automated prompting framework that improves complex reasoning by systematically incorporating trial-and-error experience."
+      }
+    ],
+    "citation_corr": 0.2538711857287718,
+    "acceptance_corr": 0.40476190476190477
+  },
+  {
+    "agent_idx": 8,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "This paper presents a well-supported and plausible hypothesis that pre-training on noisy data improves speech separation, though it lacks a comparison to other unsupervised methods."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.5,
+        "reasoning": "This work makes a strong contribution by providing a provably more expressive and empirically validated architecture for simplicial deep learning."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed model elegantly combines iterative and parallel reasoning, achieving impressive state-of-the-art results on challenging visual reasoning benchmarks."
+      },
+      {
+        "paper_id": 32,
+        "score": 7.5,
+        "reasoning": "This work proposes a novel and highly practical training-free approach for diffusion steganography, although the abstract lacks quantitative results on detectability."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.5,
+        "reasoning": "This paper proposes a novel and interesting approach for improving tabular data robustness using counterfactuals, though its claims of SOTA-comparable performance require thorough validation."
+      },
+      {
+        "paper_id": 4,
+        "score": 5.5,
+        "reasoning": "The paper makes a bold and impactful claim about a simple defense, but the abstract lacks the crucial experimental details and limitations needed to fully assess its validity."
+      },
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "The paper proposes a simple, novel, and low-cost heuristic for setting learning rates that shows promising results on a major benchmark."
+      },
+      {
+        "paper_id": 5,
+        "score": 8.0,
+        "reasoning": "This is a strong theoretical paper that forges a novel and rigorously analyzed link between neural network optimization and linear programming."
+      },
+      {
+        "paper_id": 9,
+        "score": 8.5,
+        "reasoning": "This work presents a breakthrough as the first training-free method to convert transformer models to SNNs, a significant step for energy-efficient AI."
+      },
+      {
+        "paper_id": 33,
+        "score": 8.0,
+        "reasoning": "This work introduces a sophisticated and novel framework for iterative reasoning that intelligently combines exploration with automated prompt refinement, showing strong empirical results."
+      }
+    ],
+    "citation_corr": -0.20625402843833354,
+    "acceptance_corr": 0.6376293116646501
+  },
+  {
+    "agent_idx": 12,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "The paper presents a well-reasoned investigation into improving speech separation models by using contaminated training data, which is a practical and valuable contribution to the field."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.0,
+        "reasoning": "This work introduces a novel and provably more expressive architecture for simplicial neural networks, showing strong empirical results on real-world datasets."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The paper proposes an interesting and well-motivated neural architecture that cleverly combines iterative and parallel reasoning for complex visual tasks, achieving impressive state-of-the-art results."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "This is a creative and highly effective training-free method for steganography that smartly leverages the power of modern diffusion models to achieve impressive image quality and message capacity."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "This paper proposes a novel and compelling approach to improve model robustness by creatively leveraging counterfactual explanations as a defense mechanism."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "The paper presents a surprisingly simple yet powerful finding that standard fine-tuning can effectively mitigate backdoor attacks, offering an easily adoptable defense for model owners."
+      },
+      {
+        "paper_id": 18,
+        "score": 8.0,
+        "reasoning": "This paper introduces a simple yet effective layer-wise learning rate initialization strategy that directly addresses architecture-induced biases, leading to improved training performance."
+      },
+      {
+        "paper_id": 5,
+        "score": 6.0,
+        "reasoning": "The work provides a novel theoretical bridge between training diagonal linear networks and solving linear programming problems, which is an interesting but perhaps niche contribution."
+      },
+      {
+        "paper_id": 9,
+        "score": 8.5,
+        "reasoning": "The paper makes a significant breakthrough by providing the first training-free method to convert complex Transformer models to energy-efficient Spiking Neural Networks."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "This paper introduces a compelling and advanced prompting framework that automates the exploration and self-correction of reasoning paths, representing a significant step forward for complex problem-solving with LLMs."
+      }
+    ],
+    "citation_corr": 0.38889629820154886,
+    "acceptance_corr": 0.301348515087799
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 7.5,
+        "reasoning": "The paper presents a clear and well-motivated investigation into pre-training for speech separation, with promising results from its novel unsupervised technique."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "This work makes a strong contribution by proposing a novel architecture that is both provably more expressive and empirically superior for learning on simplicial complexes."
+      },
+      {
+        "paper_id": 14,
+        "score": 9.0,
+        "reasoning": "The paper introduces a novel and intuitive reasoning mechanism that achieves impressive state-of-the-art results across multiple challenging visual reasoning benchmarks while also being more efficient and interpretable."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "This paper presents a clever, practical, and training-free method for high-capacity steganography that leverages the power of modern diffusion models to achieve excellent image quality."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.0,
+        "reasoning": "The work introduces a promising and novel approach to improving model robustness by creatively leveraging counterfactual explanations, bridging the gap between explainability and security."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "This paper makes a potentially high-impact claim that a simple, widely-used technique can effectively mitigate complex backdoor attacks, offering a practical and accessible defense."
+      },
+      {
+        "paper_id": 33,
+        "score": 8.0,
+        "reasoning": "This work presents a compelling and efficient alternative to deep models for online MBRL, cleverly addressing catastrophic forgetting by combining classic online learning principles with a novel sparse encoding scheme."
+      },
+      {
+        "paper_id": 18,
+        "score": 7.5,
+        "reasoning": "The paper proposes a simple, intuitive, and easy-to-implement method for setting layer-wise learning rates that shows promising improvements in stability and accuracy on large-scale benchmarks."
+      },
+      {
+        "paper_id": 5,
+        "score": 7.0,
+        "reasoning": "This work provides a valuable theoretical contribution by rigorously connecting the implicit bias of gradient descent in a specific neural network architecture to the classic problem of solving linear programs."
+      },
+      {
+        "paper_id": 9,
+        "score": 8.5,
+        "reasoning": "This paper makes a significant breakthrough as the first to propose a training-free method for converting transformers to SNNs, paving the way for more energy-efficient deployment of large models."
+      }
+    ],
+    "citation_corr": 0.5732115042211109,
+    "acceptance_corr": 0.1543033499620919
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 4.5,
+        "reasoning": "The finding that pre-training on noisy data aids noisy downstream tasks is an incremental and unsurprising contribution."
+      },
+      {
+        "paper_id": 10,
+        "score": 6.0,
+        "reasoning": "The paper proposes a seemingly novel architecture with theoretical expressivity claims, but its practical impact beyond outperforming other niche simplicial networks is unclear."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "The proposed model demonstrates strong empirical results on several visual reasoning benchmarks, though its architectural novelty in a crowded field is questionable."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.0,
+        "reasoning": "This is a convincing and practical application of diffusion models to steganography, achieving strong results without the need for model retraining."
+      },
+      {
+        "paper_id": 17,
+        "score": 4.0,
+        "reasoning": "The proposed link between local counterfactual explanations and global model robustness is weak and the method is unlikely to stand up to adaptive attacks."
+      },
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The paper makes an exceptionally strong claim that is likely an overstatement, as simple fine-tuning is improbable to be a universal defense against sophisticated backdoor attacks."
+      },
+      {
+        "paper_id": 18,
+        "score": 5.0,
+        "reasoning": "The paper proposes a simple, plausible heuristic for learning rate initialization that offers only an incremental improvement over existing methods."
+      },
+      {
+        "paper_id": 5,
+        "score": 5.5,
+        "reasoning": "While providing a novel theoretical link between deep learning and linear programming, the paper fails to justify why this approach would be practically preferable to established LP solvers."
+      },
+      {
+        "paper_id": 9,
+        "score": 7.5,
+        "reasoning": "This paper tackles the important and challenging problem of converting Transformers to SNNs with a novel training-free approach, marking a significant step for neuromorphic computing."
+      },
+      {
+        "paper_id": 33,
+        "score": 6.0,
+        "reasoning": "The proposed framework is an overly complex and engineered prompting strategy that offers marginal gains over simpler, existing multi-step reasoning methods."
+      }
+    ],
+    "citation_corr": 0.16616092534998916,
+    "acceptance_corr": 0.3694056772316881
+  },
+  {
+    "agent_idx": 11,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [],
+    "citation_corr": -1.0,
+    "acceptance_corr": -1.0
+  },
+  {
+    "agent_idx": 13,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 5.5,
+        "reasoning": "Investigates a reasonable hypothesis but the contribution feels incremental and the novelty of the proposed technique is unclear from the abstract."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "Proposes a novel and provably more expressive architecture for an important emerging area of graph learning, supported by empirical validation."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "A novel reasoning mechanism that combines iterative and parallel computation, achieving state-of-the-art results on multiple challenging visual reasoning benchmarks."
+      },
+      {
+        "paper_id": 32,
+        "score": 7.5,
+        "reasoning": "A novel and practical training-free approach for steganography that cleverly leverages the power of pre-trained diffusion models to achieve strong performance."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.0,
+        "reasoning": "An interesting but complex method for improving robustness on tabular data whose practical advantage over simpler state-of-the-art techniques is not clearly established."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "A simple, practical, and surprisingly effective method for mitigating backdoor attacks that challenges the necessity of more complex existing defenses."
+      },
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "A simple and practical heuristic for setting layer-wise learning rates that shows empirical benefits for training stability and accuracy."
+      },
+      {
+        "paper_id": 5,
+        "score": 8.0,
+        "reasoning": "Provides a strong theoretical contribution by formally connecting the training dynamics of diagonal linear networks to solving linear programming problems."
+      },
+      {
+        "paper_id": 9,
+        "score": 9.0,
+        "reasoning": "A pioneering work that provides the first training-free method for converting transformer models to SNNs, overcoming significant technical hurdles."
+      },
+      {
+        "paper_id": 33,
+        "score": 9.5,
+        "reasoning": "A novel framework that automates the reasoning and self-correction loop for LLMs, significantly advancing the state-of-the-art in complex problem solving."
+      }
+    ],
+    "citation_corr": 0.29012898437258405,
+    "acceptance_corr": 0.5416138323063244
+  },
+  {
+    "agent_idx": 14,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 28,
+        "score": 5.5,
+        "reasoning": "The work improves performance on a practical task but fails to consider the ethical implications of data sourcing and potential bias amplification."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "Provides a conceptually elegant and provably more expressive architecture for simplicial learning with low foreseeable societal risk."
+      },
+      {
+        "paper_id": 14,
+        "score": 6.5,
+        "reasoning": "While the proposed reasoning mechanism is a valuable contribution, the paper lacks a discussion of potential biases in the visual-language benchmarks used."
+      },
+      {
+        "paper_id": 32,
+        "score": 2.0,
+        "reasoning": "The paper proposes a powerful method for a high-risk dual-use application without any discussion of foreseeable misuse or potential mitigation strategies."
+      },
+      {
+        "paper_id": 17,
+        "score": 8.5,
+        "reasoning": "The paper presents a well-reasoned approach that conceptually links local explainability to global robustness, addressing an important safety concern."
+      },
+      {
+        "paper_id": 4,
+        "score": 7.0,
+        "reasoning": "Proposes a strikingly simple and practical defense against backdoors, though its claimed universality warrants more rigorous adversarial testing against advanced attacks."
+      },
+      {
+        "paper_id": 18,
+        "score": 7.5,
+        "reasoning": "Offers a principled and intuitive method for initializing layer-wise learning rates based on architectural properties at initialization."
+      },
+      {
+        "paper_id": 5,
+        "score": 9.0,
+        "reasoning": "The work provides an elegant and insightful theoretical bridge between overparameterized neural networks and classical linear programming."
+      },
+      {
+        "paper_id": 9,
+        "score": 6.0,
+        "reasoning": "While enabling more energy-efficient transformers is a positive contribution, the work fails to address the inheritance of known biases from the parent model."
+      },
+      {
+        "paper_id": 33,
+        "score": 4.5,
+        "reasoning": "The framework automates a powerful reasoning paradigm but neglects to discuss the significant potential for misuse or the ethical implications of its underlying model."
+      }
+    ],
+    "citation_corr": -0.09203146787097732,
+    "acceptance_corr": -0.09365431726337042
+  }
+]

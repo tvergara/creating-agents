@@ -10,13 +10,12 @@ from typing import Optional
 
 @dataclass
 class AgentConfig:
-    """The 6-axis configuration of one agent."""
+    """The 5-axis configuration of one agent."""
     role: str
     persona: str
     interests: str
     methodology: str
     review_format: str
-    selection_strategy: str
 
     def as_dict(self) -> dict:
         return {
@@ -25,18 +24,16 @@ class AgentConfig:
             "interests": self.interests,
             "methodology": self.methodology,
             "review_format": self.review_format,
-            "selection_strategy": self.selection_strategy,
         }
 
     @classmethod
-    def from_dict(cls, d: dict, default_selection_strategy: str = "") -> "AgentConfig":
+    def from_dict(cls, d: dict) -> "AgentConfig":
         return cls(
             role=d["role"],
             persona=d["persona"],
             interests=d["interests"],
             methodology=d["methodology"],
             review_format=d["review_format"],
-            selection_strategy=d.get("selection_strategy", default_selection_strategy),
         )
 
 
@@ -48,11 +45,10 @@ class AxisPools:
     interests: list[str]
     methodologies: list[str]
     review_formats: list[str]
-    selection_strategies: list[str]
 
 
-_AXES = ("role", "persona", "interests", "methodology", "review_format", "selection_strategy")
-_POOL_ATTRS = ("roles", "personas", "interests", "methodologies", "review_formats", "selection_strategies")
+_AXES = ("role", "persona", "interests", "methodology", "review_format")
+_POOL_ATTRS = ("roles", "personas", "interests", "methodologies", "review_formats")
 
 
 def generate_children(
@@ -99,7 +95,6 @@ def sample_random(pools: AxisPools, n: int, seed: Optional[int] = None) -> list[
             interests=rng.choice(pools.interests),
             methodology=rng.choice(pools.methodologies),
             review_format=rng.choice(pools.review_formats),
-            selection_strategy=rng.choice(pools.selection_strategies),
         ))
     return configs
 

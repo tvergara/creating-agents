@@ -14,6 +14,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+_GEMINI_NODE20_BIN = "/Users/tom/.nvm/versions/node/v20.20.2/bin"
+
 # Default model per backend
 DEFAULT_MODEL: dict[str, str] = {
     "claude-code": "claude-sonnet-4-6",
@@ -27,10 +29,9 @@ MAX_TEXT_CHARS = 8_000
 _SCORE_INSTRUCTION = """\
 You are participating in a paper-review training exercise.
 
-Below are {n_papers} papers submitted to ICLR 2024. You must select exactly \
-10 of them to review and assign each a score.
+Below are {n_papers} papers submitted to ICLR 2024. You must review ALL of them.
 
-For each paper you choose, provide:
+For each paper, provide:
 - paper_id: the integer ID shown before the paper
 - score: a float from 0.0 to 10.0 (0 = reject outright, 10 = exceptional accept)
 - reasoning: one sentence justifying the score
@@ -42,8 +43,7 @@ no explanation outside the array. Example:
   {{"paper_id": 17, "score": 4.0, "reasoning": "Incremental contribution over prior work."}}
 ]
 
-Select papers that fall within your research interests and expertise. \
-You must choose exactly 10.
+You must include an entry for every one of the {n_papers} papers.
 
 --- PAPERS ---
 
@@ -66,7 +66,7 @@ def run_agent(
     max_retries: int = 3,
     client: Any = None,
 ) -> list[ScoreEntry]:
-    """Run one agent against all papers, returning exactly 10 scored entries.
+    """Run one agent against the given papers, returning one score per paper.
 
     Args:
         system_prompt: The compiled agent system prompt.
@@ -163,6 +163,10 @@ def _call_gemini(system_prompt: str, user_message: str, model: str) -> str:
             "--model", model,
         ])
 
+        env = os.environ.copy()
+        if Path(_GEMINI_NODE20_BIN).is_dir():
+            env["PATH"] = f"{_GEMINI_NODE20_BIN}:{env.get('PATH', '')}"
+
         result = subprocess.run(
             shell_cmd,
             shell=True,
@@ -170,6 +174,7 @@ def _call_gemini(system_prompt: str, user_message: str, model: str) -> str:
             text=True,
             cwd=tmpdir,
             timeout=300,
+            env=env,
         )
 
         if result.returncode != 0:
@@ -202,25 +207,24 @@ def _format_papers_block(papers: list[dict]) -> str:
 def _parse_and_validate(text: str, valid_ids: set[int]) -> list[ScoreEntry] | None:
     """Parse JSON from model response and validate structure.
 
-    Returns a list of exactly 10 ScoreEntry objects, or None if invalid.
+    Returns a list with one ScoreEntry per paper (len == len(valid_ids)), or None if invalid.
     """
-    # Strip markdown code fences if present
-    text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
-    text = re.sub(r"\s*```$", "", text, flags=re.MULTILINE)
-    text = text.strip()
-
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError as exc:
-        logger.debug("JSON parse error: %s", exc)
+    data = _load_candidate_json(text)
+    if data is None:
         return None
+
+    if isinstance(data, dict):
+        for key in ("scores", "results", "papers", "entries"):
+            if isinstance(data.get(key), list):
+                data = data[key]
+                break
 
     if not isinstance(data, list):
         logger.debug("Response is not a JSON array")
         return None
 
-    if len(data) != 10:
-        logger.debug("Expected 10 entries, got %d", len(data))
+    if len(data) != len(valid_ids):
+        logger.debug("Expected %d entries, got %d", len(valid_ids), len(data))
         return None
 
     entries: list[ScoreEntry] = []
@@ -253,3 +257,58 @@ def _parse_and_validate(text: str, valid_ids: set[int]) -> list[ScoreEntry] | No
         entries.append(ScoreEntry(paper_id=paper_id, score=score, reasoning=reasoning))
 
     return entries
+
+
+def _load_candidate_json(text: str) -> Any | None:
+    """Best-effort JSON loader for model outputs.
+
+    Gemini sometimes wraps the array in prose, markdown fences, or a simple
+    object wrapper. Try the raw text first, then a bracket-extracted array.
+    """
+    # Strip markdown code fences if present.
+    cleaned = re.sub(r"^```(?:json)?\s*", "", text, flags=re.MULTILINE)
+    cleaned = re.sub(r"\s*```$", "", cleaned, flags=re.MULTILINE).strip()
+
+    for candidate in (cleaned, _extract_outer_json_array(cleaned)):
+        if not candidate:
+            continue
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            logger.debug("JSON parse error: %s", exc)
+
+    return None
+
+
+def _extract_outer_json_array(text: str) -> str | None:
+    """Return the first top-level JSON array substring from text, if any."""
+    start = text.find("[")
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+
+    for i in range(start, len(text)):
+        ch = text[i]
+
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+
+        if ch == '"':
+            in_string = True
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return text[start:i + 1]
+
+    return None

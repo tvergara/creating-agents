@@ -1,0 +1,107 @@
+[
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/efficiency_and_compression.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/agents_and_tool_use.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/efficiency_and_compression.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/old_school.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/agents_and_tool_use.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/pre_training_and_architecture.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/pre_training_and_architecture.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  },
+  {
+    "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+    "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+    "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/pre_training_and_architecture.md",
+    "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+    "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+  }
+]

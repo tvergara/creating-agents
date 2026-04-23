@@ -1,0 +1,642 @@
+[
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 7.5,
+        "reasoning": "Proposes a novel and significantly more efficient membership inference attack, and is the first to evaluate this privacy risk in the audio domain."
+      },
+      {
+        "paper_id": 39,
+        "score": 8.0,
+        "reasoning": "The paper presents a theoretically sound and well-motivated method for debiased collaborative filtering by satisfying causal balancing constraints using kernel functions."
+      },
+      {
+        "paper_id": 12,
+        "score": 7.0,
+        "reasoning": "This work presents a novel and effective method for adapting CLIP to facial expression recognition, successfully balancing generalization and precision through learned feature masking."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This paper introduces a clever and efficient prompt-based adversarial attack where the LLM is guided to generate its own adversarial examples, revealing significant robustness vulnerabilities."
+      },
+      {
+        "paper_id": 8,
+        "score": 9.0,
+        "reasoning": "The paper sets a new state-of-the-art in unsupervised few-shot learning by systematically addressing shortcomings in both pre-training and inference stages with novel, complementary components."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.5,
+        "reasoning": "This work presents a surprising and impactful finding that pre-trained diffusion models can generate out-of-domain images without retraining, fundamentally shifting our understanding of their generalization capabilities."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.0,
+        "reasoning": "The paper proposes a novel and practical training-free steganography method for diffusion models that achieves high capacity and image quality by cleverly projecting messages into the latent noise."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "This paper provides valuable insights into pre-training for speech separation by demonstrating the effectiveness of using contaminated data and proposing a solid unsupervised separation method."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "This paper uncovers a critical and previously overlooked safety vulnerability in LLMs concerning multilingual jailbreaking and proposes a practical framework for mitigation."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.5,
+        "reasoning": "The work introduces a provably more expressive and computationally efficient neural network architecture for simplicial complexes, advancing the state-of-the-art in higher-order graph learning."
+      }
+    ],
+    "citation_corr": -0.1329353574360937,
+    "acceptance_corr": 0.12309149097933277
+  },
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 7.5,
+        "reasoning": "The approach is technically sound, and its novel application to and findings in the text-to-speech domain represent a valuable conceptual contribution."
+      },
+      {
+        "paper_id": 39,
+        "score": 9.0,
+        "reasoning": "This paper presents a theoretically deep and elegant solution, grounding debiased collaborative filtering in a principled causal framework using kernel methods."
+      },
+      {
+        "paper_id": 12,
+        "score": 7.0,
+        "reasoning": "The proposed feature-masking approach is a conceptually clear and sound method for adapting large pre-trained models to specialized downstream tasks."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "The work introduces a conceptually novel attack framework that cleverly utilizes the generative model's own capabilities to create adversarial examples against itself."
+      },
+      {
+        "paper_id": 8,
+        "score": 8.5,
+        "reasoning": "The paper offers a well-structured solution, combining two theoretically-grounded components to address distinct and important problems in the few-shot learning pipeline."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.5,
+        "reasoning": "This work provides a profound conceptual insight into the latent space of diffusion models, challenging common assumptions with a principled and technically sound approach."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.0,
+        "reasoning": "A clever, training-free method that is well-grounded in the mechanics of diffusion models and offers a practical, principled approach to generative steganography."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "This is a methodologically sound empirical study, but its central finding confirms a well-established machine learning principle without offering significant theoretical novelty."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "The paper addresses a conceptually significant and under-explored dimension of LLM safety with a clear problem formulation and a practical, scalable solution."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.5,
+        "reasoning": "The work is theoretically deep, proposing a novel architecture for a complex data type and making a strong, provable claim about its expressive power."
+      }
+    ],
+    "citation_corr": -0.38179656635497133,
+    "acceptance_corr": 0.16744367165578433
+  },
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 8.0,
+        "reasoning": "The paper introduces an efficient membership inference attack and is the first to extend this analysis to the important domain of text-to-speech models."
+      },
+      {
+        "paper_id": 39,
+        "score": 7.5,
+        "reasoning": "This work provides a theoretically grounded method using kernel functions to improve causal balancing in debiased collaborative filtering."
+      },
+      {
+        "paper_id": 12,
+        "score": 8.5,
+        "reasoning": "The proposed method cleverly combines the generalization power of CLIP with a task-specific masking mechanism to achieve a strong balance of precision and generalization in facial expression recognition."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "This paper presents a novel and efficient prompt-based adversarial attack where the language model is cleverly guided to generate its own failures."
+      },
+      {
+        "paper_id": 8,
+        "score": 9.0,
+        "reasoning": "The paper introduces two complementary and well-motivated techniques that address key shortcomings in both the pretraining and inference stages of unsupervised few-shot learning, achieving state-of-the-art results."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.5,
+        "reasoning": "This work presents a highly novel and counter-intuitive approach to generate out-of-domain images without any additional training by cleverly exploiting the latent geometry of existing diffusion models."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "The proposed training-free method is a practical and powerful approach for steganography, effectively leveraging the generative process of pre-trained diffusion models to achieve high capacity and image quality."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "The paper provides a valuable empirical investigation showing that pre-training on contaminated speech improves downstream separation performance, though the methodological novelty is limited."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "This paper makes a significant contribution by systematically demonstrating critical multilingual safety vulnerabilities in LLMs and proposing a practical self-defense framework for mitigation."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "The work introduces a novel and provably more expressive architecture for simplicial neural networks that effectively balances computational cost and representational power using random walks."
+      }
+    ],
+    "citation_corr": 0.1369537879301019,
+    "acceptance_corr": -0.18428853505018536
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 7.5,
+        "reasoning": "The paper makes specific, verifiable claims about efficiency and explores a novel task domain, supported by apparently direct experimental comparisons."
+      },
+      {
+        "paper_id": 39,
+        "score": 7.0,
+        "reasoning": "This work provides a solid incremental improvement by addressing a specific flaw in prior methods, supported by both theoretical analysis and experiments."
+      },
+      {
+        "paper_id": 12,
+        "score": 8.0,
+        "reasoning": "The paper addresses a clear and important trade-off, proposing a plausible method and claiming significant outperformance across numerous datasets."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.5,
+        "reasoning": "Presents a novel attack method and validates it with strong empirical results on modern LLMs against established baselines."
+      },
+      {
+        "paper_id": 8,
+        "score": 8.5,
+        "reasoning": "The authors make a very strong and falsifiable claim of setting a new state-of-the-art across all existing benchmarks in their subfield."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "Presents a highly novel, counter-intuitive claim that is well-supported by a combination of theoretical analysis and extensive empirical validation."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "The abstract makes exceptionally specific, quantitative claims across multiple key performance metrics (capacity, accuracy, and FID)."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "This is a focused, scientific study that directly tests a hypothesis from prior work and reports clear, quantitative results on standard metrics."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "This paper identifies a critical and under-explored safety problem with strong, quantitative evidence and proposes and evaluates a practical solution."
+      },
+      {
+        "paper_id": 10,
+        "score": 8.0,
+        "reasoning": "The work is well-supported by a strong combination of a formal proof of superior expressivity and empirical outperformance on real-world data."
+      }
+    ],
+    "citation_corr": 0.0,
+    "acceptance_corr": -0.4242640687119285
+  },
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 8.0,
+        "reasoning": "The abstract clearly communicates the proposed method's efficiency, novelty in applying membership inference attacks to TTS tasks, and its competitive performance."
+      },
+      {
+        "paper_id": 39,
+        "score": 7.5,
+        "reasoning": "The paper clearly articulates a gap in existing debiasing methods and proposes a theoretically-grounded solution using kernel methods, though the abstract is dense with technical concepts."
+      },
+      {
+        "paper_id": 12,
+        "score": 9.0,
+        "reasoning": "The abstract presents a compelling and easy-to-understand narrative, clearly framing the precision-generalization trade-off and intuitively explaining how their method combines CLIP's features with a specialist model."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.5,
+        "reasoning": "The paper introduces a novel and intuitive prompt-based attack, with the abstract providing exceptional clarity by breaking down the method into its core, understandable components."
+      },
+      {
+        "paper_id": 8,
+        "score": 7.0,
+        "reasoning": "The abstract systematically identifies and addresses shortcomings in both the pre-training and inference stages of unsupervised few-shot learning, though its reliance on acronyms slightly impedes readability."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.5,
+        "reasoning": "The paper proposes a fascinating and counter-intuitive direction for generative models, explaining its novel approach to out-of-distribution synthesis with exceptional clarity and a compelling motivation."
+      },
+      {
+        "paper_id": 32,
+        "score": 9.0,
+        "reasoning": "The abstract clearly presents a practical, training-free method for steganography, effectively communicating its advantages over prior work and providing concrete metrics for capacity and image quality."
+      },
+      {
+        "paper_id": 28,
+        "score": 8.5,
+        "reasoning": "The paper is framed around a clear and testable hypothesis from prior work, and the abstract effectively communicates the experimental setup, key findings, and their quantified impact."
+      },
+      {
+        "paper_id": 24,
+        "score": 10.0,
+        "reasoning": "This abstract addresses a critical and under-explored safety issue with exceptional clarity, using striking quantitative results to highlight the problem's severity and proposing a constructive solution."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.5,
+        "reasoning": "The paper effectively motivates the need for higher-order models beyond graphs and clearly states its contributions in terms of expressivity and computational efficiency, despite an unusual formatting choice in the abstract."
+      }
+    ],
+    "citation_corr": 0.18300992436849864,
+    "acceptance_corr": -0.6767529681839597
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 8.5,
+        "reasoning": "This work addresses a critical security vulnerability with a substantially more efficient attack vector and laudably expands the investigation to the under-explored domain of audio synthesis."
+      },
+      {
+        "paper_id": 39,
+        "score": 6.5,
+        "reasoning": "The paper proposes a theoretically sound, kernel-based approach to a well-understood problem, but its practical significance hinges on whether the added complexity provides a meaningful improvement over simpler debiasing methods."
+      },
+      {
+        "paper_id": 12,
+        "score": 7.0,
+        "reasoning": "While the approach of masking CLIP features is a sensible way to tackle the precision-generalization trade-off, the claim of establishing a \"new paradigm\" seems overstated for what appears to be a clever feature selection technique."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "This paper introduces a conceptually novel and alarming attack vector by turning the model's instruction-following abilities against itself, fundamentally reframing adversarial robustness for LLMs beyond simple input perturbations."
+      },
+      {
+        "paper_id": 8,
+        "score": 6.0,
+        "reasoning": "The paper presents a complex, multi-stage method that appears to be a classic case of benchmark-chasing, achieving state-of-the-art results through intricate engineering rather than a fundamental conceptual advance."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.5,
+        "reasoning": "This work challenges a fundamental assumption in generative modeling with a bold and highly significant claim, and if the results hold, it could fundamentally alter our understanding of representation and generalization in diffusion models."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.0,
+        "reasoning": "The paper presents a highly practical and powerful application of diffusion models for steganography, with the training-free approach being a significant advantage for real-world deployment."
+      },
+      {
+        "paper_id": 28,
+        "score": 4.0,
+        "reasoning": "The paper's central finding\u2014that pre-training on noisy data aids downstream tasks on noisy data\u2014is an unsurprising validation of a well-established principle in machine learning, making the contribution feel incremental rather than insightful."
+      },
+      {
+        "paper_id": 24,
+        "score": 8.5,
+        "reasoning": "This work exposes a critical and dangerously overlooked vulnerability in LLM safety, providing a stark, quantitative warning that the entire field's alignment efforts are unacceptably anglocentric."
+      },
+      {
+        "paper_id": 10,
+        "score": 5.5,
+        "reasoning": "While provably improving expressivity within the niche domain of simplicial neural networks, the paper fails to make a compelling case for the broader relevance or practical necessity of these higher-order models over simpler graph-based approaches."
+      }
+    ],
+    "citation_corr": 0.5299915383140568,
+    "acceptance_corr": -0.090248525639428
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 7.5,
+        "reasoning": "The paper introduces a significantly more efficient membership inference attack for diffusion models and is the first to extend this privacy analysis to the important domain of text-to-speech."
+      },
+      {
+        "paper_id": 39,
+        "score": 7.0,
+        "reasoning": "This work provides a principled method for improving debiasing in collaborative filtering by using kernel methods to better satisfy causal balancing constraints, addressing a key limitation in prior art."
+      },
+      {
+        "paper_id": 12,
+        "score": 8.0,
+        "reasoning": "The paper presents a clever and effective method for adapting CLIP to facial expression recognition, successfully balancing the generalization of large models with the precision of specialized systems."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This work introduces a novel and efficient prompt-based adversarial attack where the LLM generates its own adversarial examples, revealing significant vulnerabilities in a creative and impactful way."
+      },
+      {
+        "paper_id": 8,
+        "score": 8.0,
+        "reasoning": "The paper presents a comprehensive approach that sets a new state-of-the-art on all unsupervised few-shot learning benchmarks by systematically addressing weaknesses in both the pre-training and inference stages."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "This work presents the surprising and impactful finding that single-domain diffusion models can synthesize images from unseen domains without retraining, fundamentally challenging our understanding of their generalization capabilities."
+      },
+      {
+        "paper_id": 32,
+        "score": 7.5,
+        "reasoning": "The paper proposes a practical and training-free steganography method for diffusion models that achieves a strong balance of high message capacity and excellent image quality, making it readily applicable to any pre-trained model."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "This paper provides a clear and valuable answer to an open question in speech separation, demonstrating that pre-training on audio that matches the noisy conditions of the downstream task is critical for success."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.0,
+        "reasoning": "This work uncovers and systematically investigates the critical and previously under-appreciated problem of multilingual jailbreaking in LLMs, revealing major safety gaps with immediate real-world implications."
+      },
+      {
+        "paper_id": 10,
+        "score": 6.5,
+        "reasoning": "The paper introduces a provably more expressive neural network for simplicial complexes, advancing the state-of-the-art in the growing field of topological deep learning with a flexible architecture."
+      }
+    ],
+    "citation_corr": 0.3133476282422209,
+    "acceptance_corr": -0.3692744729379982
+  },
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 7.5,
+        "reasoning": "The paper proposes a novel, efficient membership inference attack and is the first to evaluate such risks in text-to-speech models, revealing important vulnerabilities."
+      },
+      {
+        "paper_id": 39,
+        "score": 7.0,
+        "reasoning": "This work provides a theoretically-grounded method for debiasing collaborative filtering by more accurately satisfying causal balancing constraints using kernel functions."
+      },
+      {
+        "paper_id": 12,
+        "score": 8.0,
+        "reasoning": "The paper presents a novel and effective method for adapting CLIP to facial expression recognition, successfully balancing generalization and precision by using learned masks to isolate relevant features."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.5,
+        "reasoning": "This paper introduces a simple yet effective prompt-based adversarial attack where the LLM fools itself, providing an efficient new tool for auditing model robustness."
+      },
+      {
+        "paper_id": 8,
+        "score": 8.5,
+        "reasoning": "The paper systematically addresses shortcomings in unsupervised few-shot learning with two complementary innovations that achieve a new state-of-the-art across all relevant benchmarks."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "This work presents a highly novel, training-free method for unseen domain synthesis by cleverly exploiting the latent space geometry of existing diffusion models, challenging the need for retraining."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.0,
+        "reasoning": "The paper proposes a practical and training-free steganography method for diffusion models that achieves a strong balance of high message capacity and excellent image quality."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "This study provides a valuable empirical investigation into pre-trained models for speech separation, demonstrating convincingly that pre-training on contaminated audio improves downstream performance."
+      },
+      {
+        "paper_id": 24,
+        "score": 8.5,
+        "reasoning": "This paper exposes a critical and under-explored vulnerability in LLMs concerning multilingual jailbreaks and proposes a practical self-defense framework to mitigate these safety risks."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.0,
+        "reasoning": "This work presents a provably more expressive neural network architecture for simplicial complexes that effectively balances computational cost and performance compared to existing methods."
+      }
+    ],
+    "citation_corr": 0.2247240566181584,
+    "acceptance_corr": -0.3333333333333333
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 8.0,
+        "reasoning": "Addresses a critical privacy vulnerability in diffusion models with a novel and efficient attack, and is the first to extend this analysis to the audio domain."
+      },
+      {
+        "paper_id": 39,
+        "score": 7.0,
+        "reasoning": "This paper presents a theoretically sound method to address a key limitation in propensity-score-based debiasing for collaborative filtering."
+      },
+      {
+        "paper_id": 12,
+        "score": 7.5,
+        "reasoning": "The proposed method offers an intelligent approach to leveraging CLIP's generalization power while achieving high accuracy by learning to mask for task-specific features."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This work introduces a novel and efficient adversarial attack where the model is prompted to generate its own failures, revealing a significant and conceptually interesting security flaw."
+      },
+      {
+        "paper_id": 8,
+        "score": 9.0,
+        "reasoning": "This paper presents a comprehensive solution that improves both pre-training and inference stages in unsupervised few-shot learning, claiming significant state-of-the-art results across all benchmarks."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "The paper demonstrates the surprising capability of single-domain diffusion models to generate out-of-domain images without retraining, offering novel insights into their latent spaces."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.0,
+        "reasoning": "This work proposes a practical, training-free steganography method that leverages the power of pre-trained diffusion models to achieve high message capacity with excellent image quality."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "This paper provides valuable empirical evidence that pre-training on contaminated audio improves speech separation, answering a practical question for the field."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.5,
+        "reasoning": "This paper exposes a critical and overlooked vulnerability in LLM safety for non-English languages and proposes a practical framework for mitigation."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.0,
+        "reasoning": "The proposed architecture offers a provably more expressive and computationally efficient method for learning on higher-order simplicial complexes compared to existing message-passing approaches."
+      }
+    ],
+    "citation_corr": 0.32184503940667003,
+    "acceptance_corr": -0.05513178464199717
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 20,
+        "score": 8.0,
+        "reasoning": "The paper introduces an efficient and novel attack method for diffusion models and commendably extends the privacy analysis to the audio domain."
+      },
+      {
+        "paper_id": 39,
+        "score": 8.5,
+        "reasoning": "This work thoughtfully addresses a key gap in debiased collaborative filtering by proposing a kernel-based method grounded in solid causal principles."
+      },
+      {
+        "paper_id": 12,
+        "score": 7.5,
+        "reasoning": "The proposed approach presents a clever and effective way to adapt large pre-trained models like CLIP for specialized tasks like facial expression recognition."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.0,
+        "reasoning": "This paper offers a creative and accessible prompt-based method for evaluating the adversarial robustness of large language models."
+      },
+      {
+        "paper_id": 8,
+        "score": 9.0,
+        "reasoning": "The paper makes a very strong contribution to unsupervised few-shot learning, impressively setting a new state-of-the-art with its well-designed components."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.0,
+        "reasoning": "This is a fascinating exploration of the latent capabilities of diffusion models, offering a novel perspective on generating unseen domains without retraining."
+      },
+      {
+        "paper_id": 32,
+        "score": 8.5,
+        "reasoning": "The proposed training-free method is an elegant and powerful application of diffusion models to steganography, achieving impressive results in capacity and quality."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "This paper provides a valuable and insightful investigation into the role of pre-training data for the challenging task of speech separation."
+      },
+      {
+        "paper_id": 24,
+        "score": 9.5,
+        "reasoning": "This is an exceptionally important and timely study that highlights critical multilingual safety vulnerabilities in LLMs and proposes a practical solution."
+      },
+      {
+        "paper_id": 10,
+        "score": 7.0,
+        "reasoning": "The paper introduces a promising and provably expressive architecture for learning on simplicial complexes that nicely balances performance with computational cost."
+      }
+    ],
+    "citation_corr": -0.0757282445662753,
+    "acceptance_corr": -0.0551317846419971
+  }
+]

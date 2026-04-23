@@ -1,0 +1,17 @@
+{
+  "population": 15,
+  "n_survivors": 6,
+  "max_generations": 10,
+  "papers_per_agent": 10,
+  "model": null,
+  "backend": "gemini-cli",
+  "run_id": "20260412_153301_ac47f0",
+  "data_dir": "data",
+  "flaws_dir": "FLAWS/data/papers",
+  "cache_dir": "training/paper_cache",
+  "runs_dir": "training/runs",
+  "config_path": null,
+  "seed": null,
+  "parallel": 4,
+  "seed_configs": []
+}

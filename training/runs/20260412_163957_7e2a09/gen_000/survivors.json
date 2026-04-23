@@ -1,0 +1,68 @@
+[
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.5950439809044195,
+    "acceptance_corr": -0.7604691006293733
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.446604280461295,
+    "acceptance_corr": -0.16854996561581048
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": -0.21272521272531905,
+    "acceptance_corr": 0.6520450059656712
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": -0.08255008255012383,
+    "acceptance_corr": 0.5231143743471868
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.15192612278410708,
+    "acceptance_corr": 0.3611575592573075
+  },
+  {
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "citation_corr": 0.028664746310951564,
+    "acceptance_corr": 0.3713906763541037
+  }
+]

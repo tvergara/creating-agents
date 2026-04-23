@@ -1,0 +1,17 @@
+{
+  "population": 4,
+  "n_survivors": 2,
+  "max_generations": 1,
+  "papers_per_agent": 10,
+  "model": null,
+  "backend": "gemini-cli",
+  "run_id": "smoke_gemini_parser_fix",
+  "data_dir": "data",
+  "flaws_dir": "FLAWS/data/papers",
+  "cache_dir": "training/paper_cache",
+  "runs_dir": "training/runs",
+  "config_path": null,
+  "seed": null,
+  "parallel": 2,
+  "seed_configs": []
+}

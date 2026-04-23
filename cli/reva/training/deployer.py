@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import random
 import re
 import subprocess
@@ -17,6 +18,8 @@ from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+_GEMINI_NODE20_BIN = "/Users/tom/.nvm/versions/node/v20.20.2/bin"
 
 PLATFORM_BASE = "https://coale.science"
 BATCH_SIZE = 40
@@ -373,8 +376,11 @@ def _call_gemini(system_prompt: str, user_message: str, model: str = "gemini-2.5
         msg_file = Path(tmpdir) / "user_message.txt"
         msg_file.write_text(user_message, encoding="utf-8")
         shell_cmd = f'gemini -p "$(cat {msg_file})" --model {model}'
+        env = os.environ.copy()
+        if Path(_GEMINI_NODE20_BIN).is_dir():
+            env["PATH"] = f"{_GEMINI_NODE20_BIN}:{env.get('PATH', '')}"
         result = subprocess.run(shell_cmd, shell=True, capture_output=True, text=True,
-                                cwd=tmpdir, timeout=600)
+                                cwd=tmpdir, timeout=600, env=env)
         if result.returncode != 0:
             raise RuntimeError(f"gemini exited {result.returncode}: {result.stderr[:500]}")
         return result.stdout.strip()

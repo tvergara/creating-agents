@@ -1,0 +1,911 @@
+[
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.5,
+        "reasoning": "Addresses the important problem of fairness in vertical federated learning with a theoretically sound and efficient method."
+      },
+      {
+        "paper_id": 26,
+        "score": 8.0,
+        "reasoning": "The novel use of a parse graph to model human body structure for pose estimation is a promising and intuitive approach."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.5,
+        "reasoning": "Proposes a fundamental and potentially high-impact method for differentiable Monte Carlo estimation, addressing a key challenge in gradient-based optimization."
+      },
+      {
+        "paper_id": 38,
+        "score": 9.0,
+        "reasoning": "Provides a strong theoretical and empirical contribution to the core GNN challenge of balancing expressivity and stability."
+      },
+      {
+        "paper_id": 27,
+        "score": 8.0,
+        "reasoning": "Presents a novel optimization method with theoretical convergence guarantees for challenging nonconvex-nonconcave minimax problems."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "Presents a novel and clever approach to improving model robustness by leveraging counterfactual explanations in an attack-agnostic manner."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.0,
+        "reasoning": "Introduces a paradigm-shifting approach to retrieval by using the LLM itself to generate knowledge, unifying retrieval and generation."
+      },
+      {
+        "paper_id": 34,
+        "score": 8.5,
+        "reasoning": "Provides a theoretically sound and empirically strong solution to the practical problem of learning a rejection model for a fixed predictor."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "Proposes a clever and efficient prompt-based method for generating adversarial attacks by having the language model fool itself."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "Provides a comprehensive and practical investigation into self-contradictory hallucinations, a prevalent and important problem in large language models."
+      }
+    ],
+    "citation_corr": -0.47588670447955733,
+    "acceptance_corr": 0.1844277783908294
+  },
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.0,
+        "reasoning": "Addresses a critical and practical problem in federated learning with a theoretically sound and efficient approach."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.0,
+        "reasoning": "The proposed parse graph is a solid approach for incorporating structural priors, though the novelty is incremental."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "Presents a novel and potentially high-impact method for a fundamental problem in gradient-based optimization with discontinuities."
+      },
+      {
+        "paper_id": 38,
+        "score": 8.5,
+        "reasoning": "Provides a strong theoretical and empirical contribution to the core trade-off between expressivity and stability in GNNs."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "Provides a solid theoretical contribution by extending a known optimization method to the challenging nonconvex-nonconcave setting."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.5,
+        "reasoning": "A novel method of using counterfactual explanations to improve robustness, though its practical effectiveness against strong attacks is uncertain."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.0,
+        "reasoning": "Proposes a clever and practical method to simplify retrieval-augmented generation by using the LLM itself as the retriever."
+      },
+      {
+        "paper_id": 34,
+        "score": 7.5,
+        "reasoning": "Provides a strong theoretical contribution for the problem of learning with a reject option, complete with consistency guarantees."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "A novel and efficient prompt-based adversarial attack that cleverly uses the LLM's own capabilities to generate its own adversarial examples."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "Addresses the critical problem of self-contradiction in LLMs with a practical, black-box approach for detection and mitigation."
+      }
+    ],
+    "citation_corr": -0.24687994952417402,
+    "acceptance_corr": 0.4563568975047623
+  },
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 7.0,
+        "reasoning": "This paper proposes a practical and theoretically sound method to address the important problem of fair credit attribution in vertical federated learning."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.5,
+        "reasoning": "The paper introduces a well-motivated hierarchical architecture using a \"parse graph\" framing, which appears to be a solid, moderately novel contribution to human pose estimation."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.0,
+        "reasoning": "This paper presents a clever and potentially widely applicable technique for differentiable Monte Carlo estimation over discontinuous domains, with a promising theoretical basis."
+      },
+      {
+        "paper_id": 38,
+        "score": 7.5,
+        "reasoning": "The work provides a valuable theoretical contribution by formally analyzing the trade-off between expressivity and stability in canonization-based GNNs and proposing a novel framework to address it."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "This paper proposes a novel optimization algorithm for challenging nonconvex-nonconcave problems, supported by a theoretical convergence analysis."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "This paper presents a novel approach by creatively combining counterfactual explanations from XAI with a denoising autoencoder to improve model robustness, which is a conceptually interesting contribution."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "This work challenges the standard retrieve-then-read paradigm with a conceptually novel and elegant approach where the LLM itself acts as the retriever."
+      },
+      {
+        "paper_id": 34,
+        "score": 8.0,
+        "reasoning": "The paper introduces a novel and practical problem formulation for learning a rejection classifier for a fixed predictor, supported by strong theoretical guarantees and empirical results."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "This work presents a highly novel and creative adversarial attack framework that cleverly uses the LLM's own instruction-following ability to generate examples that fool itself."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.5,
+        "reasoning": "The paper provides a focused and comprehensive study of self-contradiction in LLMs, offering a novel, practical framework for detection and mitigation that cleverly operates without external knowledge."
+      }
+    ],
+    "citation_corr": 0.10610987329611753,
+    "acceptance_corr": 0.13449109746432147
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 6.5,
+        "reasoning": "Addresses the important and practical problem of fair credit attribution in vertical federated learning with an efficient, albeit incremental, solution."
+      },
+      {
+        "paper_id": 26,
+        "score": 4.0,
+        "reasoning": "This work presents another incremental improvement on a saturated benchmark task, using a familiar hierarchical modeling concept rebranded as a 'parse graph'."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "Proposes a potentially transformative and general method for applying gradient-based optimization to problems with discontinuous integrands, which could enable new applications across several fields."
+      },
+      {
+        "paper_id": 38,
+        "score": 7.5,
+        "reasoning": "Provides a rigorous and much-needed analysis of the trade-off between expressivity and stability when using graph canonization to power up GNNs."
+      },
+      {
+        "paper_id": 27,
+        "score": 6.0,
+        "reasoning": "A solid theoretical contribution that extends a classic optimization algorithm to the challenging nonconvex-nonconcave setting, though its practical significance depends on the applicability of its underlying assumptions."
+      },
+      {
+        "paper_id": 17,
+        "score": 5.5,
+        "reasoning": "Explores an interesting connection between explainability and robustness, but the proposed method of using counterfactuals to train a purifier appears to be an incremental variation on existing defense strategies."
+      },
+      {
+        "paper_id": 23,
+        "score": 7.0,
+        "reasoning": "Proposes a conceptually elegant simplification of the retrieval-augmented generation pipeline, though its practical scalability and efficiency compared to standard retrieval models remain an open question."
+      },
+      {
+        "paper_id": 34,
+        "score": 6.0,
+        "reasoning": "Provides a theoretically sound and complete solution to the specific but relevant problem of adding a rejection option to a fixed, black-box predictor."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "Introduces a novel and highly efficient method for generating adversarial examples by turning a model's own capabilities against itself, providing a powerful new tool for robustness evaluation."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.5,
+        "reasoning": "Provides a comprehensive and practical framework for evaluating, detecting, and mitigating self-contradictions in LLMs, addressing a critical aspect of model hallucination with high practical value."
+      }
+    ],
+    "citation_corr": -0.15993827487583964,
+    "acceptance_corr": 0.471322786153089
+  },
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.0,
+        "reasoning": "This work makes a valuable contribution to fairness in federated learning, although a more explicit discussion of privacy implications would strengthen it."
+      },
+      {
+        "paper_id": 26,
+        "score": 5.5,
+        "reasoning": "The work is technically interesting, but it completely overlooks the significant ethical considerations, such as dual-use and potential for bias, inherent in human pose estimation technology."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.5,
+        "reasoning": "This is a strong foundational contribution with broad potential applications and minimal foreseeable ethical concerns."
+      },
+      {
+        "paper_id": 38,
+        "score": 7.0,
+        "reasoning": "A strong theoretical contribution to GNNs with promising applications and low direct ethical risk."
+      },
+      {
+        "paper_id": 27,
+        "score": 8.0,
+        "reasoning": "The paper presents a strong contribution to optimization theory and commendably demonstrates its relevance to the important area of fair machine learning."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "A novel approach that creatively links explainability with robustness, contributing a promising direction for building more resilient models."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "A highly novel and thought-provoking approach to information retrieval that could simplify RAG systems, though it raises important new questions about retrieval bias."
+      },
+      {
+        "paper_id": 34,
+        "score": 7.5,
+        "reasoning": "This work provides a strong theoretical and practical contribution to model safety, though the important question of whether the rejection mechanism itself is fair remains unexplored."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "A creative and important contribution to LLM safety that reveals novel vulnerabilities and provides a valuable tool for robustness auditing."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.5,
+        "reasoning": "An exemplary paper that provides a clear problem definition, a practical solution, and a public tool for a critical LLM safety issue."
+      }
+    ],
+    "citation_corr": 0.2190752190753286,
+    "acceptance_corr": 0.2278355808671067
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 7.0,
+        "reasoning": "The paper addresses the important problem of fair credit assignment in vertical federated learning with a theoretically sound and efficient method."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.5,
+        "reasoning": "This paper introduces a novel hierarchical network based on a body parse graph, which reasonably improves upon existing methods for human pose estimation."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "The proposed differentiable Monte Carlo estimator provides a novel and general solution to the challenging problem of gradient-based optimization for discontinuous integrals."
+      },
+      {
+        "paper_id": 38,
+        "score": 8.0,
+        "reasoning": "The work provides a strong theoretical analysis of the expressivity-stability trade-off in GNNs, introducing a universal graph canonization method with impressive empirical results."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "This paper provides a novel optimization algorithm with theoretical convergence guarantees for a challenging class of nonconvex-nonconcave minimax problems."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.0,
+        "reasoning": "The paper proposes a novel method that creatively leverages counterfactual explanations to enhance the adversarial robustness of models on tabular data."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.0,
+        "reasoning": "This paper introduces an intriguing method for generative retrieval, cleverly using the LLM itself to replace dedicated retrieval models in knowledge-sensitive tasks."
+      },
+      {
+        "paper_id": 34,
+        "score": 7.5,
+        "reasoning": "The paper provides a well-founded theoretical framework and a practical algorithm for learning to reject predictions from a fixed model, achieving strong empirical results."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This paper introduces a novel and effective prompt-based adversarial attack where the LLM is instructed to generate its own failure cases."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The work provides a comprehensive and practical framework for evaluating, detecting, and mitigating self-contradictory hallucinations in black-box language models."
+      }
+    ],
+    "citation_corr": -0.022155892906015613,
+    "acceptance_corr": 0.2182178902359924
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.5,
+        "reasoning": "This paper presents a well-rounded contribution by providing a theoretically sound and empirically validated method for a critical problem in federated learning."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.5,
+        "reasoning": "The proposed method introduces an interesting structural approach to human pose estimation, with promising results on standard benchmarks."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "This paper introduces a novel and potentially impactful method for a fundamental problem, supported by both theoretical justification and a diverse set of applications."
+      },
+      {
+        "paper_id": 38,
+        "score": 8.5,
+        "reasoning": "The paper provides a rigorous theoretical analysis of the expressivity-stability trade-off in GNNs and translates these insights into a method with strong empirical performance."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "This work provides a solid theoretical contribution by extending a classic optimization method to a more challenging problem class, complete with convergence analysis."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.0,
+        "reasoning": "The paper presents a novel and interesting approach to improving model robustness by leveraging counterfactual explanations, showing promising results on tabular data."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "This work proposes an elegant and novel 'retrieval-by-generation' paradigm that could simplify complex knowledge-intensive NLP pipelines, backed by solid empirical results."
+      },
+      {
+        "paper_id": 34,
+        "score": 8.0,
+        "reasoning": "The paper presents a comprehensive and rigorous treatment of learning to reject, including theoretical analysis, a novel algorithm, and a new dataset for evaluation."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.0,
+        "reasoning": "The paper introduces a simple yet effective prompt-based adversarial attack, highlighting a practical vulnerability in large language models."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This paper provides a comprehensive and much-needed investigation into self-contradiction, offering a practical and effective framework for evaluation, detection, and mitigation."
+      }
+    ],
+    "citation_corr": -0.6398746904826481,
+    "acceptance_corr": 0.14085904245475284
+  },
+  {
+    "agent_idx": 8,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.0,
+        "reasoning": "The paper addresses a significant problem in federated learning with a theoretically grounded and experimentally validated solution."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.5,
+        "reasoning": "This paper presents a novel and intuitive architecture for pose estimation that reportedly achieves strong empirical results on standard benchmarks."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "The paper introduces a novel and fundamental technique for differentiable rendering and optimization that could unlock new applications across multiple fields."
+      },
+      {
+        "paper_id": 38,
+        "score": 8.5,
+        "reasoning": "This paper provides a compelling theoretical framework for improving GNN expressivity while considering stability, supported by significant performance gains."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "The paper presents a solid theoretical contribution to optimization by extending a popular method to a more general problem setting with convergence guarantees."
+      },
+      {
+        "paper_id": 17,
+        "score": 8.0,
+        "reasoning": "The paper proposes a creative and novel method that cleverly links local explainability with global model robustness for tabular data."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.0,
+        "reasoning": "This paper presents a paradigm-shifting approach to retrieval by using the LLM itself to generate references, potentially simplifying complex RAG pipelines."
+      },
+      {
+        "paper_id": 34,
+        "score": 8.5,
+        "reasoning": "The paper offers a complete and rigorous solution to a practical problem, featuring a new algorithm, strong theoretical analysis, and a valuable new dataset."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.5,
+        "reasoning": "This work introduces a clever, efficient, and novel prompt-based attack that cleverly uses the LLM's own capabilities to reveal its vulnerabilities."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The paper provides a thorough and practical investigation of self-contradiction in LLMs, complete with evaluation, a novel black-box detection method, and a mitigation strategy."
+      }
+    ],
+    "citation_corr": -0.5207906951377865,
+    "acceptance_corr": -0.03217447260438936
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.5,
+        "reasoning": "The abstract clearly presents the problem, proposed solution, and claimed properties, but lacks any detail on the method itself."
+      },
+      {
+        "paper_id": 26,
+        "score": 5.0,
+        "reasoning": "The core concept of a 'parse graph' is not defined with sufficient clarity in the abstract, making the contribution ambiguous."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.5,
+        "reasoning": "The abstract provides a crystal-clear motivation, a novel core idea, and its broad applicability, making the paper's contribution exceptionally easy to grasp."
+      },
+      {
+        "paper_id": 38,
+        "score": 3.0,
+        "reasoning": "The abstract is dense with undefined jargon (e.g., 'universal graph canonization'), making the core contribution incomprehensible to a non-specialist."
+      },
+      {
+        "paper_id": 27,
+        "score": 4.5,
+        "reasoning": "The abstract fails to provide any intuition for its core contribution, the 'semi-anchored' method, making it opaque to non-experts."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.0,
+        "reasoning": "The abstract describes the proposed pipeline, but the motivation for why counterfactuals should improve general robustness is not clearly articulated."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.0,
+        "reasoning": "The abstract clearly presents a novel and counter-intuitive method, explaining the steps and anticipating reader objections with admirable clarity."
+      },
+      {
+        "paper_id": 34,
+        "score": 3.5,
+        "reasoning": "The paper's contribution is impossible to evaluate from the abstract, as it is benchmarked on a 'decontextualization' task that is never defined."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "The abstract describes the prompt-based attack method with exceptional clarity, breaking it down into its constituent parts."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The abstract clearly defines the problem of self-contradiction, motivates it with a concrete statistic, and lucidly explains the proposed framework's approach."
+      }
+    ],
+    "citation_corr": 0.08467320434603276,
+    "acceptance_corr": 0.574813765237832
+  },
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [],
+    "citation_corr": -1.0,
+    "acceptance_corr": -1.0
+  },
+  {
+    "agent_idx": 13,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.0,
+        "reasoning": "Addresses a critical and well-known challenge in vertical federated learning with a theoretically grounded and seemingly effective solution."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.5,
+        "reasoning": "Proposes an intuitive and structurally sound hierarchical model for pose estimation that reportedly achieves superior results on standard benchmarks."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "Proposes a novel and potentially high-impact general method for differentiable Monte Carlo estimation over discontinuous integrands, a significant problem."
+      },
+      {
+        "paper_id": 38,
+        "score": 8.5,
+        "reasoning": "Provides a strong theoretical analysis of the trade-off between expressivity and stability in GNNs, leading to state-of-the-art performance improvements."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.0,
+        "reasoning": "Provides a novel theoretical contribution to the difficult area of nonconvex-nonconcave optimization by extending a classic algorithm."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.5,
+        "reasoning": "Proposes a novel connection between local explainability and global robustness, though its evaluation is limited to classical models on tabular data."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "Introduces a clever and promising retriever-less approach for knowledge-intensive tasks by using the LLM itself for generative retrieval."
+      },
+      {
+        "paper_id": 34,
+        "score": 7.5,
+        "reasoning": "Provides a theoretically sound and practically effective solution for adding a rejection option to a fixed predictor, supported by strong empirical results."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.0,
+        "reasoning": "Introduces a simple yet effective prompt-based method for generating adversarial examples, providing an efficient tool for LLM robustness auditing."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "Presents a comprehensive and practical framework for evaluating, detecting, and mitigating self-contradictory hallucinations in black-box language models."
+      }
+    ],
+    "citation_corr": -0.522246047070368,
+    "acceptance_corr": 0.11716009148210657
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.5,
+        "reasoning": "The paper provides a principled and practical solution to the critical ethical problem of fair contribution valuation in vertical federated learning."
+      },
+      {
+        "paper_id": 26,
+        "score": 4.0,
+        "reasoning": "This work advances human pose estimation capabilities without considering the significant ethical implications of bias, privacy, and surveillance associated with this technology."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.0,
+        "reasoning": "This paper introduces a foundational and conceptually elegant method for differentiable integration with no obvious ethical concerns or dual-use risks."
+      },
+      {
+        "paper_id": 38,
+        "score": 7.5,
+        "reasoning": "This is a strong theoretical contribution to graph representation learning with a beneficial application in bioinformatics and no foreseeable negative societal impact."
+      },
+      {
+        "paper_id": 27,
+        "score": 9.0,
+        "reasoning": "The paper makes a strong theoretical contribution to optimization that directly enables progress on crucial AI safety and fairness problems, grounding its claims in a fair classification experiment."
+      },
+      {
+        "paper_id": 17,
+        "score": 9.5,
+        "reasoning": "This paper proposes a highly novel and conceptually elegant method for improving model robustness by creatively leveraging counterfactual explanations, forging a valuable link between explainability and AI safety."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.0,
+        "reasoning": "While technically novel, this generative retrieval method risks amplifying model bias and creating plausible hallucinations by making retrieval dependent on the LLM's potentially flawed parametric memory."
+      },
+      {
+        "paper_id": 34,
+        "score": 9.0,
+        "reasoning": "This paper provides a theoretically rigorous and practical solution to the critical AI safety problem of learning when to reject, supported by strong guarantees and empirical results."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.0,
+        "reasoning": "The paper introduces a novel and powerful adversarial attack, but it fails to address the significant dual-use risks associated with releasing such a tool."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.5,
+        "reasoning": "This paper provides a comprehensive and highly practical framework for evaluating, detecting, and mitigating self-contradictions in LLMs, addressing a critical and widespread safety issue."
+      }
+    ],
+    "citation_corr": -0.4403909530966375,
+    "acceptance_corr": -0.11748456280837359
+  },
+  {
+    "agent_idx": 12,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.5,
+        "reasoning": "The abstract presents a very clear and compelling narrative, effectively establishing the problem, proposed solution, and its benefits."
+      },
+      {
+        "paper_id": 26,
+        "score": 8.0,
+        "reasoning": "The paper does an excellent job of explaining its core biological inspiration and clearly connecting it to the proposed network architecture."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "The abstract is exceptionally clear, framing a difficult and general problem and then presenting an elegant and intuitive-sounding solution."
+      },
+      {
+        "paper_id": 38,
+        "score": 4.5,
+        "reasoning": "The abstract is dense and heavily reliant on jargon, making it difficult to parse the core contribution and its justification on a first reading."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "The paper clearly situates its contribution within a specialized optimization domain and effectively communicates its theoretical grounding and novelty."
+      },
+      {
+        "paper_id": 17,
+        "score": 8.0,
+        "reasoning": "The abstract presents a novel idea for improving robustness and offers a very clear, intuitive explanation of the proposed mechanism."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.5,
+        "reasoning": "The paper communicates a simple, powerful, and counter-intuitive idea with exceptional clarity, concisely outlining the method and its significant advantages."
+      },
+      {
+        "paper_id": 34,
+        "score": 8.0,
+        "reasoning": "The abstract is well-structured, clearly outlining the theoretical contributions and linking them directly to significant empirical improvements on a specific task."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "The paper presents a creative attack methodology and explains it with outstanding clarity, particularly by structuring the core prompt into distinct, understandable components."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The abstract is superbly organized, motivating the work with a compelling statistic and clearly structuring its contributions into evaluation, detection, and mitigation."
+      }
+    ],
+    "citation_corr": 0.1923116435243909,
+    "acceptance_corr": 0.3588281598630756
+  },
+  {
+    "agent_idx": 14,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 8.0,
+        "reasoning": "Tackles the critical problem of fair contribution valuation in VFL with a theoretically sound and efficient Shapley value-based method."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.5,
+        "reasoning": "The novel graph-based structural approach to modeling the human body is promising and demonstrates strong results on standard benchmarks."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "A clever and fundamental contribution that makes Monte Carlo estimation differentiable for discontinuous functions, enabling gradient-based optimization in new domains."
+      },
+      {
+        "paper_id": 38,
+        "score": 8.5,
+        "reasoning": "Provides a strong theoretical analysis of the expressivity-stability trade-off in GNNs and proposes an effective method with significant empirical gains."
+      },
+      {
+        "paper_id": 27,
+        "score": 7.5,
+        "reasoning": "A solid theoretical contribution to a difficult and important optimization problem, extending a popular method to the challenging nonconvex-nonconcave setting."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.0,
+        "reasoning": "Presents a novel attack-agnostic defense by creatively connecting local counterfactual explanations to global model robustness for tabular data."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.0,
+        "reasoning": "This work challenges the standard RAG paradigm with an innovative approach that uses the LLM itself for retrieval, potentially simplifying knowledge-intensive pipelines."
+      },
+      {
+        "paper_id": 34,
+        "score": 7.5,
+        "reasoning": "Addresses the practical problem of adding a reject option to a fixed model, supported by strong theoretical guarantees and a new dataset."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "A clever and effective prompt-based attack that reveals a significant new vulnerability by turning an LLM's own capabilities against itself."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.5,
+        "reasoning": "A comprehensive and practical investigation into self-contradiction, a key failure mode of LLMs, offering effective black-box detection and mitigation techniques."
+      }
+    ],
+    "citation_corr": -0.32797597200618145,
+    "acceptance_corr": 0.4418993202399135
+  },
+  {
+    "agent_idx": 11,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 31,
+        "score": 6.5,
+        "reasoning": "Addresses a practical problem in vertical federated learning with a methodologically sound, albeit incremental, contribution."
+      },
+      {
+        "paper_id": 26,
+        "score": 4.0,
+        "reasoning": "The contribution is outside my area of expertise (Computer Vision), but the claimed empirical gains appear marginal on standard benchmarks."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "Proposes a novel and general method for a fundamental and difficult problem in machine learning, with demonstrated applicability across multiple domains."
+      },
+      {
+        "paper_id": 38,
+        "score": 7.5,
+        "reasoning": "Provides a strong theoretical contribution by linking GNN expressivity and stability through canonization, though its practical applicability at SOTA levels is conditional."
+      },
+      {
+        "paper_id": 27,
+        "score": 3.5,
+        "reasoning": "A highly theoretical optimization paper outside my expertise; the practical significance is not made clear by the single, limited experiment."
+      },
+      {
+        "paper_id": 17,
+        "score": 5.5,
+        "reasoning": "The paper proposes an interesting combination of existing ideas, but its novelty is limited and the evaluation lacks rigor against adaptive attacks."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.0,
+        "reasoning": "Presents a simple yet highly effective method for training-free generative retrieval, challenging the conventional retrieve-then-read pipeline in a significant way."
+      },
+      {
+        "paper_id": 34,
+        "score": 5.0,
+        "reasoning": "The paper provides a theoretically sound contribution for a specific setting, but its significance is questionable due to evaluation on a single, niche NLP task."
+      },
+      {
+        "paper_id": 15,
+        "score": 4.5,
+        "reasoning": "The paper demonstrates a simple prompting technique for generating adversarial examples, but the methodological novelty is low and its significance is overstated."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.0,
+        "reasoning": "The paper provides a practical and well-executed framework for detecting and mitigating a significant failure mode in LLMs, supported by a useful empirical analysis."
+      }
+    ],
+    "citation_corr": -0.43771377963650565,
+    "acceptance_corr": 0.19738550848793063
+  }
+]

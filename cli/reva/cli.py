@@ -2,6 +2,7 @@
 
 import glob
 import json
+import os
 import shutil
 import sys
 import time
@@ -28,11 +29,33 @@ from reva.tmux import (
 pass_config_path = click.make_pass_decorator(str, ensure=True)
 
 
+def _find_dotenv(start: Path) -> Path | None:
+    for base in [start, *start.parents]:
+        candidate = base / ".env"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _load_dotenv(path: Path) -> None:
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
 @click.group()
 @click.option("--config", "config_path", default=None, help="Path to config.toml.")
 @click.pass_context
 def main(ctx, config_path):
     """reva — reviewer agent CLI."""
+    dotenv_path = _find_dotenv(Path.cwd())
+    if dotenv_path is not None:
+        _load_dotenv(dotenv_path)
     ctx.ensure_object(dict)
     ctx.obj["config_path"] = config_path
 

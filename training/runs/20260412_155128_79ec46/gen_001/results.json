@@ -1,0 +1,962 @@
+[
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/modern.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "A simple yet intuitive method for improving training dynamics by assigning layer-wise learning rates based on initial gradient magnitudes."
+      },
+      {
+        "paper_id": 26,
+        "score": 8.0,
+        "reasoning": "This paper introduces a novel hierarchical network that models the body's structure as a parse graph, effectively capturing context and improving pose estimation accuracy."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "This work presents a surprising and highly novel finding that pre-trained single-domain diffusion models can generate out-of-distribution samples without any retraining."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "The paper introduces a novel and broadly applicable differentiable Monte Carlo variant for discontinuous integrands, enabling gradient-based optimization in challenging domains."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.5,
+        "reasoning": "The proposed PMP method provides an intuitive and effective message passing paradigm for graph fraud detection by explicitly distinguishing between neighbor types."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This paper presents a novel and efficient adversarial attack where the LLM is cleverly prompted to generate its own adversarial examples."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed IPRM module offers a flexible and powerful mechanism for visual reasoning by unifying iterative and parallel computation."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "This work provides a clear and valuable empirical finding that pre-training on contaminated speech significantly improves downstream speech separation performance."
+      },
+      {
+        "paper_id": 22,
+        "score": 9.0,
+        "reasoning": "Mirage introduces a highly novel and efficient model-agnostic graph distillation technique by compressing the dataset's underlying computation tree distribution."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.5,
+        "reasoning": "The paper makes a surprising and impactful claim that simple fine-tuning is a highly effective defense against backdoor attacks, potentially simplifying current mitigation strategies."
+      }
+    ],
+    "citation_corr": 0.4409937888198758,
+    "acceptance_corr": 0.18463723646899907
+  },
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 6.5,
+        "reasoning": "A practical and well-validated technique for improving training stability, though it explores a very classic optimization problem."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.0,
+        "reasoning": "The proposed parse graph structure is an interesting way to inject prior knowledge, but the overall approach feels incremental in a well-established domain."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "This work presents a highly novel and timely method for OOD synthesis by cleverly repurposing frozen diffusion models, challenging current scaling-focused paradigms."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "A fundamental contribution that enables gradient-based optimization for a broad new class of problems involving discontinuous integrals."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.5,
+        "reasoning": "An intuitive and effective message passing scheme that directly addresses the critical challenge of heterophily in graph fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.5,
+        "reasoning": "A highly novel and timely investigation into LLM robustness, proposing a clever prompt-based attack that causes a model to generate its own adversarial examples."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "The proposed neuro-symbolic reasoning mechanism demonstrates strong performance on complex VQA tasks, aligning well with the current research trend towards more structured reasoning."
+      },
+      {
+        "paper_id": 28,
+        "score": 5.5,
+        "reasoning": "A useful empirical study for the speech separation community, but its narrow focus and incremental findings limit its broader impact."
+      },
+      {
+        "paper_id": 22,
+        "score": 8.0,
+        "reasoning": "This paper introduces a clever and practical model-agnostic graph distillation technique, addressing a significant bottleneck in training large GNNs."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "A surprisingly simple and effective method for mitigating backdoor attacks that could become a standard practice, challenging more complex existing defenses."
+      }
+    ],
+    "citation_corr": 0.6296416256596504,
+    "acceptance_corr": 0.4588314677411235
+  },
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "This paper introduces a simple and principled heuristic to set layer-specific learning rates, potentially offering a practical improvement to standard training schemes."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.5,
+        "reasoning": "The proposed parse graph introduces a strong and intuitive structural prior for human pose estimation, though its broader impact outside this specific task is limited."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "This work provides a significant new perspective on diffusion models, demonstrating surprising out-of-domain generalization without retraining and advancing our understanding of their latent spaces."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "This paper introduces a novel and theoretically grounded method for differentiable Monte Carlo estimation that could unlock gradient-based optimization in a wide range of problems with discontinuous integrands."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.0,
+        "reasoning": "The proposed message passing scheme offers a conceptually clear and effective solution to the critical problem of mixed homophily in graph fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "This paper presents a novel and highly efficient adversarial attack vector by cleverly turning an LLM's instruction-following capabilities against itself."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed IPRM introduces a flexible and powerful reasoning mechanism by unifying iterative and parallel computation, offering a significant architectural advance for complex reasoning tasks."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.0,
+        "reasoning": "This paper provides valuable empirical evidence that pre-training on contaminated audio benefits speech separation, offering practical guidance for practitioners in the field."
+      },
+      {
+        "paper_id": 22,
+        "score": 8.5,
+        "reasoning": "This work introduces a conceptually elegant and practical model-agnostic graph distillation method by focusing on compressing computation trees rather than matching gradients."
+      },
+      {
+        "paper_id": 4,
+        "score": 7.5,
+        "reasoning": "This paper makes the high-impact claim that simple fine-tuning is an effective backdoor defense, potentially offering a widely accessible and practical solution to a significant security threat."
+      }
+    ],
+    "citation_corr": 0.12383960279452287,
+    "acceptance_corr": 0.49099025303098276
+  },
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/modern.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 6.0,
+        "reasoning": "The paper proposes a clear, conceptually simple method, but the lack of public code or detailed hyperparameters makes exact experimental replication difficult."
+      },
+      {
+        "paper_id": 26,
+        "score": 4.5,
+        "reasoning": "While the paper uses standard datasets, the proposed hierarchical network architecture is complex and would be very challenging to reproduce without an official implementation."
+      },
+      {
+        "paper_id": 1,
+        "score": 6.5,
+        "reasoning": "The approach is well-grounded in specified pre-trained models and standard datasets, though the novelty in the optimization process would require code for faithful reproduction."
+      },
+      {
+        "paper_id": 21,
+        "score": 5.0,
+        "reasoning": "The core mathematical concept appears reimplementable, but the claimed broad applications would be difficult to verify without specific code for each experimental setup."
+      },
+      {
+        "paper_id": 36,
+        "score": 9.0,
+        "reasoning": "Excellent reproducibility, as the paper provides a public code repository, enabling direct verification of the proposed method and experimental results."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.5,
+        "reasoning": "This paper is highly reproducible due to its clear methodology, use of specific, accessible models, and the provision of a public source code repository."
+      },
+      {
+        "paper_id": 14,
+        "score": 4.0,
+        "reasoning": "The use of standard benchmarks is a positive signal, but the novel and complex reasoning mechanism would be extremely difficult to replicate without access to the source code."
+      },
+      {
+        "paper_id": 28,
+        "score": 3.0,
+        "reasoning": "Significant gaps in reproducibility exist due to vague descriptions of the datasets and pre-trained models used, combined with a lack of available code."
+      },
+      {
+        "paper_id": 22,
+        "score": 5.5,
+        "reasoning": "The core idea is intriguing and well-motivated, but the lack of a code release or specific dataset names in the abstract makes empirical validation a significant challenge."
+      },
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The paper makes a strong claim but provides insufficient detail on the experimental setup (models, datasets, attacks) and no code, making the results difficult to verify."
+      }
+    ],
+    "citation_corr": 0.018406293574195463,
+    "acceptance_corr": 0.38568215712151604
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 7.5,
+        "reasoning": "This paper presents a simple and principled optimization heuristic that has a high potential to become a standard practice in training."
+      },
+      {
+        "paper_id": 26,
+        "score": 5.0,
+        "reasoning": "While a solid domain-specific contribution, the method lacks broad novelty and is unlikely to be impactful outside of human pose estimation."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "This work is highly significant, challenging core assumptions of generative models and introducing a novel paradigm for zero-shot synthesis."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "This paper introduces a foundational and elegant methodological advance for gradient-based optimization through discontinuous integrals with broad applicability."
+      },
+      {
+        "paper_id": 36,
+        "score": 6.5,
+        "reasoning": "The paper offers a well-motivated and theoretically grounded solution to an important niche problem in graph-based fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "This work introduces a conceptually novel, highly efficient, and impactful new paradigm for evaluating the adversarial robustness of LLMs."
+      },
+      {
+        "paper_id": 14,
+        "score": 7.0,
+        "reasoning": "A novel reasoning module is proposed that efficiently combines computational paradigms, representing a strong architectural contribution for complex reasoning."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.0,
+        "reasoning": "This is a solid empirical study that establishes a clear best practice for its subfield, though its conceptual novelty is limited."
+      },
+      {
+        "paper_id": 22,
+        "score": 9.0,
+        "reasoning": "The paper presents a conceptually elegant, powerful, and model-agnostic distillation method that fundamentally improves on prior graph compression techniques."
+      },
+      {
+        "paper_id": 4,
+        "score": 8.0,
+        "reasoning": "This work's simple yet powerful finding establishes a crucial baseline for backdoor defense, significantly impacting the research landscape."
+      }
+    ],
+    "citation_corr": 0.07407548537172358,
+    "acceptance_corr": 0.3892494720807614
+  },
+  {
+    "agent_idx": 8,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 8.0,
+        "reasoning": "The abstract clearly and concisely presents the motivation, method, and results, making the core contribution easy for a reader to grasp."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.5,
+        "reasoning": "The paper effectively uses the intuitive concept of a 'parse graph' to motivate its hierarchical network structure, making the overall approach understandable."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "The abstract tells a compelling and clear story, contrasting its approach with current trends and logically building from a key observation to the final method."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.5,
+        "reasoning": "The paper introduces a complex problem but explains its core contribution with exceptional simplicity and intuition, making the novel idea immediately accessible."
+      },
+      {
+        "paper_id": 36,
+        "score": 8.0,
+        "reasoning": "The abstract clearly articulates its core argument against prior work and proposes a specific, understandable mechanism to address the stated problem."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "The paper presents a novel attack strategy with a clear, structured explanation of its components, making the methodology easy to understand and appreciate."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.5,
+        "reasoning": "The abstract excels at using simple, concrete examples to motivate the core problem, making the need for its proposed hybrid solution immediately apparent."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "While the research question is clearly stated, the prose is slightly awkward and the abstract's focus is split, which mildly hinders a smooth reading experience."
+      },
+      {
+        "paper_id": 22,
+        "score": 10.0,
+        "reasoning": "The abstract masterfully critiques existing methods with two sharp observations and then presents its own solution based on a powerful and elegant core insight."
+      },
+      {
+        "paper_id": 4,
+        "score": 7.0,
+        "reasoning": "The paper makes a clear and simple claim, but the abstract lacks sufficient detail or intuition, particularly failing to explain its own named method, 'super-fine-tuning'."
+      }
+    ],
+    "citation_corr": -0.05555661402879269,
+    "acceptance_corr": 0.45085004798243705
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "This paper proposes a simple and intuitive heuristic for improving training stability, though its general applicability requires more extensive validation."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.5,
+        "reasoning": "A solid, domain-specific contribution that applies structured modeling to human pose estimation, but the novelty of the core architectural ideas appears incremental."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "This work presents a novel and counter-intuitive approach to generative model generalization, though its claims of synthesizing arbitrary unseen images require a high burden of proof."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "A potentially fundamental contribution that introduces a novel, general-purpose method for a challenging and important problem in differentiable programming."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.5,
+        "reasoning": "This paper offers a well-motivated and targeted message passing scheme that directly addresses the known challenge of mixed-homophily in graph fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.0,
+        "reasoning": "A clever and novel prompt-based adversarial attack that creatively explores the meta-reasoning capabilities and vulnerabilities of large language models."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed hybrid iterative-parallel reasoning module is a strong architectural contribution, backed by impressive zero-shot results on challenging VQA benchmarks."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "A focused empirical study that validates a reasonable hypothesis, but the central finding about matching pre-training and downstream data conditions is not surprising."
+      },
+      {
+        "paper_id": 22,
+        "score": 9.0,
+        "reasoning": "This paper addresses a critical limitation in graph distillation by proposing a novel, model-agnostic approach based on a fundamentally different and insightful principle."
+      },
+      {
+        "paper_id": 4,
+        "score": 6.0,
+        "reasoning": "The paper makes a bold and impactful claim with a simple method, but its credibility hinges entirely on an exhaustive evaluation against strong, adaptive attacks which is not guaranteed."
+      }
+    ],
+    "citation_corr": -0.216719304890415,
+    "acceptance_corr": 0.44126130406091413
+  },
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "A simple and intuitive method for improving training stability that is well-supported by empirical results on standard benchmarks."
+      },
+      {
+        "paper_id": 26,
+        "score": 8.0,
+        "reasoning": "The proposed method introduces a compelling structured approach to pose estimation that seems to yield excellent results on established datasets."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "This work presents a novel and thought-provoking approach to leveraging existing diffusion models for out-of-domain synthesis without additional training."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "A clever and foundational contribution that enables gradient-based optimization for an important class of problems with discontinuities."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.5,
+        "reasoning": "This paper proposes an intuitive and effective message passing scheme tailored to the specific challenges of graph fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 8.5,
+        "reasoning": "A creative and efficient prompt-based attack that cleverly uses the LLM's own capabilities to reveal its vulnerabilities."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed reasoning mechanism elegantly combines iterative and parallel computation to tackle complex multi-step visual reasoning tasks."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "A useful empirical study that provides clear guidance on the effective use of pre-trained models for the speech separation task."
+      },
+      {
+        "paper_id": 22,
+        "score": 8.5,
+        "reasoning": "A novel model-agnostic graph distillation algorithm that cleverly addresses key limitations of prior work, improving efficiency and robustness."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "This paper presents a surprisingly simple and effective method for mitigating backdoor attacks, offering a highly practical defense."
+      }
+    ],
+    "citation_corr": 0.489049840046204,
+    "acceptance_corr": 0.4642857142857142
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/pre_training_and_architecture.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 7.5,
+        "reasoning": "The proposed initialization method appears to be a simple yet effective approach for improving training stability and performance."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.0,
+        "reasoning": "This work introduces a thoughtfully structured hierarchical model that seems well-suited for the problem of human pose estimation."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "The paper presents a novel and interesting method for domain generalization in diffusion models without requiring additional training."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.0,
+        "reasoning": "This work introduces a creative and potentially widely applicable technique for differentiable Monte Carlo estimation."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.0,
+        "reasoning": "The paper's approach of distinguishing neighbor types rather than excluding them is an intuitive and effective improvement for graph fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "This paper presents a clever and highly effective prompt-based method for evaluating the adversarial robustness of large language models."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The work introduces a novel and flexible reasoning module that thoughtfully combines iterative and parallel computation for complex visual tasks."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "This paper provides a useful and practical investigation into the effect of pre-training data on the downstream task of speech separation."
+      },
+      {
+        "paper_id": 22,
+        "score": 8.0,
+        "reasoning": "The proposed model-agnostic approach to graph distillation is a significant and clever contribution to the field."
+      },
+      {
+        "paper_id": 4,
+        "score": 8.5,
+        "reasoning": "This work demonstrates that a simple and widely-used technique can be surprisingly effective against backdoor attacks, which is a valuable finding for the community."
+      }
+    ],
+    "citation_corr": 0.6500126956844451,
+    "acceptance_corr": 0.4677071733467426
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/old_school.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 5.0,
+        "reasoning": "The method is straightforward but the abstract fails to compare against established layer-wise adaptive learning rate methods, creating a significant gap in experimental completeness."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.0,
+        "reasoning": "The architectural contribution seems solid, but the work potentially overclaims its novelty and does not acknowledge the limitations of its core structural assumptions."
+      },
+      {
+        "paper_id": 1,
+        "score": 6.5,
+        "reasoning": "The paper proposes a novel, training-free method for OOD synthesis, but the abstract lacks crucial details about the semantic distance between source and target domains, obscuring the true scope of the method's capabilities."
+      },
+      {
+        "paper_id": 21,
+        "score": 4.5,
+        "reasoning": "The paper tackles an important problem, but the abstract makes no mention of the statistical properties (e.g., bias, variance) of the proposed estimator, a critical omission for any Monte Carlo method."
+      },
+      {
+        "paper_id": 36,
+        "score": 5.5,
+        "reasoning": "The core idea is well-motivated for graph fraud detection, but the abstract is critically unclear about the mechanism for partitioning neighbors, obscuring a core assumption of the model."
+      },
+      {
+        "paper_id": 15,
+        "score": 6.0,
+        "reasoning": "The method is a novel way to generate adversarial examples, but the paper fails to discuss the limitations of its unrealistic threat model, overstating its applicability as a practical 'attack'."
+      },
+      {
+        "paper_id": 14,
+        "score": 4.0,
+        "reasoning": "The paper is well-motivated, but the abstract entirely omits the core technical mechanism for how the model arbitrates between iterative and parallel computation, leaving a substantial gap in the work's description."
+      },
+      {
+        "paper_id": 28,
+        "score": 3.0,
+        "reasoning": "The paper's central finding, that matching pre-training data characteristics to the downstream task is beneficial, is a well-established concept, and the abstract fails to present a clear, novel contribution."
+      },
+      {
+        "paper_id": 22,
+        "score": 7.5,
+        "reasoning": "The paper proposes a compelling model-agnostic approach to graph distillation, but the abstract does not discuss the limitations or potential information loss inherent in its core assumption of using computation tree distributions."
+      },
+      {
+        "paper_id": 4,
+        "score": 2.0,
+        "reasoning": "The paper makes an exceptionally strong claim about a simple defense, but the abstract completely fails to specify the threat model or the types of backdoor attacks evaluated, rendering the claims of effectiveness fundamentally unsupported."
+      }
+    ],
+    "citation_corr": -0.09231162519443843,
+    "acceptance_corr": 0.07905694150420947
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/trendy.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 6.5,
+        "reasoning": "Proposes a clever and practical initialization heuristic for layer-wise learning rates that demonstrably improves stability and performance."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.0,
+        "reasoning": "Introduces a well-motivated hierarchical network based on body parse graphs, offering a solid architectural improvement for the specific task of human pose estimation."
+      },
+      {
+        "paper_id": 1,
+        "score": 9.0,
+        "reasoning": "This work is highly significant and timely, revealing surprising out-of-distribution generalization in diffusion models and enabling novel image synthesis without costly retraining."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "Introduces a novel and broadly applicable method for differentiable Monte Carlo estimation that elegantly handles discontinuities, unlocking gradient-based optimization for a new class of problems."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.5,
+        "reasoning": "Proposes an intuitive and effective message passing scheme that directly addresses the critical homophily-heterophily challenge in graph-based fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "Presents a novel and highly relevant adversarial attack framework where an LLM is ingeniously prompted to create examples that fool itself, offering a new paradigm for evaluating model robustness."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "This work introduces a compelling neural architecture that combines iterative and parallel computation, effectively tackling a key challenge in complex multi-step visual reasoning."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "Provides a valuable empirical investigation into pre-training for speech separation, demonstrating the crucial role of data contamination in creating effective representations for this task."
+      },
+      {
+        "paper_id": 22,
+        "score": 8.5,
+        "reasoning": "Introduces a novel and highly practical approach to graph distillation that is model-agnostic and efficient, cleverly condensing the dataset by analyzing computation tree distributions."
+      },
+      {
+        "paper_id": 4,
+        "score": 7.0,
+        "reasoning": "Makes a bold and potentially impactful claim that simple fine-tuning can mitigate backdoor attacks, offering a surprisingly simple solution to a complex security problem."
+      }
+    ],
+    "citation_corr": 0.1609914836328797,
+    "acceptance_corr": 0.5238095238095237
+  },
+  {
+    "agent_idx": 11,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/agreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 8.0,
+        "reasoning": "A helpful and well-evaluated contribution to improving optimization, with a low potential for ethical concerns."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.0,
+        "reasoning": "This paper presents a nice technical approach for pose estimation, a valuable problem in computer vision."
+      },
+      {
+        "paper_id": 1,
+        "score": 6.5,
+        "reasoning": "A novel investigation into the capabilities of generative models, exploring an interesting and creative direction for the field."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "A strong and valuable mathematical contribution that seems broadly applicable and very unlikely to have negative impacts."
+      },
+      {
+        "paper_id": 36,
+        "score": 7.5,
+        "reasoning": "A solid paper that provides an intuitive and effective improvement for an important application like fraud detection."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "This is very important work that helps the community understand and improve the robustness of LLMs."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed reasoning mechanism is an interesting and promising direction for improving visual reasoning systems."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.5,
+        "reasoning": "A useful and practical study that provides clear findings which could benefit downstream speech applications."
+      },
+      {
+        "paper_id": 22,
+        "score": 9.0,
+        "reasoning": "This work makes a great contribution towards model efficiency, which is highly valuable for both accessibility and sustainability."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.5,
+        "reasoning": "An excellent and highly practical finding that makes it easier for everyone to build safer and more secure models."
+      }
+    ],
+    "citation_corr": 0.2600631658684979,
+    "acceptance_corr": 0.38592249249397986
+  },
+  {
+    "agent_idx": 12,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/lone_wolf.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 4.5,
+        "reasoning": "Proposes a simple heuristic for layer-wise learning rates which is an incremental step over existing adaptive optimization techniques."
+      },
+      {
+        "paper_id": 26,
+        "score": 6.0,
+        "reasoning": "The proposed hierarchical network for pose estimation applies established concepts of body structure and context, representing a moderate architectural refinement."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "This work presents a novel and surprising finding that pre-trained diffusion models can generate out-of-domain images without fine-tuning by exploiting latent space geometry."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "Introduces a fundamentally new and broadly applicable differentiable Monte Carlo method for discontinuous integrands, a significant methodological advance."
+      },
+      {
+        "paper_id": 36,
+        "score": 6.5,
+        "reasoning": "The proposed message passing scheme is a sensible and intuitive adaptation of GNNs for heterophilic graphs, representing a moderate methodological contribution."
+      },
+      {
+        "paper_id": 15,
+        "score": 7.0,
+        "reasoning": "This work proposes a novel and efficient method for adversarial attacks by prompting the LLM to generate its own adversarial examples."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The proposed reasoning mechanism offers a novel and well-motivated architecture that combines iterative and parallel computation for complex visual reasoning."
+      },
+      {
+        "paper_id": 28,
+        "score": 4.0,
+        "reasoning": "The central finding that pre-training on noisy data improves performance on a noisy downstream task is expected and lacks significant empirical novelty."
+      },
+      {
+        "paper_id": 22,
+        "score": 9.5,
+        "reasoning": "This paper introduces a highly novel, model-agnostic graph distillation method by reframing the problem from emulating gradients to compressing computation trees."
+      },
+      {
+        "paper_id": 4,
+        "score": 7.5,
+        "reasoning": "This work makes a surprisingly strong and impactful claim that a simple, standard technique can mitigate complex backdoor attacks, representing significant empirical insight."
+      }
+    ],
+    "citation_corr": 0.06748974310538336,
+    "acceptance_corr": 0.2732187215579491
+  },
+  {
+    "agent_idx": 14,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/05_clarity_and_presentation.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/retrieval_augmented_generation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 7.0,
+        "reasoning": "The abstract clearly presents a simple heuristic but the justification for the method's effectiveness is based on an interpretation rather than a rigorous argument."
+      },
+      {
+        "paper_id": 26,
+        "score": 5.5,
+        "reasoning": "The core proposal is muddled by a vague analogy to human perception and lacks a clear description of the key technical mechanism."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "The abstract clearly articulates a counter-intuitive goal and provides a logical, well-structured overview of the proposed method and its justification."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "The paper addresses a well-defined and significant problem with a solution that is both clearly explained and intuitively appealing."
+      },
+      {
+        "paper_id": 36,
+        "score": 8.0,
+        "reasoning": "The abstract provides a clear motivation by contrasting with prior approaches and presents a simple, intuitive message passing scheme."
+      },
+      {
+        "paper_id": 15,
+        "score": 9.0,
+        "reasoning": "A clear and compelling abstract that introduces a novel and intuitive adversarial attack method by cleverly structuring a prompt."
+      },
+      {
+        "paper_id": 14,
+        "score": 3.0,
+        "reasoning": "The abstract fails to describe the proposed mechanism, instead listing desired properties and benchmark results without providing any technical insight."
+      },
+      {
+        "paper_id": 28,
+        "score": 5.0,
+        "reasoning": "The abstract clearly frames the research question and experiments, but fails to define a key component of its own proposed method."
+      },
+      {
+        "paper_id": 22,
+        "score": 9.5,
+        "reasoning": "The abstract excels by clearly identifying concrete flaws in prior work and then explaining an insightful core idea that directly resolves them."
+      },
+      {
+        "paper_id": 4,
+        "score": 2.0,
+        "reasoning": "The paper makes an exceptionally strong claim that contradicts established knowledge but provides no technical details or intuition to support it."
+      }
+    ],
+    "citation_corr": -0.24616433385183586,
+    "acceptance_corr": 0.46619276550416544
+  },
+  {
+    "agent_idx": 13,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 18,
+        "score": 6.5,
+        "reasoning": "The paper presents a conceptually elegant heuristic, but the abstract fails to compare against established layer-wise adaptive methods, leaving its practical contribution unclear."
+      },
+      {
+        "paper_id": 26,
+        "score": 7.0,
+        "reasoning": "The introduction of a structured parse graph is a strong conceptual contribution, though the work's completeness would depend on ablation studies isolating the benefits of its hierarchical and contextual components."
+      },
+      {
+        "paper_id": 1,
+        "score": 8.5,
+        "reasoning": "This work provides a significant conceptual contribution by exploring the geometric properties of a diffusion model's latent space for zero-shot synthesis, though its claims of generating 'arbitrary' images likely exceed the scope of its evidence."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "The paper introduces a novel, theoretically-grounded, and general method for a fundamental problem, with its elegance and potential impact being clear, although a complete analysis would require discussing the estimator's variance."
+      },
+      {
+        "paper_id": 36,
+        "score": 6.0,
+        "reasoning": "The paper's core idea is intuitive and theoretically justified, but the abstract omits the critical detail of how neighbor partitioning is performed at inference time, leaving a significant gap in methodological completeness."
+      },
+      {
+        "paper_id": 15,
+        "score": 5.5,
+        "reasoning": "While the concept of a self-incriminating adversarial attack is novel, the work's contribution is limited by a highly impractical threat model that should be a central point of its limitations analysis."
+      },
+      {
+        "paper_id": 14,
+        "score": 8.0,
+        "reasoning": "The paper proposes a powerful and principled reasoning mechanism that combines computational patterns, though its completeness hinges on a clear explanation of how the model learns to control these modes."
+      },
+      {
+        "paper_id": 28,
+        "score": 5.0,
+        "reasoning": "The paper provides a useful empirical finding, but it lacks conceptual novelty and a deeper analysis of why contaminated pre-training is effective, limiting its contribution to a specific experimental observation."
+      },
+      {
+        "paper_id": 22,
+        "score": 9.0,
+        "reasoning": "The paper presents a conceptually novel and powerful reframing of graph distillation by operating on computation trees, making it architecture-agnostic, though its completeness depends on thoroughly validating this core claim across diverse GNN architectures."
+      },
+      {
+        "paper_id": 4,
+        "score": 3.0,
+        "reasoning": "The paper makes a bold claim with a title that strongly suggests overclaiming, and the abstract critically omits any description of the specific backdoor attacks tested, making its claims of effectiveness impossible to evaluate."
+      }
+    ],
+    "citation_corr": -0.24616433385183586,
+    "acceptance_corr": 0.13533299049019168
+  }
+]

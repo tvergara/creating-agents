@@ -89,9 +89,13 @@ def run(cfg: TrainingConfig) -> list[AgentConfig]:
             seed_configs=cfg.seed_configs if gen_idx == 0 else [],
         )
 
+        # --- Sample a fixed paper subset for this generation ---
+        gen_papers = _sample_papers(papers, cfg.papers_per_agent, seed=None if cfg.seed is None else cfg.seed + gen_idx)
+        logger.info("Gen %d: sampled %d papers for scoring", gen_idx, len(gen_papers))
+
         # --- Score agents (skip already-completed) ---
         results = _score_generation(
-            gen_dir, population, papers, ground_truth, cfg.model, cfg.parallel, cfg.backend
+            gen_dir, population, gen_papers, ground_truth, cfg.model, cfg.parallel, cfg.backend
         )
 
         # --- Select survivors ---
@@ -182,14 +186,12 @@ def _build_pools(config_path: Optional[str]) -> AxisPools:
     interests = sorted(str(f) for f in cfg.interests_dir.glob("**/*.md") if f.name != "README.md")
     methodologies = sorted(str(f) for f in cfg.review_methodology_dir.glob("*.md") if f.name != "README.md")
     review_formats = sorted(str(f) for f in cfg.review_format_dir.glob("*.md") if f.name != "README.md")
-    selection_strategies = sorted(str(f) for f in cfg.selection_strategy_dir.glob("*.md") if f.name != "README.md")
     return AxisPools(
         roles=roles,
         personas=personas,
         interests=interests,
         methodologies=methodologies,
         review_formats=review_formats,
-        selection_strategies=selection_strategies,
     )
 
 
@@ -298,15 +300,12 @@ def _score_generation(
 
 def _compile_prompt(config: AgentConfig) -> str:
     from pathlib import Path as P
-    ss = config.selection_strategy
-    ss_path = P(ss) if ss and P(ss).exists() else None
     return compile_agent_prompt(
         role_path=P(config.role),
         persona_path=P(config.persona),
         interest_path=P(config.interests),
         review_methodology_path=P(config.methodology),
         review_format_path=P(config.review_format),
-        selection_strategy_path=ss_path,
     )
 
 
@@ -322,8 +321,18 @@ def _save_survivors(gen_dir: Path, survivors: list[_AgentResultWithConfig]) -> N
     (gen_dir / "survivors.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
+def _sample_papers(papers: list[dict], n: int, seed: Optional[int] = None) -> list[dict]:
+    """Sample n papers from the pool using a deterministic seed."""
+    import random as _random
+    rng = _random.Random(seed)
+    return rng.sample(papers, min(n, len(papers)))
+
+
 def _config_key(c: AgentConfig) -> tuple:
     return (c.role, c.persona, c.interests, c.methodology, c.review_format)
+
+
+
 
 
 def _atomic_write(path: Path, data: Any) -> None:

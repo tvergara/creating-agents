@@ -136,7 +136,7 @@ def build_launch_script(
     """
     if duration_hours is not None:
         timeout_secs = int(duration_hours * 3600)
-        run_block = _make_run_block(backend_command, resume_command, "${PER_RUN}s", session_id_extractor)
+        run_block = _make_run_block(backend_command, resume_command, "${PER_RUN}", session_id_extractor)
         return f"""\
 #!/usr/bin/env bash
 {_BASH_TIMEOUT_FUNC}
@@ -158,7 +158,7 @@ while true; do
 done
 """
     else:
-        run_block = _make_run_block(backend_command, resume_command, "${SESSION_TIMEOUT}s", session_id_extractor)
+        run_block = _make_run_block(backend_command, resume_command, "${SESSION_TIMEOUT}", session_id_extractor)
         return f"""\
 #!/usr/bin/env bash
 {_BASH_TIMEOUT_FUNC}
@@ -198,7 +198,7 @@ def create_session(
 
     # write launch script with env sourcing
     script_path = Path(working_dir) / ".reva_launch.sh"
-    full_script = f"source {env_path}\n{launch_script}"
+    full_script = f'source "{env_path}"\n{launch_script}'
     script_path.write_text(full_script, encoding="utf-8")
     script_path.chmod(0o755)
 
@@ -210,7 +210,7 @@ def create_session(
         "-s", name,
         "-c", working_dir,
     ])
-    _run(["send-keys", "-t", name, f"bash {script_path}", "Enter"])
+    _run(["send-keys", "-t", name, f'bash "{script_path}"', "Enter"])
 
 
 def kill_session(agent_name: str) -> bool:

@@ -1,0 +1,962 @@
+[
+  {
+    "agent_idx": 1,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.5,
+        "reasoning": "Proposes a genuinely novel model-agnostic distillation approach by compressing computation trees, cleverly sidestepping the limitations of gradient-based methods."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.5,
+        "reasoning": "Introduces a creative and potentially transformative method for differentiable rendering of discontinuous integrands by sampling line segments instead of points."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "Provides a valuable empirical insight that pre-training on contaminated audio improves speech separation, challenging prior assumptions and offering clear guidance for future work."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "Presents a creative and promising approach by connecting local explainability to global robustness, using counterfactuals to proactively train a defense model."
+      },
+      {
+        "paper_id": 29,
+        "score": 8.0,
+        "reasoning": "Introduces a novel and technically sound method for off-policy evaluation of deterministic policies by learning an optimal kernel metric to relax the policy."
+      },
+      {
+        "paper_id": 6,
+        "score": 9.0,
+        "reasoning": "Provides a substantial conceptual contribution by analytically unifying several important bio-inspired learning algorithms, deepening the understanding of alternatives to backpropagation."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.0,
+        "reasoning": "Extends the powerful stochastic interpolant framework to the multimarginal setting, a significant methodological leap that enables learning multi-way data correspondences."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "Proposes a highly novel and elegant approach that reframes retrieval as a generation task, potentially unifying the retriever and reader components of knowledge-intensive systems."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.0,
+        "reasoning": "Provides a comprehensive and practical framework for evaluating, detecting, and mitigating the important and under-explored problem of self-contradictory hallucinations in LLMs."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "Delivers a surprisingly powerful and practical insight that simple fine-tuning is an effective defense against backdoors, challenging the need for more complex methods."
+      }
+    ],
+    "citation_corr": 0.08260954017897335,
+    "acceptance_corr": 0.3860440160957241
+  },
+  {
+    "agent_idx": 0,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 7.5,
+        "reasoning": "The paper claims extensive benchmarking on real-world datasets against state-of-the-art baselines across multiple relevant metrics, suggesting a rigorous evaluation."
+      },
+      {
+        "paper_id": 21,
+        "score": 5.0,
+        "reasoning": "The paper demonstrates the method on diverse applications but the abstract lacks mention of quantitative comparisons against baseline methods on established benchmarks."
+      },
+      {
+        "paper_id": 28,
+        "score": 8.0,
+        "reasoning": "The paper presents a well-defined experimental setup to test a clear hypothesis, using standard quantitative metrics to report specific performance improvements."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.0,
+        "reasoning": "The method is evaluated on multiple datasets against SOTA techniques, but the abstract reports only 'comparable' results and lacks detail on the breadth of adversarial attacks tested."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.0,
+        "reasoning": "The proposed method is grounded in theoretical analysis and validated empirically across various test domains against baselines, demonstrating significant accuracy improvements."
+      },
+      {
+        "paper_id": 6,
+        "score": 6.5,
+        "reasoning": "The work is primarily analytical, with experiments designed to compare learning rules and validate theoretical models rather than to establish state-of-the-art performance."
+      },
+      {
+        "paper_id": 25,
+        "score": 5.5,
+        "reasoning": "The paper demonstrates the method's capabilities with numerical examples across several applications but the abstract lacks evidence of a systematic evaluation against baselines."
+      },
+      {
+        "paper_id": 23,
+        "score": 6.5,
+        "reasoning": "The method is validated on multiple tasks from a standard benchmark, but the abstract does not make strong claims about outperforming existing retrieval-augmented generation baselines."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The paper demonstrates exceptional experimental rigor by first quantifying the problem, then evaluating its proposed detection and mitigation methods with appropriate and standard metrics."
+      },
+      {
+        "paper_id": 4,
+        "score": 5.0,
+        "reasoning": "While the paper claims extensive experiments, the abstract lacks crucial details about the specific backdoor attacks and models used, making the claim of 'strong defense performance' difficult to assess."
+      }
+    ],
+    "citation_corr": -0.522173633325305,
+    "acceptance_corr": -0.40444347036066464
+  },
+  {
+    "agent_idx": 2,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/disagreeable.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review_budgeted.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 6.0,
+        "reasoning": "The method's core assumption of skewed computation tree distributions seems strong and lacks general theoretical justification."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "The proposed line-segment sampling is a novel and well-justified method for differentiating through discontinuous integrals."
+      },
+      {
+        "paper_id": 28,
+        "score": 3.0,
+        "reasoning": "The primary claim that pre-training on noisy data improves performance on noisy downstream tasks is an obvious and well-established concept."
+      },
+      {
+        "paper_id": 17,
+        "score": 5.0,
+        "reasoning": "The proposed defense is indirect and relies on a denoising autoencoder that itself could be vulnerable to adaptive attacks."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.5,
+        "reasoning": "The proposed method of learning an optimal kernel metric for policy relaxation presents a sound and direct solution to the deterministic OPE problem."
+      },
+      {
+        "paper_id": 6,
+        "score": 8.0,
+        "reasoning": "This paper presents a valuable theoretical contribution by unifying and analytically characterizing several forward-only learning algorithms."
+      },
+      {
+        "paper_id": 25,
+        "score": 7.5,
+        "reasoning": "The paper provides a solid theoretical generalization of stochastic interpolants to the challenging multimarginal setting."
+      },
+      {
+        "paper_id": 23,
+        "score": 4.0,
+        "reasoning": "The proposed retrieval mechanism seems technically infeasible as it fails to explain how generated prefixes are located in a large corpus without an index."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.0,
+        "reasoning": "This work provides a focused and practical prompting-based solution for the important problem of internal self-contradiction in LLM outputs."
+      },
+      {
+        "paper_id": 4,
+        "score": 3.5,
+        "reasoning": "The central claim is a dramatic oversimplification and likely fails against backdoor attacks designed to be resistant to fine-tuning."
+      }
+    ],
+    "citation_corr": -0.30909390373786616,
+    "acceptance_corr": 0.6325600960638247
+  },
+  {
+    "agent_idx": 3,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/07_ethics_and_responsible_research.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/theorist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/efficiency_and_compression.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_then_deep.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.0,
+        "reasoning": "The method's focus on computational and data efficiency presents a positive environmental consideration with no apparent direct ethical risks."
+      },
+      {
+        "paper_id": 21,
+        "score": 7.5,
+        "reasoning": "This paper proposes a foundational mathematical technique with neutral, and no direct, ethical implications discussed or apparent."
+      },
+      {
+        "paper_id": 28,
+        "score": 5.5,
+        "reasoning": "The paper fails to discuss the ethical dimensions of speech separation, including data privacy, potential for demographic bias, and dual-use applications like surveillance."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.0,
+        "reasoning": "While addressing model robustness is important, the paper overlooks the critical need to evaluate its impact on model fairness, a crucial consideration for ethical deployment."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.0,
+        "reasoning": "The work focuses on improving the safety and reliability of reinforcement learning evaluation, a positive contribution with no direct ethical issues."
+      },
+      {
+        "paper_id": 6,
+        "score": 7.5,
+        "reasoning": "This is a work of fundamental learning theory with no direct ethical concerns and potential for long-term positive environmental impact through more efficient training algorithms."
+      },
+      {
+        "paper_id": 25,
+        "score": 8.5,
+        "reasoning": "The paper makes a positive ethical contribution by explicitly designing its generative modeling framework to address algorithmic fairness as a core application."
+      },
+      {
+        "paper_id": 23,
+        "score": 3.0,
+        "reasoning": "The core proposal, having an LLM generate its own reference passages, fundamentally undermines factuality and grounding, creating a significant risk for sophisticated misinformation."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This work makes a direct and valuable contribution to AI safety by systematically evaluating, detecting, and mitigating self-contradictions in LLMs."
+      },
+      {
+        "paper_id": 4,
+        "score": 8.0,
+        "reasoning": "The paper proposes a simple and highly practical defense against backdoor attacks, a significant contribution to model security, though the strong claims require robust empirical evidence."
+      }
+    ],
+    "citation_corr": -0.40468456582711126,
+    "acceptance_corr": 0.2608202654786505
+  },
+  {
+    "agent_idx": 5,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04b_cpu_reproducibility.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/modern.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.5,
+        "reasoning": "The proposed model-agnostic distillation method addresses a significant bottleneck in scaling GNNs, offering a novel and efficient approach by focusing on computation trees rather than gradient emulation."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "This work introduces a novel and broadly applicable differentiable Monte Carlo estimator that elegantly handles discontinuities, potentially unlocking gradient-based optimization across several challenging domains."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "The paper provides valuable empirical insights into pre-training for speech separation, demonstrating the surprising effectiveness of contaminated data and proposing a practical unsupervised technique."
+      },
+      {
+        "paper_id": 17,
+        "score": 8.0,
+        "reasoning": "The work presents a creative and promising approach by uniquely linking local explainability with global robustness, offering a novel, attack-agnostic defense mechanism."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.5,
+        "reasoning": "The paper addresses a challenging and important sub-problem in reinforcement learning with a theoretically grounded method for off-policy evaluation of deterministic policies."
+      },
+      {
+        "paper_id": 6,
+        "score": 9.0,
+        "reasoning": "This work provides a significant theoretical contribution by unifying and analytically characterizing several key neuro-inspired learning rules, clarifying their relationship to backpropagation approximations."
+      },
+      {
+        "paper_id": 25,
+        "score": 8.5,
+        "reasoning": "The paper elegantly generalizes the powerful stochastic interpolant framework to the challenging multimarginal setting, opening up new possibilities for multi-way generative modeling and correspondence problems."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "This work presents a clever and timely paradigm shift for retrieval by using the LLM itself to generate reference material, elegantly simplifying the traditional retrieve-then-read pipeline."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.0,
+        "reasoning": "The paper provides a comprehensive and practical framework for addressing the critical issue of self-contradiction in LLMs, offering effective methods for evaluation, detection, and mitigation without external knowledge."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "This work makes a surprisingly strong and impactful claim that simple fine-tuning can mitigate backdoor attacks, potentially simplifying the entire landscape of backdoor defense research."
+      }
+    ],
+    "citation_corr": 0.17680816982645034,
+    "acceptance_corr": 0.03407990882954984
+  },
+  {
+    "agent_idx": 8,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.0,
+        "reasoning": "Proposes a novel model-agnostic distillation method that addresses clear limitations in prior work, enhancing practical utility."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.5,
+        "reasoning": "Introduces a novel and general method to enable gradient-based optimization for discontinuous integrands, with broad potential impact."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.0,
+        "reasoning": "Provides a valuable empirical investigation into pre-training for speech separation and contributes an unsupervised method."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "Proposes a novel, attack-agnostic defense by creatively using counterfactual explanations to improve model robustness."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.0,
+        "reasoning": "Addresses a key limitation in off-policy evaluation for deterministic policies with a technically sound kernel-based approach."
+      },
+      {
+        "paper_id": 6,
+        "score": 8.5,
+        "reasoning": "Provides a strong analytical characterization that unifies several neuro-inspired learning algorithms, advancing fundamental understanding."
+      },
+      {
+        "paper_id": 25,
+        "score": 8.0,
+        "reasoning": "Presents a novel and theoretically grounded extension of stochastic interpolants to the multimarginal setting, enabling new applications."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.0,
+        "reasoning": "Proposes a novel and elegant approach to retrieval by using the LLM itself, potentially simplifying complex RAG pipelines."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.5,
+        "reasoning": "Provides a comprehensive and practical framework for evaluating, detecting, and mitigating self-contradictions in black-box LLMs."
+      },
+      {
+        "paper_id": 4,
+        "score": 8.0,
+        "reasoning": "Demonstrates that a simple, common technique is an effective defense, offering a highly practical and accessible solution to backdoor attacks."
+      }
+    ],
+    "citation_corr": 0.023352022429908536,
+    "acceptance_corr": -0.17251638983558854
+  },
+  {
+    "agent_idx": 6,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/04_reproducibility_and_transparency.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/lone_wolf.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 5.0,
+        "reasoning": "The core method of compressing computation trees is novel but lacks sufficient algorithmic detail in the abstract to assess reimplementability, and no code is provided."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.5,
+        "reasoning": "The paper proposes a novel and potentially high-impact method for a challenging problem, but reproducibility cannot be assessed without the full method description and code."
+      },
+      {
+        "paper_id": 28,
+        "score": 3.0,
+        "reasoning": "The paper's claims hinge on a vaguely described \"deep modularization\" technique and lack crucial experimental details about the data contamination process, making it irreproducible."
+      },
+      {
+        "paper_id": 17,
+        "score": 4.0,
+        "reasoning": "The proposed method is complex with multiple components (CFE generation, DAE architecture, protection mechanisms) that are not specified, making reproduction impossible from the abstract."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.0,
+        "reasoning": "Proposing an analytic solution for the optimal kernel metric provides a strong foundation for reproducibility, though the lack of experimental specifics is a minor weakness."
+      },
+      {
+        "paper_id": 6,
+        "score": 8.0,
+        "reasoning": "As a theoretical paper establishing connections between existing algorithms, reproducibility hinges on the clarity of its mathematical derivations, which are expected to be self-contained."
+      },
+      {
+        "paper_id": 25,
+        "score": 7.5,
+        "reasoning": "The paper presents a clear and novel theoretical extension of a known framework, making the method conceptually reproducible, though experimental validation is unsubstantiated by the abstract."
+      },
+      {
+        "paper_id": 23,
+        "score": 4.5,
+        "reasoning": "The paper's core contribution relies on an unspecified \"constrained decoding\" mechanism and prompt design, which are essential for reproduction but are not described."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "The paper addresses a key problem and provides a public tool for its proposed method, demonstrating a strong commitment to artifact availability and reproducibility."
+      },
+      {
+        "paper_id": 4,
+        "score": 2.0,
+        "reasoning": "A core method named \"super-fine-tuning\" is left undefined, and the experimental setup for the primary claim lacks the necessary details on datasets, attacks, and fine-tuning protocols."
+      }
+    ],
+    "citation_corr": -0.5644117345171041,
+    "acceptance_corr": 0.40540053088411376
+  },
+  {
+    "agent_idx": 4,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/old_school.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/generic.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 7.5,
+        "reasoning": "The proposed model-agnostic distillation method, based on compressing computation trees, represents a technically sound and practically significant advance over architecture-dependent approaches."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "This paper introduces a novel and general method for differentiating through discontinuous integrals, a fundamental problem with broad implications across machine learning and computational science."
+      },
+      {
+        "paper_id": 28,
+        "score": 4.5,
+        "reasoning": "The paper provides an incremental empirical finding that pre-training on noisy data aids speech separation, but its methodological contribution appears limited and its impact is confined to a niche application."
+      },
+      {
+        "paper_id": 17,
+        "score": 5.0,
+        "reasoning": "The work proposes a conceptually interesting link between explainability and robustness, but the proposed method adds significant complexity for a performance that is only comparable to existing techniques."
+      },
+      {
+        "paper_id": 29,
+        "score": 8.0,
+        "reasoning": "This paper presents a theoretically sound and elegant solution to the critical problem of off-policy evaluation for deterministic policies, with strong potential for practical impact in reinforcement learning."
+      },
+      {
+        "paper_id": 6,
+        "score": 8.5,
+        "reasoning": "The work provides significant theoretical insight by unifying and analytically characterizing several prominent bio-inspired learning algorithms, thereby advancing the fundamental understanding of credit assignment beyond backpropagation."
+      },
+      {
+        "paper_id": 25,
+        "score": 7.0,
+        "reasoning": "The paper presents a mathematically elegant generalization of stochastic interpolants to the multimarginal setting, representing a strong methodological contribution for a challenging class of problems."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.5,
+        "reasoning": "The paper presents a paradigm-shifting approach to retrieval by using the generative model itself to perform retrieval steps, potentially unifying the dominant retrieval-augmented generation pipeline into a single model."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.5,
+        "reasoning": "The work provides a rigorous characterization and measurement of self-contradiction in LLMs, a critical failure mode, and offers a pragmatic framework for its detection and mitigation."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "The paper makes a bold and highly significant claim that a simple, common technique can neutralize a major security threat, potentially simplifying the defense landscape and raising the bar for future attacks."
+      }
+    ],
+    "citation_corr": 0.5091192924921722,
+    "acceptance_corr": 0.14203137210779954
+  },
+  {
+    "agent_idx": 7,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/contrarian.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/adjacent/foundation_models/large_language_models/reasoning_and_chain_of_thought.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 5.5,
+        "reasoning": "The proposed model-agnostic distillation method is interesting, but the abstract lacks the specific experimental details needed to verify its claimed superiority over SOTA baselines."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.0,
+        "reasoning": "This paper introduces a novel and theoretically-grounded method to a challenging general problem, though its practical performance against specialized baselines is not fully established in the abstract."
+      },
+      {
+        "paper_id": 28,
+        "score": 4.5,
+        "reasoning": "The central finding, that training on contaminated data improves performance on contaminated data, is incremental and largely expected."
+      },
+      {
+        "paper_id": 17,
+        "score": 3.5,
+        "reasoning": "The proposed method is overly complex and its evaluation on only three datasets is insufficient to support its claims of state-of-the-art comparable performance."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.0,
+        "reasoning": "The paper addresses a specific gap in off-policy evaluation with a theoretically well-supported method, although the breadth of empirical validation remains unclear from the abstract."
+      },
+      {
+        "paper_id": 6,
+        "score": 6.0,
+        "reasoning": "This work provides a valuable theoretical unification of several forward-only learning algorithms, but its practical significance is limited by the performance gap of these methods compared to backpropagation."
+      },
+      {
+        "paper_id": 25,
+        "score": 6.5,
+        "reasoning": "The paper presents an elegant theoretical extension for a challenging generative modeling problem, but the abstract suggests the experimental validation may be more illustrative than exhaustive."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.0,
+        "reasoning": "While the idea of generative retrieval is intriguing, the abstract fails to mention any comparison to established retrieval-augmented generation baselines, making its effectiveness impossible to judge."
+      },
+      {
+        "paper_id": 16,
+        "score": 7.5,
+        "reasoning": "This paper presents a practical and well-evaluated framework for the important problem of self-contradiction, though its reliance on prompting may limit its long-term novelty."
+      },
+      {
+        "paper_id": 4,
+        "score": 2.0,
+        "reasoning": "The paper makes an extraordinary claim that contradicts established findings in the field, but the abstract provides no specific evidence regarding the scope and rigor of the experiments needed to support it."
+      }
+    ],
+    "citation_corr": -0.40871194568479957,
+    "acceptance_corr": 0.5989366204351959
+  },
+  {
+    "agent_idx": 9,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/06_significance_and_impact.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.0,
+        "reasoning": "This paper thoughtfully addresses key limitations in graph distillation, and the proposed model-agnostic approach appears to be a valuable and practical contribution for the community."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "This work introduces a clever and potentially high-impact technique for a challenging, cross-disciplinary problem, which could inspire a great deal of follow-up research."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.0,
+        "reasoning": "The paper presents useful empirical findings on pre-training for speech separation, though the main conclusion feels somewhat incremental rather than a major conceptual breakthrough."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "This work offers an interesting and promising connection between local explainability and global robustness, which is a direction the community seems quite excited about."
+      },
+      {
+        "paper_id": 29,
+        "score": 8.0,
+        "reasoning": "The paper tackles a challenging and important technical problem in off-policy evaluation with a method that appears both principled and effective."
+      },
+      {
+        "paper_id": 6,
+        "score": 8.5,
+        "reasoning": "This work provides valuable theoretical insights that unify several important neuro-inspired learning rules, helping to clarify the relationships between these emerging alternatives to backpropagation."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.5,
+        "reasoning": "This is an elegant and powerful generalization of a very current and impactful generative modeling framework, opening up promising new applications and theoretical directions."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "The core idea of using the LLM itself as a retriever is both clever and thought-provoking, potentially simplifying the standard RAG pipeline in a very elegant way."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This work provides a comprehensive and much-needed investigation into the critical problem of self-contradiction in LLMs, offering practical and effective methods for detection and mitigation."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "The paper makes a bold and surprisingly strong claim that could significantly simplify and re-frame the community's approach to backdoor defense."
+      }
+    ],
+    "citation_corr": 0.0033043816071589337,
+    "acceptance_corr": 0.36600720869734193
+  },
+  {
+    "agent_idx": 10,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/01_novelty_and_originality.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/pessimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/three_stage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 5.5,
+        "reasoning": "The model-agnostic claim is interesting, but the method appears to be an incremental improvement over existing graph summarization and distillation techniques."
+      },
+      {
+        "paper_id": 21,
+        "score": 8.0,
+        "reasoning": "Proposing a general-purpose, differentiable Monte Carlo estimator for discontinuous integrands is a fundamentally novel contribution with broad potential impact."
+      },
+      {
+        "paper_id": 28,
+        "score": 3.0,
+        "reasoning": "This paper merely confirms the unsurprising hypothesis that pre-training on noisy data improves performance on noisy downstream speech separation tasks."
+      },
+      {
+        "paper_id": 17,
+        "score": 4.5,
+        "reasoning": "The proposed method is an assembly of existing techniques\u2014counterfactual explanations and autoencoders\u2014offering a marginal and predictable improvement in model robustness."
+      },
+      {
+        "paper_id": 29,
+        "score": 6.5,
+        "reasoning": "The kernel-based relaxation for off-policy evaluation on deterministic policies is a technically sound and novel approach to a niche, but important, reinforcement learning problem."
+      },
+      {
+        "paper_id": 6,
+        "score": 7.5,
+        "reasoning": "Providing a unified analytical characterization of several forward-only learning algorithms is a substantial conceptual contribution that clarifies their relationship to backpropagation."
+      },
+      {
+        "paper_id": 25,
+        "score": 8.5,
+        "reasoning": "The generalization of stochastic interpolants to the multimarginal setting is a significant and elegant methodological advance for generative modeling."
+      },
+      {
+        "paper_id": 23,
+        "score": 5.0,
+        "reasoning": "While conceptually novel, the proposal to replace dedicated retrievers with a generative model is highly impractical and likely suffers from severe efficiency and hallucination issues."
+      },
+      {
+        "paper_id": 16,
+        "score": 6.0,
+        "reasoning": "This work addresses the well-defined problem of self-contradiction, but the proposed prompting-based detection and mitigation framework is an incremental refinement of existing strategies."
+      },
+      {
+        "paper_id": 4,
+        "score": 4.0,
+        "reasoning": "The bold claim that simple fine-tuning defeats backdoor attacks is inadequately supported and overlooks the complexity and variety of modern adversarial methods."
+      }
+    ],
+    "citation_corr": -0.3568120160740313,
+    "acceptance_corr": 0.6980728392195734
+  },
+  {
+    "agent_idx": 11,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/alignment_and_rlhf.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.0,
+        "reasoning": "The proposed model-agnostic distillation method seems like a genuinely useful and robust contribution to the field of graph learning."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "This work introduces an elegant and potentially high-impact method for differentiating discontinuous integrals, which could unlock new applications in various fields."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.5,
+        "reasoning": "The paper provides a useful empirical finding about pre-training for speech separation, though the novelty of the proposed methodology seems somewhat limited."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "This paper presents a creative approach that compellingly bridges local explainability with global model robustness."
+      },
+      {
+        "paper_id": 29,
+        "score": 7.0,
+        "reasoning": "The paper offers a technically sound and well-motivated solution to a challenging, albeit specific, problem in off-policy evaluation for reinforcement learning."
+      },
+      {
+        "paper_id": 6,
+        "score": 7.5,
+        "reasoning": "This work provides a valuable analytical characterization that unifies several key neuro-inspired learning rules, clarifying their underlying connections."
+      },
+      {
+        "paper_id": 25,
+        "score": 8.5,
+        "reasoning": "This paper appears to make a significant theoretical contribution by elegantly extending the stochastic interpolant framework to the challenging multimarginal setting."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "The paper proposes a fascinating paradigm shift by using the LLM itself for generative retrieval, cleverly removing the need for external retrieval models."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This work offers a comprehensive and highly practical investigation into self-contradictory hallucinations, providing an immediately useful framework for detection and mitigation."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.5,
+        "reasoning": "The paper makes a bold and compelling claim that simple fine-tuning can effectively mitigate backdoor attacks, which would be a highly impactful and practical result."
+      }
+    ],
+    "citation_corr": 0.284806897977915,
+    "acceptance_corr": 0.047619047619047616
+  },
+  {
+    "agent_idx": 13,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/08_completeness_and_limitations.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/optimistic.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/junior/foundation_models/large_language_models.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/preregistration_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.5,
+        "reasoning": "The proposed model-agnostic approach cleverly sidesteps major limitations of existing graph distillation techniques, showing significant promise for efficient GNN training."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "This paper introduces a broadly applicable and elegant method for handling discontinuous integrands, potentially unlocking gradient-based optimization for many challenging domains."
+      },
+      {
+        "paper_id": 28,
+        "score": 7.5,
+        "reasoning": "The work provides a clear and valuable empirical finding that pre-training on contaminated speech improves separation, offering a practical path for building better models."
+      },
+      {
+        "paper_id": 17,
+        "score": 8.0,
+        "reasoning": "This paper presents a creative and promising approach by repurposing local explainability tools to improve global model robustness in an attack-agnostic manner."
+      },
+      {
+        "paper_id": 29,
+        "score": 8.0,
+        "reasoning": "The paper offers a theoretically sound and well-justified method for a challenging off-policy evaluation scenario, backed by strong analytical results."
+      },
+      {
+        "paper_id": 6,
+        "score": 8.5,
+        "reasoning": "This work provides a valuable theoretical unification of several biologically-inspired learning algorithms, deepening our understanding of their relationship to backpropagation."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.0,
+        "reasoning": "This paper presents a powerful and elegant generalization of stochastic interpolants to the multimarginal setting, opening up new possibilities for multi-way data correspondence problems."
+      },
+      {
+        "paper_id": 23,
+        "score": 9.5,
+        "reasoning": "The paper proposes a potentially transformative approach by using the LLM itself for retrieval, which could dramatically simplify and improve knowledge-intensive NLP tasks."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.5,
+        "reasoning": "This work provides a thorough investigation and a practical, prompting-based solution for the critical problem of self-contradiction in large language models."
+      },
+      {
+        "paper_id": 4,
+        "score": 9.0,
+        "reasoning": "The paper presents a surprisingly simple yet powerful finding that standard fine-tuning can be an effective defense against backdoor attacks, offering an immediate practical benefit."
+      }
+    ],
+    "citation_corr": 0.33360032042726484,
+    "acceptance_corr": 0.13449109746432153
+  },
+  {
+    "agent_idx": 12,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/03_experimental_rigor.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/empiricist.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/mid/foundation_models/large_language_models/fine_tuning_and_adaptation.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/adversarial_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 7.5,
+        "reasoning": "The model-agnostic approach to graph distillation is a significant strength, addressing a key limitation of prior work."
+      },
+      {
+        "paper_id": 21,
+        "score": 6.5,
+        "reasoning": "While the method is theoretically novel, the abstract lacks evidence of rigorous quantitative comparisons against established baselines."
+      },
+      {
+        "paper_id": 28,
+        "score": 8.0,
+        "reasoning": "The paper presents a clear, hypothesis-driven experimental design that directly challenges and refines the findings of previous work."
+      },
+      {
+        "paper_id": 17,
+        "score": 6.0,
+        "reasoning": "The method is novel, but the empirical claim of achieving only \"comparable\" results to state-of-the-art techniques is not compelling."
+      },
+      {
+        "paper_id": 29,
+        "score": 8.5,
+        "reasoning": "The work provides a strong combination of theoretical analysis and claims of significant empirical improvements over baselines on a clear RL problem."
+      },
+      {
+        "paper_id": 6,
+        "score": 7.0,
+        "reasoning": "This work provides valuable theoretical characterization and unification of several learning rules, though it lacks large-scale empirical validation."
+      },
+      {
+        "paper_id": 25,
+        "score": 4.5,
+        "reasoning": "The abstract proposes a new framework but provides weak empirical support, referencing only \"numerical examples\" without quantitative metrics or baseline comparisons."
+      },
+      {
+        "paper_id": 23,
+        "score": 7.5,
+        "reasoning": "The novel approach of eliminating a separate retriever is promising, though claims of effectiveness are not explicitly compared to state-of-the-art retrieval-augmented models."
+      },
+      {
+        "paper_id": 16,
+        "score": 9.0,
+        "reasoning": "This paper presents a rigorous empirical study of a significant problem, including concrete quantification and a well-evaluated mitigation technique."
+      },
+      {
+        "paper_id": 4,
+        "score": 8.0,
+        "reasoning": "The paper makes a simple but strong and falsifiable claim that, if supported by the promised extensive experiments, is highly impactful."
+      }
+    ],
+    "citation_corr": 0.08485321541536205,
+    "acceptance_corr": -0.3927922024247863
+  },
+  {
+    "agent_idx": 14,
+    "config": {
+      "role": "/Users/tom/personal/creating-agents/agent_definition/roles/02_technical_soundness.md",
+      "persona": "/Users/tom/personal/creating-agents/agent_definition/personas/social.json",
+      "interests": "/Users/tom/personal/creating-agents/agent_definition/research_interests/generated_personas/senior/foundation_models/large_language_models/agents_and_tool_use.md",
+      "methodology": "/Users/tom/personal/creating-agents/agent_definition/review_methodology/triage_review.md",
+      "review_format": "/Users/tom/personal/creating-agents/agent_definition/review_formats/generic.md"
+    },
+    "scores": [
+      {
+        "paper_id": 22,
+        "score": 8.0,
+        "reasoning": "The proposed method's foundation on computation trees is an interesting and seemingly sound alternative to gradient-based methods, promising model-agnostic distillation."
+      },
+      {
+        "paper_id": 21,
+        "score": 9.0,
+        "reasoning": "The novel approach of sampling line segments instead of points is an elegant and theoretically sound method for handling difficult discontinuous integrals."
+      },
+      {
+        "paper_id": 28,
+        "score": 6.0,
+        "reasoning": "The paper validates the intuitive hypothesis that training on contaminated audio improves downstream separation tasks, but the novelty of the core claim is limited."
+      },
+      {
+        "paper_id": 17,
+        "score": 7.5,
+        "reasoning": "The proposed method creatively links local explainability with global robustness, presenting a novel and plausible attack-agnostic defense mechanism."
+      },
+      {
+        "paper_id": 29,
+        "score": 8.5,
+        "reasoning": "The paper provides a technically deep and principled solution to the challenging problem of OPE for deterministic policies in continuous action spaces."
+      },
+      {
+        "paper_id": 6,
+        "score": 8.0,
+        "reasoning": "The work provides a valuable theoretical contribution by unifying and analytically characterizing several important bio-inspired learning algorithms."
+      },
+      {
+        "paper_id": 25,
+        "score": 9.0,
+        "reasoning": "The paper presents a technically sophisticated and elegant generalization of a powerful generative modeling framework to the challenging multimarginal setting."
+      },
+      {
+        "paper_id": 23,
+        "score": 8.5,
+        "reasoning": "The paper explores the exciting and timely idea of using an LLM for retrieval itself, offering a novel approach that simplifies the traditional RAG pipeline."
+      },
+      {
+        "paper_id": 16,
+        "score": 8.5,
+        "reasoning": "The paper provides a comprehensive and practical investigation into the important problem of self-contradiction, offering an effective prompting-based solution."
+      },
+      {
+        "paper_id": 4,
+        "score": 7.0,
+        "reasoning": "The paper makes a bold and impactful claim that simple fine-tuning can be a strong defense, and it is valuable for re-establishing a simple baseline in this area."
+      }
+    ],
+    "citation_corr": -0.10574021142908588,
+    "acceptance_corr": 0.6099375455928333
+  }
+]
